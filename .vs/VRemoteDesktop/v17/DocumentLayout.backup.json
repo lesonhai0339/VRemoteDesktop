@@ -3,8 +3,20 @@
   "WorkspaceRootPath": "D:\\LeSonHai\\C#\\VRemoteDesktop\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|d:\\lesonhai\\c#\\vremotedesktop\\vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|d:\\lesonhai\\c#\\vremotedesktop\\vremotedesktop\\class2.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\class2.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
       "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\chunk.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\chunk.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -14,19 +26,55 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
             {
               "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Chunk.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Chunk.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\Chunk.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Chunk.cs",
+              "RelativeToolTip": "VRemoteDesktop\\Chunk.cs",
+              "ViewState": "AgIAAA0AAAAAAAAAAAAgwDQAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-04T08:57:17.47Z"
+            },
+            {
+              "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "Class2.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Class2.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\Class2.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Class2.cs*",
+              "RelativeToolTip": "VRemoteDesktop\\Class2.cs*",
+              "ViewState": "AgIAABgAAAAAAAAAAAA0wCgAAAAVAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-04T08:47:58.204Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "Form1.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Form1.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\Form1.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Form1.cs",
+              "RelativeToolTip": "VRemoteDesktop\\Form1.cs",
+              "ViewState": "AgIAACMAAAAAAAAAAAAwwCkAAAA5AAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-04T07:44:29.48Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "Form1.cs [Design]",
               "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Form1.cs",
               "RelativeDocumentMoniker": "VRemoteDesktop\\Form1.cs",
               "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Form1.cs [Design]",
               "RelativeToolTip": "VRemoteDesktop\\Form1.cs [Design]",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-04T01:49:16.966Z",
-              "EditorCaption": " [Design]"
+              "WhenOpened": "2025-04-04T07:44:27.336Z"
             }
           ]
         }

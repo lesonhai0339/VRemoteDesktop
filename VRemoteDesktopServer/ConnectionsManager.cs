@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using static VRemoteDesktopServer.Enums;
 
 namespace VRemoteDesktopServer
 {
@@ -35,24 +36,57 @@ namespace VRemoteDesktopServer
                 }
             }    
         }
-        public void Remove()
+        public void Remove(string id)
         {
-
+            lock (_lockObject)
+            {
+                if (_remoteConnections.TryGetValue(id, out var connection))
+                {
+                    connection.Dispose();
+                    _remoteConnections.Remove(id);
+                }
+            }
         }
-        //public Connection Get(string id)
-        //{
-        //    lock (_lockObject)
-        //    {
-        //        if (_remoteConnections.TryGetValue(id, out var connection))
-        //        {
-        //            return connection;
-        //        }
-        //        return null;
-        //    }
-        //}
-        public void UpdatePing()
+        public bool IsExisted(string id)
         {
-
+            lock (_lockObject)
+            {
+                if (_remoteConnections.TryGetValue(id, out var connection))
+                {
+                    return true;
+                }
+                return false;
+            }
+        }
+        public Connection Get(string id)
+        {
+            lock (_lockObject)
+            {
+                if (_remoteConnections.TryGetValue(id, out var connection))
+                {
+                    return connection;
+                }
+                return null;
+            }
+        }
+        public bool UpdatePing(string id, RemoteType isOwner)
+        {
+            lock (_lockObject)
+            {
+                if(_remoteConnections.TryGetValue(id, out var connection))
+                {
+                    if (isOwner == RemoteType.OWNER)
+                    {
+                        connection.LastOwnerPing = DateTime.Now;
+                    }
+                    else
+                    {
+                        connection.LastPartnerPing = DateTime.Now;
+                    }
+                    return true;
+                }
+                return false;
+            }
         }
         public void Dispose()
         {
