@@ -10,19 +10,11 @@ using System.Windows.Forms;
 
 namespace Vinhhy_Remote_Desktop
 {
-    public partial class Form1 : Form
+    public partial class RemoteForm : Form
     {
-        private RemoteControl _remoteControl;
-        public Form1()
+        public RemoteForm()
         {
             InitializeComponent();
-            _remoteControl = new RemoteControl();
         }
-
-        private async void Form1_Load(object sender, EventArgs e)
-        {
-            await _remoteControl.ConnectToServer();
-        }
-
     }
 }
