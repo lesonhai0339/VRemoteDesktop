@@ -27,11 +27,12 @@ namespace VRemoteDesktop
             try
             {
                 StateObject stateObject = (StateObject)asyncResult.AsyncState;
-                Socket wordSocket = stateObject.WorkSocket;
-                int num = wordSocket.EndReceive(asyncResult);
+                Socket workSocket = stateObject.WorkSocket;
+                int num = workSocket.EndReceive(asyncResult);
                 Console.WriteLine(num);
                 if (num > 0)
                 {
+                    workSocket.BeginSend(Encoding.ASCII.GetBytes("OK"), 0, StateObject.BufferSize,SocketFlags.None, ReceivedCallback, stateObject);
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
@@ -55,6 +56,7 @@ namespace VRemoteDesktop
                         if (result)
                         {
                             Console.WriteLine($"Received a complete chunk of data: {_chunk.GetDataLength()}");
+                            Console.WriteLine(BitConverter.ToString(_chunk.GetData()));
                             ImageReceived?.Invoke(this, new ImageEventArgs(_chunk.GetData()));
                         }
                     }
@@ -65,7 +67,7 @@ namespace VRemoteDesktop
                     //Console.WriteLine($"Received: {data}");
                     //Console.WriteLine("------------------\n");
                 }
-                wordSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, ReceivedCallback, stateObject);
+                workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, ReceivedCallback, stateObject);
             }
             catch (Exception ex)
             {
