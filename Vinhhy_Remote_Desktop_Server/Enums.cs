@@ -15,6 +15,22 @@ namespace Vinhhy_Remote_Desktop_Server
         OWNER = 0,
         PARTNER = 1
     }
+    public enum DataSendType : int
+    {
+        INIT = 1,
+        KEYBOARD = 2,
+        SCREEN = 3,
+        CHUNK = 4,
+        FILE = 5,
+        CHAT = 6,
+        CONTROL = 7,
+        DISCONNECT= 8,
+    }
+    public enum ConnectType : int
+    {
+        OWNER = 0,
+        PARTNER = 1,
+    }
     public enum SocketResponseType : int
     {
         NONE = 0,

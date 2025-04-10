@@ -151,14 +151,14 @@ namespace Vinhhy_Remote_Desktop_Server
             Partner?.Dispose();
         }
     }
-    public class SocketClient
+    public class SocketClient:IDisposable
     {
-        public SocketClient(Socket sck, Action<byte[], int> callback = null)
+        public SocketClient(Socket sck, Action<Socket,byte[], int> callback = null)
         {
             Socket = sck;
             DataReceivedCallback = callback;
         }
-        public Action<byte[], int> DataReceivedCallback { get; set; }
+        public Action<Socket,byte[], int> DataReceivedCallback { get; set; }
         public Socket Socket { get; set; }
         public Task<int> ReceiveAsync(byte[] buffer, int offset, int size, SocketFlags socketFlags)
         {
@@ -177,13 +177,11 @@ namespace Vinhhy_Remote_Desktop_Server
         }
         public void ProcessDataHandler(byte[] buffer, int byteRead)
         {
-            string data = Encoding.ASCII.GetString(buffer, 0, byteRead);
-            Console.WriteLine(data);
-            DataReceivedCallback?.Invoke(buffer, byteRead);
+            DataReceivedCallback?.Invoke(this.Socket,buffer, byteRead);
         }
         public async Task StartReceiving()
         {
-            byte[] buffer = new byte[4096];
+            byte[] buffer = new byte[65536];
 
             try
             {
@@ -206,6 +204,23 @@ namespace Vinhhy_Remote_Desktop_Server
             {
                 Socket.Close();
             }
+        }
+        private bool isDisposed = false;
+
+        public void Dispose()
+        {
+            if (isDisposed) return;
+            isDisposed = true;
+
+            try
+            {
+                Socket?.Shutdown(SocketShutdown.Both);
+            }
+            catch { }
+
+            DataReceivedCallback = null;
+            Socket?.Close();
+            Socket?.Dispose();
         }
     }
 }
