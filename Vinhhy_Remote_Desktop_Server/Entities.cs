@@ -151,7 +151,7 @@ namespace Vinhhy_Remote_Desktop_Server
             Partner?.Dispose();
         }
     }
-    public class SocketClient
+    public class SocketClient:IDisposable
     {
         public SocketClient(Socket sck, Action<Socket,byte[], int> callback = null)
         {
@@ -181,7 +181,7 @@ namespace Vinhhy_Remote_Desktop_Server
         }
         public async Task StartReceiving()
         {
-            byte[] buffer = new byte[4096];
+            byte[] buffer = new byte[65536];
 
             try
             {
@@ -204,6 +204,23 @@ namespace Vinhhy_Remote_Desktop_Server
             {
                 Socket.Close();
             }
+        }
+        private bool isDisposed = false;
+
+        public void Dispose()
+        {
+            if (isDisposed) return;
+            isDisposed = true;
+
+            try
+            {
+                Socket?.Shutdown(SocketShutdown.Both);
+            }
+            catch { }
+
+            DataReceivedCallback = null;
+            Socket?.Close();
+            Socket?.Dispose();
         }
     }
 }

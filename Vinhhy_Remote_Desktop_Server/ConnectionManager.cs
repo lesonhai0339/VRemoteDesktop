@@ -14,6 +14,7 @@ namespace Vinhhy_Remote_Desktop_Server
         private Socket _sck;
         private Queue<Data> _queue;
         private RemotesManager _remotesManager;
+        private List<SocketClient> _socketClients;
         public ConnectionManager()
         {
             Remotes = new RemotesManager();
@@ -45,6 +46,14 @@ namespace Vinhhy_Remote_Desktop_Server
             private set
             {
                 _remotesManager = value;
+            }
+        }
+        public List<SocketClient> SocketClients
+        {
+            get => _socketClients;
+            private set
+            {
+                _socketClients = value;
             }
         }
         #endregion
@@ -136,6 +145,15 @@ namespace Vinhhy_Remote_Desktop_Server
                 case DataSendType.CONTROL:
                     Console.WriteLine("Control data received");
                     break;
+                case DataSendType.DISCONNECT:
+                    Console.WriteLine("Socket disconnect");
+                    Remotes.Remove(Encoding.ASCII.GetString(dataReceived, 0, 8));
+                    SocketClients.Remove(
+                        SocketClients.FirstOrDefault(
+                            x => x.Socket == sck
+                        )
+                    );
+                    break;
                 default:
                     break;
             }
@@ -156,6 +174,7 @@ namespace Vinhhy_Remote_Desktop_Server
                     null);
 
                     SocketClient client = new SocketClient(clientSocket, DataReceived);
+                    SocketClients.Add(client);
                     _ = client.StartReceiving();
 
                 }
