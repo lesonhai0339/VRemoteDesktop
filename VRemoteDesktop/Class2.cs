@@ -122,6 +122,10 @@ namespace VRemoteDesktop
             {
                 Console.WriteLine($"Data received Error: ", ex.Message);
             }
+            finally
+            {
+                Sck.Close();
+            }
         }
     }
 }
