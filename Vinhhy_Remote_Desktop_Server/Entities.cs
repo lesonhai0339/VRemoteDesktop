@@ -153,12 +153,12 @@ namespace Vinhhy_Remote_Desktop_Server
     }
     public class SocketClient
     {
-        public SocketClient(Socket sck, Action<byte[], int> callback = null)
+        public SocketClient(Socket sck, Action<Socket,byte[], int> callback = null)
         {
             Socket = sck;
             DataReceivedCallback = callback;
         }
-        public Action<byte[], int> DataReceivedCallback { get; set; }
+        public Action<Socket,byte[], int> DataReceivedCallback { get; set; }
         public Socket Socket { get; set; }
         public Task<int> ReceiveAsync(byte[] buffer, int offset, int size, SocketFlags socketFlags)
         {
@@ -177,9 +177,7 @@ namespace Vinhhy_Remote_Desktop_Server
         }
         public void ProcessDataHandler(byte[] buffer, int byteRead)
         {
-            string data = Encoding.ASCII.GetString(buffer, 0, byteRead);
-            Console.WriteLine(data);
-            DataReceivedCallback?.Invoke(buffer, byteRead);
+            DataReceivedCallback?.Invoke(this.Socket,buffer, byteRead);
         }
         public async Task StartReceiving()
         {

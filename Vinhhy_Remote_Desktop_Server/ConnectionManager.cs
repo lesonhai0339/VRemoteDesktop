@@ -26,7 +26,7 @@ namespace Vinhhy_Remote_Desktop_Server
         public Socket Sck
         {
             get => _sck;
-            set
+            private set
             {
                 _sck = value;
             }
@@ -34,7 +34,7 @@ namespace Vinhhy_Remote_Desktop_Server
         public Queue<Data> Queue
         {
             get => _queue;
-            set
+            private set
             {
                 _queue = value;
             }
@@ -42,7 +42,7 @@ namespace Vinhhy_Remote_Desktop_Server
         public RemotesManager Remotes
         {
             get => _remotesManager;
-            set
+            private set
             {
                 _remotesManager = value;
             }
@@ -55,22 +55,25 @@ namespace Vinhhy_Remote_Desktop_Server
             {
                 Thread.Sleep(10);
 
-                var temp = Queue.Peek();
-                if (!Remotes.IsExisted(temp.Id))
+                if(Queue.Count > 0)
                 {
-                    Console.WriteLine($"Queue count {Queue.Count}");
-                    continue;
+                    var temp = Queue.Peek();
+                    if (!Remotes.IsExisted(temp.Id))
+                    {
+                        Console.WriteLine($"Queue count {Queue.Count}");
+                        continue;
+                    }
+                    Socket sck = (temp.Type == RemoteType.OWNER)
+                                ? Remotes.Get(temp.Id).Owner
+                                : Remotes.Get(temp.Id).Partner;
+                    if (sck == null)
+                    {
+                        Console.WriteLine("Remote Socket is Null");
+                        continue;
+                    }
+                    var queue = Queue.Dequeue();
+                    int num = await SendQueueData(sck, queue);
                 }
-                Socket sck = (temp.Type == RemoteType.OWNER)
-                            ?Remotes.Get(temp.Id).Owner 
-                            :Remotes.Get(temp.Id).Partner;
-                if(sck == null)
-                {
-                    Console.WriteLine("Remote Socket is Null");
-                    continue;
-                }
-                var queue = Queue.Dequeue();
-                int num = await SendQueueData(sck,queue);
             }
         }
         public async Task<int> SendQueueData(Socket sck, Data data)
@@ -87,9 +90,55 @@ namespace Vinhhy_Remote_Desktop_Server
             }
             return result;
         }
-        public void DataReceived(byte[] data, int length)
+        public void DataReceived(Socket sck , byte[] data, int length)
         {
-            Console.WriteLine("Ok");
+            byte[] byteArray = new byte[length];
+            Array.Copy(data, byteArray, length);
+            DataSendType type1 = (DataSendType)byteArray[0];
+            ConnectType type2 = (ConnectType)byteArray[1];
+            byte[] dataReceived = byteArray.Skip(2).ToArray();
+            switch (type1)
+            {
+                case DataSendType.INIT:
+                    Console.WriteLine("Init remote control connection!!");
+                    if(type2 == ConnectType.OWNER)
+                    {
+                        Remotes.Add(
+                            id: Encoding.ASCII.GetString(dataReceived, 0, 8),
+                            owner: sck,
+                            partner: null
+                        );
+                    }
+                    else
+                    {
+                        Remotes.Add(
+                            id: Encoding.ASCII.GetString(dataReceived, 0, 8),
+                            owner: null,
+                            partner: sck
+                        );
+                    }
+                    break;
+                case DataSendType.KEYBOARD:
+                    Console.WriteLine("Keyboard data received");
+                    break;
+                case DataSendType.SCREEN:
+                    Console.WriteLine("Screen data received");
+                    break;
+                case DataSendType.CHUNK:
+                    Console.WriteLine("Chunk data received");
+                    break;
+                case DataSendType.FILE:
+                    Console.WriteLine("File data received");
+                    break;
+                case DataSendType.CHAT:
+                    Console.WriteLine("Chat data received");
+                    break;
+                case DataSendType.CONTROL:
+                    Console.WriteLine("Control data received");
+                    break;
+                default:
+                    break;
+            }
         }
         public async Task Listen(int port = 2399)
         {
