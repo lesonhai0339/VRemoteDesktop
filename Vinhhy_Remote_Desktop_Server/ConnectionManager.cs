@@ -91,41 +91,39 @@ namespace Vinhhy_Remote_Desktop_Server
         {
             Console.WriteLine("Ok");
         }
-        public async Task Listen(string hostName, string port)
+        public async Task Listen(int port = 2399)
         {
-            if(IPAddress.TryParse(hostName, out var Ip))
+            IPEndPoint endPoint = new IPEndPoint(IPAddress.Any, port);
+            Sck.Bind(endPoint);
+            Sck.Listen(10);
+            try
             {
-                IPEndPoint endPoint = new IPEndPoint(Ip, int.Parse(port));
-                Sck.Bind(endPoint);
-                Sck.Listen(10);
-                try
+                while (true)
                 {
-                    while (true)
-                    {
-                        Socket clientSocket = await Task.Factory.FromAsync(
-                        Sck.BeginAccept,
-                        Sck.EndAccept,
-                        null);
+                    Console.WriteLine("Listening...");
+                    Socket clientSocket = await Task.Factory.FromAsync(
+                    Sck.BeginAccept,
+                    Sck.EndAccept,
+                    null);
 
-                        SocketClient client= new SocketClient(clientSocket, DataReceived);
-                        _ = client.StartReceiving();
-                        
-                    }
-
+                    SocketClient client = new SocketClient(clientSocket, DataReceived);
+                    _ = client.StartReceiving();
 
                 }
-                catch(SocketException ex)
-                {
 
-                }
-                catch(Exception ex)
-                {
 
-                }
-                finally
-                {
-                    Sck.Close();
-                }
+            }
+            catch (SocketException ex)
+            {
+
+            }
+            catch (Exception ex)
+            {
+
+            }
+            finally
+            {
+                Sck.Close();
             }
         }
         #endregion

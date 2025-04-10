@@ -3,16 +3,16 @@
   "WorkspaceRootPath": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\RemoteControl.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Vinhhy_Remote_Desktop\\RemoteControl.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|c:\\users\\haile\\source\\repos\\vremotedesktop\\vinhhy_remote_desktop_server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|solutionrelative:vinhhy_remote_desktop_server\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\vinhhy_remote_desktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:vinhhy_remote_desktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+      "AbsoluteMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\vinhhy_remote_desktop_server\\connectionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|solutionrelative:vinhhy_remote_desktop_server\\connectionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Vinhhy_Remote_Desktop\\Form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}|Vinhhy_Remote_Desktop\\Vinhhy_Remote_Desktop.csproj|C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\vinhhy_remote_desktop\\remotecontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}|Vinhhy_Remote_Desktop\\Vinhhy_Remote_Desktop.csproj|solutionrelative:vinhhy_remote_desktop\\remotecontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,41 +22,48 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 0,
+          "SelectedChildIndex": 1,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
+              "Title": "Program.cs",
+              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\Program.cs",
+              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop_Server\\Program.cs",
+              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\Program.cs",
+              "RelativeToolTip": "Vinhhy_Remote_Desktop_Server\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAsAAAAtAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-10T01:21:19.191Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "ConnectionManager.cs",
+              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
+              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
+              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
+              "RelativeToolTip": "Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
+              "ViewState": "AgIAAFMAAAAAAAAAAAAswH8AAAAJAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-10T01:20:34.631Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
               "Title": "RemoteControl.cs",
               "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\RemoteControl.cs",
               "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop\\RemoteControl.cs",
               "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\RemoteControl.cs",
               "RelativeToolTip": "Vinhhy_Remote_Desktop\\RemoteControl.cs",
-              "ViewState": "AgIAAFYAAAAAAAAAAAAiwGYAAAAzAAAAAAAAAA==",
+              "ViewState": "AgIAAGcAAAAAAAAAAAAgwHUAAAAjAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-09T07:50:27.347Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 1,
-              "Title": "Form1.cs [Design]",
-              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs",
-              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop\\Form1.cs",
-              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs [Design]",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-09T07:49:20.211Z"
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "Form1.cs",
-              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs",
-              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop\\Form1.cs",
-              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs",
-              "RelativeToolTip": "Vinhhy_Remote_Desktop\\Form1.cs",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAFAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-09T07:46:28.401Z"
+              "WhenOpened": "2025-04-10T01:18:08.854Z"
             }
           ]
         }
