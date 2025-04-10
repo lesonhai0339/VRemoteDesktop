@@ -1,6 +1,6 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "D:\\LeSonHai\\C#\\VRemoteDesktop\\",
+  "WorkspaceRootPath": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\",
   "Documents": [
     {
       "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|d:\\lesonhai\\c#\\vremotedesktop\\vremotedesktop\\class2.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
@@ -48,6 +48,14 @@
           "DockedWidth": 200,
           "SelectedChildIndex": 2,
           "Children": [
+            {
+              "$type": "Bookmark",
+              "Name": "ST:0:0:{1c4feeaa-4718-4aa9-859d-94ce25d182ba}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
+            },
             {
               "$type": "Document",
               "DocumentIndex": 1,
@@ -135,7 +143,7 @@
               "RelativeToolTip": "Vinhhy_Remote_Desktop\\RemoteControl.cs",
               "ViewState": "AgIAAFQAAAAAAAAAAAAYwHkAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-09T07:50:27.347Z",
+              "WhenOpened": "2025-04-10T01:21:19.191Z",
               "EditorCaption": ""
             },
             {

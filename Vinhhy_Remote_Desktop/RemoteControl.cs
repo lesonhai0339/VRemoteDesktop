@@ -116,7 +116,7 @@ namespace Vinhhy_Remote_Desktop
                         Console.WriteLine($"Index {i}");
                         int rs = await Sck.SendAsync(new ArraySegment<byte>(chunk), SocketFlags.None);
                         if(rs == 0)
-                        {
+                        {   
                             Console.WriteLine("Send failed 2");
                         }
                     }
