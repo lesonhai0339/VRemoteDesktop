@@ -1,18 +1,54 @@
 {
   "Version": 1,
-  "WorkspaceRootPath": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\",
+  "WorkspaceRootPath": "D:\\LeSonHai\\C#\\VRemoteDesktop\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Server\\Server.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}",
-      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:Server\\Server.csproj||{FA3CD31E-987B-443A-9B81-186104E8DAC1}"
+      "AbsoluteMoniker": "D:0:0:{00000000-0000-0000-0000-000000000000}|\u003CSolution\u003E|Server||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|c:\\users\\haile\\source\\repos\\vremotedesktop\\vinhhy_remote_desktop_server\\entities.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|solutionrelative:vinhhy_remote_desktop_server\\entities.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{00000000-0000-0000-0000-000000000000}|\u003CSolution\u003E|Client||{04B8AB82-A572-4FEF-95CE-5222444B6B64}|"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|c:\\users\\haile\\source\\repos\\vremotedesktop\\vinhhy_remote_desktop_server\\connectionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|solutionrelative:vinhhy_remote_desktop_server\\connectionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\class2.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\class2.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\chunk.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\chunk.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vremotedesktop\\imageeventargs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{5C134222-3C50-4072-B2FB-17093CBF0994}|VRemoteDesktop\\VRemoteDesktop.csproj|solutionrelative:vremotedesktop\\imageeventargs.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}|Vinhhy_Remote_Desktop\\Vinhhy_Remote_Desktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vinhhy_remote_desktop\\remotecontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}|Vinhhy_Remote_Desktop\\Vinhhy_Remote_Desktop.csproj|solutionrelative:vinhhy_remote_desktop\\remotecontrol.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}|Vinhhy_Remote_Desktop\\Vinhhy_Remote_Desktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vinhhy_remote_desktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}|Vinhhy_Remote_Desktop\\Vinhhy_Remote_Desktop.csproj|solutionrelative:vinhhy_remote_desktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}|Vinhhy_Remote_Desktop\\Vinhhy_Remote_Desktop.csproj|D:\\LeSonHai\\C#\\VRemoteDesktop\\vinhhy_remote_desktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}|Vinhhy_Remote_Desktop\\Vinhhy_Remote_Desktop.csproj|solutionrelative:vinhhy_remote_desktop\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|d:\\lesonhai\\c#\\vremotedesktop\\client\\||{B270807C-D8C6-49EB-8EBE-8E8D566637A1}|5e9a8ac2-4f34-4521-858f-4c248ba31532"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A896ECC3-CEB3-4900-BF13-FA5ECBC2D4BD}|Server\\Server.csproj|d:\\lesonhai\\c#\\vremotedesktop\\server\\||{B270807C-D8C6-49EB-8EBE-8E8D566637A1}|5e9a8ac2-4f34-4521-858f-4c248ba31532"
     }
   ],
   "DocumentGroupContainers": [
@@ -22,50 +58,137 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
-            {
-              "$type": "Bookmark",
-              "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
-            },
             {
               "$type": "Document",
               "DocumentIndex": 0,
-              "Title": "Server.csproj",
-              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Server\\Server.csproj",
+              "Title": "Server",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Server\\Server.csproj",
               "RelativeDocumentMoniker": "Server\\Server.csproj",
-              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Server\\Server.csproj",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Server\\Server.csproj",
               "RelativeToolTip": "Server\\Server.csproj",
-              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000758|",
-              "WhenOpened": "2025-04-10T08:28:44.372Z",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-04-10T08:32:51.108Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "Entities.cs",
-              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\Entities.cs",
-              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop_Server\\Entities.cs",
-              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\Entities.cs",
-              "RelativeToolTip": "Vinhhy_Remote_Desktop_Server\\Entities.cs",
-              "ViewState": "AgIAALgAAAAAAAAAAAAQwNMAAAA4AAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-10T07:27:53.722Z",
+              "Title": "Client",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Client\\Client.csproj",
+              "RelativeDocumentMoniker": "Client\\Client.csproj",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Client\\Client.csproj*",
+              "RelativeToolTip": "Client\\Client.csproj*",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.001001|",
+              "WhenOpened": "2025-04-10T08:32:37.331Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
-              "DocumentIndex": 2,
-              "Title": "ConnectionManager.cs",
-              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
-              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
-              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
-              "RelativeToolTip": "Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
-              "ViewState": "AgIAAGEAAAAAAAAAAAAwwGUAAABLAAAAAAAAAA==",
+              "DocumentIndex": 3,
+              "Title": "Form1.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Form1.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\Form1.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Form1.cs",
+              "RelativeToolTip": "VRemoteDesktop\\Form1.cs",
+              "ViewState": "AgIAACQAAAAAAAAAAAAYwDQAAAAnAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-10T07:27:47.72Z",
-              "EditorCaption": ""
+              "WhenOpened": "2025-04-10T03:34:22.097Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 4,
+              "Title": "Form1.cs [Design]",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Form1.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\Form1.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Form1.cs [Design]",
+              "RelativeToolTip": "VRemoteDesktop\\Form1.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-10T03:34:21.209Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 2,
+              "Title": "Class2.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Class2.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\Class2.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Class2.cs",
+              "RelativeToolTip": "VRemoteDesktop\\Class2.cs",
+              "ViewState": "AgIAAGIAAAAAAAAAAAAIwHwAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-10T03:33:48.219Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 6,
+              "Title": "Chunk.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Chunk.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\Chunk.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Chunk.cs",
+              "RelativeToolTip": "VRemoteDesktop\\Chunk.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-10T03:33:47.44Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 5,
+              "Title": "Program.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Program.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\Program.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\Program.cs",
+              "RelativeToolTip": "VRemoteDesktop\\Program.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-10T03:33:46.333Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 7,
+              "Title": "ImageEventArgs.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\ImageEventArgs.cs",
+              "RelativeDocumentMoniker": "VRemoteDesktop\\ImageEventArgs.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\VRemoteDesktop\\ImageEventArgs.cs",
+              "RelativeToolTip": "VRemoteDesktop\\ImageEventArgs.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-10T03:33:45.444Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 8,
+              "Title": "RemoteControl.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\RemoteControl.cs",
+              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop\\RemoteControl.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\RemoteControl.cs",
+              "RelativeToolTip": "Vinhhy_Remote_Desktop\\RemoteControl.cs",
+              "ViewState": "AgIAAFQAAAAAAAAAAAAYwHkAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-09T07:50:27.347Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 9,
+              "Title": "Form1.cs [Design]",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs",
+              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop\\Form1.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs [Design]",
+              "RelativeToolTip": "Vinhhy_Remote_Desktop\\Form1.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-09T07:49:20.211Z"
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 10,
+              "Title": "Form1.cs",
+              "DocumentMoniker": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs",
+              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop\\Form1.cs",
+              "ToolTip": "D:\\LeSonHai\\C#\\VRemoteDesktop\\Vinhhy_Remote_Desktop\\Form1.cs",
+              "RelativeToolTip": "Vinhhy_Remote_Desktop\\Form1.cs",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAABoAAAAFAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-04-09T07:46:28.401Z"
             }
           ]
         }
