@@ -134,3 +134,6 @@ _NCrunch*
 
 
 .vs/
+/.vs/VRemoteDesktop/v17/DocumentLayout.backup.json
+/.vs/VRemoteDesktop/v17/DocumentLayout.json
+/.gitignore
