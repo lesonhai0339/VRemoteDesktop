@@ -24,6 +24,7 @@ namespace Vinhhy_Remote_Desktop_Server
         FILE = 5,
         CHAT = 6,
         CONTROL = 7,
+        DISCONNECT= 8,
     }
     public enum ConnectType : int
     {
