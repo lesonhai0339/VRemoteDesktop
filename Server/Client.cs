@@ -9,13 +9,13 @@ namespace Server
 {
     public class Client
     {
-        public Client(Socket sck, Action<Client, byte[],int> callback)
+        public Client(Socket sck, Func<Client, byte[],int, Task> callback)
         {
             Socket = sck;
             Callback = callback;
         }
         public Socket Socket { get; private set; }
-        public Action<Client, byte[], int> Callback { get; set; }
+        public Func<Client, byte[], int, Task> Callback { get; set; }
         public Task<int> ReceiveAsync(byte[] buffer, int offset, int size, SocketFlags socketFlags)
         {
             var tcs = new TaskCompletionSource<int>();
