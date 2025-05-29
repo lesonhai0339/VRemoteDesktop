@@ -12,7 +12,7 @@ namespace Server
     public class ConnectionManager
     {
         private Socket _sck;
-        private ConcurrentDictionary<string,Connection> clients;   
+        private ConcurrentDictionary<string,Connection> clients;
         public ConnectionManager()
         {
             _sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -106,11 +106,11 @@ namespace Server
             {
                 while (true)
                 {
-                    Socket cliet = await Task.Factory.FromAsync(
+                    Socket sck = await Task.Factory.FromAsync(
                         _sck.BeginAccept,
                         _sck.EndAccept,
                         null);
-                    Client client = new Client(cliet, Callback);
+                    Client client = new Client(sck, Callback);
                     _ = client.StartReceiving();
                 }
             }

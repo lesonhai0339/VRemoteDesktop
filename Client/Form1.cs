@@ -39,14 +39,13 @@ namespace Client
             label1.Text = $"{e.KeyCode} - {e.KeyType}";
             byte[] byteKey = _keyboardSendEventHandler.KeyBuilder(e);
             Keys keyReceived = _keyboardReceivedEventHandler.KeyboardReceived(byteKey);
-            flag = false;
-            while (!flag)
-            {
-                uint result = _keyboardSimulator.SendKey(keyReceived, ref flag);
-                label1.Text = $"{result}";
-                Thread.Sleep(10);
-            }
-            return;
+            //flag = false;
+            //while (!flag)
+            //{
+            //    uint result = _keyboardSimulator.SendKey(keyReceived, ref flag);
+            //    label1.Text = $"{result}";
+            //    Thread.Sleep(10);
+            //}
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -81,7 +80,7 @@ namespace Client
         }
         private void Connect()
         {
-            string remoteHostName = "27.0.12.78";
+            string remoteHostName = "192.168.1.5";
             int remotePort = 2399;
             var address = IPAddress.Parse(remoteHostName);
             IPEndPoint remoteEP = new IPEndPoint(address, remotePort);

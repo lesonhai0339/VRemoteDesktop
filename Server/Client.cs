@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -31,9 +32,13 @@ namespace Server
             }, state: null);
             return tcs.Task;
         }
-        public void ProcessDataHandler(byte[] buffer, int byteRead)
+        public async Task ProcessDataHandler(byte[] buffer, int byteRead)
         {
-            Callback?.Invoke(this, buffer, byteRead);
+            if (Callback != null)
+            {
+                await Callback(this, buffer, byteRead);
+            }
+            //Callback?.Invoke(this, buffer, byteRead);
         }
         public async Task StartReceiving()
         {
@@ -44,12 +49,24 @@ namespace Server
                 while (true)
                 {
                     int byteRead = await ReceiveAsync(buffer, 0, buffer.Length, SocketFlags.None);
+                    var messageBuffer = new byte[byteRead];
+                    Array.Copy(buffer, 0, messageBuffer, 0, byteRead);
                     if (byteRead == 0)
                     {
                         Console.WriteLine("Client Disconnected");
                         break;
                     }
-                    ProcessDataHandler(buffer, byteRead);
+                    _ = Task.Run( async() =>
+                    {
+                        try
+                        {
+                            await ProcessDataHandler(messageBuffer, byteRead);
+                        }
+                        catch(Exception ex)
+                        {
+                            Console.WriteLine($"Error when received data from {this.Socket.RemoteEndPoint.AddressFamily.ToString()} - {ex.Message}");
+                        }
+                    });
                 }
             }
             catch
@@ -58,7 +75,9 @@ namespace Server
             }
             finally
             {
-                Socket.Close();
+                try { Socket?.Shutdown(SocketShutdown.Both); } catch { }
+                Socket?.Close();
+                Socket?.Dispose();
             }
         }
         private bool isDisposed = false;
