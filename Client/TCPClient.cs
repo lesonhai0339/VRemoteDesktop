@@ -12,6 +12,7 @@ namespace Client
     {
         private Socket _sck;
         private Chunk _chunk;
+        private SocketConnection _socketConnection;
 
         public event EventHandler<ImageEventArgs> ImageReceived;
         public event EventHandler<TextEventArgs> TextReceived;
@@ -19,6 +20,7 @@ namespace Client
         {
             _sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _chunk = new Chunk();
+            _socketConnection = new SocketConnection(_sck, Callback);   
         }
         public void ReceivedCallback(IAsyncResult asyncResult)
         {
@@ -82,6 +84,10 @@ namespace Client
             Buffer.BlockCopy(sessionIdBytes, 0, buffer, 2, sessionIdBytes.Length);
             return buffer;
         }
+        public void Connect(IPEndPoint remoteEP)
+        {
+            _socketConnection.Connect(remoteEP);
+        }
         public void Callback(IAsyncResult asyncResult)
         {
             try
@@ -103,26 +109,6 @@ namespace Client
             catch (Exception ex)
             {
                 Console.WriteLine($"Data received Error: ", ex.Message);
-            }
-        }
-        public void Connect(IPEndPoint endpoint)
-        {
-            try
-            {
-                if (_sck == null)
-                {
-                    _sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                }
-                _sck.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                _sck.BeginConnect(endpoint, new AsyncCallback(Callback), _sck);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Data received Error: ", ex.Message);
-            }
-            finally
-            {
-                _sck.Close();
             }
         }
     }
