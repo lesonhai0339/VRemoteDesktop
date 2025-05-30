@@ -28,6 +28,12 @@ namespace Server
             {
                 while (!_cts.Token.IsCancellationRequested)
                 {
+                    if (!Socket.Connected)
+                    {
+                        Console.WriteLine("Not connected anymore, this socket will be close...");
+                        Dispose();
+                        break;
+                    }
                     await Task.Delay(10000, _cts.Token);
 
                     var idlerTime = DateTime.Now - _lastSendTime;
