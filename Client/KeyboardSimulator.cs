@@ -93,11 +93,11 @@ namespace Client
                 }
             };
 
-            uint result =  SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
-            return result;
+            uint status =  SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+            return status;
         }
 
-        public void SendKeyCombo(Keys modifier, Keys key)
+        public uint SendKeyCombo(Keys modifier, Keys key)
         {
             INPUT[] inputs = new INPUT[4];
 
@@ -110,7 +110,8 @@ namespace Client
             // Modifier up
             inputs[3] = CreateKeyInput((ushort)modifier, KEYEVENTF_KEYUP);
 
-            SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+            uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+            return status;
         }
 
         private INPUT CreateKeyInput(ushort key, uint flags)

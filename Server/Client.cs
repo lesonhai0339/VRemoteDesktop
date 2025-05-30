@@ -13,7 +13,7 @@ namespace Server
     {
         public Socket Socket { get; private set; }
         public Func<Client, byte[], int, Task> Callback { get; set; }
-        private DateTime _lastSendTime;
+        public DateTime _lastSendTime;
         private readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         public Client(Socket sck, Func<Client, byte[],int, Task> callback)
@@ -28,6 +28,12 @@ namespace Server
             {
                 while (!_cts.Token.IsCancellationRequested)
                 {
+                    if (!Socket.Connected)
+                    {
+                        Console.WriteLine("Not connected anymore, this socket will be close...");
+                        Dispose();
+                        break;
+                    }
                     await Task.Delay(10000, _cts.Token);
 
                     var idlerTime = DateTime.Now - _lastSendTime;

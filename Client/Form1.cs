@@ -11,6 +11,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using static Client.Enums;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace Client
@@ -22,6 +23,8 @@ namespace Client
         private KeyboardSendEventHandler _keyboardSendEventHandler;
         private KeyboardReceivedEventHandler _keyboardReceivedEventHandler;
         private KeyboardSimulator _keyboardSimulator;
+        private ManualResetEvent resetEvent;
+        private object _lock = new object();    
 
         public Form1()
         {
@@ -31,11 +34,11 @@ namespace Client
             _keyboardSendEventHandler = new KeyboardSendEventHandler();
             _keyboardReceivedEventHandler = new KeyboardReceivedEventHandler();
             _keyboardHook.KeyPressed += Form1_KeyDown;
+            resetEvent = new ManualResetEvent(false);
 
         }
         private void Form1_KeyDown(object sender, KeyMessageEventArgs e)
         {
-            bool flag;
             label1.Text = $"{e.KeyCode} - {e.KeyType}";
             byte[] byteKey = _keyboardSendEventHandler.KeyBuilder(e);
             Keys keyReceived = _keyboardReceivedEventHandler.KeyboardReceived(byteKey);
@@ -43,25 +46,41 @@ namespace Client
 
 
             byte[] byteSend = new byte[1024];
-            byte type = 0x01;
+            byte type = 0x02;
             byte isHost = 0x01;
-            string data = $"{e.KeyType} - {e.KeyCode}";
-            byte[] byteData = Encoding.ASCII.GetBytes(data);
+
+            byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
+
+            byte[] byteData = new byte[] { (byte)DataSendType.KEYBOARD, (byte)e.KeyType, (byte)e.KeyCode};
             byteSend[0] = type;
             byteSend[1] = isHost;
+            
+            Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
+            Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
 
-            Array.Copy(byteData, 0, byteSend, 2, byteData.Length);
 
-            Client.Send(byteSend);
-            //flag = false;
-            //while (!flag)
-            //{
-            //    uint result = _keyboardSimulator.SendKey(keyReceived, ref flag);
-            //    label1.Text = $"{result}";
-            //    Thread.Sleep(10);
-            //}
+            bool flag = InvokeAction(delegate() { Client.Send(byteSend);},resetEvent, 10);
+            if (!flag)
+            {
+                Console.WriteLine("Send failed or timed out.");
+            }
         }
+        public bool InvokeAction(Action action, ManualResetEvent resetEvent, int timeout= 10)
+        {
+            bool flag = false;
+            lock (_lock)
+            {
+                resetEvent.Reset();
+            }
 
+            action();
+            flag = resetEvent.WaitOne(timeout * 1000);
+            lock (_lock)
+            {
+                resetEvent.Reset();
+            }
+            return flag;
+        }
         private void Form1_Load(object sender, EventArgs e)
         {
             Client = new TCPClient();
@@ -84,17 +103,28 @@ namespace Client
                 if (_tcpClient != null)
                 {
                     _tcpClient.ImageReceived -= Callback;
+                    _tcpClient.DataResponseEvent -= (flag) =>
+                    {
+                        //Console.WriteLine($"DataResponseEvent: {flag}");
+                        if (flag)
+                        resetEvent.Set();
+                    };
                 }
                 _tcpClient = value;
                 if (_tcpClient != null)
                 {
                     _tcpClient.ImageReceived += Callback;
+                    _tcpClient.DataResponseEvent += (flag) =>
+                    {
+                        //Console.WriteLine($"DataResponseEvent: {flag}");
+                        if (flag) resetEvent.Set();
+                    };
                 }
             }
         }
         private void Connect()
         {
-            string remoteHostName = "192.168.0.100";
+            string remoteHostName = "27.0.12.78";//"192.168.0.101";
             int remotePort = 2399;
             var address = IPAddress.Parse(remoteHostName);
             IPEndPoint remoteEP = new IPEndPoint(address, remotePort);
