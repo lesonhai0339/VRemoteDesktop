@@ -13,11 +13,13 @@ namespace Client
         private Socket _sck;
         private Chunk _chunk;
         private SocketConnection _socketConnection;
+        private StateObject stateObject;
 
         public event EventHandler<ImageEventArgs> ImageReceived;
         public event EventHandler<TextEventArgs> TextReceived;
         public TCPClient()
         {
+            stateObject = new StateObject();
             _sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _chunk = new Chunk();
             _socketConnection = new SocketConnection(_sck, Callback);   
@@ -88,6 +90,18 @@ namespace Client
         {
             _socketConnection.Connect(remoteEP);
         }
+        public void Send(byte[] data)
+        {
+           
+            if (_sck.Connected)
+            {
+                _sck.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(ReceivedCallback), stateObject);
+            }
+            else
+            {
+                Console.WriteLine("Socket is not connected.");
+            }
+        }
         public void Callback(IAsyncResult asyncResult)
         {
             try
@@ -99,7 +113,7 @@ namespace Client
 
                 _sck.Send(data);
 
-                StateObject stateObject = new StateObject();
+                //StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = _sck;
 
 

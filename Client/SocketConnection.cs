@@ -37,7 +37,7 @@ namespace Client
             }
             finally
             {
-                _sck.Close();
+                //_sck.Close();
             }
         }
         public void ShareScreen()
