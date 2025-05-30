@@ -39,6 +39,20 @@ namespace Client
             label1.Text = $"{e.KeyCode} - {e.KeyType}";
             byte[] byteKey = _keyboardSendEventHandler.KeyBuilder(e);
             Keys keyReceived = _keyboardReceivedEventHandler.KeyboardReceived(byteKey);
+
+
+
+            byte[] byteSend = new byte[1024];
+            byte type = 0x01;
+            byte isHost = 0x01;
+            string data = $"{e.KeyType} - {e.KeyCode}";
+            byte[] byteData = Encoding.ASCII.GetBytes(data);
+            byteSend[0] = type;
+            byteSend[1] = isHost;
+
+            Array.Copy(byteData, 0, byteSend, 2, byteData.Length);
+
+            Client.Send(byteSend);
             //flag = false;
             //while (!flag)
             //{
@@ -80,7 +94,7 @@ namespace Client
         }
         private void Connect()
         {
-            string remoteHostName = "192.168.1.5";
+            string remoteHostName = "192.168.0.100";
             int remotePort = 2399;
             var address = IPAddress.Parse(remoteHostName);
             IPEndPoint remoteEP = new IPEndPoint(address, remotePort);
