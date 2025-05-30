@@ -1,26 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
-using System.IO;
-using System.Drawing.Printing;
+using System.Threading.Tasks;
 
-namespace VRemoteDesktop
+namespace Client
 {
-    public class Class2
+    public class TCPClient
     {
-        private Socket Sck;
+        private Socket _sck;
+        private Chunk _chunk;
+        private SocketConnection _socketConnection;
+        private StateObject stateObject;
+
         public event EventHandler<ImageEventArgs> ImageReceived;
         public event EventHandler<TextEventArgs> TextReceived;
-
-        private Chunk _chunk;
-
-        public Class2()
+        public TCPClient()
         {
-            Sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            stateObject = new StateObject();
+            _sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _chunk = new Chunk();
+            _socketConnection = new SocketConnection(_sck, Callback);   
         }
         public void ReceivedCallback(IAsyncResult asyncResult)
         {
@@ -32,13 +34,13 @@ namespace VRemoteDesktop
                 Console.WriteLine(num);
                 if (num > 0)
                 {
-                    workSocket.BeginSend(Encoding.ASCII.GetBytes("OK"), 0, StateObject.BufferSize,SocketFlags.None, ReceivedCallback, stateObject);
+                    workSocket.BeginSend(Encoding.ASCII.GetBytes("OK"), 0, StateObject.BufferSize, SocketFlags.None, ReceivedCallback, stateObject);
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
                     int a = dataBytes[0];
 
-                    if(a == 4)
+                    if (a == 4)
                     {
                         int totalLength = BitConverter.ToInt32(dataBytes, 1);
                         Console.WriteLine($"Received Chunk {totalLength}");
@@ -84,47 +86,43 @@ namespace VRemoteDesktop
             Buffer.BlockCopy(sessionIdBytes, 0, buffer, 2, sessionIdBytes.Length);
             return buffer;
         }
+        public void Connect(IPEndPoint remoteEP)
+        {
+            _socketConnection.Connect(remoteEP);
+        }
+        public void Send(byte[] data)
+        {
+           
+            if (_sck.Connected)
+            {
+                _sck.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(ReceivedCallback), stateObject);
+            }
+            else
+            {
+                Console.WriteLine("Socket is not connected.");
+            }
+        }
         public void Callback(IAsyncResult asyncResult)
         {
             try
             {
-                Sck.EndConnect(asyncResult);
-                Console.WriteLine("Client connected: " + Sck.RemoteEndPoint);
+                _sck.EndConnect(asyncResult);
+                Console.WriteLine("Client connected: " + _sck.RemoteEndPoint);
 
                 byte[] data = InitRemote();
 
-                Sck.Send(data);
+                _sck.Send(data);
 
-                StateObject stateObject = new StateObject();
-                stateObject.WorkSocket = Sck;
+                //StateObject stateObject = new StateObject();
+                stateObject.WorkSocket = _sck;
 
 
-                Sck.BeginReceive(stateObject.Buffer, 0, 1024, SocketFlags.None, new AsyncCallback(ReceivedCallback), stateObject);
+                _sck.BeginReceive(stateObject.Buffer, 0, 1024, SocketFlags.None, new AsyncCallback(ReceivedCallback), stateObject);
 
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"Data received Error: ", ex.Message);
-            }
-        }
-        public void Connect(IPEndPoint endpoint)
-        {
-            try
-            {
-                if (Sck == null)
-                {
-                    Sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                }
-                Sck.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                Sck.BeginConnect(endpoint, new AsyncCallback(Callback), Sck);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Data received Error: ", ex.Message);
-            }
-            finally
-            {
-                Sck.Close();
             }
         }
     }

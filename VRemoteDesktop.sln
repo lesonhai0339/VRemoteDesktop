@@ -1,13 +1,15 @@
 ﻿
-Microsoft Visual Studio Solution File, Format Version 11.00
-# Visual Studio 2010
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35222.181
+MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteDesktop", "VRemoteDesktop\VRemoteDesktop.csproj", "{5C134222-3C50-4072-B2FB-17093CBF0994}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteDesktopServer", "VRemoteDesktopServer\VRemoteDesktopServer.csproj", "{67A5A6A2-56B0-404E-B808-65E31475CEED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vinhhy_Remote_Desktop", "Vinhhy_Remote_Desktop\Vinhhy_Remote_Desktop.csproj", "{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{A896ECC3-CEB3-4900-BF13-FA5ECBC2D4BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Vinhhy_Remote_Desktop_Server", "Vinhhy_Remote_Desktop_Server\Vinhhy_Remote_Desktop_Server.csproj", "{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -23,16 +25,19 @@ Global
 		{67A5A6A2-56B0-404E-B808-65E31475CEED}.Debug|x86.Build.0 = Debug|x86
 		{67A5A6A2-56B0-404E-B808-65E31475CEED}.Release|x86.ActiveCfg = Release|x86
 		{67A5A6A2-56B0-404E-B808-65E31475CEED}.Release|x86.Build.0 = Release|x86
-		{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}.Debug|x86.ActiveCfg = Debug|x86
-		{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}.Debug|x86.Build.0 = Debug|x86
-		{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}.Release|x86.ActiveCfg = Release|x86
-		{6E8A6DF8-D5C1-47C5-ADF1-5392F1E619A1}.Release|x86.Build.0 = Release|x86
-		{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}.Debug|x86.ActiveCfg = Debug|x86
-		{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}.Debug|x86.Build.0 = Debug|x86
-		{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}.Release|x86.ActiveCfg = Release|x86
-		{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}.Release|x86.Build.0 = Release|x86
+		{A896ECC3-CEB3-4900-BF13-FA5ECBC2D4BD}.Debug|x86.ActiveCfg = Debug|x86
+		{A896ECC3-CEB3-4900-BF13-FA5ECBC2D4BD}.Debug|x86.Build.0 = Debug|x86
+		{A896ECC3-CEB3-4900-BF13-FA5ECBC2D4BD}.Release|x86.ActiveCfg = Release|x86
+		{A896ECC3-CEB3-4900-BF13-FA5ECBC2D4BD}.Release|x86.Build.0 = Release|x86
+		{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}.Debug|x86.ActiveCfg = Debug|x86
+		{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}.Debug|x86.Build.0 = Debug|x86
+		{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}.Release|x86.ActiveCfg = Release|x86
+		{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}.Release|x86.Build.0 = Release|x86
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {036C5C1B-7DE3-4147-8C2C-A350ACB5D6FF}
 	EndGlobalSection
 EndGlobal

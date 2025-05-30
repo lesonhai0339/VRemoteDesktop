@@ -100,30 +100,50 @@ namespace Vinhhy_Remote_Desktop
                         Console.WriteLine("Send failed");
                     }
 
-                    for (int i = 0; i < desktopData.Length; i += 1014)
-                    {
-                        byte[] chunk = new byte[1024];
+                    byte[] chunk = new byte[desktopData.Length + 10];
 
-                        chunk[0] = (byte)DataSendType.SCREEN;
-                        chunk[1] = (byte)ConnectType.PARTNER;
+                    chunk[0] = (byte)DataSendType.SCREEN;
+                    chunk[1] = (byte)ConnectType.PARTNER;
 
-                        Buffer.BlockCopy(Id, 0, chunk, 2, Id.Length);
+                    Buffer.BlockCopy(Id, 0, chunk, 2, Id.Length);
 
-                        int chunkSize = Math.Min(1014, desktopData.Length - i);
-                        Buffer.BlockCopy(desktopData, i, chunk, 10, chunkSize);
-                        Console.WriteLine($"Desktop Length: {desktopData.Length}");
-                        Console.WriteLine($"Chunk Size: {chunkSize}");
-                        Console.WriteLine($"Index {i}");
-                        int rs = await Sck.SendAsync(new ArraySegment<byte>(chunk), SocketFlags.None);
-                        if(rs == 0)
-                        {
-                            Console.WriteLine("Send failed 2");
-                        }
-                    }
+                    Buffer.BlockCopy(desktopData, 0, chunk, 10, desktopData.Length);
+                    int rs = await Sck.SendAsync(new ArraySegment<byte>(chunk), SocketFlags.None);
+
+                    //for (int i = 0; i < desktopData.Length; i += 1014)
+                    //{
+                    //    byte[] chunk = new byte[1024];
+
+                    //    chunk[0] = (byte)DataSendType.SCREEN;
+                    //    chunk[1] = (byte)ConnectType.PARTNER;
+
+                    //    Buffer.BlockCopy(Id, 0, chunk, 2, Id.Length);
+
+                    //    int chunkSize = Math.Min(1014, desktopData.Length - i);
+                    //    Buffer.BlockCopy(desktopData, i, chunk, 10, chunkSize);
+                    //    Console.WriteLine(chunk.Length);
+                    //    int rs = await Sck.SendAsync(new ArraySegment<byte>(chunk), SocketFlags.None);
+                    //    if(rs == 0)
+                    //    {   
+                    //        Console.WriteLine("Send failed 2");
+                    //    }
+                    //}
+                    byte[] dis = new byte[10];
+
+                    dis[0] = (byte)DataSendType.DISCONNECT;
+                    dis[1] = (byte)ConnectType.PARTNER;
+                    Buffer.BlockCopy(Encoding.ASCII.GetBytes("11111111"), 0, dis, 2, Encoding.ASCII.GetBytes("11111111").Length);
+
+                    await Sck.SendAsync(new ArraySegment<byte>(dis), SocketFlags.None);
+
                 }
                 catch(Exception e)
                 {
                     Console.WriteLine("Error: " + e.Message);
+                }
+                finally
+                {
+                   
                 }
             }
             else
@@ -205,6 +225,7 @@ namespace Vinhhy_Remote_Desktop
         FILE = 5,
         CHAT = 6,
         CONTROL = 7,
+        DISCONNECT = 8,
     }
     public enum ConnectType:int
     {
