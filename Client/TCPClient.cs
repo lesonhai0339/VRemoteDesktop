@@ -17,6 +17,15 @@ namespace Client
 
         public event EventHandler<ImageEventArgs> ImageReceived;
         public event EventHandler<TextEventArgs> TextReceived;
+
+
+        public delegate void DataResponseHandler(bool flag);
+        private DataResponseHandler _dataResponseEventHandler;
+        public event DataResponseHandler DataResponseEvent
+        {
+            add { _dataResponseEventHandler += value; }
+            remove { _dataResponseEventHandler -= value; }
+        }
         public TCPClient()
         {
             stateObject = new StateObject();
@@ -34,38 +43,51 @@ namespace Client
                 Console.WriteLine(num);
                 if (num > 0)
                 {
-                    workSocket.BeginSend(Encoding.ASCII.GetBytes("OK"), 0, StateObject.BufferSize, SocketFlags.None, ReceivedCallback, stateObject);
+                    //workSocket.BeginSend(Encoding.ASCII.GetBytes("OK"), 0, StateObject.BufferSize, SocketFlags.None, ReceivedCallback, stateObject);
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
-                    int a = dataBytes[0];
+                    //Console.WriteLine("\n---Result---\n");
+                    //.WriteLine(BitConverter.ToString(dataBytes));
+                    //Console.WriteLine("\n---End Result---\n");
 
-                    if (a == 4)
+                    Enums.DataSendType dataType = (Enums.DataSendType)dataBytes[0];
+                    if (dataType == Enums.DataSendType.KEYBOARDRECEIVED)
                     {
-                        int totalLength = BitConverter.ToInt32(dataBytes, 1);
-                        Console.WriteLine($"Received Chunk {totalLength}");
-                        _chunk.Init(totalLength);
-                        TextReceived?.Invoke(this, new TextEventArgs($"Received Chunk {totalLength}"));
-                    }
-                    else if (a == 1)
-                    {
-                        byte[] newData = dataBytes.Skip(1).ToArray();
-                        Console.WriteLine(BitConverter.ToString(newData));
-                        TextReceived?.Invoke(this, new TextEventArgs($"New Data {newData.Length}"));
-
-                        bool result = _chunk.Add(newData);
-                        Console.WriteLine($"Length {_chunk.GetDataLength()}");
-                        if (result)
+                        DataResponseHandler handler = _dataResponseEventHandler;
+                        if(handler != null)
                         {
-                            Console.WriteLine($"Received a complete chunk of data: {_chunk.GetDataLength()}");
-                            Console.WriteLine(BitConverter.ToString(_chunk.GetData()));
-                            ImageReceived?.Invoke(this, new ImageEventArgs(_chunk.GetData()));
+                            handler(true);
                         }
                     }
-                    else
-                    {
-                        Console.WriteLine($"Received a: {a}");
-                    }
+                    //int a = dataBytes[0];
+
+                    //if (a == 4)
+                    //{
+                    //    int totalLength = BitConverter.ToInt32(dataBytes, 1);
+                    //    Console.WriteLine($"Received Chunk {totalLength}");
+                    //    _chunk.Init(totalLength);
+                    //    TextReceived?.Invoke(this, new TextEventArgs($"Received Chunk {totalLength}"));
+                    //}
+                    //else if (a == 1)
+                    //{
+                    //    byte[] newData = dataBytes.Skip(1).ToArray();
+                    //    Console.WriteLine(BitConverter.ToString(newData));
+                    //    TextReceived?.Invoke(this, new TextEventArgs($"New Data {newData.Length}"));
+
+                    //    bool result = _chunk.Add(newData);
+                    //    Console.WriteLine($"Length {_chunk.GetDataLength()}");
+                    //    if (result)
+                    //    {
+                    //        Console.WriteLine($"Received a complete chunk of data: {_chunk.GetDataLength()}");
+                    //        Console.WriteLine(BitConverter.ToString(_chunk.GetData()));
+                    //        ImageReceived?.Invoke(this, new ImageEventArgs(_chunk.GetData()));
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    Console.WriteLine($"Received a: {a}");
+                    //}
                     //Console.WriteLine($"Received: {data}");
                     //Console.WriteLine("------------------\n");
                 }
@@ -80,7 +102,7 @@ namespace Client
         {
             byte[] buffer = new byte[1024];
             buffer[0] = 1;
-            buffer[1] = 0;
+            buffer[1] = 1;
             string sessionId = "11111111";
             byte[] sessionIdBytes = Encoding.ASCII.GetBytes(sessionId);
             Buffer.BlockCopy(sessionIdBytes, 0, buffer, 2, sessionIdBytes.Length);

@@ -8,10 +8,18 @@ namespace Client
 {
     public class Enums
     {
+        public enum KeyState : int
+        {
+            KeyDown = 0,
+            KeyUp = 1
+        }
         public enum DataSendType: int
         {
             KEYBOARD = 0,
-            MOUSE = 1,
+            KEYBOARDRECEIVED = 1,
+            MOUSE = 2,
+            SCREEN= 3,
+            SCREENCHANGE= 4
         }
     }
 }

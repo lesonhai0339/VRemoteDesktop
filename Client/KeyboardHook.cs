@@ -10,11 +10,7 @@ using static Client.Enums;
 
 namespace Client
 {
-    public enum KeyState: int
-    {
-        KeyDown = 0,
-        KeyUp = 1
-    }
+
     public class KeyMessageEventArgs : EventArgs
     {
         public Keys KeyCode { get; private set; }
