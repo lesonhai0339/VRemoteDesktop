@@ -39,7 +39,7 @@ namespace Vinhhy_Remote_Desktop_Server
         {
             _remoteConnections = new Dictionary<string, Remote>();
         }
-        public void Add(string id, Socket owner, Socket partner)
+        public void Add(string id, SocketClient owner, SocketClient partner)
         {
             lock (_lockObject)
             {
@@ -129,7 +129,7 @@ namespace Vinhhy_Remote_Desktop_Server
         {
 
         }
-        public Remote(string id, Socket owner, Socket partner)
+        public Remote(string id, SocketClient owner, SocketClient partner)
         {
             ConnectionId = id;
             Owner = owner;
@@ -138,28 +138,36 @@ namespace Vinhhy_Remote_Desktop_Server
             LastPartnerPing = null;
         }
         public string ConnectionId { get; set; }
-        public Socket Partner { get; set; }
-        public Socket Owner { get; set; }
+        public SocketClient Partner { get; set; }
+        public SocketClient Owner { get; set; }
+
         public DateTime? LastPartnerPing { get; set; }
         public DateTime? LastOwnerPing { get; set; }
 
         public void Dispose()
         {
-            Owner?.Close();
-            Partner?.Close();
-            Owner?.Dispose();
-            Partner?.Dispose();
+            Owner.Socket?.Close();
+            Partner.Socket?.Close();
+            Owner.Socket?.Dispose();
+            Partner.Socket?.Dispose();
         }
     }
     public class SocketClient:IDisposable
     {
-        public SocketClient(Socket sck, Action<Socket,byte[], int> callback = null)
+        public SocketClient(Socket sck, Action<SocketClient,byte[], int> callback = null)
         {
             Socket = sck;
             DataReceivedCallback = callback;
         }
-        public Action<Socket,byte[], int> DataReceivedCallback { get; set; }
+        public Action<SocketClient, byte[], int> DataReceivedCallback { get; set; }
         public Socket Socket { get; set; }
+        public int ByteArrayLength { get; set; } = 0;
+        public byte[] ByteArrayBuilder { get; set; }
+        private void InitByteData(int length)
+        {
+            ByteArrayLength = length;
+            ByteArrayBuilder = new byte[ByteArrayLength];
+        }
         public Task<int> ReceiveAsync(byte[] buffer, int offset, int size, SocketFlags socketFlags)
         {
             var tcs = new TaskCompletionSource<int>();
@@ -177,11 +185,53 @@ namespace Vinhhy_Remote_Desktop_Server
         }
         public void ProcessDataHandler(byte[] buffer, int byteRead)
         {
-            DataReceivedCallback?.Invoke(this.Socket,buffer, byteRead);
+            byte[] byteArray = new byte[byteRead];
+            Array.Copy(buffer, byteArray, byteRead);
+            DataSendType type1 = (DataSendType)buffer[0];
+            DataSendType type2 = (DataSendType)buffer[1];
+            byte[] dataReceived = byteArray.Skip(2).ToArray();
+            switch (type1)
+            {
+                case DataSendType.INIT:
+                    DataReceivedCallback?.Invoke(this, buffer, byteRead);
+                    break;
+                case DataSendType.KEYBOARD:
+                    Console.WriteLine("Keyboard data received");
+                    break;
+                case DataSendType.SCREEN:
+                    byte[] id = new byte[8];
+                    byte[] screenLength = new byte[4];
+                    Array.Copy(dataReceived, 0, id, 0, 8);
+                    Array.Copy(dataReceived, 8, screenLength, 0, 4);
+                    InitByteData(BitConverter.ToInt32(screenLength, 0));
+
+                    Console.WriteLine("Screen data received");
+                    break;
+                case DataSendType.CHUNK:
+                    Console.WriteLine("Chunk data received");
+                    ByteArrayBuilder.CopyTo(dataReceived, 0);
+                    break;
+                case DataSendType.FILE:
+                    Console.WriteLine("File data received");
+                    break;
+                case DataSendType.CHAT:
+                    Console.WriteLine("Chat data received");
+                    break;
+                case DataSendType.CONTROL:
+                    Console.WriteLine("Control data received");
+                    break;
+                case DataSendType.DISCONNECT:
+                    Console.WriteLine("Socket disconnect");
+                    break;
+                default:
+                    break;
+            }
+
+            DataReceivedCallback?.Invoke(this,buffer, byteRead);
         }
         public async Task StartReceiving()
         {
-            byte[] buffer = new byte[65536];
+            byte[] buffer = new byte[1024];
 
             try
             {

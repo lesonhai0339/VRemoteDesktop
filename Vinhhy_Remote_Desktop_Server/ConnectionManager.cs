@@ -72,7 +72,7 @@ namespace Vinhhy_Remote_Desktop_Server
                         Console.WriteLine($"Queue count {Queue.Count}");
                         continue;
                     }
-                    Socket sck = (temp.Type == RemoteType.OWNER)
+                    SocketClient sck = (temp.Type == RemoteType.OWNER)
                                 ? Remotes.Get(temp.Id).Owner
                                 : Remotes.Get(temp.Id).Partner;
                     if (sck == null)
@@ -81,7 +81,7 @@ namespace Vinhhy_Remote_Desktop_Server
                         continue;
                     }
                     var queue = Queue.Dequeue();
-                    int num = await SendQueueData(sck, queue);
+                    int num = await SendQueueData(sck.Socket, queue);
                 }
             }
         }
@@ -99,7 +99,7 @@ namespace Vinhhy_Remote_Desktop_Server
             }
             return result;
         }
-        public void DataReceived(Socket sck , byte[] data, int length)
+        public void DataReceived(SocketClient sck , byte[] data, int length)
         {
             byte[] byteArray = new byte[length];
             Array.Copy(data, byteArray, length);
@@ -148,11 +148,6 @@ namespace Vinhhy_Remote_Desktop_Server
                 case DataSendType.DISCONNECT:
                     Console.WriteLine("Socket disconnect");
                     Remotes.Remove(Encoding.ASCII.GetString(dataReceived, 0, 8));
-                    SocketClients.Remove(
-                        SocketClients.FirstOrDefault(
-                            x => x.Socket == sck
-                        )
-                    );
                     break;
                 default:
                     break;
@@ -174,7 +169,6 @@ namespace Vinhhy_Remote_Desktop_Server
                     null);
 
                     SocketClient client = new SocketClient(clientSocket, DataReceived);
-                    SocketClients.Add(client);
                     _ = client.StartReceiving();
 
                 }

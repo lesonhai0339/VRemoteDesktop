@@ -4,19 +4,43 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace Server
 {
     public class Client
     {
+        public Socket Socket { get; private set; }
+        public Func<Client, byte[], int, Task> Callback { get; set; }
+        private DateTime _lastSendTime;
+        private readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
+        private readonly CancellationTokenSource _cts = new CancellationTokenSource();
         public Client(Socket sck, Func<Client, byte[],int, Task> callback)
         {
             Socket = sck;
             Callback = callback;
+            CheckTimeout();
         }
-        public Socket Socket { get; private set; }
-        public Func<Client, byte[], int, Task> Callback { get; set; }
+        private void CheckTimeout()
+        {
+            Task.Run(async () =>
+            {
+                while (!_cts.Token.IsCancellationRequested)
+                {
+                    await Task.Delay(10000, _cts.Token);
+
+                    var idlerTime = DateTime.Now - _lastSendTime;
+                    if(idlerTime > _timeout)
+                    {
+                        Console.WriteLine($"Client {Socket.RemoteEndPoint.AddressFamily.ToString()} has been idle for too long, disconnecting...");
+                        Dispose();
+                        break;
+                    }
+                }
+            });
+        }
+
         public Task<int> ReceiveAsync(byte[] buffer, int offset, int size, SocketFlags socketFlags)
         {
             var tcs = new TaskCompletionSource<int>();
@@ -48,18 +72,22 @@ namespace Server
             {
                 while (true)
                 {
+
                     int byteRead = await ReceiveAsync(buffer, 0, buffer.Length, SocketFlags.None);
-                    var messageBuffer = new byte[byteRead];
-                    Array.Copy(buffer, 0, messageBuffer, 0, byteRead);
+
                     if (byteRead == 0)
                     {
                         Console.WriteLine("Client Disconnected");
                         break;
                     }
+                    _lastSendTime = DateTime.Now;
+                    var messageBuffer = new byte[byteRead];
+                    Array.Copy(buffer, 0, messageBuffer, 0, byteRead);
                     _ = Task.Run( async() =>
                     {
                         try
                         {
+                            Console.WriteLine($"Received {byteRead} bytes from {this.Socket.RemoteEndPoint.AddressFamily.ToString()}");
                             await ProcessDataHandler(messageBuffer, byteRead);
                         }
                         catch(Exception ex)
