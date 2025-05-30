@@ -3,12 +3,20 @@
   "WorkspaceRootPath": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|c:\\users\\haile\\source\\repos\\vremotedesktop\\vinhhy_remote_desktop_server\\entities.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|solutionrelative:vinhhy_remote_desktop_server\\entities.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|c:\\users\\haile\\source\\repos\\vremotedesktop\\client\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|solutionrelative:client\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     },
     {
-      "AbsoluteMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\vinhhy_remote_desktop_server\\connectionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{61F54D0C-A32B-4B24-9E64-F718C8F5C89C}|Vinhhy_Remote_Desktop_Server\\Vinhhy_Remote_Desktop_Server.csproj|solutionrelative:vinhhy_remote_desktop_server\\connectionmanager.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+      "AbsoluteMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|c:\\users\\haile\\source\\repos\\vremotedesktop\\client\\tcpclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|solutionrelative:client\\tcpclient.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|c:\\users\\haile\\source\\repos\\vremotedesktop\\client\\socketconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
+      "RelativeMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|solutionrelative:client\\socketconnection.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|c:\\users\\haile\\source\\repos\\vremotedesktop\\client\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form",
+      "RelativeMoniker": "D:0:0:{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}|Client\\Client.csproj|solutionrelative:client\\form1.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}|Form"
     }
   ],
   "DocumentGroupContainers": [
@@ -18,36 +26,70 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 5,
           "Children": [
             {
               "$type": "Bookmark",
               "Name": "ST:128:0:{116d2292-e37d-41cd-a077-ebacac4c8cc4}"
             },
             {
+              "$type": "Bookmark",
+              "Name": "ST:128:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
+              "$type": "Bookmark",
+              "Name": "ST:129:0:{75188d03-9892-4ae2-abf1-207126247ce5}"
+            },
+            {
               "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "Entities.cs",
-              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\Entities.cs",
-              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop_Server\\Entities.cs",
-              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\Entities.cs",
-              "RelativeToolTip": "Vinhhy_Remote_Desktop_Server\\Entities.cs",
-              "ViewState": "AgIAALkAAAAAAAAAAAAzwNMAAAA4AAAAAAAAAA==",
+              "DocumentIndex": 2,
+              "Title": "SocketConnection.cs",
+              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Client\\SocketConnection.cs",
+              "RelativeDocumentMoniker": "Client\\SocketConnection.cs",
+              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Client\\SocketConnection.cs",
+              "RelativeToolTip": "Client\\SocketConnection.cs",
+              "ViewState": "AgIAABIAAAAAAAAAAAAowBYAAAAUAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-10T07:27:53.722Z",
+              "WhenOpened": "2025-05-30T01:44:24.415Z",
               "EditorCaption": ""
             },
             {
               "$type": "Document",
               "DocumentIndex": 1,
-              "Title": "ConnectionManager.cs",
-              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
-              "RelativeDocumentMoniker": "Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
-              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
-              "RelativeToolTip": "Vinhhy_Remote_Desktop_Server\\ConnectionManager.cs",
-              "ViewState": "AgIAAGEAAAAAAAAAAAAwwGUAAABLAAAAAAAAAA==",
+              "Title": "TCPClient.cs",
+              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Client\\TCPClient.cs",
+              "RelativeDocumentMoniker": "Client\\TCPClient.cs",
+              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Client\\TCPClient.cs",
+              "RelativeToolTip": "Client\\TCPClient.cs",
+              "ViewState": "AgIAAFAAAAAAAAAAAAAmwFMAAAAoAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-04-10T07:27:47.72Z"
+              "WhenOpened": "2025-05-30T01:34:07.265Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": "Form1.cs",
+              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Client\\Form1.cs",
+              "RelativeDocumentMoniker": "Client\\Form1.cs",
+              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Client\\Form1.cs",
+              "RelativeToolTip": "Client\\Form1.cs",
+              "ViewState": "AgIAABYAAAAAAAAAAAAkwCEAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-30T01:33:13.987Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 3,
+              "Title": "Form1.cs [Design]",
+              "DocumentMoniker": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Client\\Form1.cs",
+              "RelativeDocumentMoniker": "Client\\Form1.cs",
+              "ToolTip": "C:\\Users\\haile\\source\\repos\\VRemoteDesktop\\Client\\Form1.cs [Design]",
+              "RelativeToolTip": "Client\\Form1.cs [Design]",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
+              "WhenOpened": "2025-05-30T01:33:13.019Z",
+              "EditorCaption": " [Design]"
             }
           ]
         }
