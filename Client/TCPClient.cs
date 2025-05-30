@@ -6,7 +6,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace Client
+namespace RemoteClient
 {
     public class TCPClient
     {
@@ -50,16 +50,8 @@ namespace Client
                     //Console.WriteLine("\n---Result---\n");
                     //.WriteLine(BitConverter.ToString(dataBytes));
                     //Console.WriteLine("\n---End Result---\n");
-
-                    Enums.DataSendType dataType = (Enums.DataSendType)dataBytes[0];
-                    if (dataType == Enums.DataSendType.KEYBOARDRECEIVED)
-                    {
-                        DataResponseHandler handler = _dataResponseEventHandler;
-                        if(handler != null)
-                        {
-                            handler(true);
-                        }
-                    }
+                    ProcessDataReceived(stateObject, dataBytes);
+                    
                     //int a = dataBytes[0];
 
                     //if (a == 4)
@@ -96,6 +88,19 @@ namespace Client
             catch (Exception ex)
             {
                 Console.WriteLine($"Data received Error: {ex.Message}");
+            }
+        }
+        private void ProcessDataReceived(StateObject stateObject, byte[] data)
+        {
+
+            Enums.DataSendType dataType = (Enums.DataSendType)dataBytes[0];
+            if (dataType == Enums.DataSendType.KEYBOARDRECEIVED)
+            {
+                DataResponseHandler handler = _dataResponseEventHandler;
+                if (handler != null)
+                {
+                    handler(true);
+                }
             }
         }
         public byte[] InitRemote()

@@ -6,9 +6,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using static Client.Enums;
+using static RemoteClient.Enums;
 
-namespace Client
+namespace RemoteClient
 {
 
     public class KeyMessageEventArgs : EventArgs

@@ -7,9 +7,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteDesktop", "VRemoteDe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteDesktopServer", "VRemoteDesktopServer\VRemoteDesktopServer.csproj", "{67A5A6A2-56B0-404E-B808-65E31475CEED}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server", "Server\Server.csproj", "{A896ECC3-CEB3-4900-BF13-FA5ECBC2D4BD}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteServer", "Server\RemoteServer.csproj", "{A896ECC3-CEB3-4900-BF13-FA5ECBC2D4BD}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Client", "Client\Client.csproj", "{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteClient", "Client\RemoteClient.csproj", "{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
