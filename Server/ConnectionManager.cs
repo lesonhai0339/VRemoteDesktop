@@ -107,13 +107,18 @@ namespace Server
             {
                 while (true)
                 {
-                    Console.WriteLine("Listen");
-                    Socket sck = await Task.Factory.FromAsync(
-                        _sck.BeginAccept,
-                        _sck.EndAccept,
-                        null);
+                    Console.WriteLine("Listening for connections...");
+                    Socket sck = await _sck.AcceptAsync();
+                    Console.WriteLine("Client connected");
                     Client client = new Client(sck, Callback);
                     _ = client.StartReceiving();
+                    //Console.WriteLine("Listen");
+                    //Socket sck = await Task.Factory.FromAsync(
+                    //    _sck.BeginAccept,
+                    //    _sck.EndAccept,
+                    //    null);
+                    //Client client = new Client(sck, Callback);
+                    //_ = client.StartReceiving();
                 }
             }
             catch(SocketException ex)

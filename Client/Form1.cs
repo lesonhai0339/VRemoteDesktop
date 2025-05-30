@@ -94,7 +94,7 @@ namespace Client
         }
         private void Connect()
         {
-            string remoteHostName = "192.168.0.100";
+            string remoteHostName = "27.0.12.78";//"192.168.0.100";
             int remotePort = 2399;
             var address = IPAddress.Parse(remoteHostName);
             IPEndPoint remoteEP = new IPEndPoint(address, remotePort);
