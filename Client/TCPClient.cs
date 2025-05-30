@@ -5,6 +5,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using static RemoteClient.Enums;
 
 namespace RemoteClient
 {
@@ -47,9 +48,6 @@ namespace RemoteClient
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
-                    //Console.WriteLine("\n---Result---\n");
-                    //.WriteLine(BitConverter.ToString(dataBytes));
-                    //Console.WriteLine("\n---End Result---\n");
                     ProcessDataReceived(stateObject, dataBytes);
                     
                     //int a = dataBytes[0];
@@ -93,14 +91,60 @@ namespace RemoteClient
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
         {
 
-            Enums.DataSendType dataType = (Enums.DataSendType)dataBytes[0];
-            if (dataType == Enums.DataSendType.KEYBOARDRECEIVED)
+            DataSendType dataType = (Enums.DataSendType)data[0];
+            switch (dataType)
             {
-                DataResponseHandler handler = _dataResponseEventHandler;
-                if (handler != null)
-                {
-                    handler(true);
-                }
+                case DataSendType.KEYBOARD:
+                    KeyState keyState = (KeyState)data[1];
+                    if(keyState == KeyState.KeyDown)
+                    {
+                        byte[] byteSend = new byte[1024];
+                        byte type = 0x02;
+                        byte isHost = 0x02;
+
+                        byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
+
+                        byte[] byteData = new byte[] { (byte)DataSendType.KEYBOARDRECEIVED};
+                        byteSend[0] = type;
+                        byteSend[1] = isHost;
+
+                        Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
+                        Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
+                        stateObject.WorkSocket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+
+                    }
+                    else
+                    {
+                        byte[] byteSend = new byte[1024];
+                        byte type = 0x02;
+                        byte isHost = 0x02;
+
+                        byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
+
+                        byte[] byteData = new byte[] { (byte)DataSendType.KEYBOARDRECEIVED };
+                        byteSend[0] = type;
+                        byteSend[1] = isHost;
+
+                        Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
+                        Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
+                        stateObject.WorkSocket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                    }
+                    break;
+                case DataSendType.KEYBOARDRECEIVED:
+                    DataResponseHandler handler = _dataResponseEventHandler;
+                    if (handler != null)
+                    {
+                        handler(true);
+                    }
+                    break;
+                case DataSendType.SCREEN:
+                    break;
+                case DataSendType.SCREENCHANGE:
+                    break;
+                case DataSendType.MOUSE:
+                    break;
+                default:
+                    break;
             }
         }
         public byte[] InitRemote()

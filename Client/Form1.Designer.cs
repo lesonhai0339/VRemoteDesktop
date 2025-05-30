@@ -1,4 +1,4 @@
-﻿namespace Client
+﻿namespace RemoteClient
 {
     partial class Form1
     {
