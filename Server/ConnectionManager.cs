@@ -27,7 +27,8 @@ namespace Server
             int type = bytes[1];
             //byte[2] is length of sessionId
             string sessionId = Encoding.UTF8.GetString(bytes, 2, length - 2);
-            Console.WriteLine($"Received data from {client.Socket.RemoteEndPoint.AddressFamily.ToString()} - Type: {type}, SessionId: {sessionId}, Length: {length}");
+            var ipAddress = ((IPEndPoint)client.Socket.RemoteEndPoint).Address.ToString();
+            Console.WriteLine($"Received data from {ipAddress} - Type: {type}, SessionId: {sessionId}, Length: {length}");
             return;
             //byte[0] is type of message
             switch ((int)bytes[0])
@@ -107,18 +108,13 @@ namespace Server
             {
                 while (true)
                 {
-                    Console.WriteLine("Listening for connections...");
-                    Socket sck = await _sck.AcceptAsync();
-                    Console.WriteLine("Client connected");
+                    Console.WriteLine("Listen");
+                    Socket sck = await Task.Factory.FromAsync(
+                        _sck.BeginAccept,
+                        _sck.EndAccept,
+                        null);
                     Client client = new Client(sck, Callback);
                     _ = client.StartReceiving();
-                    //Console.WriteLine("Listen");
-                    //Socket sck = await Task.Factory.FromAsync(
-                    //    _sck.BeginAccept,
-                    //    _sck.EndAccept,
-                    //    null);
-                    //Client client = new Client(sck, Callback);
-                    //_ = client.StartReceiving();
                 }
             }
             catch(SocketException ex)
