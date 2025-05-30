@@ -54,9 +54,8 @@ namespace RemoteClient
         private const int INPUT_KEYBOARD = 1;
         private const uint KEYEVENTF_KEYUP = 0x0002;
 
-        public uint SendKey(Keys key, ref bool flag)
+        public uint SendKey(Keys key)
         {
-            flag = true;
             INPUT[] inputs = new INPUT[2];
 
             // Key down
