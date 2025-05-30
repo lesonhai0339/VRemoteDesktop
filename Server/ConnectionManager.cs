@@ -27,7 +27,8 @@ namespace Server
             int type = bytes[1];
             //byte[2] is length of sessionId
             string sessionId = Encoding.UTF8.GetString(bytes, 2, length - 2);
-
+            Console.WriteLine($"Received data from {client.Socket.RemoteEndPoint.AddressFamily.ToString()} - Type: {type}, SessionId: {sessionId}, Length: {length}");
+            return;
             //byte[0] is type of message
             switch ((int)bytes[0])
             {
@@ -106,6 +107,7 @@ namespace Server
             {
                 while (true)
                 {
+                    Console.WriteLine("Listen");
                     Socket sck = await Task.Factory.FromAsync(
                         _sck.BeginAccept,
                         _sck.EndAccept,
