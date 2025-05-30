@@ -90,7 +90,7 @@ namespace Server
                             byte[] actualData = dataToSend.ToArray();
 
                             // Encoding thành string
-                            string encodedContent = Encoding.UTF8.GetString(actualData);
+                            string encodedContent = BitConverter.ToString(actualData);
                             Console.WriteLine($"Encoded content: {encodedContent}");
 
                             Console.WriteLine($"sck1 {existedConnection.ClientIP1} send to sck2 {existedConnection.ClientIP2}");
@@ -107,7 +107,7 @@ namespace Server
                             byte[] actualData = dataToSend.ToArray();
 
                             // Encoding thành string
-                            string encodedContent = Encoding.UTF8.GetString(actualData);
+                            string encodedContent = BitConverter.ToString(actualData);
                             Console.WriteLine($"Encoded content: {encodedContent}");
 
                             Console.WriteLine($"sck2 {existedConnection.ClientIP2} send to sck1 {existedConnection.ClientIP1}");
