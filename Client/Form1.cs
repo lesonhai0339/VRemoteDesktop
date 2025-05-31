@@ -54,7 +54,7 @@ namespace RemoteClient
             Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
             Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
             string excutableTime = InvokeAction(delegate () { Client.Send(byteSend); }, resetEvent, 1);
-            Console.WriteLine(excutableTime);
+            Console.WriteLine($"Eslaped Time: {excutableTime}");
         }
         public string InvokeAction(Action action, ManualResetEvent resetEvent, int timeout= 10)
         {
@@ -73,7 +73,7 @@ namespace RemoteClient
             }
             stopwatch.Stop();
             //return flag;
-            return stopwatch.ElapsedMilliseconds.ToString();
+            return stopwatch.Elapsed.TotalSeconds.ToString("F3");
         }
         private void Form1_Load(object sender, EventArgs e)
         {
