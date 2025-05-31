@@ -1,11 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing.Printing;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using static RemoteClient.Enums;
 
 namespace RemoteClient
@@ -20,7 +20,7 @@ namespace RemoteClient
         public event EventHandler<ImageEventArgs> ImageReceived;
         public event EventHandler<TextEventArgs> TextReceived;
 
-
+        private KeyboardSimulator _keyboardSimulator;
         public delegate void DataResponseHandler(bool flag);
         private DataResponseHandler _dataResponseEventHandler;
         public event DataResponseHandler DataResponseEvent
@@ -34,6 +34,7 @@ namespace RemoteClient
             _sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _chunk = new Chunk();
             _socketConnection = new SocketConnection(_sck, Callback);   
+            _keyboardSimulator = new KeyboardSimulator();
         }
         public void ReceivedCallback(IAsyncResult asyncResult)
         {
@@ -93,33 +94,36 @@ namespace RemoteClient
         {
 
             DataSendType dataType = (DataSendType)data[0];
-            Console.WriteLine(dataType);
             switch (dataType)
             {
                 case DataSendType.KEYBOARD:
                     KeyState keyState = (KeyState)data[1];
+                    Keys key = (Keys)data[2];
                     if(keyState == KeyState.KeyDown)
                     {
-                        byte[] byteSend = new byte[1024];
-                        byte type = 0x02;
-                        byte isHost = 0x01;
+                        uint status = _keyboardSimulator.SendKey(key);
+                        if(status != 0)
+                        {
+                            byte[] byteSend = new byte[1024];
+                            byte type = 0x02;
+                            byte isHost = 0x02;
 
-                        byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
+                            byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
 
-                        byte[] byteData = new byte[] { (byte)DataSendType.KEYBOARDRECEIVED};
-                        byteSend[0] = type;
-                        byteSend[1] = isHost;
+                            byte[] byteData = new byte[] { (byte)DataSendType.KEYBOARDRECEIVED };
+                            byteSend[0] = type;
+                            byteSend[1] = isHost;
 
-                        Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
-                        Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
-                        stateObject.WorkSocket.BeginSend(byteSend, 0, byteSend.Length, SocketFlags.None, null, null);
-
+                            Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
+                            Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
+                            stateObject.WorkSocket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                        }
                     }
                     else
                     {
                         byte[] byteSend = new byte[1024];
                         byte type = 0x02;
-                        byte isHost = 0x01;
+                        byte isHost = 0x02;
 
                         byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
 
@@ -129,11 +133,10 @@ namespace RemoteClient
 
                         Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
                         Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
-                        stateObject.WorkSocket.BeginSend(byteSend, 0, byteSend.Length, SocketFlags.None, null, null);
+                        stateObject.WorkSocket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
                     }
                     break;
                 case DataSendType.KEYBOARDRECEIVED:
-                    Console.WriteLine("Is OK");
                     DataResponseHandler handler = _dataResponseEventHandler;
                     if (handler != null)
                     {
@@ -154,7 +157,7 @@ namespace RemoteClient
         {
             byte[] buffer = new byte[1024];
             buffer[0] = 1;
-            buffer[1] = 1;
+            buffer[1] = 2;
             string sessionId = "11111111";
             byte[] sessionIdBytes = Encoding.ASCII.GetBytes(sessionId);
             Buffer.BlockCopy(sessionIdBytes, 0, buffer, 2, sessionIdBytes.Length);
