@@ -90,10 +90,10 @@ namespace RemoteServer
                             byte[] actualData = dataToSend.ToArray();
 
                             // Encoding thành string
-                            string encodedContent = BitConverter.ToString(actualData);
-                            Console.WriteLine($"Encoded content: {encodedContent}");
+                            //string encodedContent = BitConverter.ToString(actualData);
+                            //Console.WriteLine($"Encoded content: {encodedContent}");
 
-                            Console.WriteLine($"sck1 {existedConnection.ClientIP1} send to sck2 {existedConnection.ClientIP2}");
+                            Console.WriteLine($"sck1 {existedConnection.ClientIP1}  send to sck2  {existedConnection.ClientIP2}");
                             int status = await existedConnection.Client2.Socket.SendAsync(dataToSend, SocketFlags.None);
                             if(status != 0)
                             {
@@ -107,10 +107,10 @@ namespace RemoteServer
                             byte[] actualData = dataToSend.ToArray();
 
                             // Encoding thành string
-                            string encodedContent = BitConverter.ToString(actualData);
-                            Console.WriteLine($"Encoded content: {encodedContent}");
+                            //string encodedContent = BitConverter.ToString(actualData);
+                            //Console.WriteLine($"Encoded content: {encodedContent}");
 
-                            Console.WriteLine($"sck2 {existedConnection.ClientIP2} send to sck1 {existedConnection.ClientIP1}");
+                            Console.WriteLine($"sck2 {existedConnection.ClientIP2}  send to sck1  {existedConnection.ClientIP1}");
                             int status = await existedConnection.Client1.Socket.SendAsync(dataToSend, SocketFlags.None);
                             if (status != 0)
                             {
