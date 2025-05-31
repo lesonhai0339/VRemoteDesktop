@@ -83,7 +83,7 @@ namespace RemoteClient
         }
         private void Form1_Load(object sender, EventArgs e)
         {
-            Client = new TCPClient();
+            Client = new TCPClient(RemoteType.CLIENT);
             _keyboardHook.Start();
             Connect();
         }
