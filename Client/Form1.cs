@@ -53,11 +53,14 @@ namespace RemoteClient
             byteSend[1] = isHost;
             Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
             Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
-            InvokeAction(delegate () { Client.Send(byteSend); }, resetEvent, 1);
+            string excutableTime = InvokeAction(delegate () { Client.Send(byteSend); }, resetEvent, 1);
+            Console.WriteLine(excutableTime);
         }
-        public bool InvokeAction(Action action, ManualResetEvent resetEvent, int timeout= 10)
+        public string InvokeAction(Action action, ManualResetEvent resetEvent, int timeout= 10)
         {
             bool flag = false;
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             lock (_lock)
             {
                 resetEvent.Reset();
@@ -68,7 +71,9 @@ namespace RemoteClient
             {
                 resetEvent.Reset();
             }
-            return flag;
+            stopwatch.Stop();
+            //return flag;
+            return stopwatch.ElapsedMilliseconds.ToString();
         }
         private void Form1_Load(object sender, EventArgs e)
         {

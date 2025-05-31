@@ -45,7 +45,6 @@ namespace RemoteClient
                 StateObject stateObject = (StateObject)asyncResult.AsyncState;
                 Socket workSocket = stateObject.WorkSocket;
                 int num = workSocket.EndReceive(asyncResult);
-                Console.WriteLine(num);
                 if (num > 0)
                 {
                     //workSocket.BeginSend(Encoding.ASCII.GetBytes("OK"), 0, StateObject.BufferSize, SocketFlags.None, ReceivedCallback, stateObject);
