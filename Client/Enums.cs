@@ -8,6 +8,16 @@ namespace RemoteClient
 {
     public class Enums
     {
+        public enum RemoteType: int
+        {
+            REMOTE = 1,
+            CLIENT = 2
+        }
+        public enum PackageType: int
+        {
+            CONNCECT = 1,
+            DATA = 2
+        }
         public enum KeyState : int
         {
             KeyDown = 0,

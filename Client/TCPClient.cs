@@ -12,6 +12,7 @@ namespace RemoteClient
 {
     public class TCPClient
     {
+        private RemoteType _remoteType;
         private Socket _sck;
         private Chunk _chunk;
         private SocketConnection _socketConnection;
@@ -28,8 +29,9 @@ namespace RemoteClient
             add { _dataResponseEventHandler += value; }
             remove { _dataResponseEventHandler -= value; }
         }
-        public TCPClient()
+        public TCPClient(RemoteType remoteType)
         {
+            _remoteType = remoteType;
             stateObject = new StateObject();
             _sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _chunk = new Chunk();
@@ -94,6 +96,7 @@ namespace RemoteClient
         {
 
             DataSendType dataType = (DataSendType)data[0];
+            Console.WriteLine(dataType);
             switch (dataType)
             {
                 case DataSendType.KEYBOARD:
@@ -104,36 +107,39 @@ namespace RemoteClient
                         uint status = _keyboardSimulator.SendKey(key);
                         if(status != 0)
                         {
+                            Console.WriteLine("Send");
                             byte[] byteSend = new byte[1024];
-                            byte type = 0x02;
-                            byte isHost = 0x02;
+                            byte type = (int)PackageType.DATA;
+                            byte remoteType = (byte)(int)_remoteType;
 
                             byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
 
                             byte[] byteData = new byte[] { (byte)DataSendType.KEYBOARDRECEIVED };
                             byteSend[0] = type;
-                            byteSend[1] = isHost;
+                            byteSend[1] = remoteType;
 
                             Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
                             Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
-                            stateObject.WorkSocket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                            stateObject.WorkSocket.BeginSend(byteSend, 0, byteSend.Length, SocketFlags.None, null, null);
                         }
                     }
                     else
                     {
+                        Console.WriteLine("Send1");
+
                         byte[] byteSend = new byte[1024];
-                        byte type = 0x02;
-                        byte isHost = 0x02;
+                        byte type = (int)PackageType.DATA;
+                        byte remoteType = (byte)(int)_remoteType;
 
                         byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
 
                         byte[] byteData = new byte[] { (byte)DataSendType.KEYBOARDRECEIVED };
                         byteSend[0] = type;
-                        byteSend[1] = isHost;
+                        byteSend[1] = remoteType;
 
                         Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
                         Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
-                        stateObject.WorkSocket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                        stateObject.WorkSocket.BeginSend(byteSend, 0, byteSend.Length, SocketFlags.None, null, null);
                     }
                     break;
                 case DataSendType.KEYBOARDRECEIVED:
@@ -156,8 +162,8 @@ namespace RemoteClient
         public byte[] InitRemote()
         {
             byte[] buffer = new byte[1024];
-            buffer[0] = 1;
-            buffer[1] = 2;
+            buffer[0] = (int)PackageType.CONNCECT;
+            buffer[1] = (byte)(int)_remoteType;
             string sessionId = "11111111";
             byte[] sessionIdBytes = Encoding.ASCII.GetBytes(sessionId);
             Buffer.BlockCopy(sessionIdBytes, 0, buffer, 2, sessionIdBytes.Length);
