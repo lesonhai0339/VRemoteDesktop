@@ -10,6 +10,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using static RemoteClient.Enums;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
@@ -24,7 +25,7 @@ namespace RemoteClient
         private KeyboardReceivedEventHandler _keyboardReceivedEventHandler;
         private KeyboardSimulator _keyboardSimulator;
         private ManualResetEvent resetEvent;
-        private object _lock = new object();    
+        private object _lock = new object();
 
         public Form1()
         {
@@ -39,31 +40,20 @@ namespace RemoteClient
         }
         private void Form1_KeyDown(object sender, KeyMessageEventArgs e)
         {
+
+            Console.WriteLine("Key press");
             label1.Text = $"{e.KeyCode} - {e.KeyType}";
-            byte[] byteKey = _keyboardSendEventHandler.KeyBuilder(e);
-            Keys keyReceived = _keyboardReceivedEventHandler.KeyboardReceived(byteKey);
 
-
-            //Note*: Freeze
             byte[] byteSend = new byte[1024];
             byte type = 0x02;
             byte isHost = 0x01;
-
             byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
-
             byte[] byteData = new byte[] { (byte)DataSendType.KEYBOARD, (byte)e.KeyType, (byte)e.KeyCode };
             byteSend[0] = type;
             byteSend[1] = isHost;
-
             Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
             Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
-
-
-            bool flag = InvokeAction(delegate () { Client.Send(byteSend); }, resetEvent, 10);
-            if (!flag)
-            {
-                Console.WriteLine("Send failed or timed out.");
-            }
+            InvokeAction(delegate () { Client.Send(byteSend); }, resetEvent, 1);
         }
         public bool InvokeAction(Action action, ManualResetEvent resetEvent, int timeout= 10)
         {
@@ -72,7 +62,6 @@ namespace RemoteClient
             {
                 resetEvent.Reset();
             }
-
             action();
             flag = resetEvent.WaitOne(timeout * 1000);
             lock (_lock)
@@ -83,7 +72,7 @@ namespace RemoteClient
         }
         private void Form1_Load(object sender, EventArgs e)
         {
-            Client = new TCPClient(RemoteType.CLIENT);
+            Client = new TCPClient(RemoteType.REMOTE);
             _keyboardHook.Start();
             Connect();
         }

@@ -53,37 +53,6 @@ namespace RemoteClient
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
                     ProcessDataReceived(stateObject, dataBytes);
-                    
-                    //int a = dataBytes[0];
-
-                    //if (a == 4)
-                    //{
-                    //    int totalLength = BitConverter.ToInt32(dataBytes, 1);
-                    //    Console.WriteLine($"Received Chunk {totalLength}");
-                    //    _chunk.Init(totalLength);
-                    //    TextReceived?.Invoke(this, new TextEventArgs($"Received Chunk {totalLength}"));
-                    //}
-                    //else if (a == 1)
-                    //{
-                    //    byte[] newData = dataBytes.Skip(1).ToArray();
-                    //    Console.WriteLine(BitConverter.ToString(newData));
-                    //    TextReceived?.Invoke(this, new TextEventArgs($"New Data {newData.Length}"));
-
-                    //    bool result = _chunk.Add(newData);
-                    //    Console.WriteLine($"Length {_chunk.GetDataLength()}");
-                    //    if (result)
-                    //    {
-                    //        Console.WriteLine($"Received a complete chunk of data: {_chunk.GetDataLength()}");
-                    //        Console.WriteLine(BitConverter.ToString(_chunk.GetData()));
-                    //        ImageReceived?.Invoke(this, new ImageEventArgs(_chunk.GetData()));
-                    //    }
-                    //}
-                    //else
-                    //{
-                    //    Console.WriteLine($"Received a: {a}");
-                    //}
-                    //Console.WriteLine($"Received: {data}");
-                    //Console.WriteLine("------------------\n");
                 }
                 workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, ReceivedCallback, stateObject);
             }
@@ -94,9 +63,7 @@ namespace RemoteClient
         }
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
         {
-
             DataSendType dataType = (DataSendType)data[0];
-            Console.WriteLine(dataType);
             switch (dataType)
             {
                 case DataSendType.KEYBOARD:
@@ -143,6 +110,7 @@ namespace RemoteClient
                     }
                     break;
                 case DataSendType.KEYBOARDRECEIVED:
+                    Console.WriteLine("KeyboardReceived");
                     DataResponseHandler handler = _dataResponseEventHandler;
                     if (handler != null)
                     {
@@ -175,10 +143,11 @@ namespace RemoteClient
         }
         public void Send(byte[] data)
         {
-           
+
             if (_sck.Connected)
             {
-                _sck.BeginSend(data, 0, data.Length, SocketFlags.None, new AsyncCallback(ReceivedCallback), stateObject);
+                //không dùng callback ở đây
+                _sck.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
             }
             else
             {
