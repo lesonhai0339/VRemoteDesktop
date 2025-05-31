@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Printing;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -91,7 +92,8 @@ namespace RemoteClient
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
         {
 
-            DataSendType dataType = (Enums.DataSendType)data[0];
+            DataSendType dataType = (DataSendType)data[0];
+            Console.WriteLine(dataType);
             switch (dataType)
             {
                 case DataSendType.KEYBOARD:
@@ -100,7 +102,7 @@ namespace RemoteClient
                     {
                         byte[] byteSend = new byte[1024];
                         byte type = 0x02;
-                        byte isHost = 0x02;
+                        byte isHost = 0x01;
 
                         byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
 
@@ -110,14 +112,14 @@ namespace RemoteClient
 
                         Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
                         Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
-                        stateObject.WorkSocket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                        stateObject.WorkSocket.BeginSend(byteSend, 0, byteSend.Length, SocketFlags.None, null, null);
 
                     }
                     else
                     {
                         byte[] byteSend = new byte[1024];
                         byte type = 0x02;
-                        byte isHost = 0x02;
+                        byte isHost = 0x01;
 
                         byte[] sessionId = Encoding.ASCII.GetBytes("11111111");
 
@@ -127,10 +129,11 @@ namespace RemoteClient
 
                         Array.Copy(sessionId, 0, byteSend, 2, sessionId.Length);
                         Array.Copy(byteData, 0, byteSend, 10, byteData.Length);
-                        stateObject.WorkSocket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                        stateObject.WorkSocket.BeginSend(byteSend, 0, byteSend.Length, SocketFlags.None, null, null);
                     }
                     break;
                 case DataSendType.KEYBOARDRECEIVED:
+                    Console.WriteLine("Is OK");
                     DataResponseHandler handler = _dataResponseEventHandler;
                     if (handler != null)
                     {
