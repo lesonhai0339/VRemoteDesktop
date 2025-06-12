@@ -13,7 +13,7 @@ namespace RemoteClient
     public class TCPClient
     {
         private RemoteType _remoteType;
-        private Socket _sck;
+        public Socket _sck;
         private Chunk _chunk;
         private SocketConnection _socketConnection;
         private StateObject stateObject;

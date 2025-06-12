@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using static RemoteClient.Enums;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 
 namespace RemoteClient
 {
@@ -58,6 +59,13 @@ namespace RemoteClient
                 {
                     int vkCode = Marshal.ReadInt32(lParam);
                     Keys key = (Keys)vkCode;
+
+                    if (key == Keys.A && IsControlPressed())
+                    {
+                        // Ctrl + A được nhấn!
+                        Console.WriteLine("Ctrl + A detected!");
+                        // Xử lý logic của bạn ở đây
+                    }
                     KeyPressed?.Invoke(this, new KeyMessageEventArgs(key, KeyState.KeyDown));
                 }
                 else if (wParam == (IntPtr)WM_KEYUP)
@@ -69,10 +77,28 @@ namespace RemoteClient
             }
             return CallNextHookEx(hookID, nCode, wParam, lParam);
         }
+        private bool IsControlPressed()
+        {
+            return (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+        }
 
+        private bool IsShiftPressed()
+        {
+            return (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+        }
+
+        private bool IsAltPressed()
+        {
+            return (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+        }
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_KEYUP = 0x0101;
+        private const int VK_CONTROL = 0x11;
+        private const int VK_SHIFT = 0x10;
+        private const int VK_MENU = 0x12; // Alt
+        [DllImport("user32.dll")]
+        static extern short GetAsyncKeyState(int vKey);
 
 
         [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
