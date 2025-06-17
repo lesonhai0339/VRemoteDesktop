@@ -233,7 +233,7 @@ namespace RemoteClient
         {
             Client = new TCPClient(RemoteType.REMOTE);
             //_keyboardHook.Start();
-            //Connect();
+            Connect();
             //_windowsScreen.GrabDesktop();
 
         }
