@@ -25,7 +25,7 @@ namespace RemoteClient.Remote
                 WindowsHeight = 1080
             };
             Text = remoteData.Id.Trim();
-            Icon = new Icon("Resources/logo.ico");
+            //Icon = new Icon("Resources/logo.ico");
 
             _remoteHandler = new RemoteEventHandler(client, remoteData);
 

@@ -9,17 +9,31 @@ namespace RemoteClient.Remote
 {
     internal static class Utils
 	{
-		[DllImport("user32.dll")]
-		private static extern bool GetKeyboardState(byte[] byte_0);
-
-		[DllImport("user32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
-		public static extern int MapVirtualKeyA(int int_10, int int_11);
-		[DllImport("user32.dll")]
-		private static extern int ToUnicodeEx(uint uint_0, uint uint_1, byte[] byte_0, [MarshalAs(UnmanagedType.LPWStr)][Out] StringBuilder stringBuilder_0, int int_10, uint uint_2, IntPtr intptr_1);
-
-
+		private static Random rd = new Random();
+		private static string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+		private static string digits = "0123456789";
 		private static bool bool_0 = false;
 		internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
+		internal static string RandomStringNumber(int length)
+		{
+			StringBuilder result = new StringBuilder();
+			for (int i = 0; i < length; i++)
+			{
+				int index = rd.Next(digits.Length);
+				result.Append(digits[index]);
+			}
+			return result.ToString();
+		}
+		internal static string RandomString(int length)
+		{
+			StringBuilder result = new StringBuilder();
+			for(int i =0; i < length; i++)
+            {
+				int index = rd.Next(chars.Length);
+				result.Append(chars[index]);
+			}
+			return result.ToString();
+		}
 		internal static int smethod_16(int wParam, int lParam)
 		{
 			int result = wParam;
@@ -93,5 +107,12 @@ namespace RemoteClient.Remote
 				return result;
 			}
 		}
+		[DllImport("user32.dll")]
+		private static extern bool GetKeyboardState(byte[] byte_0);
+
+		[DllImport("user32", CharSet = CharSet.Ansi, ExactSpelling = true, SetLastError = true)]
+		public static extern int MapVirtualKeyA(int int_10, int int_11);
+		[DllImport("user32.dll")]
+		private static extern int ToUnicodeEx(uint uint_0, uint uint_1, byte[] byte_0, [MarshalAs(UnmanagedType.LPWStr)][Out] StringBuilder stringBuilder_0, int int_10, uint uint_2, IntPtr intptr_1);
 	}
 }

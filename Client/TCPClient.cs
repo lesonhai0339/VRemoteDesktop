@@ -12,6 +12,9 @@ namespace RemoteClient
 {
     public class TCPClient
     {
+
+        private bool _isSocketConnected;
+
         private RemoteType _remoteType;
         public Socket _sck;
         private Chunk _chunk;
@@ -24,11 +27,7 @@ namespace RemoteClient
         private KeyboardSimulator _keyboardSimulator;
         public delegate void DataResponseHandler(bool flag);
         private DataResponseHandler _dataResponseEventHandler;
-        public event DataResponseHandler DataResponseEvent
-        {
-            add { _dataResponseEventHandler += value; }
-            remove { _dataResponseEventHandler -= value; }
-        }
+        public event DataResponseHandler DataResponseEvent;
         public TCPClient(RemoteType remoteType)
         {
             _remoteType = remoteType;
@@ -37,7 +36,18 @@ namespace RemoteClient
             _chunk = new Chunk();
             _socketConnection = new SocketConnection(_sck, Callback);   
             _keyboardSimulator = new KeyboardSimulator();
+            IsConnected = false;
         }
+        #region Properties
+        public bool IsConnected
+        {
+            get => _isSocketConnected;
+            private set
+            {
+                _isSocketConnected = value;
+            }
+        }
+        #endregion
         public void ReceivedCallback(IAsyncResult asyncResult)
         {
             try
@@ -121,6 +131,9 @@ namespace RemoteClient
                 case DataSendType.SCREENCHANGE:
                     break;
                 case DataSendType.MOUSE:
+                    break;
+                case DataSendType.CONNECTED:
+                    IsConnected = true;
                     break;
                 default:
                     break;

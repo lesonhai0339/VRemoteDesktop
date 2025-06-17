@@ -17,7 +17,7 @@ namespace RemoteClient
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new FormRemote());
+            Application.Run(new FormMain());
         }
     }
 }

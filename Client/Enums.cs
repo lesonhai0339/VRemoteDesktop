@@ -10,6 +10,7 @@ namespace RemoteClient
     {
         public enum RemoteType: int
         {
+            UNKNOW = 0,
             REMOTE = 1,
             CLIENT = 2
         }
@@ -29,7 +30,8 @@ namespace RemoteClient
             KEYBOARDRECEIVED = 1,
             MOUSE = 2,
             SCREEN= 3,
-            SCREENCHANGE= 4
+            SCREENCHANGE= 4,
+            CONNECTED=5
         }
     }
 }
