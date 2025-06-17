@@ -12,6 +12,7 @@ namespace RemoteClient.Remote
     public class VPictureBox: PictureBox
     {
         public delegate void ClickEventHandler();
+
         public delegate void DoubleClickEventHandler();
         public delegate void CtrlShiftClickEventHandler();
 
