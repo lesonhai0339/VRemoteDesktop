@@ -133,7 +133,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <Content Include="FFmpeg\ffmpeg_source\ffmpeg.exe" />
     <Content Include="Resources\logo.ico" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
