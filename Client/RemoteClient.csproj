@@ -40,9 +40,7 @@
   <PropertyGroup>
     <StartupObject />
   </PropertyGroup>
-  <PropertyGroup>
-    <ApplicationManifest>app1.manifest</ApplicationManifest>
-  </PropertyGroup>
+  <PropertyGroup />
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
@@ -75,7 +73,6 @@
     </Compile>
     <Compile Include="KeyboardHook.cs" />
     <Compile Include="KeyboardSimulator.cs" />
-    <Compile Include="Remote\MyData.cs" />
     <Compile Include="Remote\SocketRemoteClient.cs" />
     <Compile Include="Remote\Utils.cs" />
     <Compile Include="Remote\VKeyboardReceived.cs">
@@ -126,7 +123,6 @@
     </EmbeddedResource>
     <None Include="app.config" />
     <None Include="app.manifest" />
-    <None Include="app1.manifest" />
     <None Include="FFmpeg\ffmpeg-7.1.1.tar.xz" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>

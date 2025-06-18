@@ -14,13 +14,17 @@ namespace RemoteServer
     {
         public Socket Socket { get; private set; }
         public Func<Client, byte[], int, Task> Callback { get; set; }
+        private readonly Action<Client> _onDisconnected;
+
+
         public DateTime _lastSendTime;
         private readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
-        public Client(Socket sck, Func<Client, byte[],int, Task> callback)
+        public Client(Socket sck, Func<Client, byte[],int, Task> callback, Action<Client> onDisconnected)
         {
             Socket = sck;
             Callback = callback;
+            _onDisconnected = onDisconnected;
             CheckTimeout();
         }
         private void CheckTimeout()
@@ -132,6 +136,7 @@ namespace RemoteServer
             Callback = null;
             Socket?.Close();
             Socket?.Dispose();
+            _onDisconnected.Invoke(this);
         }
     }
 }

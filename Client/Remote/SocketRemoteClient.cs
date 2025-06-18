@@ -150,6 +150,8 @@ namespace RemoteClient.Remote
                         loginEvent();
                     }
                     break;
+                case 97:
+                case 98:
                 case 99:
                     Console.WriteLine("Error");
                     break;

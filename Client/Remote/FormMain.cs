@@ -18,32 +18,28 @@ namespace RemoteClient.Remote
     {
         private System.Threading.Timer _pingTimer;
         private SocketRemoteClient _client;
-        private MyData _myData;
+        private Info _myInfo;
         private ManualResetEvent _resetEvent;
         public FormMain()
         {
             InitializeComponent();
 
             ResetEvent = new ManualResetEvent(false);
-            Me = new MyData
-            {
-                MyId =Utils.RandomStringNumber(8),
-                MyPwd= Utils.RandomStringNumber(4)
-            };
+            Me = Utils.InitInfo();
             Client = new SocketRemoteClient();
             this.Text = "Remote";
-            this.txtYourId.Text = Me.MyId;
-            this.txtYourPwd.Text = Me.MyPwd;
+            this.txtYourId.Text = Me.Id;
+            this.txtYourPwd.Text = Me.Password;
             this.panel1.Paint += Panel1_Paint;
             this.lbConnectStatus.Text = "Chưa kết nối";
         }
         #region Properties
-        public MyData Me
+        public Info Me
         {
-            get => _myData;
+            get => _myInfo;
             private set
             {
-                _myData = value;
+                _myInfo = value;
             }
         }
         public SocketRemoteClient Client
@@ -104,15 +100,11 @@ namespace RemoteClient.Remote
             {
                 MessageBox.Show("Id và Password không được bỏ trống", "Xảy ra lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            byte[] buffer = new byte[1024];
-            buffer[0] = (int)PackageType.CONNCECT;
-            buffer[1] = (byte)(int)RemoteType.REMOTE;
-            string sessionId = "11111111";
-            byte[] sessionIdBytes = Encoding.ASCII.GetBytes(sessionId);
-            Buffer.BlockCopy(sessionIdBytes, 0, buffer, 2, sessionIdBytes.Length);
-            byte[] data = buffer;
+            string remoteInfo = Utils.DataStringBuilder(new string[] { txtPartnerId.Text.Replace(" ", ""), txtPartnerPwd.Text.Replace(" ","") });
+            byte[] dataBytes = Encoding.ASCII.GetBytes(remoteInfo);
 
-            //Client.Send(data);
+            Client.Send(Enums.DataType.P2PCONNECT, dataBytes);
+
             FormRemote remote = new FormRemote(Client, null);
             remote.Show();
         }
@@ -136,8 +128,7 @@ namespace RemoteClient.Remote
         }
         private void Login()
         {
-            string os = Utils.GetScreen().ToString();
-            string data = Utils.DataStringBuilder(new string[] {os , Me.MyId, Me.MyPwd });
+            string data = Utils.DataStringBuilder(new string[] {Me.ToString()});
             byte[] dataBytes = Encoding.ASCII.GetBytes(data);
             Client.Send( Enums.DataType.LOGIN ,dataBytes);
             _pingTimer = new System.Threading.Timer(PingServer, null, 0, 10000);

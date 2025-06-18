@@ -15,7 +15,7 @@ namespace RemoteClient.Remote
 		private static string digits = "0123456789";
 		private static bool bool_0 = false;
 		internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
-		internal static Info GetScreen()
+		internal static Info InitInfo()
         {
 			var computerName = Environment.MachineName;
 			int width = Screen.PrimaryScreen.Bounds.Width;
@@ -23,6 +23,8 @@ namespace RemoteClient.Remote
 			OperatingSystem os = Environment.OSVersion;
 			Info vscreen = new Info
 			{
+				Id = RandomStringNumber(8),
+				Password = RandomStringNumber(4),
 				ComputerName = computerName,
 				Width = width,
 				Height = height,

@@ -1,10 +1,11 @@
-﻿using System;
+﻿using RemoteServer;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace RemoteClient.Remote
+namespace Server
 {
     public class Info
     {
@@ -15,9 +16,12 @@ namespace RemoteClient.Remote
         public int Height { get; set; }
         public string MajorVersion { get; set; }
         public string MinorVersion { get; set; }
+        public string Ip { get; set; }
+        public string Port { get; set; }
+        public Client Client { get; set; }
         public override string ToString()
         {
-            return string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}",Id, Password, ComputerName, Width, Height, MajorVersion, MinorVersion);
+            return string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}", Id, Password, ComputerName, Width, Height, MajorVersion, MinorVersion);
         }
     }
 }
