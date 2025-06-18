@@ -18,6 +18,8 @@ namespace RemoteClient.Remote
         public event ConnectedEvent ConnectedEventHandler;
         public delegate void LoginEvent();
         public event LoginEvent LoginEventHandler;
+        public delegate void P2PConnectedEvent(bool flag);
+        public event P2PConnectedEvent P2PConnectedEventHandler;
         public SocketRemoteClient() 
         {
         }
@@ -152,9 +154,19 @@ namespace RemoteClient.Remote
                     break;
                 case 10:
                     Console.WriteLine("P2P connected");
+                    P2PConnectedEvent p2PConnectSuccess = P2PConnectedEventHandler;
+                    if(p2PConnectSuccess != null)
+                    {
+                        p2PConnectSuccess(true);
+                    }
                     break;
                 case 90:
                     Console.WriteLine("P2P connect error");
+                    P2PConnectedEvent p2PConnectFailed = P2PConnectedEventHandler;
+                    if (p2PConnectFailed != null)
+                    {
+                        p2PConnectFailed(false);
+                    }
                     break;
                 case 97:
                 case 98:

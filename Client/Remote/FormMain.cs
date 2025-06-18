@@ -16,6 +16,7 @@ namespace RemoteClient.Remote
 {
     public partial class FormMain : Form
     {
+        private bool _isP2PConnected;
         private System.Threading.Timer _pingTimer;
         private SocketRemoteClient _client;
         private Info _myInfo;
@@ -32,6 +33,7 @@ namespace RemoteClient.Remote
             this.txtYourPwd.Text = Me.Password;
             this.panel1.Paint += Panel1_Paint;
             this.lbConnectStatus.Text = "Chưa kết nối";
+            _isP2PConnected = false;
         }
         #region Properties
         public Info Me
@@ -49,14 +51,18 @@ namespace RemoteClient.Remote
             {   if(_client != null)
                 {
                     _client.ConnectedEventHandler -= SocketConnected;
+                    _client.P2PConnectedEventHandler -= P2PConnected;
                 }
                 _client = value;
                 if(_client != null)
                 {
                     _client.ConnectedEventHandler += SocketConnected;
+                    _client.P2PConnectedEventHandler += P2PConnected;
+
                 }
             }
         }
+
         public ManualResetEvent ResetEvent
         {
             get => _resetEvent;
@@ -104,9 +110,18 @@ namespace RemoteClient.Remote
             byte[] dataBytes = Encoding.ASCII.GetBytes(remoteInfo);
 
             Client.Send(Enums.DataType.P2PCONNECT, dataBytes);
+            ResetEvent.WaitOne(1000 * 10);
+            ResetEvent.Reset();
+            if (_isP2PConnected)
+            {
+                FormRemote remote = new FormRemote(Client, null);
+                remote.Show();
+            }
+            else
+            {
+                MessageBox.Show($"Không thể kết nối đến {txtPartnerId.Text}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
 
-            FormRemote remote = new FormRemote(Client, null);
-            remote.Show();
         }
         private void SocketConnected()
         {
@@ -137,6 +152,12 @@ namespace RemoteClient.Remote
         {
             Client.Send( Enums.DataType.PING ,new byte[] {(int)Enums.DataType.PING });
         }
+        private void P2PConnected(bool flag)
+        {
+            _isP2PConnected = flag;
+            ResetEvent.Set();
+        }
+
         #endregion
     }
 }
