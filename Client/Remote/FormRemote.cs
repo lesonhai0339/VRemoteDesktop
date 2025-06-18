@@ -13,7 +13,7 @@ namespace RemoteClient.Remote
     public partial class FormRemote :Form
     {
         private RemoteEventHandler _remoteHandler;
-        public FormRemote(TCPClient client= null, RemoteData remoteData= null)
+        public FormRemote(SocketRemoteClient client= null, RemoteData remoteData= null)
         {
             InitializeComponent();
             remoteData = new RemoteData

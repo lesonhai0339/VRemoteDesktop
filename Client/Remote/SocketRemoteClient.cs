@@ -8,15 +8,19 @@ using System.Threading.Tasks;
 
 namespace RemoteClient.Remote
 {
-    public class SocketRemoteClient
+    public class SocketRemoteClient: IDisposable
     {
-        private bool isSocketConnected;
+        private bool _isSocketConnected;
         private Socket _socket;
 
 
-        public delegate void ConnectedEven();
-        public event ConnectedEven ConnectedEvenHandler;
-        public SocketRemoteClient() { }
+        public delegate void ConnectedEvent();
+        public event ConnectedEvent ConnectedEventHandler;
+        public delegate void LoginEvent();
+        public event LoginEvent LoginEventHandler;
+        public SocketRemoteClient() 
+        {
+        }
         #region Properties
         public Socket Socket
         {
@@ -24,6 +28,14 @@ namespace RemoteClient.Remote
             private set
             {
                 _socket = value;
+            }
+        }
+        public bool SocketConnected
+        {
+            get => _isSocketConnected;
+            private set
+            {
+                _isSocketConnected = value;
             }
         }
         #endregion
@@ -37,15 +49,63 @@ namespace RemoteClient.Remote
                     Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 }
                 Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-                Socket.BeginConnect(endPoint, new AsyncCallback(Callback), Socket);
+                Socket.BeginConnect(endPoint, new AsyncCallback(ConnectCallback), Socket);
+            }
+            catch(SocketException ex)
+            {
+                Console.WriteLine(string.Format("Connect SocketException: {0} - {1}", ex.Message, ex.StackTrace));
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Data received Error: ", ex.Message);
+                Console.WriteLine(string.Format("Connect Exception: {0} - {1}", ex.Message, ex.StackTrace));
             }
             finally
             {
-                //_sck.Close();
+                //Socket.Close();
+            }
+        }
+        public void Send(Enums.DataType type, byte[] data)
+        {
+            try
+            {
+                byte[] dataSend = new byte[1 + data.Length];
+                dataSend[0] = (byte)type;
+                Array.Copy(data, 0, dataSend, 1, data.Length);
+                Socket.BeginSend(dataSend, 0, dataSend.Length, SocketFlags.None, null, null);
+            }
+            catch(SocketException ex)
+            {
+                Console.WriteLine(string.Format("Socket Send error: {0} - {1}", ex.Message, ex.StackTrace));
+            }
+        }
+        private void ConnectCallback(IAsyncResult asyncResult)
+        {
+            try
+            {
+                Socket.EndConnect(asyncResult);
+                Console.WriteLine("Client connected: " + Socket.RemoteEndPoint);
+                if (Socket.Connected)
+                {
+                    SocketConnected = true;
+                }
+                ConnectedEvent connectedEvent = ConnectedEventHandler;
+                if(connectedEvent != null)
+                {
+                    connectedEvent();
+                }
+                StateObject stateObject = new StateObject();
+                stateObject.WorkSocket = Socket;
+
+
+                Socket.BeginReceive(stateObject.Buffer, 0, 1024, SocketFlags.None, new AsyncCallback(Callback), stateObject);
+            }
+            catch (SocketException ex)
+            {
+                Console.WriteLine(string.Format("ConnectCallback SocketException: {0} - {1}", ex.Message, ex.StackTrace));
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(string.Format("ConnectCallback Exception: {0} - {1}", ex.Message, ex.StackTrace));
             }
         }
         private void Callback(IAsyncResult asyncResult)
@@ -54,10 +114,9 @@ namespace RemoteClient.Remote
             {
                 StateObject stateObject = (StateObject)asyncResult.AsyncState;
                 Socket workSocket = stateObject.WorkSocket;
-                int num = workSocket.EndReceive(asyncResult);
+                int num = Socket.EndReceive(asyncResult);
                 if (num > 0)
                 {
-                    //workSocket.BeginSend(Encoding.ASCII.GetBytes("OK"), 0, StateObject.BufferSize, SocketFlags.None, ReceivedCallback, stateObject);
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
@@ -65,14 +124,54 @@ namespace RemoteClient.Remote
                 }
                 workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, Callback, stateObject);
             }
+            catch (SocketException ex)
+            {
+                Console.WriteLine(string.Format("Callback SocketException: {0} - {1}", ex.Message, ex.StackTrace));
+            }
             catch (Exception ex)
             {
-                Console.WriteLine($"Data received Error: {ex.Message}");
+                Console.WriteLine(string.Format("Callback Exception: {0} - {1}", ex.Message, ex.StackTrace));
             }
         }
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
         {
+            Console.WriteLine("Callback Received");
+            int response = data[0];
+            switch (response)
+            {
+                case 1:
+                    Console.WriteLine("Ping successfully");
+                    break;
+                case 2:
+                    Console.WriteLine("Login successfully");
+                    LoginEvent loginEvent = LoginEventHandler;
+                    if(loginEvent != null)
+                    {
+                        loginEvent();
+                    }
+                    break;
+                case 99:
+                    Console.WriteLine("Error");
+                    break;
+                default:
+                    break;
+            }
+        }
 
+        public void Dispose()
+        {
+            try
+            {
+                _socket?.Shutdown(SocketShutdown.Both);
+                _socket?.Close();
+                _socket?.Dispose();
+            }
+            catch { }
+            finally
+            {
+                _socket = null;
+                SocketConnected = false;
+            }
         }
         #endregion
     }

@@ -9,9 +9,9 @@ namespace RemoteClient.Remote
 {
     class RemoteEventHandler
     {
-        private TCPClient _client;
+        private SocketRemoteClient _client;
         private RemoteData _remoteData;
-        public RemoteEventHandler(TCPClient client, RemoteData remoteData) 
+        public RemoteEventHandler(SocketRemoteClient client, RemoteData remoteData) 
         {
             _client = client;
             _remoteData = remoteData;

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -39,7 +40,8 @@ namespace RemoteServer
                     var idlerTime = DateTime.Now - _lastSendTime;
                     if(idlerTime > _timeout)
                     {
-                        Console.WriteLine($"Client {Socket.RemoteEndPoint.AddressFamily.ToString()} has been idle for too long, disconnecting...");
+                        IPEndPoint endPoint = this.Socket.RemoteEndPoint as IPEndPoint;
+                        Console.WriteLine($"Client {endPoint.Address} has been idle for too long, disconnecting...");
                         Dispose();
                         break;
                     }
@@ -72,7 +74,7 @@ namespace RemoteServer
         }
         public async Task StartReceiving()
         {
-            byte[] buffer = new byte[1024];
+            byte[] buffer = new byte[8192];
 
             try
             {

@@ -38,21 +38,25 @@ namespace RemoteClient.Remote
             this.txtPartnerPwd = new System.Windows.Forms.TextBox();
             this.label1 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
+            this.panel1 = new System.Windows.Forms.Panel();
+            this.lbConnectStatus = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // txtPartnerId
             // 
-            this.txtPartnerId.Location = new System.Drawing.Point(176, 38);
+            this.txtPartnerId.Location = new System.Drawing.Point(235, 47);
+            this.txtPartnerId.Margin = new System.Windows.Forms.Padding(4);
             this.txtPartnerId.Name = "txtPartnerId";
-            this.txtPartnerId.Size = new System.Drawing.Size(113, 20);
+            this.txtPartnerId.Size = new System.Drawing.Size(149, 22);
             this.txtPartnerId.TabIndex = 0;
             // 
             // button1
             // 
             this.button1.FlatAppearance.BorderColor = System.Drawing.Color.Aqua;
-            this.button1.Location = new System.Drawing.Point(297, 130);
+            this.button1.Location = new System.Drawing.Point(396, 160);
+            this.button1.Margin = new System.Windows.Forms.Padding(4);
             this.button1.Name = "button1";
-            this.button1.Size = new System.Drawing.Size(75, 23);
+            this.button1.Size = new System.Drawing.Size(100, 28);
             this.button1.TabIndex = 1;
             this.button1.Text = "Kết nối";
             this.button1.UseVisualStyleBackColor = true;
@@ -61,50 +65,72 @@ namespace RemoteClient.Remote
             // txtYourId
             // 
             this.txtYourId.Enabled = false;
-            this.txtYourId.Location = new System.Drawing.Point(15, 38);
+            this.txtYourId.Location = new System.Drawing.Point(20, 47);
+            this.txtYourId.Margin = new System.Windows.Forms.Padding(4);
             this.txtYourId.Name = "txtYourId";
-            this.txtYourId.Size = new System.Drawing.Size(118, 20);
+            this.txtYourId.Size = new System.Drawing.Size(156, 22);
             this.txtYourId.TabIndex = 2;
             // 
             // txtYourPwd
             // 
             this.txtYourPwd.Enabled = false;
-            this.txtYourPwd.Location = new System.Drawing.Point(15, 91);
+            this.txtYourPwd.Location = new System.Drawing.Point(20, 112);
+            this.txtYourPwd.Margin = new System.Windows.Forms.Padding(4);
             this.txtYourPwd.Name = "txtYourPwd";
-            this.txtYourPwd.Size = new System.Drawing.Size(118, 20);
+            this.txtYourPwd.Size = new System.Drawing.Size(156, 22);
             this.txtYourPwd.TabIndex = 3;
             // 
             // txtPartnerPwd
             // 
-            this.txtPartnerPwd.Location = new System.Drawing.Point(176, 91);
+            this.txtPartnerPwd.Location = new System.Drawing.Point(235, 112);
+            this.txtPartnerPwd.Margin = new System.Windows.Forms.Padding(4);
             this.txtPartnerPwd.Name = "txtPartnerPwd";
-            this.txtPartnerPwd.Size = new System.Drawing.Size(113, 20);
+            this.txtPartnerPwd.Size = new System.Drawing.Size(149, 22);
             this.txtPartnerPwd.TabIndex = 4;
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 22);
+            this.label1.Location = new System.Drawing.Point(16, 27);
+            this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(58, 13);
+            this.label1.Size = new System.Drawing.Size(74, 17);
             this.label1.TabIndex = 5;
             this.label1.Text = "Id của bạn";
             // 
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(173, 22);
+            this.label2.Location = new System.Drawing.Point(231, 27);
+            this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(54, 13);
+            this.label2.Size = new System.Drawing.Size(67, 17);
             this.label2.TabIndex = 6;
             this.label2.Text = "ID đối tác";
             // 
+            // panel1
+            // 
+            this.panel1.Location = new System.Drawing.Point(12, 173);
+            this.panel1.Name = "panel1";
+            this.panel1.Size = new System.Drawing.Size(15, 15);
+            this.panel1.TabIndex = 7;
+            // 
+            // lbConnectStatus
+            // 
+            this.lbConnectStatus.AutoSize = true;
+            this.lbConnectStatus.Location = new System.Drawing.Point(33, 173);
+            this.lbConnectStatus.Name = "lbConnectStatus";
+            this.lbConnectStatus.Size = new System.Drawing.Size(87, 17);
+            this.lbConnectStatus.TabIndex = 8;
+            // 
             // FormMain
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.BackColor = System.Drawing.Color.White;
-            this.ClientSize = new System.Drawing.Size(384, 165);
+            this.ClientSize = new System.Drawing.Size(512, 203);
+            this.Controls.Add(this.lbConnectStatus);
+            this.Controls.Add(this.panel1);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.txtPartnerPwd);
@@ -112,6 +138,7 @@ namespace RemoteClient.Remote
             this.Controls.Add(this.txtYourId);
             this.Controls.Add(this.button1);
             this.Controls.Add(this.txtPartnerId);
+            this.Margin = new System.Windows.Forms.Padding(4);
             this.Name = "FormMain";
             this.Text = "FormMain";
             this.Load += new System.EventHandler(this.FormMain_Load);
@@ -130,5 +157,7 @@ namespace RemoteClient.Remote
         private System.Windows.Forms.TextBox txtPartnerPwd;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Panel panel1;
+        private System.Windows.Forms.Label lbConnectStatus;
     }
 }

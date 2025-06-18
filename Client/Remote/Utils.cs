@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace RemoteClient.Remote
 {
@@ -14,6 +15,35 @@ namespace RemoteClient.Remote
 		private static string digits = "0123456789";
 		private static bool bool_0 = false;
 		internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
+		internal static Info GetScreen()
+        {
+			var computerName = Environment.MachineName;
+			int width = Screen.PrimaryScreen.Bounds.Width;
+			int height = Screen.PrimaryScreen.Bounds.Height;
+			OperatingSystem os = Environment.OSVersion;
+			Info vscreen = new Info
+			{
+				ComputerName = computerName,
+				Width = width,
+				Height = height,
+				MajorVersion = os.Version.Major.ToString(),
+				MinorVersion = os.Version.Minor.ToString()
+			};
+			return vscreen;
+		}
+		internal static string DataStringBuilder(string[] data)
+        {
+			StringBuilder stringBuilder = new StringBuilder();
+			for(int i=0; i< data.Length; i++)
+            {
+				stringBuilder.Append(data[i]);
+				if(i != data.Length - 1)
+                {
+					stringBuilder.Append("|");
+                }
+            }
+			return stringBuilder.ToString();
+        }
 		internal static string RandomStringNumber(int length)
 		{
 			StringBuilder result = new StringBuilder();
