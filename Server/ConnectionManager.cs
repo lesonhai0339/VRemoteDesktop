@@ -41,19 +41,27 @@ namespace RemoteServer
                         //login
                         bool loginFlag = true;
                         ProcessLogin(client, data, ref loginFlag);
-                        if (!loginFlag)
+                        if (loginFlag)
                         {
-                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 97 }), SocketFlags.None);
+                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 2 }), SocketFlags.None);
                         }
                         else
                         {
-                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 2 }), SocketFlags.None);
+                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 97 }), SocketFlags.None);
                         }
                         break;
                     case 2:
                         //P2P connection
                         bool p2pFlag = true;
                         ProcessP2PConnect(client, data, ref p2pFlag);
+                        if (p2pFlag)
+                        {
+                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 10 }), SocketFlags.None);
+                        }
+                        else
+                        {
+                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 90 }), SocketFlags.None);
+                        }
                         break;
                     default:
                         break;
@@ -80,7 +88,15 @@ namespace RemoteServer
             lock (_socketStore)
             {
                 var me = _socketStore.FirstOrDefault(i => i.Ip.Equals(ep.Address.ToString()));
-                var remoteClient = _socketStore.FirstOrDefault(x => x.Id.Equals(remote[0]) && x.Password.Equals(remote[1]));                
+                var remoteClient = _socketStore.FirstOrDefault(x => x.Id.Equals(remote[0]) 
+                                    && x.Password.Equals(remote[1])
+                                    && x.Id != me.Id);
+                if(me == null || remoteClient == null)
+                {
+                    flag = false;
+                    return;
+                }
+                
             }
         }
 

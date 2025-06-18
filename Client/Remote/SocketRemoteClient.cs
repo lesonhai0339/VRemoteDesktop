@@ -150,6 +150,12 @@ namespace RemoteClient.Remote
                         loginEvent();
                     }
                     break;
+                case 10:
+                    Console.WriteLine("P2P connected");
+                    break;
+                case 90:
+                    Console.WriteLine("P2P connect error");
+                    break;
                 case 97:
                 case 98:
                 case 99:
