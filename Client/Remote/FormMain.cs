@@ -21,6 +21,8 @@ namespace RemoteClient.Remote
         private SocketRemoteClient _client;
         private Info _myInfo;
         private ManualResetEvent _resetEvent;
+        private ClientClass _clientClass;
+        private ConnectionInfo _clientInfo;
         public FormMain()
         {
             InitializeComponent();
@@ -51,14 +53,13 @@ namespace RemoteClient.Remote
             {   if(_client != null)
                 {
                     _client.ConnectedEventHandler -= SocketConnected;
-                    _client.P2PRemoteSuccessEventHandler -= P2PConnected;
+                    _client.P2PConnectEventHandler -= P2PConnect;
                 }
                 _client = value;
                 if(_client != null)
                 {
                     _client.ConnectedEventHandler += SocketConnected;
-                    _client.P2PRemoteSuccessEventHandler += P2PConnected;
-
+                    _client.P2PConnectEventHandler += P2PConnect;
                 }
             }
         }
@@ -114,7 +115,7 @@ namespace RemoteClient.Remote
             ResetEvent.Reset();
             if (_isP2PConnected)
             {
-                FormRemote remote = new FormRemote(Client, null);
+                FormRemote remote = new FormRemote(Client, _clientInfo);
                 remote.Show();
             }
             else
@@ -152,12 +153,19 @@ namespace RemoteClient.Remote
         {
             Client.Send( Enums.DataType.PING ,new byte[] {(int)Enums.DataType.PING });
         }
-        private void P2PConnected(bool flag)
+        private void P2PConnect(bool isRemote,ConnectionInfo info)
         {
-            _isP2PConnected = flag;
-            ResetEvent.Set();
+            if (isRemote)
+            {
+                _clientInfo = info;
+                _isP2PConnected = true;
+                ResetEvent.Set();
+            }
+            else
+            {
+                _clientClass = new ClientClass(Client, info);
+            }
         }
-
         #endregion
     }
 }
