@@ -6,6 +6,17 @@ using System.Threading.Tasks;
 
 namespace RemoteClient.Remote
 {
+    public class ConnectionInfo
+    {
+        public ConnectionInfo() { }
+        public ConnectionInfo(string sessionId, Info partner)
+        {
+            SessionId = sessionId;
+            PartnerInfo = partner;
+        }
+        public string SessionId { get; set; }
+        public Info PartnerInfo { get; set; }
+    }
     public class Info
     {
         public string Id { get; set; }

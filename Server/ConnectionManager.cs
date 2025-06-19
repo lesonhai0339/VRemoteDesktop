@@ -54,13 +54,9 @@ namespace RemoteServer
                     case 2:
                         //P2P connection
                         bool p2pFlag =await  ProcessP2PConnect(client, data);
-                        if (p2pFlag)
+                        if (!p2pFlag)
                         {
-                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 10 }), SocketFlags.None);
-                        }
-                        else
-                        {
-                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 90 }), SocketFlags.None);
+                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 99 }), SocketFlags.None);
                         }
                         break;
                     default:
@@ -108,14 +104,14 @@ namespace RemoteServer
                 };
                 await me.Client.Socket.SendAsync(new ArraySegment<byte>(
                     new byte[] { 10}
-                    .Concat(Encoding.ASCII.GetBytes($"|{sessionId}|"))
+                    .Concat(Encoding.ASCII.GetBytes($"{sessionId}|"))
                     .Concat(Encoding.ASCII.GetBytes(remoteClient.ToString()))
                     .ToArray()), 
                     SocketFlags.None);
 
                 await remoteClient.Client.Socket.SendAsync(new ArraySegment<byte>(
                     new byte[] {11}
-                    .Concat(Encoding.ASCII.GetBytes($"|{sessionId}|"))
+                    .Concat(Encoding.ASCII.GetBytes($"{sessionId}|"))
                     .Concat(Encoding.ASCII.GetBytes(me.ToString()))
                     .ToArray()),
                     SocketFlags.None);
@@ -172,6 +168,15 @@ namespace RemoteServer
                 {
                     Console.WriteLine($"Removing Info for disconnected client: {infoToRemove.Id}");
                     _socketStore.Remove(infoToRemove);
+                }
+            }
+            var myKey = clients.FirstOrDefault(x => x.Value.Remote.Client == client || x.Value.Client.Client == client).Key;
+            if (myKey != null)
+            {
+                bool wasRemoved = clients.TryRemove(myKey, out Connection removedConnection);
+                if (wasRemoved)
+                {
+                    Console.WriteLine($"Successfully removed connection {myKey}");
                 }
             }
         }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -154,22 +155,11 @@ namespace RemoteClient.Remote
                     break;
                 case 10:
                     Console.WriteLine("P2P connected Remote");
-                    byte[] clientInfo = new byte[data.Length - 1];
-                    Array.Copy(data, 1, clientInfo, 0, clientInfo.Length);
-                    string stringClientInfo = Encoding.UTF8.GetString(clientInfo);
-                    Console.WriteLine($"Client Info: {stringClientInfo}");
-                    P2PRemoteSuccessEvent p2PConnectSuccess = P2PRemoteSuccessEventHandler;
-                    if(p2PConnectSuccess != null)
-                    {
-                        p2PConnectSuccess(true);
-                    }
+                    ProcessP2PRemote(data);
                     break;
                 case 11:
                     Console.WriteLine("P2P connected Client");
-                    byte[] remoteInfo = new byte[data.Length - 1];
-                    Array.Copy(data, 1, remoteInfo, 0, remoteInfo.Length);
-                    string stringRemoteInfo = Encoding.UTF8.GetString(remoteInfo);
-                    Console.WriteLine($"Client Info: {stringRemoteInfo}");
+                    ProcessP2PClient(data);
                     break;
                 case 90:
                     Console.WriteLine("P2P connect error");
@@ -188,7 +178,41 @@ namespace RemoteClient.Remote
                     break;
             }
         }
-
+        private void ProcessP2PRemote(byte[] data)
+        {
+            byte[] clientInfo = new byte[data.Length - 1];
+            Array.Copy(data, 1, clientInfo, 0, clientInfo.Length);
+            string stringClientInfo = Encoding.UTF8.GetString(clientInfo);
+            Console.WriteLine($"Client Info: {stringClientInfo}");
+            P2PRemoteSuccessEvent p2PConnectSuccess = P2PRemoteSuccessEventHandler;
+            if (p2PConnectSuccess != null)
+            {
+                p2PConnectSuccess(true);
+            }
+        }
+        private void ProcessP2PClient(byte[] data)
+        {
+            byte[] bytesData = new byte[data.Length - 1];
+            Array.Copy(data, 1, bytesData, 0, bytesData.Length);
+            string[] dataStrings = Encoding.UTF8.GetString(bytesData).Split('|');
+            if(dataStrings.Length != 8)
+            {
+                throw new Exception("Missing some value");
+            }
+            ConnectionInfo connectionInfo = new ConnectionInfo(
+                sessionId: dataStrings[0],
+                partner: new ConnectionInfo.Info
+                {
+                    Id = dataStrings[1],
+                    Password = dataStrings[2],
+                    ComputerName = dataStrings[3],
+                    Width = int.Parse(dataStrings[4]),
+                    Height = int.Parse(dataStrings[5]),
+                    MajorVersion = dataStrings[6],
+                    MinorVersion = dataStrings[7],
+                });
+            Console.WriteLine($"Client Info: {JsonConvert.SerializeObject(connectionInfo, Formatting.Indented)}");
+        }
         public void Dispose()
         {
             try
