@@ -1,0 +1,241 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace RemoteClient.Remote
+{
+    public class CaptureCell : IDisposable
+    {
+        public Rectangle Rectangle { get; set; }
+        public byte[] Bytes { get; set; }
+
+        public void Dispose()
+        {
+            Bytes = null;
+        }
+    }
+
+    internal static class CaptureScreen
+    {
+        private static Bitmap _previousFrame;
+        private static readonly object _lockObject = new object();
+
+        internal static List<CaptureCell> GetScreen()
+        {
+            List<CaptureCell> cells = new List<CaptureCell>();
+
+            lock (_lockObject)
+            {
+                using (Bitmap currentScreen = CaptureWindowsScreen())
+                {
+                    if (_previousFrame == null)
+                    {
+                        // First capture - send full screen
+                        CaptureCell cell = new CaptureCell
+                        {
+                            Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                            Bytes = Utils.BitmapToByteArray(currentScreen)
+                        };
+                        cells.Add(cell);
+
+                        // Store current frame as previous
+                        _previousFrame = currentScreen.Clone(
+                            new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                            PixelFormat.Format24bppRgb
+                        );
+                    }
+                    else
+                    {
+                        // Detect changes and create cells
+                        List<Rectangle> dirtyRegions = DetectDirtyRegions(currentScreen, _previousFrame);
+
+                        if (dirtyRegions.Count > 0)
+                        {
+                            // Merge adjacent regions for efficiency
+                            List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
+
+                            foreach (var region in mergedRegions)
+                            {
+                                using (Bitmap regionBitmap = CropBitmap(currentScreen, region))
+                                {
+                                    CaptureCell cell = new CaptureCell
+                                    {
+                                        Rectangle = region,
+                                        Bytes = Utils.BitmapToByteArray(regionBitmap)
+                                    };
+                                    cells.Add(cell);
+                                }
+                            }
+
+                            // Update previous frame
+                            _previousFrame?.Dispose();
+                            _previousFrame = currentScreen.Clone(
+                                new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                                PixelFormat.Format24bppRgb
+                            );
+                        }
+                        // If no changes, return empty list
+                    }
+                }
+            }
+
+            return cells;
+        }
+
+        internal static Bitmap CropBitmap(Bitmap source, Rectangle region)
+        {
+            // Validate region bounds
+            region = Rectangle.Intersect(region, new Rectangle(0, 0, source.Width, source.Height));
+            if (region.IsEmpty) return null;
+
+            Bitmap croppedBitmap = new Bitmap(region.Width, region.Height, source.PixelFormat);
+
+            using (Graphics g = Graphics.FromImage(croppedBitmap))
+            {
+                g.DrawImage(source,
+                    new Rectangle(0, 0, region.Width, region.Height),
+                    region,
+                    GraphicsUnit.Pixel);
+            }
+
+            return croppedBitmap;
+        }
+
+        internal static Bitmap CaptureWindowsScreen()
+        {
+            Rectangle bounds = Screen.PrimaryScreen.Bounds;
+            Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
+
+            using (Graphics graphics = Graphics.FromImage(bitmap))
+            {
+                graphics.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
+            }
+
+            return bitmap;
+        }
+
+        internal static List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
+        {
+            var dirtyRegions = new List<Rectangle>();
+            const int blockSize = 64;
+
+            // Parallel processing for better performance
+            var regions = new List<Rectangle>();
+
+            for (int y = 0; y < current.Height; y += blockSize)
+            {
+                for (int x = 0; x < current.Width; x += blockSize)
+                {
+                    Rectangle block = new Rectangle(x, y,
+                        Math.Min(blockSize, current.Width - x),
+                        Math.Min(blockSize, current.Height - y));
+                    regions.Add(block);
+                }
+            }
+
+            // Check blocks in parallel
+            //var changedBlocks = regions.AsParallel().Where(block => IsBlockChanged(current, previous, block)).ToList();
+            var changedBlocks = regions.Where(block => IsBlockChanged(current, previous, block)).ToList();
+
+            return changedBlocks;
+        }
+
+        private static List<Rectangle> MergeAdjacentRectangles(List<Rectangle> rectangles)
+        {
+            if (rectangles.Count <= 1) return rectangles;
+
+            var merged = new List<Rectangle>();
+            var sorted = rectangles.OrderBy(r => r.Y).ThenBy(r => r.X).ToList();
+
+            foreach (var rect in sorted)
+            {
+                bool wasMerged = false;
+
+                for (int i = 0; i < merged.Count; i++)
+                {
+                    if (CanMerge(merged[i], rect))
+                    {
+                        merged[i] = Rectangle.Union(merged[i], rect);
+                        wasMerged = true;
+                        break;
+                    }
+                }
+
+                if (!wasMerged)
+                {
+                    merged.Add(rect);
+                }
+            }
+
+            return merged;
+        }
+
+        private static bool CanMerge(Rectangle rect1, Rectangle rect2)
+        {
+            // Check if rectangles are adjacent or overlapping
+            Rectangle union = Rectangle.Union(rect1, rect2);
+            int unionArea = union.Width * union.Height;
+            int combinedArea = (rect1.Width * rect1.Height) + (rect2.Width * rect2.Height);
+
+            // Only merge if efficiency is above threshold (avoid creating large empty areas)
+            double efficiency = (double)combinedArea / unionArea;
+            return efficiency > 0.75; // 75% efficiency threshold
+        }
+
+        private unsafe static bool IsBlockChanged(Bitmap current, Bitmap previous, Rectangle block)
+        {
+            BitmapData currentData = null;
+            BitmapData previousData = null;
+
+            try
+            {
+                previousData = previous.LockBits(block, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                currentData = current.LockBits(block, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                byte* currentPtr = (byte*)currentData.Scan0;
+                byte* previousPtr = (byte*)previousData.Scan0;
+
+                int stride = currentData.Stride;
+                int bytesPerPixel = 3;
+                const int threshold = 10; // Noise threshold
+
+                for (int y = 0; y < block.Height; y++)
+                {
+                    for (int x = 0; x < block.Width; x++)
+                    {
+                        int offset = y * stride + x * bytesPerPixel;
+
+                        // Check with threshold to avoid false positives from noise
+                        if (Math.Abs(currentPtr[offset] - previousPtr[offset]) > threshold ||
+                            Math.Abs(currentPtr[offset + 1] - previousPtr[offset + 1]) > threshold ||
+                            Math.Abs(currentPtr[offset + 2] - previousPtr[offset + 2]) > threshold)
+                        {
+                            return true;
+                        }
+                    }
+                }
+
+                return false;
+            }
+            finally
+            {
+                if (currentData != null) current.UnlockBits(currentData);
+                if (previousData != null) previous.UnlockBits(previousData);
+            }
+        }
+
+        // Cleanup method
+        internal static void Dispose()
+        {
+            lock (_lockObject)
+            {
+                _previousFrame?.Dispose();
+                _previousFrame = null;
+            }
+        }
+    }
+}

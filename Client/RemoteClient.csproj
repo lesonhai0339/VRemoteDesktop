@@ -58,6 +58,7 @@
     <Compile Include="Chunk.cs" />
     <Compile Include="Enums.cs" />
     <Compile Include="FFmpeg\ScreenA\Capture.cs" />
+    <Compile Include="Remote\CaptureScreen.cs" />
     <Compile Include="Remote\ClientClass.cs" />
     <Compile Include="Remote\Enums.cs" />
     <Compile Include="Remote\FormMain.cs">
