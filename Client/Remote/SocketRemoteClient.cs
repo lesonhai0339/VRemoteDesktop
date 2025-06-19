@@ -18,8 +18,8 @@ namespace RemoteClient.Remote
         public event ConnectedEvent ConnectedEventHandler;
         public delegate void LoginEvent();
         public event LoginEvent LoginEventHandler;
-        public delegate void P2PConnectedEvent(bool flag);
-        public event P2PConnectedEvent P2PConnectedEventHandler;
+        public delegate void P2PRemoteSuccessEvent(bool flag);
+        public event P2PRemoteSuccessEvent P2PRemoteSuccessEventHandler;
         public SocketRemoteClient() 
         {
         }
@@ -153,16 +153,27 @@ namespace RemoteClient.Remote
                     }
                     break;
                 case 10:
-                    Console.WriteLine("P2P connected");
-                    P2PConnectedEvent p2PConnectSuccess = P2PConnectedEventHandler;
+                    Console.WriteLine("P2P connected Remote");
+                    byte[] clientInfo = new byte[data.Length - 1];
+                    Array.Copy(data, 1, clientInfo, 0, clientInfo.Length);
+                    string stringClientInfo = Encoding.UTF8.GetString(clientInfo);
+                    Console.WriteLine($"Client Info: {stringClientInfo}");
+                    P2PRemoteSuccessEvent p2PConnectSuccess = P2PRemoteSuccessEventHandler;
                     if(p2PConnectSuccess != null)
                     {
                         p2PConnectSuccess(true);
                     }
                     break;
+                case 11:
+                    Console.WriteLine("P2P connected Client");
+                    byte[] remoteInfo = new byte[data.Length - 1];
+                    Array.Copy(data, 1, remoteInfo, 0, remoteInfo.Length);
+                    string stringRemoteInfo = Encoding.UTF8.GetString(remoteInfo);
+                    Console.WriteLine($"Client Info: {stringRemoteInfo}");
+                    break;
                 case 90:
                     Console.WriteLine("P2P connect error");
-                    P2PConnectedEvent p2PConnectFailed = P2PConnectedEventHandler;
+                    P2PRemoteSuccessEvent p2PConnectFailed = P2PRemoteSuccessEventHandler;
                     if (p2PConnectFailed != null)
                     {
                         p2PConnectFailed(false);

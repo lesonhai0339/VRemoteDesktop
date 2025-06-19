@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -52,8 +53,7 @@ namespace RemoteServer
                         break;
                     case 2:
                         //P2P connection
-                        bool p2pFlag = true;
-                        ProcessP2PConnect(client, data, ref p2pFlag);
+                        bool p2pFlag =await  ProcessP2PConnect(client, data);
                         if (p2pFlag)
                         {
                             await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 10 }), SocketFlags.None);
@@ -73,8 +73,10 @@ namespace RemoteServer
             }
         }
 
-        private void ProcessP2PConnect(Client client, byte[] data, ref bool flag)
+        private async Task<bool> ProcessP2PConnect(Client client, byte[] data)
         {
+            Info me;
+            Info remoteClient;
             Console.WriteLine("P2P Connect");
             IPEndPoint ep = client.Socket.RemoteEndPoint as IPEndPoint;
             byte[] byteData = new byte[data.Length - 1];
@@ -82,22 +84,43 @@ namespace RemoteServer
             var remote = Encoding.ASCII.GetString(byteData).Split('|');
             if (remote.Length != 2)
             {
-                flag = false;
-                return;
+                return false;
             }
             lock (_socketStore)
             {
-                var me = _socketStore.FirstOrDefault(i => i.Ip.Equals(ep.Address.ToString()));
-                var remoteClient = _socketStore.FirstOrDefault(x => x.Id.Equals(remote[0]) 
+                me = _socketStore.FirstOrDefault(i => i.Ip.Equals(ep.Address.ToString()));
+                remoteClient = _socketStore.FirstOrDefault(x => x.Id.Equals(remote[0]) 
                                     && x.Password.Equals(remote[1])
                                     && x.Id != me.Id);
-                if(me == null || remoteClient == null)
-                {
-                    flag = false;
-                    return;
-                }
-                
             }
+            if (me == null || remoteClient == null)
+            {
+                return false;
+            }
+            else
+            {
+                string sessionId = Guid.NewGuid().ToString("N").Substring(0, 16);
+                clients[sessionId] = new Connection
+                {
+                    SessionId = sessionId,
+                    Remote = me,
+                    Client = remoteClient
+                };
+                await me.Client.Socket.SendAsync(new ArraySegment<byte>(
+                    new byte[] { 10}
+                    .Concat(Encoding.ASCII.GetBytes($"|{sessionId}|"))
+                    .Concat(Encoding.ASCII.GetBytes(remoteClient.ToString()))
+                    .ToArray()), 
+                    SocketFlags.None);
+
+                await remoteClient.Client.Socket.SendAsync(new ArraySegment<byte>(
+                    new byte[] {11}
+                    .Concat(Encoding.ASCII.GetBytes($"|{sessionId}|"))
+                    .Concat(Encoding.ASCII.GetBytes(me.ToString()))
+                    .ToArray()),
+                    SocketFlags.None);
+            }
+            return true;
         }
 
         private void ProcessLogin(Client client, byte[] data, ref bool flag)

@@ -51,13 +51,13 @@ namespace RemoteClient.Remote
             {   if(_client != null)
                 {
                     _client.ConnectedEventHandler -= SocketConnected;
-                    _client.P2PConnectedEventHandler -= P2PConnected;
+                    _client.P2PRemoteSuccessEventHandler -= P2PConnected;
                 }
                 _client = value;
                 if(_client != null)
                 {
                     _client.ConnectedEventHandler += SocketConnected;
-                    _client.P2PConnectedEventHandler += P2PConnected;
+                    _client.P2PRemoteSuccessEventHandler += P2PConnected;
 
                 }
             }
