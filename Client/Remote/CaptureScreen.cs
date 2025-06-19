@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -63,10 +64,16 @@ namespace RemoteClient.Remote
                             {
                                 using (Bitmap regionBitmap = CropBitmap(currentScreen, region))
                                 {
+                                    byte[] compressedData = null;
+                                    using (var stream = new MemoryStream())
+                                    {
+                                        regionBitmap.Save(stream , ImageFormat.Png);
+                                        compressedData = stream.ToArray();
+                                    }
                                     CaptureCell cell = new CaptureCell
                                     {
                                         Rectangle = region,
-                                        Bytes = Utils.BitmapToByteArray(regionBitmap)
+                                        Bytes = compressedData
                                     };
                                     cells.Add(cell);
                                 }

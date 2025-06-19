@@ -50,6 +50,7 @@ namespace RemoteClient.Remote
             else
             {
                 Console.WriteLine($"Captured {a.Count} screen data items.");
+                Console.WriteLine(a[0].Bytes.Length);
             }
         }
         #region Properties
