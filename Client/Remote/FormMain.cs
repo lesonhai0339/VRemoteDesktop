@@ -106,7 +106,7 @@ namespace RemoteClient.Remote
             {
                 MessageBox.Show("Id và Password không được bỏ trống", "Xảy ra lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            string remoteInfo = Utils.DataStringBuilder(new string[] { txtPartnerId.Text.Replace(" ", ""), txtPartnerPwd.Text.Replace(" ","") });
+            string remoteInfo = Utils.DataStringBuilder(new string[] {Me.Id , txtPartnerId.Text.Replace(" ", ""), txtPartnerPwd.Text.Replace(" ","") });
             byte[] dataBytes = Encoding.ASCII.GetBytes(remoteInfo);
 
             Client.Send(Enums.DataType.P2PCONNECT, dataBytes);

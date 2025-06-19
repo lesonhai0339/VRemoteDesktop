@@ -201,7 +201,7 @@ namespace RemoteClient.Remote
             }
             ConnectionInfo connectionInfo = new ConnectionInfo(
                 sessionId: dataStrings[0],
-                partner: new ConnectionInfo.Info
+                partner: new Info
                 {
                     Id = dataStrings[1],
                     Password = dataStrings[2],

@@ -78,15 +78,15 @@ namespace RemoteServer
             byte[] byteData = new byte[data.Length - 1];
             Array.Copy(data, 1, byteData, 0, data.Length - 1);
             var remote = Encoding.ASCII.GetString(byteData).Split('|');
-            if (remote.Length != 2)
+            if (remote.Length != 3)
             {
                 return false;
             }
             lock (_socketStore)
             {
-                me = _socketStore.FirstOrDefault(i => i.Ip.Equals(ep.Address.ToString()));
-                remoteClient = _socketStore.FirstOrDefault(x => x.Id.Equals(remote[0]) 
-                                    && x.Password.Equals(remote[1])
+                me = _socketStore.FirstOrDefault(i => i.Id.Equals(remote[0]));
+                remoteClient = _socketStore.FirstOrDefault(x => x.Id.Equals(remote[1]) 
+                                    && x.Password.Equals(remote[2])
                                     && x.Id != me.Id);
             }
             if (me == null || remoteClient == null)
