@@ -13,6 +13,7 @@ namespace RemoteClient.Remote
         {
             SessionId = sessionId;
             PartnerInfo = partner;
+
         }
         public string SessionId { get; set; }
         public Info PartnerInfo { get; set; }
