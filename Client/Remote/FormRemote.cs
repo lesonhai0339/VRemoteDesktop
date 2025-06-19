@@ -12,33 +12,71 @@ namespace RemoteClient.Remote
 {
     public partial class FormRemote :Form
     {
-        private RemoteEventHandler _remoteHandler;
-        public FormRemote(SocketRemoteClient client= null, RemoteData remoteData= null)
+        private SocketRemoteClient _client;
+        private ConnectionInfo _connectionInfo;
+        public FormRemote(SocketRemoteClient client, ConnectionInfo remoteData)
         {
             InitializeComponent();
-            remoteData = new RemoteData
-            {
-                Id = "192.168.1.1",
-                RoomId = "11111111",
-                ComputerName = "Vsign",
-                WindowsWidth = 1920,
-                WindowsHeight = 1080
-            };
-            Text = remoteData.Id.Trim();
+            _client = client;
+            _connectionInfo = remoteData;
+            Text = _connectionInfo.PartnerInfo.Id.Trim();
             //Icon = new Icon("Resources/logo.ico");
 
-            _remoteHandler = new RemoteEventHandler(client, remoteData);
-
+            KeyDown += KeyDownEventHandler;
+            KeyUp += KeyUpEventHandler;
+            MouseMove += MouseMoveEventHandler;
+            MouseClick += MouseClickEventHandler;
+            MouseWheel += MouseWheelEventHandler;
+        }
+        #region Properties
+        public SocketRemoteClient Client
+        {
+            get => _client;
+            private set
+            {
+                if (_client != value)
+                {
+                    _client.SendScreenEventHandler -= ScreenEvent;
+                }
+                _client = value;
+                if (_client != null)
+                {
+                    _client.SendScreenEventHandler += ScreenEvent;
+                }
+            }
+        }
+        #endregion
+        private void FormRemote_Load(object sender, EventArgs e)
+        {
+        }
+        private void ScreenEvent(byte[] data)
+        {
+            throw new NotImplementedException();
+        }
+        public void KeyDownEventHandler(object sender, KeyEventArgs e)
+        {
+            Console.WriteLine($"Down: {e.KeyCode} - {e.Modifiers}");
+        }
+        public void KeyUpEventHandler(object sender, KeyEventArgs e)
+        {
+            Console.WriteLine($"Up: {e.KeyCode} - {e.Modifiers}");
+        }
+        public void MouseMoveEventHandler(object sender, MouseEventArgs e)
+        {
+            Console.WriteLine($"Mouse move: X:{e.X} - Y:{e.Y}");
+        }
+        public void MouseClickEventHandler(object sender, MouseEventArgs e)
+        {
+            Console.WriteLine($"Mouse Click: X:{e.Delta} - Y:{e.Y}");
+        }
+        public void MouseWheelEventHandler(object sender, MouseEventArgs e)
+        {
+            Console.WriteLine($"Mouse Wheel: {e.Location}");
         }
         //protected override void WndProc(ref Message m)
         //{
         //    Console.WriteLine(m.Msg);
         //    base.WndProc(ref m);
         //}
-        private void FormRemote_Load(object sender, EventArgs e)
-        {
-        }
-     
-
     }
 }

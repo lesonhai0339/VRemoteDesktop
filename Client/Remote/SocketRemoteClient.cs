@@ -13,16 +13,26 @@ namespace RemoteClient.Remote
     {
         private bool _isSocketConnected;
         private Socket _socket;
+        private bool isSendScreen;
+        private byte[] bytesBuilder;
 
 
         public delegate void ConnectedEvent();
         public event ConnectedEvent ConnectedEventHandler;
         public delegate void LoginEvent();
         public event LoginEvent LoginEventHandler;
-        public delegate void P2PRemoteSuccessEvent(bool flag);
-        public event P2PRemoteSuccessEvent P2PRemoteSuccessEventHandler;
+
+        public delegate void P2PConnectEvent(bool isRemote,ConnectionInfo info);
+        public event P2PConnectEvent P2PConnectEventHandler;
+
+        public delegate void P2PDataSendSuccessEvent();
+        public event P2PDataSendSuccessEvent P2PDataSendSuccessEventHandler;
+        public delegate void SendScreenEvent(byte[] data);
+        public event SendScreenEvent SendScreenEventHandler;
         public SocketRemoteClient() 
         {
+            isSendScreen = false;
+            bytesBuilder = new byte[0];
         }
         #region Properties
         public Socket Socket
@@ -123,7 +133,14 @@ namespace RemoteClient.Remote
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
-                    ProcessDataReceived(stateObject, dataBytes);
+                    if (!isSendScreen)
+                    {
+                        ProcessDataReceived(stateObject, dataBytes);
+                    }
+                    else
+                    {
+                        ProcessDataScreen(dataBytes);
+                    }
                 }
                 workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, Callback, stateObject);
             }
@@ -136,6 +153,15 @@ namespace RemoteClient.Remote
                 Console.WriteLine(string.Format("Callback Exception: {0} - {1}", ex.Message, ex.StackTrace));
             }
         }
+
+        private void ProcessDataScreen(byte[] dataBytes)
+        {
+            byte[] newBytes = new byte[bytesBuilder.Length + dataBytes.Length];
+            bytesBuilder.CopyTo(newBytes, 0);
+            dataBytes.CopyTo(newBytes, bytesBuilder.Length);
+            bytesBuilder = newBytes;
+        }
+
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
         {
             Console.WriteLine("Callback Received");
@@ -155,19 +181,39 @@ namespace RemoteClient.Remote
                     break;
                 case 10:
                     Console.WriteLine("P2P connected Remote");
-                    ProcessP2PRemote(data);
+                    ProcessP2PConnection(data, true);
                     break;
                 case 11:
                     Console.WriteLine("P2P connected Client");
-                    ProcessP2PClient(data);
+                    ProcessP2PConnection(data, false);
+                    break;
+                case 20:
+                    Console.WriteLine("P2P Data received");
+                    break;
+                case 30:
+                    //p2p data send success
+                    P2PDataSendSuccessEvent p2PDataSendSuccess = P2PDataSendSuccessEventHandler;
+                    if(p2PDataSendSuccess != null)
+                    {
+                        p2PDataSendSuccess();
+                    }
+                    break;
+                case 40:
+                    //p2p send screen
+                    isSendScreen = true;
+                    break;
+                case 41:
+                    //p2p send finished
+                    isSendScreen = false;
+                    SendScreenEvent sendScreenEvent = SendScreenEventHandler;
+                    if(sendScreenEvent != null)
+                    {
+                        sendScreenEvent(bytesBuilder);
+                    }
+                    bytesBuilder = new byte[0];
                     break;
                 case 90:
                     Console.WriteLine("P2P connect error");
-                    P2PRemoteSuccessEvent p2PConnectFailed = P2PRemoteSuccessEventHandler;
-                    if (p2PConnectFailed != null)
-                    {
-                        p2PConnectFailed(false);
-                    }
                     break;
                 case 97:
                 case 98:
@@ -178,19 +224,7 @@ namespace RemoteClient.Remote
                     break;
             }
         }
-        private void ProcessP2PRemote(byte[] data)
-        {
-            byte[] clientInfo = new byte[data.Length - 1];
-            Array.Copy(data, 1, clientInfo, 0, clientInfo.Length);
-            string stringClientInfo = Encoding.UTF8.GetString(clientInfo);
-            Console.WriteLine($"Client Info: {stringClientInfo}");
-            P2PRemoteSuccessEvent p2PConnectSuccess = P2PRemoteSuccessEventHandler;
-            if (p2PConnectSuccess != null)
-            {
-                p2PConnectSuccess(true);
-            }
-        }
-        private void ProcessP2PClient(byte[] data)
+        private void ProcessP2PConnection(byte[] data, bool isRemote)
         {
             byte[] bytesData = new byte[data.Length - 1];
             Array.Copy(data, 1, bytesData, 0, bytesData.Length);
@@ -211,6 +245,22 @@ namespace RemoteClient.Remote
                     MajorVersion = dataStrings[6],
                     MinorVersion = dataStrings[7],
                 });
+            if (isRemote)
+            {
+                P2PConnectEvent p2pConnectEvent = P2PConnectEventHandler;
+                if (p2pConnectEvent != null)
+                {
+                    p2pConnectEvent(true, connectionInfo);
+                }
+            }
+            else
+            {
+                P2PConnectEvent p2pConnectEvent = P2PConnectEventHandler;
+                if (p2pConnectEvent != null)
+                {
+                    p2pConnectEvent(false,connectionInfo);
+                }
+            }
             Console.WriteLine($"Client Info: {JsonConvert.SerializeObject(connectionInfo, Formatting.Indented)}");
         }
         public void Dispose()

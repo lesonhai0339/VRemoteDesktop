@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Runtime.Remoting.Lifetime;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -59,6 +60,18 @@ namespace RemoteServer
                             await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 99 }), SocketFlags.None);
                         }
                         break;
+                    case 3:
+                        //P2P datasend
+                        ProcessP2PDataSend(client , data);
+                        break;
+                    case 4:
+                        //prepare to send screen
+                        await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 40 }), SocketFlags.None);
+                        break;
+                    case 5:
+                        //end send screen
+                        await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 41 }), SocketFlags.None);
+                        break;
                     default:
                         break;
                 }
@@ -66,6 +79,43 @@ namespace RemoteServer
             catch
             {
                 await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 99 }), SocketFlags.None);
+            }
+        }
+
+        private async void ProcessP2PDataSend(Client client, byte[] data)
+        {
+            try
+            {
+                var partner = clients.Select(x =>
+                {
+                    if(x.Value.Client.Client == client)
+                    {
+                        return x.Value.Remote;
+                    }
+                    else if(x.Value.Remote.Client == client)
+                    {
+                        return x.Value.Client;
+                    }
+                    else
+                    {
+                        return null;
+                    }
+                }).FirstOrDefault();
+                if (partner != null)
+                {
+                    byte[] byteData = new byte[data.Length - 1];
+                    Array.Copy(data, 1, byteData, 0, data.Length - 1);
+                    await partner.Client.Socket.SendAsync(new ArraySegment<byte>(
+                        new byte[] {20}
+                        .Concat(byteData).ToArray()), 
+                        SocketFlags.None);
+                }
+            }
+            catch
+            {
+                await client.Socket.SendAsync(new ArraySegment<byte>(
+                        new byte[] { 99 }),
+                        SocketFlags.None);
             }
         }
 
