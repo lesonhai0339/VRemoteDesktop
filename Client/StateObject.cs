@@ -11,13 +11,13 @@ namespace RemoteClient
         public StateObject()
         {
             WorkSocket = null;
-            Buffer = new byte[1025];
+            Buffer = new byte[2049];
             ByteArrayBuilder = new ByteArrayBuilder();
             ColPendingContinousPacket = new Dictionary<byte, ByteArrayBuilder>();
             SckId = "";
         }
         public Socket WorkSocket;
-        public const int BufferSize = 1024;
+        public const int BufferSize = 2048;
         public byte[] Buffer;
         public ByteArrayBuilder ByteArrayBuilder;
         public Dictionary<byte, ByteArrayBuilder> ColPendingContinousPacket;

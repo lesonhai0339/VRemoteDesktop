@@ -106,7 +106,7 @@ namespace RemoteClient.Remote
                 stateObject.WorkSocket = Socket;
 
 
-                Socket.BeginReceive(stateObject.Buffer, 0, 1024, SocketFlags.None, new AsyncCallback(Callback), stateObject);
+                Socket.BeginReceive(stateObject.Buffer, 0, 2048, SocketFlags.None, new AsyncCallback(Callback), stateObject);
             }
             catch (SocketException ex)
             {
@@ -145,6 +145,7 @@ namespace RemoteClient.Remote
 
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
         {
+            Console.WriteLine(data.Length);
             int response = data[0];
             switch (response)
             {
@@ -198,12 +199,10 @@ namespace RemoteClient.Remote
 
         private void ProcessP2PChunk(byte[] data)
         {
-            Console.WriteLine("Chunk Received: " + data.Length);
         }
 
         private void ProcessP2pDataReceived(byte[] data)
         {
-            Console.WriteLine("P2P Received: " + data.Length);
         }
 
         private void ProcessP2PConnection(byte[] data, bool isRemote)
