@@ -19,7 +19,7 @@ namespace RemoteClient.Remote
             Client = remoteCLient;
             ResetEvent = new ManualResetEvent(false);
             _connectionInfo = info;
-            _timer = new Timer(SendScreen, null, 0, 100);
+            _timer = new Timer(SendScreen, null, 0, 1000);
         }
         #region Properties
         public SocketRemoteClient Client

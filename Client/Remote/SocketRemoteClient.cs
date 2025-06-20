@@ -133,7 +133,7 @@ namespace RemoteClient.Remote
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
-                    if (!isSendScreen)
+                    if (!isSendScreen || dataBytes.Length != 1)
                     {
                         ProcessDataReceived(stateObject, dataBytes);
                     }
