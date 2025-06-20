@@ -106,7 +106,7 @@ namespace RemoteClient.Remote
                 stateObject.WorkSocket = Socket;
 
 
-                Socket.BeginReceive(stateObject.Buffer, 0, 2048, SocketFlags.None, new AsyncCallback(Callback), stateObject);
+                Socket.BeginReceive(stateObject.Buffer, 0, 1024, SocketFlags.None, new AsyncCallback(Callback), stateObject);
             }
             catch (SocketException ex)
             {
