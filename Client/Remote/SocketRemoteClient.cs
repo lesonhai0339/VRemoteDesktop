@@ -133,7 +133,7 @@ namespace RemoteClient.Remote
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
-                    if (!isSendScreen || dataBytes.Length != 1)
+                    if (isSendScreen || dataBytes.Length != 1)
                     {
                         ProcessDataReceived(stateObject, dataBytes);
                     }
@@ -156,6 +156,8 @@ namespace RemoteClient.Remote
 
         private void ProcessDataScreen(byte[] dataBytes)
         {
+            Console.WriteLine("...");
+            Console.WriteLine(dataBytes.Length);
             byte[] newBytes = new byte[bytesBuilder.Length + dataBytes.Length];
             bytesBuilder.CopyTo(newBytes, 0);
             dataBytes.CopyTo(newBytes, bytesBuilder.Length);
