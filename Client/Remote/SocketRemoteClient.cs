@@ -200,10 +200,12 @@ namespace RemoteClient.Remote
                     break;
                 case 40:
                     //p2p send screen
+                    Console.WriteLine("Screen Start");
                     isSendScreen = true;
                     break;
                 case 41:
                     //p2p send finished
+                    Console.WriteLine("Screen End");
                     isSendScreen = false;
                     SendScreenEvent sendScreenEvent = SendScreenEventHandler;
                     if(sendScreenEvent != null)
