@@ -53,10 +53,10 @@ namespace RemoteClient.Remote
             var x = CaptureScreen.GetScreen();
             if (x.Any())
             {
-                Send(Enums.DataType.P2PDATASEND, new byte[] { });
+                Send(Enums.DataType.STARTSCREEN, new byte[] { });
                 Console.WriteLine(Math.Min(4096, x[0].Bytes.Length));
                 Send(Enums.DataType.P2PDATASEND, x[0].Bytes.Take(Math.Min(4096, x[0].Bytes.Length)).ToArray());
-                Send(Enums.DataType.P2PDATASEND, new byte[] { });
+                Send(Enums.DataType.ENDSCREEN, new byte[] { });
             }
         }
         private bool Send(Enums.DataType type, byte[] data, int timeout = 5)
