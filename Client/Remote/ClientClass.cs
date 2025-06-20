@@ -55,7 +55,7 @@ namespace RemoteClient.Remote
             {
                 Send(Enums.DataType.STARTSCREEN, new byte[] { });
                 Console.WriteLine(Math.Min(4096, x[0].Bytes.Length));
-                Send(Enums.DataType.P2PDATASEND, x[0].Bytes.Take(Math.Min(4096, x[0].Bytes.Length)).ToArray());
+                Send(Enums.DataType.P2PDATASEND, x[0].Bytes);
                 Send(Enums.DataType.ENDSCREEN, new byte[] { });
             }
         }
