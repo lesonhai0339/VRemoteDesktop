@@ -145,7 +145,6 @@ namespace RemoteClient.Remote
 
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
         {
-            Console.WriteLine("Callback Received");
             int response = data[0];
             switch (response)
             {
@@ -180,10 +179,6 @@ namespace RemoteClient.Remote
                         p2PDataSendSuccess();
                     }
                     break;
-                case 40:
-                    //send chunk
-                    Console.WriteLine($"Chunks received {data.Length}");
-                    break;
                 case 90:
                     Console.WriteLine("P2P connect error");
                     break;
@@ -199,7 +194,7 @@ namespace RemoteClient.Remote
 
         private void ProcessP2pDataReceived(byte[] data)
         {
-            throw new NotImplementedException();
+            Console.WriteLine("P2P Received: " + data.Length);
         }
 
         private void ProcessP2PConnection(byte[] data, bool isRemote)
