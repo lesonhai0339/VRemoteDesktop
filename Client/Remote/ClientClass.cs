@@ -51,7 +51,7 @@ namespace RemoteClient.Remote
         }
         private void SendChunk(CaptureCell cell)
         {
-            int dataSize = 1024 -18 ; //data 1024 
+            int dataSize = 1023 -18 ; //data 1024 
             int headers = 18; //header for type(1) + x(4) + y(4) + width(4) + height(4) + index(1)
             int chunkSize = dataSize + headers;
 

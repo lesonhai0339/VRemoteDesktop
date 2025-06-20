@@ -147,6 +147,7 @@ namespace RemoteClient.Remote
         {
             Console.WriteLine(data.Length);
             int response = data[0];
+            Console.WriteLine($"----{response}------");
             switch (response)
             {
                 case 1:
