@@ -11,6 +11,7 @@ using System.Configuration;
 using System.Net;
 using System.Threading;
 using static RemoteClient.Enums;
+using Newtonsoft.Json;
 
 namespace RemoteClient.Remote
 {
@@ -39,19 +40,6 @@ namespace RemoteClient.Remote
             this.panel1.Paint += Panel1_Paint;
             this.lbConnectStatus.Text = "Chưa kết nối";
             _isP2PConnected = false;
-        }
-        private void test(object state)
-        {
-            var a = CaptureScreen.GetScreen();
-            if (!a.Any())
-            {
-                Console.WriteLine("No screen data captured.");
-            }
-            else
-            {
-                Console.WriteLine($"Captured {a.Count} screen data items.");
-                Console.WriteLine(a[0].Bytes.Length);
-            }
         }
         #region Properties
         public Info Me
@@ -113,10 +101,21 @@ namespace RemoteClient.Remote
         {
 
         }
+        private void test(object state)
+        {
+            var screens = CaptureScreen.GetScreen();
+            if (screens.Any())
+            {
+                foreach(var screen in screens)
+                {
+                    Console.WriteLine(JsonConvert.SerializeObject(screen.Rectangle, Formatting.Indented) + screen.Bytes.Length);
+                }
+            }
+        }
         private void FormMain_Shown(object sender, EventArgs e)
         {
             ConnectToServer();
-            //_test = new System.Threading.Timer(test, null, 0, 100);
+            //_test = new System.Threading.Timer(test, null, 0, 1000);
         }
         private void button1_Click(object sender, EventArgs e)
         {

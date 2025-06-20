@@ -13,9 +13,7 @@ namespace RemoteClient.Remote
             PING = 0,
             LOGIN = 1,
             P2PCONNECT= 2,
-            P2PDATASEND = 3,
-            STARTSCREEN= 4,
-            ENDSCREEN = 5,
+            P2PDATASEND = 3
         }
     }
 }

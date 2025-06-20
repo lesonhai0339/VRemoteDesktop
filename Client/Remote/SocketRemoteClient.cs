@@ -13,8 +13,6 @@ namespace RemoteClient.Remote
     {
         private bool _isSocketConnected;
         private Socket _socket;
-        private bool isSendScreen;
-        private byte[] bytesBuilder;
 
 
         public delegate void ConnectedEvent();
@@ -31,8 +29,6 @@ namespace RemoteClient.Remote
         public event SendScreenEvent SendScreenEventHandler;
         public SocketRemoteClient() 
         {
-            isSendScreen = false;
-            bytesBuilder = new byte[0];
         }
         #region Properties
         public Socket Socket
@@ -133,14 +129,7 @@ namespace RemoteClient.Remote
                     byte[] dataBytes = new byte[num];
                     Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
 
-                    if (!isSendScreen || dataBytes.Length == 1)
-                    {
-                        ProcessDataReceived(stateObject, dataBytes);
-                    }
-                    else
-                    {
-                        ProcessDataScreen(dataBytes);
-                    }
+                    ProcessDataReceived(stateObject, dataBytes);
                 }
                 workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, Callback, stateObject);
             }
@@ -152,16 +141,6 @@ namespace RemoteClient.Remote
             {
                 Console.WriteLine(string.Format("Callback Exception: {0} - {1}", ex.Message, ex.StackTrace));
             }
-        }
-
-        private void ProcessDataScreen(byte[] dataBytes)
-        {
-            Console.WriteLine("...");
-            Console.WriteLine(dataBytes.Length);
-            byte[] newBytes = new byte[bytesBuilder.Length + dataBytes.Length];
-            bytesBuilder.CopyTo(newBytes, 0);
-            dataBytes.CopyTo(newBytes, bytesBuilder.Length);
-            bytesBuilder = newBytes;
         }
 
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
@@ -191,6 +170,7 @@ namespace RemoteClient.Remote
                     break;
                 case 20:
                     Console.WriteLine("P2P Data received");
+                    ProcessP2pDataReceived(data);
                     break;
                 case 30:
                     //p2p data send success
@@ -201,20 +181,8 @@ namespace RemoteClient.Remote
                     }
                     break;
                 case 40:
-                    //p2p send screen
-                    Console.WriteLine("Screen Start");
-                    isSendScreen = true;
-                    break;
-                case 41:
-                    //p2p send finished
-                    Console.WriteLine("Screen End");
-                    isSendScreen = false;
-                    SendScreenEvent sendScreenEvent = SendScreenEventHandler;
-                    if(sendScreenEvent != null)
-                    {
-                        sendScreenEvent(bytesBuilder);
-                    }
-                    bytesBuilder = new byte[0];
+                    //send chunk
+                    Console.WriteLine($"Chunks received {data.Length}");
                     break;
                 case 90:
                     Console.WriteLine("P2P connect error");
@@ -228,6 +196,12 @@ namespace RemoteClient.Remote
                     break;
             }
         }
+
+        private void ProcessP2pDataReceived(byte[] data)
+        {
+            throw new NotImplementedException();
+        }
+
         private void ProcessP2PConnection(byte[] data, bool isRemote)
         {
             byte[] bytesData = new byte[data.Length - 1];

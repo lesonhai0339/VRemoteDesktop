@@ -64,14 +64,6 @@ namespace RemoteServer
                         //P2P datasend
                         ProcessP2PDataSend(client , data);
                         break;
-                    case 4:
-                        //prepare to send screen
-                        await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 40 }), SocketFlags.None);
-                        break;
-                    case 5:
-                        //end send screen
-                        await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 41 }), SocketFlags.None);
-                        break;
                     default:
                         break;
                 }

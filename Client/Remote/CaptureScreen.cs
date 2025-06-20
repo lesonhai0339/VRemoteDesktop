@@ -36,11 +36,18 @@ namespace RemoteClient.Remote
                 {
                     if (_previousFrame == null)
                     {
+
                         // First capture - send full screen
+                        byte[] compressedData = null;
+                        using (var stream = new MemoryStream())
+                        {
+                            currentScreen.Save(stream, ImageFormat.Jpeg);
+                            compressedData = stream.ToArray();
+                        }
                         CaptureCell cell = new CaptureCell
                         {
                             Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                            Bytes = Utils.BitmapToByteArray(currentScreen)
+                            Bytes = compressedData
                         };
                         cells.Add(cell);
 
