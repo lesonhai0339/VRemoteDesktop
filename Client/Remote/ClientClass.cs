@@ -82,11 +82,6 @@ namespace RemoteClient.Remote
                 Array.Copy(cell.Bytes, sourceOffset, bytes, headers, copyLength);
 
                 Send(Enums.DataType.P2PDATASEND,  bytes);
-                Console.WriteLine("Sent: "+ bytes.Length);
-                if (i < numberOfChunk - 1) // Không delay chunk cuối
-                {
-                    Thread.Sleep(100);
-                }
             }
 
         }

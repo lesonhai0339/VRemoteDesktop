@@ -78,7 +78,7 @@ namespace RemoteServer
         }
         public async Task StartReceiving()
         {
-            byte[] buffer = new byte[8192];
+            byte[] buffer = new byte[1024];
 
             try
             {
