@@ -179,6 +179,10 @@ namespace RemoteClient.Remote
                         p2PDataSendSuccess();
                     }
                     break;
+                case 40:
+                    //chunk send
+                    ProcessP2PChunk(data);
+                    break;
                 case 90:
                     Console.WriteLine("P2P connect error");
                     break;
@@ -190,6 +194,11 @@ namespace RemoteClient.Remote
                 default:
                     break;
             }
+        }
+
+        private void ProcessP2PChunk(byte[] data)
+        {
+            Console.WriteLine("Chunk Received: " + data.Length);
         }
 
         private void ProcessP2pDataReceived(byte[] data)
