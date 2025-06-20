@@ -50,13 +50,14 @@ namespace RemoteClient.Remote
         #region Functions
         private void SendScreen(object state)
         {
-            Console.WriteLine("Send Screen");
-            Bitmap screen = Utils.CaptureScreen();
-            byte[] data = Utils.BitmapToByteArray(screen);
-            bool isSent = Send(Enums.DataType.P2PDATASEND, data);
-            if (!isSent)
+            var a = CaptureScreen.GetScreen();
+            if (a.Any())
             {
-                Console.WriteLine("Send error");
+                bool isSent = Send(Enums.DataType.P2PDATASEND, a[0].Bytes);
+                if (!isSent)
+                {
+                    Console.WriteLine("Send error");
+                }
             }
         }
         private bool Send(Enums.DataType type, byte[] data, int timeout = 5)

@@ -17,8 +17,6 @@ namespace RemoteClient.Remote
     public partial class FormMain : Form
     {
 
-        private System.Threading.Timer _test;
-
         private bool _isP2PConnected;
         private System.Threading.Timer _pingTimer;
         private SocketRemoteClient _client;
@@ -39,19 +37,6 @@ namespace RemoteClient.Remote
             this.panel1.Paint += Panel1_Paint;
             this.lbConnectStatus.Text = "Chưa kết nối";
             _isP2PConnected = false;
-        }
-        private void test(object state)
-        {
-            var a = CaptureScreen.GetScreen();
-            if (!a.Any())
-            {
-                Console.WriteLine("No screen data captured.");
-            }
-            else
-            {
-                Console.WriteLine($"Captured {a.Count} screen data items.");
-                Console.WriteLine(a[0].Bytes.Length);
-            }
         }
         #region Properties
         public Info Me
@@ -116,7 +101,6 @@ namespace RemoteClient.Remote
         private void FormMain_Shown(object sender, EventArgs e)
         {
             ConnectToServer();
-            _test = new System.Threading.Timer(test, null, 0, 100);
         }
         private void button1_Click(object sender, EventArgs e)
         {
