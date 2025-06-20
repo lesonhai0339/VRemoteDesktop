@@ -129,7 +129,7 @@ namespace RemoteClient.Remote
         internal static List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
         {
             var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 64;
+            const int blockSize = 16;
 
             // Parallel processing for better performance
             var regions = new List<Rectangle>();
