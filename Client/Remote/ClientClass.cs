@@ -53,14 +53,14 @@ namespace RemoteClient.Remote
             var a = CaptureScreen.GetScreen();
             if (a.Any())
             {
-                Send(Enums.DataType.P2PDATASEND, new byte[] { 40 });
+                Send(Enums.DataType.P2PDATASEND, new byte[] { });
                 Console.WriteLine("Send Screen");
                 bool isSent = Send(Enums.DataType.P2PDATASEND, a[0].Bytes.Take(4096).ToArray());
                 if (!isSent)
                 {
                     Console.WriteLine("Send error");
                 }
-                Send(Enums.DataType.P2PDATASEND, new byte[] { 41 });
+                Send(Enums.DataType.P2PDATASEND, new byte[] { });
 
             }
         }
