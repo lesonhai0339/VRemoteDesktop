@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -51,7 +52,12 @@ namespace RemoteClient.Remote
         }
         private void ScreenEvent(byte[] data)
         {
-            throw new NotImplementedException();
+            Bitmap image;
+            using (MemoryStream stream = new MemoryStream(data))
+            {
+                image = new Bitmap(stream);
+            }
+            vPictureBox1.Image = image;
         }
         public void KeyDownEventHandler(object sender, KeyEventArgs e)
         {
@@ -72,6 +78,11 @@ namespace RemoteClient.Remote
         public void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
             Console.WriteLine($"Mouse Wheel: {e.Location}");
+        }
+
+        private void vPictureBox1_Click(object sender, EventArgs e)
+        {
+
         }
         //protected override void WndProc(ref Message m)
         //{

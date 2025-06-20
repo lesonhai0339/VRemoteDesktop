@@ -89,34 +89,34 @@ namespace RemoteClient.Remote
 				return;
 			}
 		}
-		protected override void WndProc(ref Message m)
-        {
-			if (m.Msg == 7)
-			{
-				this.OnEnter(new EventArgs());
-			}
-			else if (m.Msg == 528 && (m.WParam.ToInt32() == 513 || m.WParam.ToInt32() == 516))
-			{
-				if (!base.ContainsFocus)
-				{
-					this.OnEnter(new EventArgs());
-				}
-			}
-			else if (m.Msg == 2 && !base.IsDisposed && !base.Disposing)
-			{
-				base.Dispose();
-			}
-			else
-			{
-				if (m.Msg == 135)
-				{
-					base.WndProc(ref m);
-					m.Result = new IntPtr(4);
-					return;
-				}
-				this.ProcessWndProc(m.Msg, (int)m.WParam, (int)m.LParam);
-			}
-			base.WndProc(ref m);
-		}
+		// protected override void WndProc(ref Message m)
+        // {
+			// if (m.Msg == 7)
+			// {
+				// this.OnEnter(new EventArgs());
+			// }
+			// else if (m.Msg == 528 && (m.WParam.ToInt32() == 513 || m.WParam.ToInt32() == 516))
+			// {
+				// if (!base.ContainsFocus)
+				// {
+					// this.OnEnter(new EventArgs());
+				// }
+			// }
+			// else if (m.Msg == 2 && !base.IsDisposed && !base.Disposing)
+			// {
+				// base.Dispose();
+			// }
+			// else
+			// {
+				// if (m.Msg == 135)
+				// {
+					// base.WndProc(ref m);
+					// m.Result = new IntPtr(4);
+					// return;
+				// }
+				// this.ProcessWndProc(m.Msg, (int)m.WParam, (int)m.LParam);
+			// }
+			// base.WndProc(ref m);
+		// }
     }
 }

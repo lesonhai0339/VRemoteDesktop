@@ -31,7 +31,6 @@ namespace RemoteClient.Remote
         private void InitializeComponent()
         {
             this.vPictureBox1 = new RemoteClient.Remote.VPictureBox();
-            this.vKeyboardReceived1 = new RemoteClient.Remote.VKeyboardReceived();
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -42,20 +41,13 @@ namespace RemoteClient.Remote
             this.vPictureBox1.Size = new System.Drawing.Size(776, 426);
             this.vPictureBox1.TabIndex = 0;
             this.vPictureBox1.TabStop = false;
-            // 
-            // vKeyboardReceived1
-            // 
-            this.vKeyboardReceived1.Location = new System.Drawing.Point(788, 444);
-            this.vKeyboardReceived1.Name = "vKeyboardReceived1";
-            this.vKeyboardReceived1.Size = new System.Drawing.Size(10, 10);
-            this.vKeyboardReceived1.TabIndex = 1;
+            this.vPictureBox1.Click += new System.EventHandler(this.vPictureBox1_Click);
             // 
             // FormRemote
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(800, 450);
-            this.Controls.Add(this.vKeyboardReceived1);
             this.Controls.Add(this.vPictureBox1);
             this.Name = "FormRemote";
             this.Text = "FormRemote";
@@ -68,6 +60,5 @@ namespace RemoteClient.Remote
         #endregion
 
         private VPictureBox vPictureBox1;
-        private VKeyboardReceived vKeyboardReceived1;
     }
 }
