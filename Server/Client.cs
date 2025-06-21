@@ -27,6 +27,7 @@ namespace RemoteServer
         {
             Socket = sck;
             Callback = callback;
+            _lastSendTime = DateTime.Now;
             _onDisconnected = onDisconnected;
             CheckTimeout();
         }
