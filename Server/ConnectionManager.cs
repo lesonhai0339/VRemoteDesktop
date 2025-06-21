@@ -184,7 +184,7 @@ namespace RemoteServer
             IPEndPoint ep = client.Socket.RemoteEndPoint as IPEndPoint;
             byte[] byteData = new byte[data.Length - 1];
             Array.Copy(data, 1, byteData, 0, data.Length - 1);
-            var login = Encoding.ASCII.GetString(byteData).Split('|');
+            var login = Encoding.ASCII.GetString(byteData).Replace(" ","").Split('|');
             if(login.Length != 7)
             {
                 flag = false;
