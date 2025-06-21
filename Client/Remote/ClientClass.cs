@@ -52,8 +52,8 @@ namespace RemoteClient.Remote
         private void SendChunk(CaptureCell cell)
         {
             //only send 1024 byte each packet and 1 byte using for type then the real data can send is 1023 bytes
-            int dataSize = 1023 -18; //data 1023 
-            int headers = 18; //header for type(1) + x(4) + y(4) + width(4) + height(4) + index(1)
+            int headers = 22; //header for type(1) + x(4) + y(4) + width(4) + height(4) + index(1) + chunkSize(4)
+            int dataSize = 1023 - headers; //data 
             int chunkSize = dataSize + headers;
 
             //int x = cell.Bytes.Length % 1023;
@@ -67,22 +67,27 @@ namespace RemoteClient.Remote
 
             for (int i =0; i< numberOfChunk; i++)
             {
-                byte[] bytes = new byte[chunkSize];
+                byte[] packet = new byte[chunkSize];
 
                 //headers
-                bytes[0] = 40; //type, chunksend
-                Array.Copy(xBytes, 0, bytes, 1, 4);      // X: bytes[1-4]
-                Array.Copy(yBytes, 0, bytes, 5, 4);      // Y: bytes[5-8]
-                Array.Copy(widthBytes, 0, bytes, 9, 4);  // Width: bytes[9-12]
-                Array.Copy(heightBytes, 0, bytes, 13, 4); // Height: bytes[13-16]
-                bytes[17] = (byte)i;//chunk index
+                packet[0] = 40; //type, chunksend
+                Array.Copy(xBytes, 0, packet, 1, 4);      // X: bytes[1-4]
+                Array.Copy(yBytes, 0, packet, 5, 4);      // Y: bytes[5-8]
+                Array.Copy(widthBytes, 0, packet, 9, 4);  // Width: bytes[9-12]
+                Array.Copy(heightBytes, 0, packet, 13, 4); // Height: bytes[13-16]
+                packet[17] = (byte)i;//chunk index
 
-                //data
                 int sourceOffset = i * dataSize;
                 int copyLength = Math.Min(dataSize, cell.Bytes.Length - sourceOffset);
-                Array.Copy(cell.Bytes, sourceOffset, bytes, headers, copyLength);
 
-                Send(Enums.DataType.P2PDATASEND,  bytes);
+                //chunkSize
+                byte[] dataLengthBytes = BitConverter.GetBytes(copyLength);
+                Array.Copy(dataLengthBytes, 0, packet, 18, 4);
+
+                //data
+                Array.Copy(cell.Bytes, sourceOffset, packet, headers, copyLength);
+
+                Send(Enums.DataType.P2PDATASEND, packet);
             }
 
         }

@@ -104,7 +104,7 @@ namespace RemoteServer
             {
                 while (true)
                 {
-                    //always receive 1024 bytes
+                    //always wait until received 1024 bytes
                     byte[] buffer = new byte[bufferSize];
                     int totalRead = 0;
                     while(totalRead < bufferSize)
@@ -123,6 +123,7 @@ namespace RemoteServer
                     var dataCopy = new byte[totalRead];
                     Array.Copy(buffer, 0, dataCopy, 0, totalRead);
 
+                    //fire-and-forget process data
                     _ = Task.Run(async () =>
                     {
                         try
