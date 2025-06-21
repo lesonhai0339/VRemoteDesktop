@@ -51,12 +51,13 @@ namespace RemoteClient.Remote
         }
         private void SendChunk(CaptureCell cell)
         {
-            int dataSize = 1024 -18 ; //data 1024 
+            //only send 1024 byte each packet and 1 byte using for type then the real data can send is 1023 bytes
+            int dataSize = 1023 -18; //data 1023 
             int headers = 18; //header for type(1) + x(4) + y(4) + width(4) + height(4) + index(1)
             int chunkSize = dataSize + headers;
 
-            //int x = cell.Bytes.Length % 1024;
-            //int numberOfChunkx = (cell.Bytes.Length / 1024) + (cell.Bytes.Length % 1024 > 0 ? 1 : 0);
+            //int x = cell.Bytes.Length % 1023;
+            //int numberOfChunkx = (cell.Bytes.Length / 1023) + (cell.Bytes.Length % 1023 > 0 ? 1 : 0);
             int numberOfChunk = (int)Math.Ceiling((double)cell.Bytes.Length / dataSize);
 
             byte[] xBytes = BitConverter.GetBytes(cell.Rectangle.X);

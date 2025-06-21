@@ -17,7 +17,31 @@ namespace RemoteClient.Remote
 		private static string digits = "0123456789";
 		private static bool bool_0 = false;
 		internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
-		internal static Info InitInfo()
+		//add padding byte(0x20) to output data = length
+		internal static byte[] AddPaddingToBytes(byte[] sourceByte , int length = 1024)
+		{
+            byte[] bytes = new byte[length];
+            int byteNeededToAdd = Math.Max(0, length - sourceByte.Length);
+			if(sourceByte.Length > length)
+			{
+                throw new ArgumentException("Data is bigger than buffer size", nameof(sourceByte));
+            }
+            if (byteNeededToAdd == 0)
+			{
+				return sourceByte;
+			}
+			else
+			{
+				Array.Copy(sourceByte, 0, bytes, 0, sourceByte.Length);
+                // can use Array.Fill(bytes, (byte)0x20, sourceByte.Length, byteNeededToAdd); if using .net core  
+                for (int i =0; i < byteNeededToAdd; i++)
+				{
+					bytes[sourceByte.Length + i] = 0x20;
+				}
+			}
+			return bytes;
+        }
+        internal static Info InitInfo()
         {
 			var computerName = Environment.MachineName;
 			int width = Screen.PrimaryScreen.Bounds.Width;

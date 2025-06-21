@@ -77,9 +77,10 @@ namespace RemoteClient.Remote
         {
             try
             {
-                byte[] dataSend = new byte[1 + data.Length];
-                dataSend[0] = (byte)type;
-                Array.Copy(data, 0, dataSend, 1, data.Length);
+                byte[] bytes = new byte[1 + data.Length];
+                bytes[0] = (byte)type;
+                Array.Copy(data, 0, bytes, 1, data.Length);
+                byte[] dataSend = Utils.AddPaddingToBytes(bytes);
                 Socket.BeginSend(dataSend, 0, dataSend.Length, SocketFlags.None, null, null);
             }
             catch(SocketException ex)
