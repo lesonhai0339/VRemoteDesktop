@@ -30,14 +30,14 @@ namespace RemoteServer
             {
                 if(data.Length == 0)
                 {
-                    await client.Socket.SendAsync(ProcessSendCommand(98), SocketFlags.None);
+                    await client.Socket.SendAsync(ProcessSend(98), SocketFlags.None);
                 }
                 int dataType = data[0];
                 switch (dataType)
                 {
                     case 0:
                         //ping
-                        await client.Socket.SendAsync(ProcessSendCommand(0), SocketFlags.None);
+                        await client.Socket.SendAsync(ProcessSend(0), SocketFlags.None);
                         break;
                     case 1:
                         //login
@@ -45,11 +45,11 @@ namespace RemoteServer
                         ProcessLogin(client, data, ref loginFlag);
                         if (loginFlag)
                         {
-                            await client.Socket.SendAsync(ProcessSendCommand(1), SocketFlags.None);
+                            await client.Socket.SendAsync(ProcessSend(1), SocketFlags.None);
                         }
                         else
                         {
-                            await client.Socket.SendAsync(ProcessSendCommand(97), SocketFlags.None);
+                            await client.Socket.SendAsync(ProcessSend(97), SocketFlags.None);
                         }
                         break;
                     case 2:
@@ -57,7 +57,7 @@ namespace RemoteServer
                         bool p2pFlag = await  ProcessP2PConnect(client, data);
                         if (!p2pFlag)
                         {
-                            await client.Socket.SendAsync(ProcessSendCommand(99), SocketFlags.None);
+                            await client.Socket.SendAsync(ProcessSend(99), SocketFlags.None);
                         }
                         break;
                     case 3:
@@ -70,15 +70,27 @@ namespace RemoteServer
             }
             catch
             {
-                await client.Socket.SendAsync(ProcessSendCommand(99), SocketFlags.None);
+                await client.Socket.SendAsync(ProcessSend(99), SocketFlags.None);
             }
         }
-        private ArraySegment<byte> ProcessSendCommand(byte command)
+        private ArraySegment<byte> ProcessSend(object data)
         {
-            byte[] commandAddedPadding = Utils.AddPaddingToBytes(new byte[] { command });
+            byte[] dataBytes;
+            if (data is byte b)
+            {
+                dataBytes = new byte[] { b };
+            }
+            else if (data is byte[] arr)
+            {
+                dataBytes = arr;
+            }
+            else
+            {
+                throw new ArgumentException("Data must be of type byte or byte[]");
+            }
+            byte[] commandAddedPadding = Utils.AddPaddingToBytes(dataBytes);
             return new ArraySegment<byte>(commandAddedPadding);
         }
-
         private async void ProcessP2PDataSend(Client client, byte[] data)
         {
             try
@@ -149,19 +161,20 @@ namespace RemoteServer
                     Remote = me,
                     Client = remoteClient
                 };
-                await me.Client.Socket.SendAsync(new ArraySegment<byte>(
-                    new byte[] { 10}
+                byte[] meDataSend = new byte[] { 10 }
                     .Concat(Encoding.ASCII.GetBytes($"{sessionId}|"))
                     .Concat(Encoding.ASCII.GetBytes(remoteClient.ToString()))
-                    .ToArray()), 
-                    SocketFlags.None);
+                    .ToArray();
+                var meDataPadded = ProcessSend(meDataSend);
+                await me.Client.Socket.SendAsync(meDataPadded, SocketFlags.None);
 
-                await remoteClient.Client.Socket.SendAsync(new ArraySegment<byte>(
-                    new byte[] {11}
+                byte[] remoteDataSend = new byte[] { 11 }
                     .Concat(Encoding.ASCII.GetBytes($"{sessionId}|"))
                     .Concat(Encoding.ASCII.GetBytes(me.ToString()))
-                    .ToArray()),
-                    SocketFlags.None);
+                    .ToArray();
+                var remoteDataPadded = ProcessSend(remoteDataSend);
+                await remoteClient.Client.Socket.SendAsync(remoteDataPadded, SocketFlags.None);
+
             }
             return true;
         }
