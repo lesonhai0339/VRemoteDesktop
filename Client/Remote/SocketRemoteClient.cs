@@ -126,11 +126,18 @@ namespace RemoteClient.Remote
                 Socket workSocket = stateObject.WorkSocket;
                 int num = Socket.EndReceive(asyncResult);
                 if (num > 0)
-                {
-                    byte[] dataBytes = new byte[num];
-                    Buffer.BlockCopy(stateObject.Buffer, 0, dataBytes, 0, num);
+                {  
+                    stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0 , num);
 
-                    ProcessDataReceived(stateObject, dataBytes);
+                    while (stateObject.ByteArrayBuilder.Length >= 1024)
+                    {
+                        Console.Write("enough 1024 bytes");
+                        // Lấy 1024 bytes đầu tiên
+                        byte[] dataBytes = stateObject.ByteArrayBuilder.lsByte.ToArray();
+                        ProcessDataReceived(stateObject, dataBytes);
+
+                        stateObject.ByteArrayBuilder.Clear();
+                    }
                 }
                 workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, Callback, stateObject);
             }
@@ -146,9 +153,7 @@ namespace RemoteClient.Remote
 
         private void ProcessDataReceived(StateObject stateObject, byte[] data)
         {
-            Console.WriteLine(data.Length);
             int response = data[0];
-            Console.WriteLine($"----{response}------");
             switch (response)
             {
                 case 0:

@@ -32,21 +32,21 @@ namespace RemoteClient
 
         #endregion
         #region Functions
-        public void Append(byte[] byteArray, int int0, int int1)
+        public void Append(byte[] data, int offset, int length)
         {
             checked
             {
-                if (int1 != 0)
+                if (length != 0)
                 {
                     int count = lsByte.Count;
-                    lsByte.AddRange(byteArray);
-                    if (byteArray.Length != int1)
+                    lsByte.AddRange(data);
+                    if (data.Length != length)
                     {
-                        lsByte.RemoveRange(count + int0 + int1, byteArray.Length - int1 - int0);
+                        lsByte.RemoveRange(count + offset + length, data.Length - length - offset);
                     }
-                    if (int0 != 0)
+                    if (offset != 0)
                     {
-                        lsByte.RemoveRange(count, int0);
+                        lsByte.RemoveRange(count, offset);
                     }
                 }
             }
