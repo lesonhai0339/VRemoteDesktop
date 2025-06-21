@@ -30,14 +30,14 @@ namespace RemoteServer
             {
                 if(data.Length == 0)
                 {
-                    await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 98}), SocketFlags.None);
+                    await client.Socket.SendAsync(ProcessSendCommand(98), SocketFlags.None);
                 }
                 int dataType = data[0];
                 switch (dataType)
                 {
                     case 0:
                         //ping
-                        await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 1 }), SocketFlags.None);
+                        await client.Socket.SendAsync(ProcessSendCommand(0), SocketFlags.None);
                         break;
                     case 1:
                         //login
@@ -45,11 +45,11 @@ namespace RemoteServer
                         ProcessLogin(client, data, ref loginFlag);
                         if (loginFlag)
                         {
-                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 2 }), SocketFlags.None);
+                            await client.Socket.SendAsync(ProcessSendCommand(1), SocketFlags.None);
                         }
                         else
                         {
-                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 97 }), SocketFlags.None);
+                            await client.Socket.SendAsync(ProcessSendCommand(97), SocketFlags.None);
                         }
                         break;
                     case 2:
@@ -57,7 +57,7 @@ namespace RemoteServer
                         bool p2pFlag =await  ProcessP2PConnect(client, data);
                         if (!p2pFlag)
                         {
-                            await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 99 }), SocketFlags.None);
+                            await client.Socket.SendAsync(ProcessSendCommand(99), SocketFlags.None);
                         }
                         break;
                     case 3:
@@ -70,8 +70,13 @@ namespace RemoteServer
             }
             catch
             {
-                await client.Socket.SendAsync(new ArraySegment<byte>(new byte[] { 99 }), SocketFlags.None);
+                await client.Socket.SendAsync(ProcessSendCommand(99), SocketFlags.None);
             }
+        }
+        private ArraySegment<byte> ProcessSendCommand(byte command)
+        {
+            byte[] commandAddedPadding = Utils.AddPaddingToBytes(new byte[] { command });
+            return new ArraySegment<byte>(commandAddedPadding);
         }
 
         private async void ProcessP2PDataSend(Client client, byte[] data)

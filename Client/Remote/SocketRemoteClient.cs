@@ -151,10 +151,10 @@ namespace RemoteClient.Remote
             Console.WriteLine($"----{response}------");
             switch (response)
             {
-                case 1:
+                case 0:
                     Console.WriteLine("Ping successfully");
                     break;
-                case 2:
+                case 1:
                     Console.WriteLine("Login successfully");
                     LoginEvent loginEvent = LoginEventHandler;
                     if(loginEvent != null)
