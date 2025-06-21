@@ -136,6 +136,7 @@ namespace RemoteServer
             IPEndPoint ep = client.Socket.RemoteEndPoint as IPEndPoint;
             byte[] byteData = new byte[data.Length - 1];
             Array.Copy(data, 1, byteData, 0, data.Length - 1);
+            Console.WriteLine(byteData.Take(10));
             var remote = Encoding.ASCII.GetString(byteData).Replace(" ","").Split('|'); //remove padding 0x20(space)
             if (remote.Length != 3)
             {
