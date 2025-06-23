@@ -212,7 +212,7 @@ namespace RemoteClient.Remote
                 byte[] screen = data.Skip(2).ToArray();
 
             }
-            if(dataType == 40)
+            else if(dataType == 40)
             {
                 //send chunks
                 var xBytes = data.Skip(2).Take(4).ToArray();
@@ -226,6 +226,13 @@ namespace RemoteClient.Remote
                 Console.WriteLine(BitConverter.ToString(yBytes));
                 Console.WriteLine(BitConverter.ToString(width));
                 Console.WriteLine(BitConverter.ToString(height));
+
+                stateObject.data.Add(data.Skip(23).Take(BitConverter.ToInt32(chunkSize, 0)).ToArray());
+            }
+            else if(dataType == 41)
+            {
+                Console.WriteLine("End screen");
+                Console.WriteLine($"Data Length: {stateObject.data.ToArray().Length}");
             }
         }
 

@@ -20,7 +20,7 @@ namespace RemoteClient.Remote
         {
             Client = remoteCLient;
             _connectionInfo = info;
-            _timer = new Timer(SendScreen, null, 0, 1000);
+            _timer = new Timer(SendScreen, null, 0, 100000);
         }
         #region Properties
         public SocketRemoteClient Client
@@ -48,6 +48,7 @@ namespace RemoteClient.Remote
                 {
                     SendChunk(cell);
                 }
+                Send(Enums.DataType.P2PDATASEND, new byte[] { 41});
             }
         }
         private void SendChunk(CaptureCell cell)
@@ -67,10 +68,10 @@ namespace RemoteClient.Remote
             byte[] heightBytes = BitConverter.GetBytes(cell.Rectangle.Height);
 
 
-            Console.WriteLine(BitConverter.ToString(xBytes));
-            Console.WriteLine(BitConverter.ToString(yBytes));
-            Console.WriteLine(BitConverter.ToString(widthBytes));
-            Console.WriteLine(BitConverter.ToString(heightBytes));
+            //Console.WriteLine(BitConverter.ToString(xBytes));
+            //Console.WriteLine(BitConverter.ToString(yBytes));
+            //Console.WriteLine(BitConverter.ToString(widthBytes));
+            //Console.WriteLine(BitConverter.ToString(heightBytes));
 
             for (int i =0; i< numberOfChunk; i++)
             {
@@ -93,7 +94,7 @@ namespace RemoteClient.Remote
 
                 //data
                 Array.Copy(cell.Bytes, sourceOffset, packet, headers, copyLength);
-                Console.WriteLine($"X: {packet[0]} - {packet[1]}");
+                //Console.WriteLine($"X: {packet[0]} - {packet[1]}");
                 Send(Enums.DataType.P2PDATASEND, packet);
             }
 
