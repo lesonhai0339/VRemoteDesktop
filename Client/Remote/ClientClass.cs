@@ -95,7 +95,10 @@ namespace RemoteClient.Remote
 
                 //data
                 Array.Copy(cell.Bytes, sourceOffset, packet, headers, copyLength);
-                Console.WriteLine($"Chunk: "+ copyLength);
+                if(((i + 1) % 5) == 0)
+                {
+                    Thread.Sleep(1);
+                }
                 Send(Enums.DataType.P2PDATASEND, packet);
             }
 
