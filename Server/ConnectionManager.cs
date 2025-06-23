@@ -80,6 +80,10 @@ namespace RemoteServer
             {
                 dataBytes = new byte[] { b };
             }
+            else if(data is int c)
+            {
+                dataBytes = new byte[] { (byte)c };
+            }
             else if (data is byte[] arr)
             {
                 dataBytes = arr;
