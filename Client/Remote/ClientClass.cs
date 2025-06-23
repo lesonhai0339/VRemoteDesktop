@@ -86,7 +86,7 @@ namespace RemoteClient.Remote
 
                 //data
                 Array.Copy(cell.Bytes, sourceOffset, packet, headers, copyLength);
-
+                Console.WriteLine($"X: {packet[0]} - {packet[1]}");
                 Send(Enums.DataType.P2PDATASEND, packet);
             }
 
