@@ -18,10 +18,19 @@ namespace RemoteClient.Remote
         public FormRemote(SocketRemoteClient client, ConnectionInfo remoteData)
         {
             InitializeComponent();
-            _client = client;
+            Client = client;
             _connectionInfo = remoteData;
             Text = _connectionInfo.PartnerInfo.Id.Trim();
             //Icon = new Icon("Resources/logo.ico");
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.ClientSize = new Size(remoteData.PartnerInfo.Width, remoteData.PartnerInfo.Height);
+
+            // Create and configure PictureBox
+            vPictureBox1.Size = new Size(remoteData.PartnerInfo.Width, remoteData.PartnerInfo.Height);
+            vPictureBox1.Location = new Point(0, 0);
+            vPictureBox1.SizeMode = PictureBoxSizeMode.StretchImage;
 
             KeyDown += KeyDownEventHandler;
             KeyUp += KeyUpEventHandler;
@@ -33,9 +42,9 @@ namespace RemoteClient.Remote
         public SocketRemoteClient Client
         {
             get => _client;
-            private set
+            set
             {
-                if (_client != value)
+                if (_client != null)
                 {
                     _client.SendScreenEventHandler -= ScreenEvent;
                 }
@@ -50,8 +59,9 @@ namespace RemoteClient.Remote
         private void FormRemote_Load(object sender, EventArgs e)
         {
         }
-        private void ScreenEvent(byte[] data)
+        public void ScreenEvent(byte[] data)
         {
+            Console.WriteLine(BitConverter.ToString(data));
             Bitmap image;
             using (MemoryStream stream = new MemoryStream(data))
             {
