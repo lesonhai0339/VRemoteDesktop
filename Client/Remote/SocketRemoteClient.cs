@@ -160,12 +160,7 @@ namespace RemoteClient.Remote
 
                     while (!CancellationToken.IsCancellationRequested)
                     {
-                        if (num == 1)
-                        {
-                            ProcessDataReceived(stateObject.ByteArrayBuilder.Cut(1).ToArray(), stateObject);
-                            goto IL_163;
-                        }
-                        if (stateObject.ByteArrayBuilder.Length.Equals(4))
+                        if (!(stateObject.ByteArrayBuilder.Length >= 4))
                         {
                             goto IL_163;
                         }
