@@ -72,6 +72,12 @@ namespace RemoteClient.Remote
             byte[] widthBytes = BitConverter.GetBytes(cell.Rectangle.Width);
             byte[] heightBytes = BitConverter.GetBytes(cell.Rectangle.Height);
 
+
+            Console.WriteLine(BitConverter.ToString(xBytes));
+            Console.WriteLine(BitConverter.ToString(yBytes));
+            Console.WriteLine(BitConverter.ToString(widthBytes));
+            Console.WriteLine(BitConverter.ToString(heightBytes));
+
             for (int i =0; i< numberOfChunk; i++)
             {
                 byte[] packet = new byte[chunkSize];

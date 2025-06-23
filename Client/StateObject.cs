@@ -11,20 +11,16 @@ namespace RemoteClient
         public StateObject()
         {
             WorkSocket = null;
-            Buffer = new byte[1024];
+            Buffer = new byte[1025];
             ByteArrayBuilder = new ByteArrayBuilder();
             ColPendingContinousPacket = new Dictionary<byte, ByteArrayBuilder>();
             SckId = "";
-            ReceiveSize = 0;
         }
         public Socket WorkSocket;
         public const int BufferSize = 1024;
         public byte[] Buffer;
         public ByteArrayBuilder ByteArrayBuilder;
         public Dictionary<byte, ByteArrayBuilder> ColPendingContinousPacket;
-
-        public int ReceiveSize;
-        public byte[] ReceivedData;
 
         public string SckId;
         public EnumP2PType P2P_Type;

@@ -132,10 +132,8 @@ namespace RemoteClient.Remote
                     while (stateObject.ByteArrayBuilder.Length >= 1024)
                     {
                         // Lấy 1024 bytes đầu tiên
-                        byte[] dataBytes = stateObject.ByteArrayBuilder.Cut(1024).ToArray();
-                        Console.WriteLine($"enough 1024 bytes - {dataBytes[0]} - {dataBytes.Length}");
 
-                        ProcessDataReceived(stateObject, dataBytes);
+                        ProcessDataReceived(stateObject);
                     }
                 }
                 workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, Callback, stateObject);
@@ -150,8 +148,9 @@ namespace RemoteClient.Remote
             }
         }
 
-        private void ProcessDataReceived(StateObject stateObject, byte[] data)
+        private void ProcessDataReceived(StateObject stateObject)
         {
+            byte[] data = stateObject.ByteArrayBuilder.Cut(1024).ToArray();
             int response = data[0];
             switch (response)
             {
@@ -171,7 +170,7 @@ namespace RemoteClient.Remote
                     break;
                 case 3:
                     Console.WriteLine("P2P Data received 3");
-                    ProcessP2PDataReceived(stateObject, data.Skip(1).ToArray());
+                    ProcessP2PDataReceived(stateObject, data);
                     break;
                 case 20:
                     Console.WriteLine("P2P Data received");
@@ -207,31 +206,26 @@ namespace RemoteClient.Remote
 
         private void ProcessP2PDataReceived(StateObject stateObject, byte[] data)
         {
-            int dataType = data[0];
+            int dataType = data[1];
             if(dataType == 1)
             {
-                //Common headers, number of chunks, data size
-                int screenSize = BitConverter.ToInt32(data, 1);
-                stateObject.ReceiveSize = screenSize;
-                stateObject.ReceivedData = new byte[screenSize];
-                Console.WriteLine($"Screen Size: {screenSize}");
+                byte[] screen = data.Skip(2).ToArray();
 
             }
             if(dataType == 40)
             {
-                Console.WriteLine("Send Screen");
-                byte[] headers = data.Take(22).ToArray();
-                byte[] dataBytes = data.Skip(22).ToArray();
-                
-                Array.Copy(dataBytes, 0, stateObject.ReceivedData, stateObject.ReceiveSize - dataBytes.Length, dataBytes.Length);
-                if(stateObject.ReceivedData.Length >= stateObject.ReceiveSize)
-                {
-                    Console.WriteLine($"Nhan du data: {stateObject.ReceivedData.Length} - {stateObject.ReceiveSize}");
+                //send chunks
+                var xBytes = data.Skip(2).Take(4).ToArray();
+                var yBytes = data.Skip(6).Take(4).ToArray();
+                var width = data.Skip(10).Take(4).ToArray();
+                var height = data.Skip(14).Take(4).ToArray();
+                var chunkIndex = data.Skip(18).Take(1).ToArray();
+                var chunkSize = data.Skip(19).Take(4).ToArray();
 
-                }
-
-                Console.WriteLine($"Headers: {headers.Length}");
-                Console.WriteLine($"Data: {dataBytes.Length}");
+                Console.WriteLine(BitConverter.ToString(xBytes));
+                Console.WriteLine(BitConverter.ToString(yBytes));
+                Console.WriteLine(BitConverter.ToString(width));
+                Console.WriteLine(BitConverter.ToString(height));
             }
         }
 
