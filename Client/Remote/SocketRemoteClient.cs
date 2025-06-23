@@ -133,7 +133,7 @@ namespace RemoteClient.Remote
                     {
                         // Lấy 1024 bytes đầu tiên
                         byte[] dataBytes = stateObject.ByteArrayBuilder.lsByte.ToArray();
-                        Console.WriteLine($"enough 1024 bytes - {dataBytes.Take(1)}");
+                        Console.WriteLine($"enough 1024 bytes - {dataBytes[0]}");
 
                         ProcessDataReceived(stateObject, dataBytes);
 
