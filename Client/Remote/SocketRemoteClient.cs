@@ -221,8 +221,6 @@ namespace RemoteClient.Remote
                 var chunkIndex = data.Skip(18).Take(1).ToArray();
                 var chunkSize = data.Skip(19).Take(4).ToArray();
 
-                Console.WriteLine("Chunk: "+ BitConverter.ToInt32(chunkSize, 0));
-
                 stateObject.data.Add(data.Skip(23).Take(BitConverter.ToInt32(chunkSize, 0)).ToArray());
             }
             else if(dataType == 41)
@@ -230,6 +228,11 @@ namespace RemoteClient.Remote
                 Console.WriteLine("End screen");
                 byte[] xxxx = stateObject.data.SelectMany(x => x).ToArray();
                 Console.WriteLine($"Data Length: {xxxx.Length}");
+                SendScreenEvent sendScreenEvent = SendScreenEventHandler;
+                if (sendScreenEvent != null)
+                {
+                    sendScreenEvent(xxxx);
+                }
             }
         }
 
