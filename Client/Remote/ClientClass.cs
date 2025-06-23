@@ -44,6 +44,7 @@ namespace RemoteClient.Remote
             var x = CaptureScreen.GetScreen();
             if (x.Any())
             {
+                Console.WriteLine(x.Sum(cell => cell.Bytes.Length) + " bytes to send");
                 foreach (var cell in x)
                 {
                     SendChunk(cell);

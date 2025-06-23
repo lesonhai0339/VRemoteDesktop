@@ -232,7 +232,8 @@ namespace RemoteClient.Remote
             else if(dataType == 41)
             {
                 Console.WriteLine("End screen");
-                Console.WriteLine($"Data Length: {stateObject.data.ToArray().Length}");
+                byte[] xxxx = stateObject.data.SelectMany(x => x).ToArray();
+                Console.WriteLine($"Data Length: {xxxx.Length}");
             }
         }
 
