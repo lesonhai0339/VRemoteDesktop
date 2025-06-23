@@ -131,7 +131,7 @@ namespace RemoteClient.Remote
 
                     while (stateObject.ByteArrayBuilder.Length >= 1024)
                     {
-                        Console.Write("enough 1024 bytes");
+                        Console.WriteLine("enough 1024 bytes");
                         // Lấy 1024 bytes đầu tiên
                         byte[] dataBytes = stateObject.ByteArrayBuilder.lsByte.ToArray();
                         ProcessDataReceived(stateObject, dataBytes);
