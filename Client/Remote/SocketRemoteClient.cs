@@ -166,14 +166,9 @@ namespace RemoteClient.Remote
                         loginEvent();
                     }
                     break;
-                case 10:
-                    Console.WriteLine("P2P connected Remote");
-                    ProcessP2PConnection(data, true);
-                    break;
-                case 11:
-                    Console.WriteLine("P2P connected Client");
-                    ProcessP2PConnection(data, false);
-                    break;
+                case 2:
+                    ProcessP2PConnection(data);
+                    break; 
                 case 20:
                     Console.WriteLine("P2P Data received");
                     ProcessP2pDataReceived(data);
@@ -211,10 +206,11 @@ namespace RemoteClient.Remote
         {
         }
 
-        private void ProcessP2PConnection(byte[] data, bool isRemote)
+        private void ProcessP2PConnection(byte[] data)
         {
-            byte[] bytesData = new byte[data.Length - 1];
-            Array.Copy(data, 1, bytesData, 0, bytesData.Length);
+            int isRemote = data[1];
+            byte[] bytesData = new byte[data.Length - 2];
+            Array.Copy(data, 2, bytesData, 0, bytesData.Length);
             string[] dataStrings = Encoding.UTF8.GetString(bytesData).Split('|');
             if(dataStrings.Length != 8)
             {
@@ -232,7 +228,7 @@ namespace RemoteClient.Remote
                     MajorVersion = dataStrings[6],
                     MinorVersion = dataStrings[7],
                 });
-            if (isRemote)
+            if (isRemote == 0)
             {
                 P2PConnectEvent p2pConnectEvent = P2PConnectEventHandler;
                 if (p2pConnectEvent != null)
@@ -240,13 +236,17 @@ namespace RemoteClient.Remote
                     p2pConnectEvent(true, connectionInfo);
                 }
             }
-            else
+            else if(isRemote == 1)
             {
                 P2PConnectEvent p2pConnectEvent = P2PConnectEventHandler;
                 if (p2pConnectEvent != null)
                 {
                     p2pConnectEvent(false,connectionInfo);
                 }
+            }
+            else
+            {
+                throw new UnauthorizedAccessException("Error when socket connection");
             }
             Console.WriteLine($"Client Info: {JsonConvert.SerializeObject(connectionInfo, Formatting.Indented)}");
         }

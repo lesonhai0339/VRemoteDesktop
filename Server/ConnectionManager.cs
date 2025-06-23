@@ -166,19 +166,17 @@ namespace RemoteServer
                     Remote = me,
                     Client = remoteClient
                 };
-                byte[] meDataSend = new byte[] { 10 }
+                byte[] meDataSend = new byte[] { 2, 0 }
                     .Concat(Encoding.ASCII.GetBytes($"{sessionId}|"))
                     .Concat(Encoding.ASCII.GetBytes(remoteClient.ToString()))
                     .ToArray();
-                var meDataPadded = ProcessSend(meDataSend);
-                await me.Client.Socket.SendAsync(meDataPadded, SocketFlags.None);
+                await me.Client.Socket.SendAsync(ProcessSend(meDataSend), SocketFlags.None);
 
-                byte[] remoteDataSend = new byte[] { 11 }
+                byte[] remoteDataSend = new byte[] { 2, 1 }
                     .Concat(Encoding.ASCII.GetBytes($"{sessionId}|"))
                     .Concat(Encoding.ASCII.GetBytes(me.ToString()))
                     .ToArray();
-                var remoteDataPadded = ProcessSend(remoteDataSend);
-                await remoteClient.Client.Socket.SendAsync(remoteDataPadded, SocketFlags.None);
+                await remoteClient.Client.Socket.SendAsync(ProcessSend(remoteDataSend), SocketFlags.None);
 
             }
             return true;
