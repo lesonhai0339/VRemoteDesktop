@@ -169,7 +169,6 @@ namespace RemoteClient.Remote
                     ProcessP2PConnection(data);
                     break;
                 case 3:
-                    Console.WriteLine("P2P Data received 3");
                     ProcessP2PDataReceived(stateObject, data);
                     break;
                 case 20:
@@ -222,10 +221,7 @@ namespace RemoteClient.Remote
                 var chunkIndex = data.Skip(18).Take(1).ToArray();
                 var chunkSize = data.Skip(19).Take(4).ToArray();
 
-                Console.WriteLine(BitConverter.ToString(xBytes));
-                Console.WriteLine(BitConverter.ToString(yBytes));
-                Console.WriteLine(BitConverter.ToString(width));
-                Console.WriteLine(BitConverter.ToString(height));
+                Console.WriteLine("Chunk: "+ BitConverter.ToString(chunkSize));
 
                 stateObject.data.Add(data.Skip(23).Take(BitConverter.ToInt32(chunkSize, 0)).ToArray());
             }

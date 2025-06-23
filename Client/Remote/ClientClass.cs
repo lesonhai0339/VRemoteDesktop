@@ -44,7 +44,7 @@ namespace RemoteClient.Remote
             var x = CaptureScreen.GetScreen();
             if (x.Any())
             {
-                Console.WriteLine(x.Sum(cell => cell.Bytes.Length) + " bytes to send");
+                Console.WriteLine(x.Sum(cell => cell.TotalSize) + " bytes to send");
                 foreach (var cell in x)
                 {
                     SendChunk(cell);
@@ -95,7 +95,7 @@ namespace RemoteClient.Remote
 
                 //data
                 Array.Copy(cell.Bytes, sourceOffset, packet, headers, copyLength);
-                //Console.WriteLine($"X: {packet[0]} - {packet[1]}");
+                Console.WriteLine($"Chunk: "+ dataLengthBytes);
                 Send(Enums.DataType.P2PDATASEND, packet);
             }
 
