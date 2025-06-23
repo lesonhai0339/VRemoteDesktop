@@ -48,7 +48,7 @@ namespace RemoteClient.Remote
                 byte[] data = new byte[5];
                 data[0] = 1;
                 Array.Copy(BitConverter.GetBytes(totalSize), 0, data, 1, 4);
-                Send(Enums.DataType.P2PDATASEND, Utils.AddPaddingToBytes(data));
+                Send(Enums.DataType.P2PDATASEND, data);
                 return;
                 foreach (var cell in x)
                 {
