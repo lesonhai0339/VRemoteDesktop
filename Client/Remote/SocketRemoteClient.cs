@@ -212,6 +212,8 @@ namespace RemoteClient.Remote
             {
                 //Common headers, number of chunks, data size
                 int screenSize = BitConverter.ToInt32(data, 1);
+                stateObject.ReceiveSize = screenSize;
+                stateObject.ReceivedData = new byte[screenSize];
                 Console.WriteLine($"Screen Size: {screenSize}");
 
             }
@@ -220,6 +222,13 @@ namespace RemoteClient.Remote
                 Console.WriteLine("Send Screen");
                 byte[] headers = data.Take(22).ToArray();
                 byte[] dataBytes = data.Skip(22).ToArray();
+                
+                Array.Copy(dataBytes, 0, stateObject.ReceivedData, stateObject.ReceiveSize - dataBytes.Length, dataBytes.Length);
+                if(stateObject.ReceivedData.Length >= stateObject.ReceiveSize)
+                {
+                    Console.WriteLine($"Nhan du data: {stateObject.ReceivedData.Length} - {stateObject.ReceiveSize}");
+
+                }
 
                 Console.WriteLine($"Headers: {headers.Length}");
                 Console.WriteLine($"Data: {dataBytes.Length}");

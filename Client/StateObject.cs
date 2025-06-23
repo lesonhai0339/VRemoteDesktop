@@ -15,14 +15,17 @@ namespace RemoteClient
             ByteArrayBuilder = new ByteArrayBuilder();
             ColPendingContinousPacket = new Dictionary<byte, ByteArrayBuilder>();
             SckId = "";
-            ChunksNeedToReceive = 0;
+            ReceiveSize = 0;
         }
         public Socket WorkSocket;
         public const int BufferSize = 1024;
         public byte[] Buffer;
         public ByteArrayBuilder ByteArrayBuilder;
         public Dictionary<byte, ByteArrayBuilder> ColPendingContinousPacket;
-        public int ChunksNeedToReceive;
+
+        public int ReceiveSize;
+        public byte[] ReceivedData;
+
         public string SckId;
         public EnumP2PType P2P_Type;
         public enum EnumP2PType
