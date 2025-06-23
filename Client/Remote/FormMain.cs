@@ -126,7 +126,7 @@ namespace RemoteClient.Remote
             string remoteInfo = Utils.DataStringBuilder(new string[] {Me.Id , txtPartnerId.Text.Replace(" ", ""), txtPartnerPwd.Text.Replace(" ","") });
             byte[] dataBytes = Encoding.ASCII.GetBytes(remoteInfo);
 
-            Client.Send(Enums.DataType.P2PCONNECT, dataBytes);
+            Client.SendData(Enums.DataType.P2PCONNECT, dataBytes);
             ResetEvent.WaitOne(1000 * 10);
             ResetEvent.Reset();
             if (_isP2PConnected)
@@ -162,12 +162,12 @@ namespace RemoteClient.Remote
         {
             string data = Utils.DataStringBuilder(new string[] {Me.ToString()});
             byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-            Client.Send( Enums.DataType.LOGIN ,dataBytes);
+            Client.SendData( Enums.DataType.LOGIN ,dataBytes);
             _pingTimer = new System.Threading.Timer(PingServer, null, 0, 10000);
         }
         private void PingServer(object state)
         {
-            Client.Send( Enums.DataType.PING ,new byte[] {(int)Enums.DataType.PING });
+            Client.SendData( Enums.DataType.PING ,new byte[] {(int)Enums.DataType.PING });
         }
         private void P2PConnect(bool isRemote,ConnectionInfo info)
         {

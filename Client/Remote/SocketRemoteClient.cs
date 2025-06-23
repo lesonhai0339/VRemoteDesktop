@@ -5,13 +5,17 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 
 namespace RemoteClient.Remote
 {
     public class SocketRemoteClient: IDisposable
     {
+        private bool _disposed = false;
         private bool _isSocketConnected;
+        private bool _isP2PConnected;
         private Socket _socket;
 
 
@@ -27,8 +31,14 @@ namespace RemoteClient.Remote
         public event P2PDataSendSuccessEvent P2PDataSendSuccessEventHandler;
         public delegate void SendScreenEvent(byte[] data);
         public event SendScreenEvent SendScreenEventHandler;
+
+        private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public SocketRemoteClient() 
         {
+            _isSocketConnected = false;
+            _isP2PConnected = false;
+            _socket = null;
         }
         #region Properties
         public Socket Socket
@@ -49,6 +59,10 @@ namespace RemoteClient.Remote
         }
         #endregion
         #region Functions
+        public void Cancel()
+        {
+            _cancellationTokenSource.Cancel();
+        }
         public void Connect(IPEndPoint endPoint)
         {
             try
@@ -73,15 +87,29 @@ namespace RemoteClient.Remote
                 //Socket.Close();
             }
         }
-        public void Send(Enums.DataType type, byte[] data)
+        public void SendHeader(Enums.DataType type, int dataLength)
+        {
+            try
+            {
+                byte[] header = new byte[5];
+                header[0] = (byte)type;
+                Array.Copy(BitConverter.GetBytes(dataLength), 0, header, 1, 4);
+                Socket.BeginSend(header, 0, header.Length, SocketFlags.None, null, null);
+            }
+            catch
+            {
+                Console.WriteLine(string.Format("Socket SendHeader error"));
+
+            }
+        }
+        public void SendData(Enums.DataType type, byte[] data)
         {
             try
             {
                 byte[] bytes = new byte[1 + data.Length];
                 bytes[0] = (byte)type;
                 Array.Copy(data, 0, bytes, 1, data.Length);
-                byte[] dataSend = Utils.AddPaddingToBytes(bytes);
-                Socket.BeginSend(dataSend, 0, dataSend.Length, SocketFlags.None, null, null);
+                Socket.BeginSend(bytes, 0, bytes.Length, SocketFlags.None, null, null);
             }
             catch(SocketException ex)
             {
@@ -127,16 +155,37 @@ namespace RemoteClient.Remote
                 int num = Socket.EndReceive(asyncResult);
                 if (num > 0)
                 {  
+
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0 , num);
-
-                    while (stateObject.ByteArrayBuilder.Length >= 1024)
+                   
+                    while (!CancellationToken.IsCancellationRequested)
                     {
-                        // Lấy 1024 bytes đầu tiên
-
-                        ProcessDataReceived(stateObject);
+                        if (stateObject.ByteArrayBuilder.Length.Equals(4))
+                        {
+                            goto IL_163;
+                        }
+                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
+                        if(!(stateObject.ByteArrayBuilder.Length >= length + 4))
+                        {
+                            goto IL_163;
+                        }
+                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();
+                        byte[] array = new byte[length];
+                        Array.Copy(src, 4, array, 0, length);
+                        ProcessDataReceived(array, stateObject);
+                        if (CancellationToken.IsCancellationRequested)
+                            break;
                     }
                 }
-                workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, Callback, stateObject);
+            IL_163:
+                try
+                {
+                    workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, Callback, stateObject);
+                }
+                catch
+                {
+                    workSocket.Close();
+                }
             }
             catch (SocketException ex)
             {
@@ -148,9 +197,9 @@ namespace RemoteClient.Remote
             }
         }
 
-        private void ProcessDataReceived(StateObject stateObject)
+        private void ProcessDataReceived(byte[] array, StateObject stateObject)
         {
-            byte[] data = stateObject.ByteArrayBuilder.Cut(1024).ToArray();
+            byte[] data = array;
             int response = data[0];
             switch (response)
             {
@@ -278,21 +327,17 @@ namespace RemoteClient.Remote
             {
                 throw new UnauthorizedAccessException("Error when socket connection");
             }
+            _isP2PConnected = true;
             Console.WriteLine($"Client Info: {JsonConvert.SerializeObject(connectionInfo, Formatting.Indented)}");
         }
         public void Dispose()
         {
-            try
+            if (!_disposed)
             {
-                _socket?.Shutdown(SocketShutdown.Both);
+                _cancellationTokenSource.Cancel();
+                _cancellationTokenSource.Dispose();
                 _socket?.Close();
-                _socket?.Dispose();
-            }
-            catch { }
-            finally
-            {
-                _socket = null;
-                SocketConnected = false;
+                _disposed = true;
             }
         }
         #endregion

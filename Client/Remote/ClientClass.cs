@@ -46,19 +46,41 @@ namespace RemoteClient.Remote
             var x = CaptureScreen.GetScreen();
             if (x.Any())
             {
-                Console.WriteLine(x.Sum(cell => cell.TotalSize) + " bytes to send");
+                int totalBytes = x.Sum(cell => cell.Bytes.Length);
+                Client.SendHeader(Enums.DataType.P2PDATASEND, totalBytes);
                 foreach (var cell in x)
                 {
-                    SendChunk(cell);
+                    SendScreenData(cell);
                 }
-                Send(Enums.DataType.P2PDATASEND, new byte[] { 41});
             }
+        }
+        private void SendScreenData(CaptureCell cell)
+        {
+            int CHUNK_SIZE = 1024;
+
+            int numberOfChunk = (int)Math.Ceiling((double)cell.Bytes.Length / CHUNK_SIZE);
+
+            for (int i = 0; i < numberOfChunk; i++)
+            {
+                int offset = i * CHUNK_SIZE;
+                int packetSize = Math.Min(CHUNK_SIZE, cell.Bytes.Length - i * CHUNK_SIZE);
+                byte[] packet = new byte[packetSize];
+
+                //data
+                Array.Copy(cell.Bytes, offset, packet, 0, packetSize);
+                if (((i + 1) % 5) == 0)
+                {
+                    Thread.Sleep(1);
+                }
+                Client.SendData(Enums.DataType.P2PDATASEND, packet);
+            }
+
         }
         private void SendChunk(CaptureCell cell)
         {
             //only send 1024 byte each packet and 1 byte using for type then the real data can send is 1023 bytes
             int headers = 22; //header for type(1) + x(4) + y(4) + width(4) + height(4) + index(1) + chunkSize(4)
-            int dataSize = 1023 - headers; //data 
+            int dataSize = 1024 - headers; //data 
             int chunkSize = dataSize + headers;
 
             //int x = cell.Bytes.Length % 1023;
@@ -101,13 +123,9 @@ namespace RemoteClient.Remote
                 {
                     Thread.Sleep(1);
                 }
-                Send(Enums.DataType.P2PDATASEND, packet);
+                Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
 
-        }
-        private void Send(Enums.DataType type, byte[] data, int timeout = 5)
-        {
-            _remoteClient.Send(type, data);
         }
         #region Events
         #endregion

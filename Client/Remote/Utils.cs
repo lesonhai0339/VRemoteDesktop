@@ -18,7 +18,7 @@ namespace RemoteClient.Remote
 		private static bool bool_0 = false;
 		internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
 		//add padding byte(0x20) to output data = length
-		internal static byte[] AddPaddingToBytes(byte[] sourceByte , int length = 1024)
+		internal static byte[] AddPaddingToBytes(byte[] sourceByte , int length = 1025)
 		{
             byte[] bytes = new byte[length];
             int byteNeededToAdd = Math.Max(0, length - sourceByte.Length);

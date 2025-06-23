@@ -99,13 +99,13 @@ namespace RemoteServer
             }
             //Callback?.Invoke(this, buffer, byteRead);
         }
-        public async Task StartReceiving(int bufferSize = 1024)
+        public async Task StartReceiving(int bufferSize = 1025)
         {
             try
             {
                 while (true)
                 {
-                    //always wait until received 1024 bytes
+                    //always wait until received enough 1025 bytes, 1 byte for type and 1024 bytes for data
                     byte[] buffer = new byte[bufferSize];
                     int totalRead = 0;
                     while(totalRead < bufferSize)
