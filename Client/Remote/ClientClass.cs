@@ -43,6 +43,7 @@ namespace RemoteClient.Remote
         #region Functions
         private void SendScreen(object state)
         {
+            Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
             var x = CaptureScreen.GetScreen();
             if (x.Any())
             {

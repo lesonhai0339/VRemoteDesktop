@@ -200,6 +200,7 @@ namespace RemoteClient.Remote
         private void ProcessDataReceived(byte[] array, StateObject stateObject)
         {
             byte[] data = array;
+            Console.WriteLine($"Data received: {data.Length} bytes");
             int response = data[0];
             switch (response)
             {
