@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Runtime.Remoting.Lifetime;
 using System.Text;
@@ -43,7 +44,13 @@ namespace RemoteClient.Remote
             var x = CaptureScreen.GetScreen();
             if (x.Any())
             {
-                foreach(var cell in x)
+                int totalSize = x.Sum(cell => cell.TotalSize);
+                byte[] data = new byte[5];
+                data[0] = 1;
+                Array.Copy(BitConverter.GetBytes(totalSize), 0, data, 0, 4);
+                Send(Enums.DataType.P2PDATASEND, Utils.AddPaddingToBytes(data));
+                return;
+                foreach (var cell in x)
                 {
                     SendChunk(cell);
                 }

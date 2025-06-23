@@ -168,10 +168,13 @@ namespace RemoteClient.Remote
                     break;
                 case 2:
                     ProcessP2PConnection(data);
-                    break; 
+                    break;
+                case 3:
+                    Console.WriteLine("P2P Data received 3");
+                    ProcessP2PDataReceived(stateObject, data.Skip(1).ToArray());
+                    break;
                 case 20:
                     Console.WriteLine("P2P Data received");
-                    ProcessP2pDataReceived(data);
                     break;
                 case 30:
                     //p2p data send success
@@ -202,8 +205,23 @@ namespace RemoteClient.Remote
         {
         }
 
-        private void ProcessP2pDataReceived(byte[] data)
+        private void ProcessP2PDataReceived(StateObject stateObject, byte[] data)
         {
+            int dataType = data[0];
+            if(dataType == 1)
+            {
+                //Common headers, number of chunks, data size
+
+            }
+            if(dataType == 40)
+            {
+                Console.WriteLine("Send Screen");
+                byte[] headers = data.Take(22).ToArray();
+                byte[] dataBytes = data.Skip(22).ToArray();
+
+                Console.WriteLine($"Headers: {headers.Length}");
+                Console.WriteLine($"Data: {dataBytes.Length}");
+            }
         }
 
         private void ProcessP2PConnection(byte[] data)
