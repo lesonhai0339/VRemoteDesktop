@@ -136,8 +136,6 @@ namespace RemoteClient.Remote
                         Console.WriteLine($"enough 1024 bytes - {dataBytes[0]} - {dataBytes.Length}");
 
                         ProcessDataReceived(stateObject, dataBytes);
-
-                        stateObject.ByteArrayBuilder.Clear();
                     }
                 }
                 workSocket.BeginReceive(stateObject.Buffer, 0, StateObject.BufferSize, SocketFlags.None, Callback, stateObject);
