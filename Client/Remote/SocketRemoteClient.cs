@@ -1,4 +1,5 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -38,7 +39,6 @@ namespace RemoteClient.Remote
         {
             _isSocketConnected = false;
             _isP2PConnected = false;
-            _socket = null;
         }
         #region Properties
         public Socket Socket
@@ -157,9 +157,14 @@ namespace RemoteClient.Remote
                 {  
 
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0 , num);
-                   
+
                     while (!CancellationToken.IsCancellationRequested)
                     {
+                        if (num == 1)
+                        {
+                            ProcessDataReceived(stateObject.ByteArrayBuilder.Cut(1).ToArray(), stateObject);
+                            goto IL_163;
+                        }
                         if (stateObject.ByteArrayBuilder.Length.Equals(4))
                         {
                             goto IL_163;
