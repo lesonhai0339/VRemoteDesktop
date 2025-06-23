@@ -48,6 +48,7 @@ namespace RemoteClient.Remote
                 byte[] data = new byte[5];
                 data[0] = 1;
                 Array.Copy(BitConverter.GetBytes(totalSize), 0, data, 1, 4);
+                Console.WriteLine($"Total Size: {totalSize} - Cells: {x.Count}");
                 Send(Enums.DataType.P2PDATASEND, data);
                 foreach (var cell in x)
                 {

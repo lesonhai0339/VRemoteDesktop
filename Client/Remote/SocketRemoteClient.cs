@@ -211,6 +211,8 @@ namespace RemoteClient.Remote
             if(dataType == 1)
             {
                 //Common headers, number of chunks, data size
+                int screenSize = BitConverter.ToInt32(data, 1);
+                Console.WriteLine($"Screen Size: {screenSize}");
 
             }
             if(dataType == 40)
