@@ -80,7 +80,6 @@ namespace RemoteClient.Remote
                                         regionBitmap.Save(stream , ImageFormat.Jpeg);
                                         compressedData = stream.ToArray();
                                     }
-                                    File.WriteAllBytes("debug-output.jpg", compressedData);
                                     CaptureCell cell = new CaptureCell
                                     {
                                         IsFullScreen = false,
