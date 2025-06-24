@@ -174,10 +174,11 @@ namespace RemoteClient.Remote
                             goto IL_163;
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
+                        Console.WriteLine(BitConverter.ToString(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray()));
 
-                        if(!(stateObject.ByteArrayBuilder.Length >= length + 4))
+                        if (!(stateObject.ByteArrayBuilder.Length >= length + 4))
                         {
-                            Console.WriteLine($"Waitting for {length +  4} data");
+                            Console.WriteLine($"Waitting for {length +  4} data -{num}");
                             goto IL_163;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();

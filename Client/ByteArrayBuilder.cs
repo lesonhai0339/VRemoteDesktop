@@ -31,7 +31,7 @@ namespace RemoteClient
         }
 
         #endregion
-        #region Functions
+        #region Methods
         public void Append(byte[] data, int offset, int length)
         {
             checked
@@ -121,6 +121,10 @@ namespace RemoteClient
         public void RemoveFirst(int index)
         {
             lsByte.RemoveRange(0, index);
+        }
+        public void RemoveByIndex(int index,int length)
+        {
+            lsByte.RemoveRange(index, length);
         }
         #endregion
     }
