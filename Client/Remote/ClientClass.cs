@@ -40,23 +40,22 @@ namespace RemoteClient.Remote
             }
         }
         #endregion
-        #region Functions
+        #region Methods
         private void SendScreen(object state)
         {
             Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
+            byte[] bytes;
+
             using (Bitmap capture = CaptureScreen.CaptureWindowsScreen())
             {
-                byte[] bytes;
                 using (MemoryStream stream = new MemoryStream())
                 {
                     capture.Save(stream, ImageFormat.Png);
                     bytes = stream.ToArray();
                 }
-                int totalBytes = bytes.Length;
-                SendScreenData1(totalBytes, bytes);
-
             }
-
+            int totalBytes = bytes.Length;
+            SendScreenData1(totalBytes, bytes);
             //Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
             //var x = CaptureScreen.GetScreen();
             //if (x.Any())
