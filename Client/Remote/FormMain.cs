@@ -21,7 +21,6 @@ namespace RemoteClient.Remote
         private System.Threading.Timer _test;
 
         private bool _isP2PConnected;
-        private System.Threading.Timer _pingTimer;
         private SocketRemoteClient _client;
         private Info _myInfo;
         private ManualResetEvent _resetEvent;
@@ -163,11 +162,6 @@ namespace RemoteClient.Remote
             string data = Utils.DataStringBuilder(new string[] {Me.ToString()});
             byte[] dataBytes = Encoding.ASCII.GetBytes(data);
             Client.SendData( Enums.DataType.LOGIN ,dataBytes);
-            _pingTimer = new System.Threading.Timer(PingServer, null, 0, 10000);
-        }
-        private void PingServer(object state)
-        {
-            Client.SendData( Enums.DataType.PING ,new byte[] {(int)Enums.DataType.PING });
         }
         private void P2PConnect(bool isRemote,ConnectionInfo info)
         {

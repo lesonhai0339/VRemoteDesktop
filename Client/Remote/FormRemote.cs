@@ -61,13 +61,30 @@ namespace RemoteClient.Remote
         }
         public void ScreenEvent(byte[] data)
         {
-            Console.WriteLine(BitConverter.ToString(data));
-            Bitmap image;
-            using (MemoryStream stream = new MemoryStream(data))
+            if (this.InvokeRequired)
             {
-                image = new Bitmap(stream);
+                this.Invoke(new Action<byte[]>(ScreenEvent), data);
+                return;
             }
-            vPictureBox1.Image = image;
+
+            // UI thread code
+            try
+            {
+                Bitmap image;
+                using (MemoryStream stream = new MemoryStream(data))
+                {
+                    image = new Bitmap(stream);
+                }
+
+                // Dispose old image to prevent memory leak
+                var oldImage = vPictureBox1.Image;
+                vPictureBox1.Image = image;
+                oldImage?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ScreenEvent error: {ex.Message}");
+            }
         }
         public void KeyDownEventHandler(object sender, KeyEventArgs e)
         {

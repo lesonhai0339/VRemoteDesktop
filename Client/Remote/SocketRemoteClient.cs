@@ -18,6 +18,7 @@ namespace RemoteClient.Remote
         private bool _isSocketConnected;
         private bool _isP2PConnected;
         private Socket _socket;
+        private System.Threading.Timer _pingTimer;
 
 
         public delegate void ConnectedEvent();
@@ -39,6 +40,8 @@ namespace RemoteClient.Remote
         {
             _isSocketConnected = false;
             _isP2PConnected = false;
+            _pingTimer = new System.Threading.Timer(PingServer, null, 0, 10000);
+
         }
         #region Properties
         public Socket Socket
@@ -62,6 +65,11 @@ namespace RemoteClient.Remote
         public void Cancel()
         {
             _cancellationTokenSource.Cancel();
+        }
+        private void PingServer(object state)
+        {
+            if(_isSocketConnected)
+                SendData(Enums.DataType.PING, new byte[] { (int)Enums.DataType.PING });
         }
         public void Connect(IPEndPoint endPoint)
         {
@@ -166,9 +174,10 @@ namespace RemoteClient.Remote
                             goto IL_163;
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
-                        Console.WriteLine(length);
+
                         if(!(stateObject.ByteArrayBuilder.Length >= length + 4))
                         {
+                            Console.WriteLine($"Waitting for {length +  4} data");
                             goto IL_163;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();
@@ -201,6 +210,7 @@ namespace RemoteClient.Remote
 
         private void ProcessDataReceived(byte[] array, StateObject stateObject)
         {
+            stateObject.ByteArrayBuilder.Clear();
             byte[] data = array;
             Console.WriteLine($"Data received: {data.Length} bytes");
             int response = data[0];
@@ -216,6 +226,7 @@ namespace RemoteClient.Remote
                     {
                         loginEvent();
                     }
+                    _isSocketConnected = true;
                     break;
                 case 2:
                     ProcessP2PConnection(data);
