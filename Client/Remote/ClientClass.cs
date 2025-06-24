@@ -48,27 +48,32 @@ namespace RemoteClient.Remote
             if (x.Any())
             {
                 int totalBytes = x.Sum(cell => cell.Bytes.Length);
-                Client.SendHeader(Enums.DataType.P2PDATASEND, totalBytes);
                 foreach (var cell in x)
                 {
-                    SendScreenData(cell);
+                    SendScreenData(totalBytes ,cell);
                 }
             }
         }
-        private void SendScreenData(CaptureCell cell)
+        private void SendScreenData(int totalBytes, CaptureCell cell)
         {
+            var cellBytes = cell.Bytes;
+            byte[] bytes = new byte[cellBytes.Length + 4];
+
+            Array.Copy(cellBytes, 0, bytes, 4, cellBytes.Length);
+            Array.Copy(BitConverter.GetBytes(totalBytes), 0, bytes, 0, 4); // Add total bytes at the start
+
             int CHUNK_SIZE = 1024;
 
-            int numberOfChunk = (int)Math.Ceiling((double)cell.Bytes.Length / CHUNK_SIZE);
+            int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
 
             for (int i = 0; i < numberOfChunk; i++)
             {
                 int offset = i * CHUNK_SIZE;
-                int packetSize = Math.Min(CHUNK_SIZE, cell.Bytes.Length - i * CHUNK_SIZE);
+                int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
                 byte[] packet = new byte[packetSize];
 
                 //data
-                Array.Copy(cell.Bytes, offset, packet, 0, packetSize);
+                Array.Copy(bytes, offset, packet, 0, packetSize);
                 if (((i + 1) % 5) == 0)
                 {
                     Thread.Sleep(1);

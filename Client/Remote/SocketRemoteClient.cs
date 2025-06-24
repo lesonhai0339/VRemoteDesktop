@@ -109,7 +109,8 @@ namespace RemoteClient.Remote
                 byte[] bytes = new byte[1 + data.Length];
                 bytes[0] = (byte)type;
                 Array.Copy(data, 0, bytes, 1, data.Length);
-                Socket.BeginSend(bytes, 0, bytes.Length, SocketFlags.None, null, null);
+                byte[] dataSend = Utils.AddPaddingToBytes(bytes);
+                Socket.BeginSend(dataSend, 0, dataSend.Length, SocketFlags.None, null, null);
             }
             catch(SocketException ex)
             {
@@ -165,6 +166,7 @@ namespace RemoteClient.Remote
                             goto IL_163;
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
+                        Console.WriteLine(length);
                         if(!(stateObject.ByteArrayBuilder.Length >= length + 4))
                         {
                             goto IL_163;
@@ -221,6 +223,9 @@ namespace RemoteClient.Remote
                 case 3:
                     ProcessP2PDataReceived(stateObject, data);
                     break;
+                case 4:
+                    ProcessP2PChunk(data.Skip(1).ToArray());
+                    break;
                 case 20:
                     Console.WriteLine("P2P Data received");
                     break;
@@ -251,6 +256,11 @@ namespace RemoteClient.Remote
 
         private void ProcessP2PChunk(byte[] data)
         {
+            SendScreenEvent sendScreenEvent = SendScreenEventHandler;
+            if (sendScreenEvent != null)
+            {
+                sendScreenEvent(data);
+            }
         }
 
         private void ProcessP2PDataReceived(StateObject stateObject, byte[] data)
