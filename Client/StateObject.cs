@@ -11,7 +11,7 @@ namespace RemoteClient
         public StateObject()
         {
             WorkSocket = null;
-            Buffer = new byte[1025];
+            Buffer = new byte[1024];
             ByteArrayBuilder = new ByteArrayBuilder();
             ColPendingContinousPacket = new Dictionary<byte, ByteArrayBuilder>();
             SckId = "";

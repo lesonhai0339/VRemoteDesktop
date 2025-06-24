@@ -174,16 +174,22 @@ namespace RemoteClient.Remote
                             goto IL_163;
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
-                        Console.WriteLine(BitConverter.ToString(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray()));
 
-                        if (!(stateObject.ByteArrayBuilder.Length >= length + 4))
+                        //thêm
+                        int lastPacket = (length + 4) % 1024;
+                        int paddingNeeded = 1024 - lastPacket;
+                        if (!(stateObject.ByteArrayBuilder.Length >= length + 4 + paddingNeeded))
+                        //if (!(stateObject.ByteArrayBuilder.Length >= length + 4))
                         {
-                            Console.WriteLine($"Waitting for {length +  4} data -{num}");
+                            Console.WriteLine($"Waitting for {length +  4} data - {num}");
+                            if (length > 500000)
+                            {
+                                Console.WriteLine("a");
+                            }
                             goto IL_163;
                         }
-                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();
-                        stateObject.ByteArrayBuilder.Clear();
-                        Console.WriteLine($"Byte remaining: {stateObject.ByteArrayBuilder.Length}");
+                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4 + paddingNeeded).ToArray();
+                        //stateObject.ByteArrayBuilder.Clear();
                         byte[] array = new byte[length];
                         Array.Copy(src, 4, array, 0, length);
                         ProcessDataReceived(array, stateObject);
