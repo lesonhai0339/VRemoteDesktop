@@ -181,6 +181,8 @@ namespace RemoteClient.Remote
                             goto IL_163;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();
+                        stateObject.ByteArrayBuilder.Clear();
+                        Console.WriteLine($"Byte remaining: {stateObject.ByteArrayBuilder.Length}");
                         byte[] array = new byte[length];
                         Array.Copy(src, 4, array, 0, length);
                         ProcessDataReceived(array, stateObject);
@@ -210,7 +212,6 @@ namespace RemoteClient.Remote
 
         private void ProcessDataReceived(byte[] array, StateObject stateObject)
         {
-            stateObject.ByteArrayBuilder.Clear();
             byte[] data = array;
             Console.WriteLine($"Data received: {data.Length} bytes");
             int response = data[0];

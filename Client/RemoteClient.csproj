@@ -86,6 +86,8 @@
     <Compile Include="Remote\RemoteData.cs" />
     <Compile Include="Remote\RemoteEventHandler.cs" />
     <Compile Include="Remote\Info.cs" />
+    <Compile Include="Remote\VRectangle.cs" />
+    <Compile Include="Remote\VRegion.cs" />
     <Compile Include="SocketConnection.cs" />
     <Compile Include="Form1.cs">
       <SubType>Form</SubType>
