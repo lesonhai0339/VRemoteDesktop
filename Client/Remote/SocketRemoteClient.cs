@@ -14,6 +14,7 @@ namespace RemoteClient.Remote
 {
     public class SocketRemoteClient: IDisposable
     {
+        private const int MAX_BUFFER_SIZE = 10 * 1024 * 1024;
         private bool _disposed = false;
         private bool _isSocketConnected;
         private bool _isP2PConnected;
@@ -174,17 +175,32 @@ namespace RemoteClient.Remote
                             goto IL_163;
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
+                        int padding = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(4, 4).ToArray(), 0);
 
-
-                        if (!(stateObject.ByteArrayBuilder.Length >= length + 4))
+                        if (stateObject.ByteArrayBuilder.Length > MAX_BUFFER_SIZE)
                         {
-                            Console.WriteLine($"Waitting for {length +  4} data - {num}");
+                            stateObject.ByteArrayBuilder.Clear();
                             goto IL_163;
                         }
-                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();
+                        if(length < 0 || padding < 0)
+                        {
+                            stateObject.ByteArrayBuilder.Clear();
+                            goto IL_163;
+                        }
+                        if (length > MAX_BUFFER_SIZE - 8 - padding)
+                        {
+                            stateObject.ByteArrayBuilder.Clear();
+                            goto IL_163;
+                        }
+                        if (!(stateObject.ByteArrayBuilder.Length >= length + 4 +  padding + 4))
+                        {
+                            Console.WriteLine($"Waitting for length {length + 4 + padding + 4} padding - {padding}");
+                            goto IL_163;
+                        }
+                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4 + padding + 4).ToArray();
                         //stateObject.ByteArrayBuilder.Clear();
                         byte[] array = new byte[length];
-                        Array.Copy(src, 4, array, 0, length);
+                        Array.Copy(src, 8, array, 0, length);
                         ProcessDataReceived(array, stateObject);
                         if (CancellationToken.IsCancellationRequested)
                             break;
@@ -277,35 +293,7 @@ namespace RemoteClient.Remote
 
         private void ProcessP2PDataReceived(StateObject stateObject, byte[] data)
         {
-            int dataType = data[1];
-            if(dataType == 1)
-            {
-                byte[] screen = data.Skip(2).ToArray();
-
-            }
-            else if(dataType == 40)
-            {
-                //send chunks
-                var xBytes = data.Skip(2).Take(4).ToArray();
-                var yBytes = data.Skip(6).Take(4).ToArray();
-                var width = data.Skip(10).Take(4).ToArray();
-                var height = data.Skip(14).Take(4).ToArray();
-                var chunkIndex = data.Skip(18).Take(1).ToArray();
-                var chunkSize = data.Skip(19).Take(4).ToArray();
-
-                stateObject.data.Add(data.Skip(23).Take(BitConverter.ToInt32(chunkSize, 0)).ToArray());
-            }
-            else if(dataType == 41)
-            {
-                Console.WriteLine("End screen");
-                byte[] xxxx = stateObject.data.SelectMany(x => x).ToArray();
-                Console.WriteLine($"Data Length: {xxxx.Length}");
-                SendScreenEvent sendScreenEvent = SendScreenEventHandler;
-                if (sendScreenEvent != null)
-                {
-                    sendScreenEvent(xxxx);
-                }
-            }
+          
         }
 
         private void ProcessP2PConnection(byte[] data)
