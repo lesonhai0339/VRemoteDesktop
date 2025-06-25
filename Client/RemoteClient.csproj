@@ -82,6 +82,12 @@
     <Compile Include="KeyboardHook.cs" />
     <Compile Include="KeyboardSimulator.cs" />
     <Compile Include="Remote\SocketRemoteClient.cs" />
+    <Compile Include="Remote\TestScreenChange.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Remote\TestScreenChange.Designer.cs">
+      <DependentUpon>TestScreenChange.cs</DependentUpon>
+    </Compile>
     <Compile Include="Remote\Utils.cs" />
     <Compile Include="Remote\VKeyboardReceived.cs">
       <SubType>UserControl</SubType>
@@ -128,6 +134,9 @@
       <DependentUpon>Resources.resx</DependentUpon>
       <DesignTime>True</DesignTime>
     </Compile>
+    <EmbeddedResource Include="Remote\TestScreenChange.resx">
+      <DependentUpon>TestScreenChange.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Remote\VKeyboardReceived.resx">
       <DependentUpon>VKeyboardReceived.cs</DependentUpon>
     </EmbeddedResource>
