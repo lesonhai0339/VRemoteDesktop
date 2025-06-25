@@ -74,7 +74,7 @@ namespace RemoteClient.Remote
 
             byte[] bytes = new byte[byteData.Length + 9];
 
-            Array.Copy(BitConverter.GetBytes(bytes.Length), 0, bytes, 0, 4); // Add total bytes at the start
+            Array.Copy(BitConverter.GetBytes(totalBytes), 0, bytes, 0, 4); // Add total bytes at the start
 
             //caculate padding need to add
             int lastChunkSize = bytes.Length % CHUNK_SIZE;
