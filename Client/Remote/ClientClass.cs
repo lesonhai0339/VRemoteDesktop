@@ -75,7 +75,6 @@ namespace RemoteClient.Remote
             byte[] bytes = new byte[byteData.Length + 9];
 
             Array.Copy(BitConverter.GetBytes(totalBytes), 0, bytes, 0, 4); // Add total bytes at the start
-            bytes[4] = 4; // Type of data, 4 for screen data
 
             //caculate padding need to add
             int lastChunkSize = bytes.Length % CHUNK_SIZE;
@@ -83,9 +82,10 @@ namespace RemoteClient.Remote
             if(lastChunkSize != 0)
             {
                 padding = CHUNK_SIZE - lastChunkSize;
-
             }
-            Array.Copy(BitConverter.GetBytes(padding), 0 , bytes, 5, 4);
+            Array.Copy(BitConverter.GetBytes(padding), 0 , bytes, 4, 4);
+
+            bytes[8] = 4; // Type of data, 4 for screen data
 
             //data
             Array.Copy(byteData, 0, bytes, 9, byteData.Length);//real data
