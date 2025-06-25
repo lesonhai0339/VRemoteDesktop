@@ -22,8 +22,6 @@ namespace RemoteClient
         public ByteArrayBuilder ByteArrayBuilder;
         public Dictionary<byte, ByteArrayBuilder> ColPendingContinousPacket;
 
-        public List<byte[]> data= new List<byte[]>();
-
         public string SckId;
         public EnumP2PType P2P_Type;
         public enum EnumP2PType
