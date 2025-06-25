@@ -44,29 +44,29 @@ namespace RemoteClient.Remote
         private void SendScreen(object state)
         {
             Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
-            byte[] bytes;
+            //byte[] bytes;
 
-            using (Bitmap capture = CaptureScreen.CaptureWindowsScreen())
-            {
-                using (MemoryStream stream = new MemoryStream())
-                {
-                    capture.Save(stream, ImageFormat.Png);
-                    bytes = stream.ToArray();
-                }
-            }
-            int totalBytes = bytes.Length;
-            SendScreenData1(totalBytes, bytes);
-            //Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
-            //var x = CaptureScreen.GetScreen();
-            //if (x.Any())
+            //using (Bitmap capture = CaptureScreen.CaptureWindowsScreen())
             //{
-            //    int totalBytes = x.Sum(cell => cell.Bytes.Length);
-            //    Console.WriteLine("DataSend: " + totalBytes);
-            //    foreach (var cell in x)
+            //    using (MemoryStream stream = new MemoryStream())
             //    {
-            //        SendScreenData(totalBytes ,cell);
+            //        capture.Save(stream, ImageFormat.Png);
+            //        bytes = stream.ToArray();
             //    }
             //}
+            //int totalBytes = bytes.Length;
+            //SendScreenData1(totalBytes, bytes);
+            Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
+            var x = CaptureScreen.GetScreen();
+            if (x.Any())
+            {
+                int totalBytes = x.Sum(cell => cell.Bytes.Length);
+                Console.WriteLine("DataSend: " + totalBytes);
+                foreach (var cell in x)
+                {
+                    SendScreenData(totalBytes, cell);
+                }
+            }
         }
         private void SendScreenData1(int totalBytes, byte[] byteData)
         {
@@ -110,15 +110,25 @@ namespace RemoteClient.Remote
         }
         private void SendScreenData(int totalBytes, CaptureCell cell)
         {
-            var cellBytes = cell.Bytes;
-            byte[] bytes = new byte[cellBytes.Length + 5];
-
-            Array.Copy(BitConverter.GetBytes(totalBytes), 0, bytes, 0, 4); // Add total bytes at the start
-            bytes[4] = 4; // Type of data, 4 for screen data
-            Array.Copy(cellBytes, 0, bytes, 5, cellBytes.Length);//real data
-
-
             int CHUNK_SIZE = 1024;
+
+            byte[] bytes = new byte[cell.Bytes.Length + 9];
+
+            Array.Copy(BitConverter.GetBytes(totalBytes + 1), 0, bytes, 0, 4); // Add total bytes at the start
+
+            //caculate padding need to add
+            int lastChunkSize = bytes.Length % CHUNK_SIZE;
+            int padding = 0;
+            if (lastChunkSize != 0)
+            {
+                padding = CHUNK_SIZE - lastChunkSize;
+            }
+            Array.Copy(BitConverter.GetBytes(padding), 0, bytes, 4, 4);
+
+            bytes[8] = (byte)((cell.IsFullScreen) ? 4 : 5); // Type of data, 4 for screen data
+
+            //data
+            Array.Copy(cell.Bytes, 0, bytes, 9, cell.Bytes.Length);//real data
 
             int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
 
@@ -136,7 +146,6 @@ namespace RemoteClient.Remote
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
-
         }
         private void SendChunk(CaptureCell cell)
         {

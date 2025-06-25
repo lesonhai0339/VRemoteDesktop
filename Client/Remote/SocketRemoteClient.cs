@@ -254,6 +254,9 @@ namespace RemoteClient.Remote
                 case 4:
                     ProcessP2PChunk(data.Skip(1).ToArray());
                     break;
+                case 5:
+                    Console.WriteLine($"Chunk send: {data.Skip(1).ToArray().Length}");
+                    break;
                 case 20:
                     Console.WriteLine("P2P Data received");
                     break;
