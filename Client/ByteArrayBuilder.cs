@@ -32,17 +32,6 @@ namespace RemoteClient
 
         #endregion
         #region Methods
-        //public void Append(byte[] data, int offset, int length)
-        //{
-        //    if (data == null || length <= 0 || offset < 0 || offset + length > data.Length)
-        //        return;
-
-        //    // Chỉ thêm đúng phần cần thiết từ data
-        //    for (int i = 0; i < length; i++)
-        //    {
-        //        lsByte.Add(data[offset + i]);
-        //    }
-        //}
         public void Append(byte[] data, int offset, int length)
         {
             checked
@@ -136,6 +125,11 @@ namespace RemoteClient
         public void RemoveByIndex(int index,int length)
         {
             lsByte.RemoveRange(index, length);
+        }
+
+        internal object Cut(long v)
+        {
+            throw new NotImplementedException();
         }
         #endregion
     }

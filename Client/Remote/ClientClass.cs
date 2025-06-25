@@ -70,14 +70,25 @@ namespace RemoteClient.Remote
         }
         private void SendScreenData1(int totalBytes, byte[] byteData)
         {
-            byte[] bytes = new byte[byteData.Length + 5];
+            int CHUNK_SIZE = 1024;
+
+            byte[] bytes = new byte[byteData.Length + 9];
 
             Array.Copy(BitConverter.GetBytes(totalBytes), 0, bytes, 0, 4); // Add total bytes at the start
             bytes[4] = 4; // Type of data, 4 for screen data
-            Array.Copy(byteData, 0, bytes, 5, byteData.Length);//real data
 
+            //caculate padding need to add
+            int lastChunkSize = bytes.Length % CHUNK_SIZE;
+            int padding = 0;
+            if(lastChunkSize != 0)
+            {
+                padding = CHUNK_SIZE - lastChunkSize;
 
-            int CHUNK_SIZE = 1024;
+            }
+            Array.Copy(BitConverter.GetBytes(padding), 0 , bytes, 5, 4);
+
+            //data
+            Array.Copy(byteData, 0, bytes, 9, byteData.Length);//real data
 
             int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
 
