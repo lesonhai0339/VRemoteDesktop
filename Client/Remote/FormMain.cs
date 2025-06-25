@@ -107,14 +107,14 @@ namespace RemoteClient.Remote
             {
                 foreach(var screen in screens)
                 {
-                    Console.WriteLine(JsonConvert.SerializeObject(screen.Rectangle, Formatting.Indented) + screen.Bytes.Length);
+                    Console.WriteLine(JsonConvert.SerializeObject(screen.Rectangle, Formatting.Indented) + "-"+screen.Bytes.Length);
                 }
             }
         }
         private void FormMain_Shown(object sender, EventArgs e)
         {
             ConnectToServer();
-            //_test = new System.Threading.Timer(test, null, 0, 1000);
+            //_test = new System.Threading.Timer(test, null, 0, 100);
         }
         private void button1_Click(object sender, EventArgs e)
         {

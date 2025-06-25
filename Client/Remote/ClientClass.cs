@@ -22,7 +22,7 @@ namespace RemoteClient.Remote
         {
             Client = remoteCLient;
             _connectionInfo = info;
-            _timer = new Timer(SendScreen, null, 0, 10000);
+            _timer = new Timer(SendScreen, null, 0, (1000/15));
         }
         #region Properties
         public SocketRemoteClient Client
@@ -43,7 +43,7 @@ namespace RemoteClient.Remote
         #region Methods
         private void SendScreen(object state)
         {
-            Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
+            //Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
             //byte[] bytes;
 
             //using (Bitmap capture = CaptureScreen.CaptureWindowsScreen())
@@ -60,11 +60,9 @@ namespace RemoteClient.Remote
             var x = CaptureScreen.GetScreen();
             if (x.Any())
             {
-                int totalBytes = x.Sum(cell => cell.Bytes.Length);
-                Console.WriteLine("DataSend: " + totalBytes);
                 foreach (var cell in x)
                 {
-                    SendScreenData(totalBytes, cell);
+                    SendScreenData(cell);
                 }
             }
         }
@@ -108,13 +106,13 @@ namespace RemoteClient.Remote
             }
 
         }
-        private void SendScreenData(int totalBytes, CaptureCell cell)
+        private void SendScreenData(CaptureCell cell)
         {
             int CHUNK_SIZE = 1024;
 
             byte[] bytes = new byte[cell.Bytes.Length + 9];
 
-            Array.Copy(BitConverter.GetBytes(totalBytes + 1), 0, bytes, 0, 4); // Add total bytes at the start
+            Array.Copy(BitConverter.GetBytes(cell.Bytes.Length + 1), 0, bytes, 0, 4); // Add total bytes at the start
 
             //caculate padding need to add
             int lastChunkSize = bytes.Length % CHUNK_SIZE;

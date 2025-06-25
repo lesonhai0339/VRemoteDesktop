@@ -174,6 +174,7 @@ namespace RemoteClient.Remote
                         {
                             goto IL_163;
                         }
+
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
                         int padding = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(4, 4).ToArray(), 0);
 
