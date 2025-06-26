@@ -58,6 +58,7 @@
             this.Controls.Add(this.button1);
             this.Name = "TestScreenChange";
             this.Text = "TestScreenChange";
+            this.Load += new System.EventHandler(this.TestScreenChange_Load);
             this.ResumeLayout(false);
             this.PerformLayout();
 

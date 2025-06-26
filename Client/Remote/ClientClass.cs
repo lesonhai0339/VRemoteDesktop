@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -56,8 +57,13 @@ namespace RemoteClient.Remote
             //}
             //int totalBytes = bytes.Length;
             //SendScreenData1(totalBytes, bytes);
-            Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             var x = CaptureScreen.GetScreen();
+            stopwatch.Stop();
+            Console.WriteLine($"Capture miliseconds: {stopwatch.Elapsed.TotalMilliseconds}");
+            stopwatch.Restart();
+            stopwatch.Start();
             if (x.Any())
             {
                 foreach (var cell in x)
@@ -65,9 +71,13 @@ namespace RemoteClient.Remote
                     SendScreenData(cell);
                 }
             }
+            stopwatch.Stop();
+            Console.WriteLine($"Send miliseconds: {stopwatch.Elapsed.TotalMilliseconds}");
         }
         private void SendScreenData1(int totalBytes, byte[] byteData)
         {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             int CHUNK_SIZE = 1024;
 
             byte[] bytes = new byte[byteData.Length + 9];
@@ -104,10 +114,14 @@ namespace RemoteClient.Remote
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
+            stopwatch.Stop();
+            Console.WriteLine($"Chunk miliseconds: {stopwatch.Elapsed.TotalMilliseconds}");
 
         }
         private void SendScreenData(CaptureCell cell)
         {
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             int CHUNK_SIZE = 1024;
 
             byte[] bytes = new byte[cell.Bytes.Length + 9];
@@ -144,6 +158,8 @@ namespace RemoteClient.Remote
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
+            stopwatch.Stop();
+            Console.WriteLine($"Chunk miliseconds: {stopwatch.Elapsed.TotalMilliseconds}");
         }
         private void SendChunk(CaptureCell cell)
         {

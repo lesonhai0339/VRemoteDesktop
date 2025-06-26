@@ -143,5 +143,4 @@ _NCrunch*
 /Client/Remote/ClientClass.cs
 /Client/ByteArrayBuilder.cs
 /Client/Remote/SocketRemoteClient.cs
-/Client/Remote/CaptureScreen.cs
-/Client/Remote/TestScreenChange.cs
+/Client/RemoteClient.csproj
