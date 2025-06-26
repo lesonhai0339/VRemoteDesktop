@@ -239,7 +239,7 @@ namespace RemoteClient.Remote
                     break;
                 case 1:
                     Console.WriteLine("Login successfully");
-                    LoginEvent loginEvent = LoginEventHandler;
+                    LoginEvent loginEvent = LoginEventHandler;  
                     if(loginEvent != null)
                     {
                         loginEvent();
