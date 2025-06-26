@@ -77,7 +77,7 @@ namespace RemoteClient.Remote
                                     byte[] compressedData = null;
                                     using (var stream = new MemoryStream())
                                     {
-                                        regionBitmap.Save(stream , ImageFormat.Png);
+                                        regionBitmap.Save(stream , ImageFormat.Jpeg);
                                         compressedData = stream.ToArray();
                                     }
                                     CaptureCell cell = new CaptureCell
