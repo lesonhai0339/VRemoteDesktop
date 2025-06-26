@@ -28,13 +28,25 @@ namespace RemoteClient.Remote
         {
             Stopwatch stopwatch = new Stopwatch();
             stopwatch.Start();
-            var a = CaptureScreen.GetScreen();
+            var screenStateLogger = new ScreenStateLogger();
+            screenStateLogger.ScreenRefreshed += (sender, data) =>
+            {
+                //New frame in data
+                Console.WriteLine(data);
+            };
+            screenStateLogger.Start();
+            //var bound = Screen.PrimaryScreen.Bounds;
+            //Bitmap bitmap = new Bitmap(bound.Width, bound.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
+            //Graphics g = Graphics.FromImage(bitmap);
+            //g.CopyFromScreen(bound.X, bound.Y, 0, 0, new Size(10, 10), CopyPixelOperation.SourceCopy);
             stopwatch.Stop();
+            Console.WriteLine($"Eslaped time: {stopwatch.Elapsed.TotalMilliseconds}");
+            return;
+            var a = CaptureScreen.GetScreen();
             foreach (var i in a)
             {
                 Console.WriteLine($"Change: {i.TotalSize} bytes");
             }
-            Console.WriteLine($"Eslaped time: {stopwatch.Elapsed.TotalMilliseconds}");
             Console.WriteLine("----------------------------------------\n\n");
         }
 
