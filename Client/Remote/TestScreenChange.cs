@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
@@ -44,7 +45,7 @@ namespace RemoteClient.Remote
                     Stopwatch stopwatch = new Stopwatch();
                     stopwatch.Start();
                     var bounds = Screen.PrimaryScreen.Bounds;
-                    using (Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb))
+                    using (Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format32bppRgb))
                     {
                         using (Graphics bitmapGraphics = Graphics.FromImage(bitmap))
                         {
@@ -96,9 +97,23 @@ namespace RemoteClient.Remote
             stopwatch.Stop();
             Console.WriteLine($"Eslaped time: {stopwatch.Elapsed.TotalMilliseconds}");
         }
+        private void test4()
+        {
+            Task.Run(() =>
+            {
+                while (true)
+                {
+                    Stopwatch stopwatch = new Stopwatch();
+                    stopwatch.Start();
+                    var a = CaptureScreen.GetScreen();
+                    stopwatch.Stop();
+                    Console.WriteLine($"Eslaped time: {stopwatch.Elapsed.TotalMilliseconds}");
+                }
+            });
+        }
         private void Capture(object state)
         {
-            test3();
+            test4();
             //Stopwatch stopwatch = new Stopwatch();
             //stopwatch.Start();
             //var screenStateLogger = new ScreenStateLogger();

@@ -59,6 +59,8 @@ public class ScreenStateLogger
             {
                 while (_run)
                 {
+                    Stopwatch stopwatch = new Stopwatch();
+                    stopwatch.Start();
                     try
                     {
                         SharpDX.DXGI.Resource screenResource;
@@ -115,6 +117,8 @@ public class ScreenStateLogger
                             Trace.TraceError(e.StackTrace);
                         }
                     }
+                    stopwatch.Stop();
+                    Console.WriteLine($"Capture Eslaped time: {stopwatch.Elapsed.TotalMilliseconds}");
                 }
             }
         });
