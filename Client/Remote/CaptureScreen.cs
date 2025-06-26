@@ -62,7 +62,7 @@ namespace RemoteClient.Remote
                     }
                     else
                     {
-                        // Detect changes and create cells
+                        // Detect changes and create cells, 
                         List<Rectangle> dirtyRegions = DetectDirtyRegions(currentScreen, _previousFrame);
 
                         if (dirtyRegions.Count > 0)
