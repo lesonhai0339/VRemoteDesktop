@@ -13,6 +13,7 @@ namespace RemoteClient.Remote
 {
     public partial class FormRemote :Form
     {
+        private Bitmap _curScreen;
         private SocketRemoteClient _client;
         private ConnectionInfo _connectionInfo;
         public FormRemote(SocketRemoteClient client, ConnectionInfo remoteData)
@@ -47,11 +48,48 @@ namespace RemoteClient.Remote
                 if (_client != null)
                 {
                     _client.SendScreenEventHandler -= ScreenEvent;
+                    _client.SendScreenChunksEventHandler -= ChunkScreen;
                 }
                 _client = value;
                 if (_client != null)
                 {
                     _client.SendScreenEventHandler += ScreenEvent;
+                    _client.SendScreenChunksEventHandler += ChunkScreen;
+                }
+            }
+        }
+
+        private void ChunkScreen(byte[] data)
+        {
+            int x = BitConverter.ToInt32(data, 0);
+            int y = BitConverter.ToInt32(data, 4);
+            int width = BitConverter.ToInt32(data, 8);
+            int height = BitConverter.ToInt32(data, 12);
+
+            byte[] chunk = new byte[data.Length - 16];
+            Buffer.BlockCopy(data, 16, chunk, 0, chunk.Length);
+
+            Rectangle rectangle = new Rectangle(x, y, width, height);
+            using (MemoryStream ms = new MemoryStream(chunk))
+            using (Bitmap jpegBitmap = new Bitmap(ms))
+            using (Graphics g = Graphics.FromImage(_curScreen))
+            {
+                // Draw the JPEG bitmap into the specified region
+                g.DrawImage(jpegBitmap, rectangle);
+                if (this.InvokeRequired)
+                {
+                    this.Invoke(new Action<byte[]>(ScreenEvent), data);
+                    return;
+                }
+                try
+                {
+                    var oldImage = vPictureBox1.Image;
+                    vPictureBox1.Image = jpegBitmap;
+                    oldImage?.Dispose();
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"ScreenEvent error: {ex.Message}");
                 }
             }
         }
@@ -75,7 +113,7 @@ namespace RemoteClient.Remote
                 {
                     image = new Bitmap(stream);
                 }
-
+                _curScreen = image;
                 // Dispose old image to prevent memory leak
                 var oldImage = vPictureBox1.Image;
                 vPictureBox1.Image = image;
