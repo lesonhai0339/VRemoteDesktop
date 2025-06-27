@@ -56,7 +56,6 @@ namespace RemoteClient.Remote
                     else
                     {
                         SendChunk(cell);
-                        Console.WriteLine($"{cell.Rectangle.X} - {cell.Rectangle.Y} - {cell.Rectangle.Width} - {cell.Rectangle.Height}");
                     }
                 }
             }
