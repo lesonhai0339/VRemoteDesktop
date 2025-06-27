@@ -179,7 +179,7 @@ namespace RemoteClient.Remote
             Array.Copy(cell.Bytes, 0, bytes, 9, cell.Bytes.Length);//real data
 
             int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
-
+            Console.WriteLine(BitConverter.ToString(bytes));
             for (int i = 0; i < numberOfChunk; i++)
             {
                 int offset = i * CHUNK_SIZE;
