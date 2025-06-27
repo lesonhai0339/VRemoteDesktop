@@ -34,7 +34,8 @@ namespace RemoteClient.Remote
         public event P2PDataSendSuccessEvent P2PDataSendSuccessEventHandler;
         public delegate void SendScreenEvent(byte[] data);
         public event SendScreenEvent SendScreenEventHandler;
-
+        public delegate void SendScreenChunksEvent(byte[] data);
+        public event SendScreenChunksEvent SendScreenChunksEventHandler;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
         public SocketRemoteClient() 
@@ -253,10 +254,10 @@ namespace RemoteClient.Remote
                     ProcessP2PDataReceived(stateObject, data);
                     break;
                 case 4:
-                    ProcessP2PChunk(data.Skip(1).ToArray());
+                    ProcessP2PCapture(data.Skip(1).ToArray());
                     break;
                 case 5:
-                    Console.WriteLine($"Chunk send: {data.Skip(1).ToArray().Length}");
+                    ProcessP2PChunkSend(data.Skip(1).ToArray());
                     break;
                 case 20:
                     Console.WriteLine("P2P Data received");
@@ -271,7 +272,7 @@ namespace RemoteClient.Remote
                     break;
                 case 40:
                     //chunk send
-                    ProcessP2PChunk(data);
+                    ProcessP2PCapture(data);
                     break;
                 case 90:
                     Console.WriteLine("P2P connect error");
@@ -285,8 +286,16 @@ namespace RemoteClient.Remote
                     break;
             }
         }
+        private void ProcessP2PChunkSend(byte[] data)
+        {
 
-        private void ProcessP2PChunk(byte[] data)
+            SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
+            if(sendScreenChunks != null)
+            {
+                sendScreenChunks(data);
+            }
+        }
+        private void ProcessP2PCapture(byte[] data)
         {
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
