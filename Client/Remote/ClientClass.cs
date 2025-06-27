@@ -44,11 +44,7 @@ namespace RemoteClient.Remote
         #region Methods
         private void SendScreen(object state)
         {
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
             var x = CaptureScreen.GetScreen();
-            stopwatch.Stop();
-            Console.WriteLine($"Capture miliseconds: {stopwatch.Elapsed.TotalMilliseconds}");
             if (x.Any())
             {
                 foreach (var cell in x)
@@ -60,11 +56,10 @@ namespace RemoteClient.Remote
                     else
                     {
                         SendChunk(cell);
+                        Console.WriteLine($"{cell.Rectangle.X} - {cell.Rectangle.Y} - {cell.Rectangle.Width} - {cell.Rectangle.Height}");
                     }
                 }
             }
-            stopwatch.Stop();
-            Console.WriteLine($"Send miliseconds: {stopwatch.Elapsed.TotalMilliseconds}");
         }
         private void SendScreenData(CaptureCell cell)
         {
