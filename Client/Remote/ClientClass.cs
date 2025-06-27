@@ -30,6 +30,7 @@ namespace RemoteClient.Remote
     }
     public class ClientClass
     {
+        private Timer _timer;
         private BackgroundWorker _backgroundWorker;
         private Queue<TaskWork> _queueTask;
         private SocketRemoteClient _remoteClient;
@@ -47,6 +48,7 @@ namespace RemoteClient.Remote
             BackgroundWorker.DoWork += DoWork; // Attach the event handler
             BackgroundWorker.WorkerSupportsCancellation = true;
             BackgroundWorker.RunWorkerAsync();
+            _timer = new Timer(SendScreen, null, 0, (1000 / 5));
         }
         #region Properties
         public SocketRemoteClient Client
