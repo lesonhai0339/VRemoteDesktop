@@ -199,10 +199,6 @@ namespace RemoteClient.Remote
                             Console.WriteLine($"Waitting for length {dataLength + 4 + paddingAdded + 4} padding - {paddingAdded}");
                             goto IL_163;
                         }
-                        if(dataLength> 50000)
-                        {
-                            Console.WriteLine();
-                        }
                         Array src = stateObject.ByteArrayBuilder.Cut(dataLength + 4 + paddingAdded + 4).ToArray();
                         //stateObject.ByteArrayBuilder.Clear();
                         byte[] array = new byte[dataLength];
@@ -292,7 +288,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PChunkSend(byte[] data)
         {
-
+            Console.WriteLine("Received chunk");
             SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
             if(sendScreenChunks != null)
             {
