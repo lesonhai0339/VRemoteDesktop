@@ -45,9 +45,6 @@ namespace RemoteClient.Remote
 
 
             BackgroundWorker = new BackgroundWorker();
-            BackgroundWorker.DoWork += DoWork; // Attach the event handler
-            BackgroundWorker.WorkerSupportsCancellation = true;
-            BackgroundWorker.RunWorkerAsync();
             _timer = new Timer(SendScreen, null, 0, (1000 / 5));
         }
         #region Properties
@@ -70,7 +67,18 @@ namespace RemoteClient.Remote
             get => _backgroundWorker;
             set
             {
+                DoWorkEventHandler e = new DoWorkEventHandler(DoWork);
+                BackgroundWorker backgroundWorker = this._backgroundWorker;
+                if(backgroundWorker != null)
+                {
+                    backgroundWorker.DoWork -= e;
+                }
                 _backgroundWorker = value;
+                backgroundWorker = _backgroundWorker;
+                if(backgroundWorker != null)
+                {
+                    backgroundWorker.DoWork += e;
+                }
             }
         }
         public Queue<TaskWork> QueueTask
@@ -117,6 +125,10 @@ namespace RemoteClient.Remote
         }
         public void SendScreen(object state)
         {
+            if (!BackgroundWorker.IsBusy)
+            {
+                BackgroundWorker.RunWorkerAsync();
+            }
             var screens = CaptureScreen.GetScreen();
             if (screens.Any())
             {
