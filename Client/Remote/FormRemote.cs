@@ -113,17 +113,18 @@ namespace RemoteClient.Remote
             // UI thread code
             try
             {
-                MemoryStream stream = new MemoryStream(data);
-                Bitmap image = new Bitmap(stream);
+                using (MemoryStream stream = new MemoryStream(data))
+                {
+                    Bitmap image = (Bitmap)Image.FromStream(stream);
 
-                // Dispose old image to prevent memory leak
-                var oldImage = vPictureBox1.Image;
-                vPictureBox1.Image = image;
+                    // Dispose old image to prevent memory leak
+                    var oldImage = vPictureBox1.Image;
+                    vPictureBox1.Image = image;
+                    oldImage?.Dispose();
 
-                _curScreen?.Dispose();
-                _curScreen = image;
-
-                oldImage?.Dispose();
+                    _curScreen?.Dispose();
+                    _curScreen = image;
+                }
             }
             catch (Exception ex)
             {
