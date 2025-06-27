@@ -1,5 +1,7 @@
-﻿using System;
+﻿using Client.FFmpeg.ScreenA;
+using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
@@ -14,16 +16,37 @@ using System.Threading.Tasks;
 
 namespace RemoteClient.Remote
 {
+    public enum ClientEnum
+    {
+        None = 0,
+        FULLSCREEN = 1,
+        REGIONSCREENS = 2,
+    }
+    public class TaskWork
+    {
+        public ClientEnum workType;
+        public byte[] data;
+        public CaptureCell cell;
+    }
     public class ClientClass
     {
-        private Timer _timer;
+        private BackgroundWorker _backgroundWorker;
+        private Queue<TaskWork> _queueTask;
         private SocketRemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
+        private readonly object _queueLock = new object(); // For thread safety
+
         public ClientClass(SocketRemoteClient remoteCLient, ConnectionInfo info)
         {
             Client = remoteCLient;
+            QueueTask = new Queue<TaskWork>();
             _connectionInfo = info;
-            _timer = new Timer(SendScreen, null, 0, (1000/10));
+
+
+            BackgroundWorker = new BackgroundWorker();
+            BackgroundWorker.DoWork += DoWork; // Attach the event handler
+            BackgroundWorker.WorkerSupportsCancellation = true;
+            BackgroundWorker.RunWorkerAsync();
         }
         #region Properties
         public SocketRemoteClient Client
@@ -40,28 +63,86 @@ namespace RemoteClient.Remote
                 }
             }
         }
+        public BackgroundWorker BackgroundWorker
+        {
+            get => _backgroundWorker;
+            set
+            {
+                _backgroundWorker = value;
+            }
+        }
+        public Queue<TaskWork> QueueTask
+        {
+            get => _queueTask;
+            private set
+            {
+                _queueTask = value;
+            }
+        }
         #endregion
         #region Methods
+        private void DoWork(object sender, DoWorkEventArgs e)
+        {
+            while (QueueTask.Count > 0)
+            {
+                bool flag = false;  // Task not completed yet
+                TaskWork taskWork = QueueTask.Dequeue();
+
+                if (taskWork != null)
+                {
+                    switch (taskWork.workType)
+                    {
+                        case ClientEnum.FULLSCREEN:
+                            SendScreenData(taskWork.cell, ref flag);
+                            break;
+                        case ClientEnum.REGIONSCREENS:
+                            SendChunk(taskWork.cell, ref flag);
+                            break;
+                        default:
+                            flag = true; // Skip unknown types
+                            break;
+                    }
+
+                    // Wait until the task is completed
+                    while (!flag)
+                    {
+                        Thread.Sleep(10);
+                    }
+                }
+
+                Thread.Sleep(10); // Small delay between tasks
+            }
+        }
         public void SendScreen(object state)
         {
-            var x = CaptureScreen.GetScreen();
-            if (x.Any())
+            var screens = CaptureScreen.GetScreen();
+            if (screens.Any())
             {
-                foreach (var cell in x)
+                var tasks = new List<TaskWork>();
+                Parallel.ForEach(screens, screen =>
                 {
-                    if (cell.IsFullScreen)
+                    var task = new TaskWork
                     {
-                        SendScreenData(cell);
+                        workType = screen.IsFullScreen ?  ClientEnum.FULLSCREEN : ClientEnum.REGIONSCREENS,
+                        cell = screen,
+                        data = null
+                    };
+                    lock (tasks)
+                    {
+                        tasks.Add(task);
                     }
-                    else
+                });
+                // Thread-safe enqueue
+                lock (_queueLock)
+                {
+                    foreach (var task in tasks)
                     {
-                        SendChunk(cell);
-                        Console.WriteLine($"{cell.Rectangle.X} - {cell.Rectangle.Y} - {cell.Rectangle.Width} - {cell.Rectangle.Height}");
+                        QueueTask.Enqueue(task);
                     }
                 }
             }
         }
-        private void SendScreenData(CaptureCell cell)
+        private void SendScreenData(CaptureCell cell, ref bool flag)
         {
             int CHUNK_SIZE = 1024;
 
@@ -99,8 +180,9 @@ namespace RemoteClient.Remote
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
+            flag = true;
         }
-        private void SendChunk(CaptureCell cell)
+        private void SendChunk(CaptureCell cell, ref bool flag)
         {
             int CHUNK_SIZE = 1024;
 
@@ -148,6 +230,7 @@ namespace RemoteClient.Remote
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
+            flag = true;
         }
         #region Events
         #endregion
