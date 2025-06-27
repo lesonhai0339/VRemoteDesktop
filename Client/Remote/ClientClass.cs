@@ -163,7 +163,7 @@ namespace RemoteClient.Remote
 
             byte[] bytes = new byte[cell.Bytes.Length + 9];
 
-            Array.Copy(BitConverter.GetBytes(cell.Bytes.Length + 9), 0, bytes, 0, 4); // Add total bytes at the start
+            Array.Copy(BitConverter.GetBytes(cell.Bytes.Length + 1), 0, bytes, 0, 4); // Add total bytes at the start
 
             //caculate padding need to add
             int lastChunkSize = bytes.Length % CHUNK_SIZE;
@@ -204,7 +204,7 @@ namespace RemoteClient.Remote
 
             byte[] bytes = new byte[cell.Bytes.Length + 25];
 
-            Array.Copy(BitConverter.GetBytes(cell.Bytes.Length + 25), 0, bytes, 0, 4); // Add total bytes at the start
+            Array.Copy(BitConverter.GetBytes(cell.Bytes.Length + 17), 0, bytes, 0, 4); // Add total bytes at the start
 
             //caculate padding need to add
             int lastChunkSize = bytes.Length % CHUNK_SIZE;
