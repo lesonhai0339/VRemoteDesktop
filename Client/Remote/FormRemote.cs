@@ -61,36 +61,40 @@ namespace RemoteClient.Remote
 
         private void ChunkScreen(byte[] data)
         {
-            int x = BitConverter.ToInt32(data, 0);
-            int y = BitConverter.ToInt32(data, 4);
-            int width = BitConverter.ToInt32(data, 8);
-            int height = BitConverter.ToInt32(data, 12);
-
-            byte[] chunk = new byte[data.Length - 16];
-            Buffer.BlockCopy(data, 16, chunk, 0, chunk.Length);
-
-            Rectangle rectangle = new Rectangle(x, y, width, height);
-            using (MemoryStream ms = new MemoryStream(chunk))
-            using (Bitmap jpegBitmap = new Bitmap(ms))
-            using (Graphics g = Graphics.FromImage(_curScreen))
+            if (this.InvokeRequired)
             {
-                // Draw the JPEG bitmap into the specified region
-                g.DrawImage(jpegBitmap, rectangle);
-                if (this.InvokeRequired)
+                this.Invoke(new Action<byte[]>(ChunkScreen), data);
+                return;
+            }
+
+            try
+            {
+                int x = BitConverter.ToInt32(data, 0);
+                int y = BitConverter.ToInt32(data, 4);
+                int width = BitConverter.ToInt32(data, 8);
+                int height = BitConverter.ToInt32(data, 12);
+                byte[] chunk = new byte[data.Length - 16];
+                Buffer.BlockCopy(data, 16, chunk, 0, chunk.Length);
+
+                Rectangle rectangle = new Rectangle(x, y, width, height);
+
+                // Draw the chunk onto the main screen bitmap
+                using (MemoryStream ms = new MemoryStream(chunk))
+                using (Bitmap jpegBitmap = new Bitmap(ms))
+                using (Graphics g = Graphics.FromImage(_curScreen))
                 {
-                    this.Invoke(new Action<byte[]>(ScreenEvent), data);
-                    return;
+                    g.DrawImage(jpegBitmap, rectangle);
                 }
-                try
-                {
-                    var oldImage = vPictureBox1.Image;
-                    vPictureBox1.Image = jpegBitmap;
-                    oldImage?.Dispose();
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"ScreenEvent error: {ex.Message}");
-                }
+
+                // Refresh only the updated region (more efficient)
+                vPictureBox1.Invalidate(rectangle);
+
+                // OR if you need to update the entire image:
+                // RefreshPictureBox();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"ChunkScreen error: {ex.Message}");
             }
         }
         #endregion
@@ -99,6 +103,7 @@ namespace RemoteClient.Remote
         }
         public void ScreenEvent(byte[] data)
         {
+            Console.WriteLine(BitConverter.ToString(data));
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<byte[]>(ScreenEvent), data);
@@ -108,15 +113,16 @@ namespace RemoteClient.Remote
             // UI thread code
             try
             {
-                Bitmap image;
-                using (MemoryStream stream = new MemoryStream(data))
-                {
-                    image = new Bitmap(stream);
-                }
-                _curScreen = image;
+                MemoryStream stream = new MemoryStream(data);
+                Bitmap image = new Bitmap(stream);
+
                 // Dispose old image to prevent memory leak
                 var oldImage = vPictureBox1.Image;
                 vPictureBox1.Image = image;
+
+                _curScreen?.Dispose();
+                _curScreen = image;
+
                 oldImage?.Dispose();
             }
             catch (Exception ex)

@@ -42,7 +42,7 @@ namespace RemoteClient.Remote
         }
         #endregion
         #region Methods
-        private void SendScreen(object state)
+        public void SendScreen(object state)
         {
             var x = CaptureScreen.GetScreen();
             if (x.Any())
