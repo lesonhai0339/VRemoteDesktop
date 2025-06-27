@@ -137,14 +137,3 @@ _NCrunch*
 /.vs/VRemoteDesktop/v17/DocumentLayout.backup.json
 /.vs/VRemoteDesktop/CopilotIndices/17.13.441.19478/CodeChunks.db
 /.vs/VRemoteDesktop/CopilotIndices/17.13.441.19478/SemanticSymbols.db
-/Client/Remote/ClientClass.cs
-/Client/Remote/ClientClass.cs
-/Client/Remote/SocketRemoteClient.cs
-/Client/Remote/ClientClass.cs
-/Client/ByteArrayBuilder.cs
-/Client/Remote/SocketRemoteClient.cs
-/Client/RemoteClient.csproj
-/Client/Remote/CaptureScreen.cs
-/Client/Remote/ScreenStateLogger.cs
-/Client/Remote/TestScreenChange.cs
-/Client/Remote/TestScreenChange.Designer.cs

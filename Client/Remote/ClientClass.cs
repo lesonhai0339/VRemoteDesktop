@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -22,7 +23,7 @@ namespace RemoteClient.Remote
         {
             Client = remoteCLient;
             _connectionInfo = info;
-            _timer = new Timer(SendScreen, null, 0, (1000/15));
+            _timer = new Timer(SendScreen, null, 0, (1000/10));
         }
         #region Properties
         public SocketRemoteClient Client
@@ -43,68 +44,27 @@ namespace RemoteClient.Remote
         #region Methods
         private void SendScreen(object state)
         {
-            //Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
-            //byte[] bytes;
-
-            //using (Bitmap capture = CaptureScreen.CaptureWindowsScreen())
-            //{
-            //    using (MemoryStream stream = new MemoryStream())
-            //    {
-            //        capture.Save(stream, ImageFormat.Png);
-            //        bytes = stream.ToArray();
-            //    }
-            //}
-            //int totalBytes = bytes.Length;
-            //SendScreenData1(totalBytes, bytes);
-            Console.WriteLine("SendScreen called at " + DateTime.Now.ToString("HH:mm:ss.fff"));
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
             var x = CaptureScreen.GetScreen();
+            stopwatch.Stop();
+            Console.WriteLine($"Capture miliseconds: {stopwatch.Elapsed.TotalMilliseconds}");
             if (x.Any())
             {
                 foreach (var cell in x)
                 {
-                    SendScreenData(cell);
+                    if (cell.IsFullScreen)
+                    {
+                        SendScreenData(cell);
+                    }
+                    else
+                    {
+                        SendChunk(cell);
+                    }
                 }
             }
-        }
-        private void SendScreenData1(int totalBytes, byte[] byteData)
-        {
-            int CHUNK_SIZE = 1024;
-
-            byte[] bytes = new byte[byteData.Length + 9];
-
-            Array.Copy(BitConverter.GetBytes(totalBytes +  1), 0, bytes, 0, 4); // Add total bytes at the start
-
-            //caculate padding need to add
-            int lastChunkSize = bytes.Length % CHUNK_SIZE;
-            int padding = 0;
-            if(lastChunkSize != 0)
-            {
-                padding = CHUNK_SIZE - lastChunkSize;
-            }
-            Array.Copy(BitConverter.GetBytes(padding), 0 , bytes, 4, 4);
-
-            bytes[8] = 4; // Type of data, 4 for screen data
-
-            //data
-            Array.Copy(byteData, 0, bytes, 9, byteData.Length);//real data
-
-            int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
-
-            for (int i = 0; i < numberOfChunk; i++)
-            {
-                int offset = i * CHUNK_SIZE;
-                int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
-                byte[] packet = new byte[packetSize];
-
-                //data
-                Array.Copy(bytes, offset, packet, 0, packetSize);
-                if (((i + 1) % 5) == 0)
-                {
-                    Thread.Sleep(1);
-                }
-                Client.SendData(Enums.DataType.P2PDATASEND, packet);
-            }
-
+            stopwatch.Stop();
+            Console.WriteLine($"Send miliseconds: {stopwatch.Elapsed.TotalMilliseconds}");
         }
         private void SendScreenData(CaptureCell cell)
         {
@@ -123,7 +83,7 @@ namespace RemoteClient.Remote
             }
             Array.Copy(BitConverter.GetBytes(padding), 0, bytes, 4, 4);
 
-            bytes[8] = (byte)((cell.IsFullScreen) ? 4 : 5); // Type of data, 4 for screen data
+            bytes[8] = 4;
 
             //data
             Array.Copy(cell.Bytes, 0, bytes, 9, cell.Bytes.Length);//real data
@@ -147,54 +107,52 @@ namespace RemoteClient.Remote
         }
         private void SendChunk(CaptureCell cell)
         {
-            //only send 1024 byte each packet and 1 byte using for type then the real data can send is 1023 bytes
-            int headers = 22; //header for type(1) + x(4) + y(4) + width(4) + height(4) + index(1) + chunkSize(4)
-            int dataSize = 1024 - headers; //data 
-            int chunkSize = dataSize + headers;
+            int CHUNK_SIZE = 1024;
 
-            //int x = cell.Bytes.Length % 1023;
-            //int numberOfChunkx = (cell.Bytes.Length / 1023) + (cell.Bytes.Length % 1023 > 0 ? 1 : 0);
-            int numberOfChunk = (int)Math.Ceiling((double)cell.Bytes.Length / dataSize);
+            byte[] bytes = new byte[cell.Bytes.Length + 25];
 
-            byte[] xBytes = BitConverter.GetBytes(cell.Rectangle.X);
-            byte[] yBytes = BitConverter.GetBytes(cell.Rectangle.Y);
-            byte[] widthBytes = BitConverter.GetBytes(cell.Rectangle.Width);
-            byte[] heightBytes = BitConverter.GetBytes(cell.Rectangle.Height);
+            Array.Copy(BitConverter.GetBytes(cell.Bytes.Length + 1), 0, bytes, 0, 4); // Add total bytes at the start
 
-
-            //Console.WriteLine(BitConverter.ToString(xBytes));
-            //Console.WriteLine(BitConverter.ToString(yBytes));
-            //Console.WriteLine(BitConverter.ToString(widthBytes));
-            //Console.WriteLine(BitConverter.ToString(heightBytes));
-
-            for (int i =0; i< numberOfChunk; i++)
+            //caculate padding need to add
+            int lastChunkSize = bytes.Length % CHUNK_SIZE;
+            int padding = 0;
+            if (lastChunkSize != 0)
             {
-                byte[] packet = new byte[chunkSize];
+                padding = CHUNK_SIZE - lastChunkSize;
+            }
+            Array.Copy(BitConverter.GetBytes(padding), 0, bytes, 4, 4);
 
-                //headers
-                packet[0] = 40; //type, chunksend
-                Array.Copy(xBytes, 0, packet, 1, 4);      // X: bytes[1-4]
-                Array.Copy(yBytes, 0, packet, 5, 4);      // Y: bytes[5-8]
-                Array.Copy(widthBytes, 0, packet, 9, 4);  // Width: bytes[9-12]
-                Array.Copy(heightBytes, 0, packet, 13, 4); // Height: bytes[13-16]
-                packet[17] = (byte)i;//chunk index
+            bytes[8] = 5; //send chunk
 
-                int sourceOffset = i * dataSize;
-                int copyLength = Math.Min(dataSize, cell.Bytes.Length - sourceOffset);
 
-                //chunkSize
-                byte[] dataLengthBytes = BitConverter.GetBytes(copyLength);
-                Array.Copy(dataLengthBytes, 0, packet, 18, 4);
+            int x = cell.Rectangle.X;
+            int y = cell.Rectangle.Y;
+            int width = cell.Rectangle.Width;
+            int height = cell.Rectangle.Height;
+            Array.Copy(BitConverter.GetBytes(x), 0, bytes, 9, 4);//4 bytes
+            Array.Copy(BitConverter.GetBytes(y), 0, bytes, 13, 4);//4 bytes
+            Array.Copy(BitConverter.GetBytes(width), 0, bytes, 17, 4);//4 bytes
+            Array.Copy(BitConverter.GetBytes(height), 0, bytes, 21, 4);//4 bytes
+
+            //remaining data
+            Array.Copy(cell.Bytes, 0, bytes, 25, cell.Bytes.Length);//real data
+
+            int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
+
+            for (int i = 0; i < numberOfChunk; i++)
+            {
+                int offset = i * CHUNK_SIZE;
+                int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
+                byte[] packet = new byte[packetSize];
 
                 //data
-                Array.Copy(cell.Bytes, sourceOffset, packet, headers, copyLength);
-                if(((i + 1) % 5) == 0)
+                Array.Copy(bytes, offset, packet, 0, packetSize);
+                if (((i + 1) % 5) == 0)
                 {
                     Thread.Sleep(1);
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
-
         }
         #region Events
         #endregion
