@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Media.Imaging;
 
 namespace RemoteClient.Remote
 {
@@ -44,7 +45,7 @@ namespace RemoteClient.Remote
             {
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
-                using (Bitmap currentScreen = CaptureWindowsScreen())
+                using (Bitmap currentScreen = CaptureWindowsScreen1())
                 {
                     stopwatch.Stop();
                     Console.WriteLine($"Capture time: {stopwatch.Elapsed.TotalMilliseconds}");
@@ -74,8 +75,14 @@ namespace RemoteClient.Remote
                     }
                     else
                     {
-                        // Detect changes and create cells, 
-                        List<Rectangle> dirtyRegions = DetectDirtyRegions(currentScreen, _previousFrame);
+                        List<Rectangle> dirtyRegions = new List<Rectangle>();
+                        using (Bitmap cur = currentScreen.Clone() as Bitmap)
+                        using (Bitmap pre = _previousFrame.Clone() as Bitmap)
+                        {
+                            // Detect changes and create cells, 
+                            dirtyRegions = DetectDirtyRegions(cur, pre);
+                        }
+
 
                         if (dirtyRegions.Count > 0)
                         {
@@ -183,12 +190,32 @@ namespace RemoteClient.Remote
                     regions.Add(block);
                 }
             }
+            BitmapData currentData = null;
+            BitmapData previousData = null;
+            var maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
 
-            // Check blocks in parallel
-            //var changedBlocks = regions.AsParallel().Where(block => IsBlockChanged(current, previous, block)).ToList();
-            var changedBlocks = regions.Where(block => IsBlockChanged(current, previous, block)).ToList();
+            try
+            {
+                currentData = current.LockBits(new Rectangle(0, 0, current.Width, current.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                previousData = previous.LockBits(new Rectangle(0, 0, previous.Width, previous.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
 
-            return changedBlocks;
+                // Check blocks in parallel
+                var changedBlocks = regions.AsParallel().WithDegreeOfParallelism(maxDegreeOfParallelism).WithExecutionMode(ParallelExecutionMode.ForceParallelism).Where(block => IsBlockChanged(currentData, previousData, block)).ToList();
+                //var changedBlocks = regions.Where(block => IsBlockChanged(currentData, previousData, block)).ToList();
+
+                return changedBlocks;
+            }
+            finally
+            {
+                if(currentData != null)
+                {
+                    current.UnlockBits(currentData);
+                }
+                if(previousData != null)
+                {
+                    previous.UnlockBits(previousData);
+                }
+            }
         }
 
         private static List<Rectangle> MergeAdjacentRectangles(List<Rectangle> rectangles)
@@ -233,15 +260,15 @@ namespace RemoteClient.Remote
             return efficiency > 0.75; // 75% efficiency threshold
         }
 
-        private unsafe static bool IsBlockChanged(Bitmap current, Bitmap previous, Rectangle block)
+        private unsafe static bool IsBlockChanged(BitmapData current, BitmapData previous, Rectangle block)
         {
             BitmapData currentData = null;
             BitmapData previousData = null;
 
             try
             {
-                previousData = previous.LockBits(block, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-                currentData = current.LockBits(block, ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                previousData = previous;
+                currentData = current;
                 byte* currentPtr = (byte*)currentData.Scan0;
                 byte* previousPtr = (byte*)previousData.Scan0;
 
@@ -253,7 +280,10 @@ namespace RemoteClient.Remote
                 {
                     for (int x = 0; x < block.Width; x++)
                     {
-                        int offset = y * stride + x * bytesPerPixel;
+                        // CRITICAL FIX: Add block's position to get actual pixel coordinates
+                        int actualY = block.Y + y;
+                        int actualX = block.X + x;
+                        int offset = actualY * stride + actualX * bytesPerPixel;
 
                         // Check with threshold to avoid false positives from noise
                         if (Math.Abs(currentPtr[offset] - previousPtr[offset]) > threshold ||
@@ -269,8 +299,6 @@ namespace RemoteClient.Remote
             }
             finally
             {
-                if (currentData != null) current.UnlockBits(currentData);
-                if (previousData != null) previous.UnlockBits(previousData);
             }
         }
 

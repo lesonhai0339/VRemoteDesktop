@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -26,15 +27,19 @@ namespace RemoteClient.Remote
         [DllImport("user32.dll")]
         static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
 
+        ShowImage showImage;
 
         private bool flag = false;
+        private bool flag1 = false;
         private Timer _timer;
+        private VCaptureScreen _vCaptureScreen;
         public TestScreenChange()
         {
             InitializeComponent();
             BackColor = Color.White;
             textBox1.BorderStyle = BorderStyle.None;
             //_timer = new Timer(Capture, null, 0, (1000 / 15));
+            _vCaptureScreen = new VCaptureScreen();
         }
         private void test1()
         {
@@ -106,6 +111,10 @@ namespace RemoteClient.Remote
                     Stopwatch stopwatch = new Stopwatch();
                     stopwatch.Start();
                     var a = CaptureScreen.GetScreen();
+                    foreach(var i in a)
+                    {
+                        Console.WriteLine($"Length: {i.TotalSize}");
+                    }
                     stopwatch.Stop();
                     Console.WriteLine($"Eslaped time: {stopwatch.Elapsed.TotalMilliseconds}");
                 }
@@ -152,8 +161,41 @@ namespace RemoteClient.Remote
                 textBox1.Text = "";
             }
             Capture(null);
+            //_vCaptureScreen.Test();
+
+            //Stopwatch stopwath = new Stopwatch();
+            //stopwath.Start();
+            //var bounds = Screen.PrimaryScreen.Bounds;
+            //Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
+            //using(Graphics g = Graphics.FromImage(bitmap))
+            //{
+            //    g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
+            //}
+
+
+            //var a = _vCaptureScreen.SplitToRegions(bitmap);
+            //List<Bitmap> crops = a.Select(x => _vCaptureScreen.Crop(bitmap, x)).ToList();
+            ////var mergeBitmap = MergeRegions(crops, a, bitmap.Size);
+            //stopwath.Stop();
+            //Console.WriteLine($"Eslaped time: {stopwath.Elapsed.TotalMilliseconds}");
         }
 
+        public Bitmap MergeRegions(List<Bitmap> croppedBitmaps, List<Rectangle> regions, Size originalSize)
+        {
+            Bitmap result = new Bitmap(originalSize.Width, originalSize.Height);
+
+            using (Graphics graphics = Graphics.FromImage(result))
+            {
+                graphics.Clear(Color.Transparent); // or Color.White if you prefer
+
+                for (int i = 0; i < croppedBitmaps.Count && i < regions.Count; i++)
+                {
+                    graphics.DrawImageUnscaled(croppedBitmaps[i], regions[i].Location);
+                }
+            }
+
+            return result;
+        }
         private void TestScreenChange_Load(object sender, EventArgs e)
         {
 
