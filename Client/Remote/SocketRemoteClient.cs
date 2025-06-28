@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -169,6 +170,17 @@ namespace RemoteClient.Remote
 
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0 , num);
 
+                    var datax = stateObject.Buffer.Take(num).ToArray(); ;
+                    string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                    string filePath = Path.Combine(exePath, "log.txt");
+                    if (!File.Exists(filePath))
+                    {
+                        File.Create(filePath);
+                    }
+                    using (StreamWriter writer = new StreamWriter(filePath))
+                    {
+                        writer.WriteLine(BitConverter.ToString(datax));
+                    }
                     while (!CancellationToken.IsCancellationRequested)
                     {
                         if (!(stateObject.ByteArrayBuilder.Length >= 4))
