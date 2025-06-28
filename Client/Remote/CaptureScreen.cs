@@ -45,15 +45,11 @@ namespace RemoteClient.Remote
             lock (_lockObject)
             {
                 stopwatch.Start();
-                using (Bitmap currentScreen = CaptureWindowsScreen())
+                using (Bitmap currentScreen = CaptureWindowsScreen1())
                 {
-                    stopwatch.Stop();
-                    Console.WriteLine("Total time to capture screen: "+ stopwatch.Elapsed.TotalMilliseconds);
-                    stopwatch.Restart();
                     if (_previousFrame == null)
                     {
 
-                        stopwatch.Start();
                         // First capture - send full screen
                         byte[] compressedData = null;
                         using (var stream = new MemoryStream())
@@ -61,9 +57,6 @@ namespace RemoteClient.Remote
                             currentScreen.Save(stream, ImageFormat.Jpeg);
                             compressedData = stream.ToArray();
                         }
-                        stopwatch.Stop();
-                        Console.WriteLine("Total time to capture full screen: "+ stopwatch.Elapsed.TotalMilliseconds);
-                        stopwatch.Restart();
                         CaptureCell cell = new CaptureCell
                         {
                             IsFullScreen = true,
@@ -84,24 +77,15 @@ namespace RemoteClient.Remote
                         using (Bitmap cur = currentScreen.Clone() as Bitmap)
                         using (Bitmap pre = _previousFrame.Clone() as Bitmap)
                         {
-                            stopwatch.Start();
                             // Detect changes and create cells, 
                             dirtyRegions = DetectDirtyRegions(cur, pre);
-                            stopwatch.Stop();
-                            Console.WriteLine("Total time to detect region changed: "+ stopwatch.Elapsed.TotalMilliseconds);
-                            stopwatch.Restart();
                         }
 
 
                         if (dirtyRegions.Count > 0)
                         {
-                            stopwatch.Start();
                             // Merge adjacent regions for efficiency
                             List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
-                            stopwatch.Stop();
-                            Console.WriteLine("Total time to merge regions: "+ stopwatch.Elapsed.TotalMilliseconds);
-                            stopwatch.Restart();
-                            stopwatch.Start();
                             foreach (var region in mergedRegions)
                             {
                                 using (Bitmap regionBitmap = CropBitmap(currentScreen, region))
@@ -121,8 +105,6 @@ namespace RemoteClient.Remote
                                     cells.Add(cell);
                                 }
                             }
-                            stopwatch.Stop();
-                            Console.WriteLine("Total time to assign all regions changed: "+ stopwatch.Elapsed.TotalMilliseconds);
                             // Update previous frame
                             _previousFrame?.Dispose();
                             _previousFrame = currentScreen.Clone(
@@ -134,7 +116,8 @@ namespace RemoteClient.Remote
                     }
                 }
             }
-
+            stopwatch.Stop();
+            Console.WriteLine("Total time to assign all regions changed: " + stopwatch.Elapsed.TotalMilliseconds);
             return cells;
         }
 
@@ -274,15 +257,11 @@ namespace RemoteClient.Remote
             return efficiency > 0.75; // 75% efficiency threshold
         }
 
-        private unsafe static bool IsBlockChanged(BitmapData current, BitmapData previous, Rectangle block)
+        private unsafe static bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
         {
-            BitmapData currentData = null;
-            BitmapData previousData = null;
 
             try
             {
-                previousData = previous;
-                currentData = current;
                 byte* currentPtr = (byte*)currentData.Scan0;
                 byte* previousPtr = (byte*)previousData.Scan0;
 
@@ -299,10 +278,14 @@ namespace RemoteClient.Remote
                         int actualX = block.X + x;
                         int offset = actualY * stride + actualX * bytesPerPixel;
 
+                        int bDiff = currentPtr[offset] - previousPtr[offset]; //B in RGB
+                        int gDiff = currentPtr[offset + 1] - previousPtr[offset + 1]; //G in RGB
+                        int rDiff = currentPtr[offset + 2] - previousPtr[offset + 2]; //R in RGB
+
                         // Check with threshold to avoid false positives from noise
-                        if (Math.Abs(currentPtr[offset] - previousPtr[offset]) > threshold ||
-                            Math.Abs(currentPtr[offset + 1] - previousPtr[offset + 1]) > threshold ||
-                            Math.Abs(currentPtr[offset + 2] - previousPtr[offset + 2]) > threshold)
+                        if (bDiff > threshold ||
+                            gDiff > threshold ||
+                            rDiff > threshold)
                         {
                             return true;
                         }
@@ -310,9 +293,6 @@ namespace RemoteClient.Remote
                 }
 
                 return false;
-            }
-            finally
-            {
             }
         }
 
