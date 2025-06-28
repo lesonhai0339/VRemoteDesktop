@@ -189,17 +189,6 @@ namespace RemoteClient.Remote
                 //data
                 Array.Copy(bytes, offset, packet, 0, packetSize);
 
-                string exePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
-                string filePath = Path.Combine(exePath, "logScreen.txt");
-                if (!File.Exists(filePath))
-                {
-                    File.Create(filePath).Dispose();
-                }
-                using (StreamWriter writer = new StreamWriter(filePath,true))
-                {
-                    writer.WriteLine(BitConverter.ToString(packet) + "\n");
-                }
-
                 if (((i + 1) % 5) == 0)
                 {
                     Thread.Sleep(1);
