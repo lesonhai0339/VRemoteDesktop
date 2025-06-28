@@ -137,3 +137,6 @@ _NCrunch*
 /.vs/VRemoteDesktop/v17/DocumentLayout.backup.json
 /.vs/VRemoteDesktop/CopilotIndices/17.13.441.19478/CodeChunks.db
 /.vs/VRemoteDesktop/CopilotIndices/17.13.441.19478/SemanticSymbols.db
+/Client/Remote/ClientClass.cs
+/.gitignore
+/.gitignore
