@@ -189,7 +189,7 @@ namespace RemoteClient.Remote
                 //data
                 Array.Copy(bytes, offset, packet, 0, packetSize);
 
-                if (((i + 1) % 5) == 0)
+                 if (((i + 1) % 5) == 0)
                 {
                     Thread.Sleep(1);
                 }
