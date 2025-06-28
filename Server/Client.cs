@@ -13,22 +13,17 @@ namespace RemoteServer
     public class Client
     {
         public Socket Socket { get; private set; }
-
-        //process data received
         public Func<Client, byte[], int, Task> Callback { get; set; }
-        //process socket disconnect, remove from room and list<active> user
-        private readonly Action<Client> _onDisconnected;
-
-        //using to check socket timeout, last packet sent
+        private readonly Action<Client> _isDisconnected;
         public DateTime _lastSendTime;
-        private readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
+        private readonly TimeSpan _timeout = TimeSpan.FromSeconds(300);
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
-        public Client(Socket sck, Func<Client, byte[],int, Task> callback, Action<Client> onDisconnected)
+        public Client(Socket sck, Func<Client, byte[], int, Task> callback, Action<Client> isDisconnected)
         {
             Socket = sck;
             Callback = callback;
-            _lastSendTime = DateTime.Now;
-            _onDisconnected = onDisconnected;
+            _lastSendTime = DateTime.Now; //init before check timeout
+            _isDisconnected = isDisconnected;
             CheckTimeout();
         }
         bool SocketConnected(Socket s)
@@ -57,6 +52,7 @@ namespace RemoteServer
             {
                 while (!_cts.Token.IsCancellationRequested)
                 {
+                    //Console.WriteLine("Call time");
                     var idlerTime = DateTime.Now - _lastSendTime;
                     if (idlerTime > _timeout)
                     {
@@ -71,7 +67,7 @@ namespace RemoteServer
                         Dispose();
                         break;
                     }
-                    await Task.Delay(10000, _cts.Token);  
+                    await Task.Delay(10000, _cts.Token);
                 }
             });
         }
@@ -105,10 +101,10 @@ namespace RemoteServer
             {
                 while (true)
                 {
-                    //always wait until received enough 1025 bytes, 1 byte for type and 1024 bytes for data
                     byte[] buffer = new byte[bufferSize];
+                    //always wait until received 1025 bytes dùng cho fixed length
                     int totalRead = 0;
-                    while(totalRead < bufferSize)
+                    while (totalRead < bufferSize)
                     {
                         int byteRead = await ReceiveAsync(buffer, totalRead, bufferSize - totalRead, SocketFlags.None);
                         if (byteRead == 0)
@@ -119,46 +115,42 @@ namespace RemoteServer
                         totalRead += byteRead;
                     }
                     _lastSendTime = DateTime.Now;
-
                     //copy data before, AI recommend
                     var dataCopy = new byte[totalRead];
                     Array.Copy(buffer, 0, dataCopy, 0, totalRead);
+                    IPEndPoint ep = Socket.RemoteEndPoint as IPEndPoint;
+                    Console.WriteLine($"Received {totalRead} from {ep.Address.ToString()}");
+                    try
+                    {
+                        //Console.WriteLine($"Received {dataCopy.Length} bytes from {this.Socket.RemoteEndPoint.AddressFamily.ToString()}");
+                        await ProcessDataHandler(dataCopy, dataCopy.Length);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error when received data from {this.Socket.RemoteEndPoint.AddressFamily.ToString()} - {ex.Message}");
+                    }
+                    /**int byteRead = await ReceiveAsync(buffer, 0, buffer.Length, SocketFlags.None);
 
-                    //fire-and-forget process data
+                    if (byteRead == 0)
+                    {
+                        Console.WriteLine("Client Disconnected");
+                        break;
+                    }
+                    _lastSendTime = DateTime.Now;
+                    var messageBuffer = new byte[byteRead];
+                    Array.Copy(buffer, 0, messageBuffer, 0, byteRead);
                     _ = Task.Run(async () =>
                     {
                         try
                         {
-                            Console.WriteLine($"Received {dataCopy.Length} bytes from {this.Socket.RemoteEndPoint.AddressFamily.ToString()}");
-                            await ProcessDataHandler(dataCopy, dataCopy.Length);
+                            Console.WriteLine($"Received {byteRead} bytes from {this.Socket.RemoteEndPoint.AddressFamily.ToString()}");
+                            await ProcessDataHandler(messageBuffer, byteRead);
                         }
                         catch (Exception ex)
                         {
                             Console.WriteLine($"Error when received data from {this.Socket.RemoteEndPoint.AddressFamily.ToString()} - {ex.Message}");
                         }
-                    });
-                    //int byteRead = await ReceiveAsync(buffer, 0, buffer.Length, SocketFlags.None);
-
-                    //if (byteRead == 0)
-                    //{
-                    //    Console.WriteLine("Client Disconnected");
-                    //    break;
-                    //}
-                    //_lastSendTime = DateTime.Now;
-                    //var messageBuffer = new byte[byteRead];
-                    //Array.Copy(buffer, 0, messageBuffer, 0, byteRead);
-                    //_ = Task.Run( async() =>
-                    //{
-                    //    try
-                    //    {
-                    //        Console.WriteLine($"Received {byteRead} bytes from {this.Socket.RemoteEndPoint.AddressFamily.ToString()}");
-                    //        await ProcessDataHandler(messageBuffer, byteRead);
-                    //    }
-                    //    catch(Exception ex)
-                    //    {
-                    //        Console.WriteLine($"Error when received data from {this.Socket.RemoteEndPoint.AddressFamily.ToString()} - {ex.Message}");
-                    //    }
-                    //});
+                    });**/
                 }
             }
             catch
@@ -188,7 +180,7 @@ namespace RemoteServer
             Callback = null;
             Socket?.Close();
             Socket?.Dispose();
-            _onDisconnected.Invoke(this);
+            _isDisconnected.Invoke(this);
         }
     }
 }
