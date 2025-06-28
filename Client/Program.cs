@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Windows.Forms;
+using System.Windows.Media;
 
 namespace RemoteClient
 {
@@ -17,7 +18,7 @@ namespace RemoteClient
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new FormMain());
+            Application.Run(new TestScreenChange());
         }
     }
 }

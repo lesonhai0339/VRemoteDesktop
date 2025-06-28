@@ -266,32 +266,37 @@ namespace RemoteClient.Remote
                 byte* previousPtr = (byte*)previousData.Scan0;
 
                 int stride = currentData.Stride;
-                int bytesPerPixel = 3;
-                const int threshold = 10; // Noise threshold
+                const int threshold = 30; // Noise threshold
 
                 for (int y = 0; y < block.Height; y++)
                 {
+                    int rowOffset = (block.Y + y) * stride + block.X * 3;
+
                     for (int x = 0; x < block.Width; x++)
                     {
                         // CRITICAL FIX: Add block's position to get actual pixel coordinates
                         int actualY = block.Y + y;
                         int actualX = block.X + x;
-                        int offset = actualY * stride + actualX * bytesPerPixel;
+                        int offset = actualY * stride + actualX * 3;
 
                         int bDiff = currentPtr[offset] - previousPtr[offset]; //B in RGB
                         int gDiff = currentPtr[offset + 1] - previousPtr[offset + 1]; //G in RGB
                         int rDiff = currentPtr[offset + 2] - previousPtr[offset + 2]; //R in RGB
 
                         // Check with threshold to avoid false positives from noise
-                        if (bDiff > threshold ||
-                            gDiff > threshold ||
-                            rDiff > threshold)
+                        if (Math.Abs(bDiff) > threshold ||
+                            Math.Abs(gDiff) > threshold ||
+                            Math.Abs(rDiff) > threshold)
                         {
                             return true;
                         }
                     }
                 }
 
+                return false;
+            }
+            catch
+            {
                 return false;
             }
         }
@@ -305,5 +310,6 @@ namespace RemoteClient.Remote
                 _previousFrame = null;
             }
         }
+
     }
 }
