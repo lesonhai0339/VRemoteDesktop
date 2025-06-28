@@ -62,7 +62,7 @@ namespace RemoteClient.Remote
 
         private void ChunkScreen(byte[] data)
         {
-            Console.WriteLine($"Chunk 1: {DateTime.Now.ToString("hh:mm:ss tt")}");
+            Console.WriteLine($"Chunk 1: {DateTime.Now.ToString("hh:mm:ss.fff tt")}");
 
             if (this.InvokeRequired)
             {
@@ -98,7 +98,7 @@ namespace RemoteClient.Remote
 
                 // OR if you need to update the entire image:
                 // RefreshPictureBox();
-                Console.WriteLine($"Chunk 2: {DateTime.Now.ToString("hh:mm:ss tt")}");
+                Console.WriteLine($"Chunk 2: {DateTime.Now.ToString("hh:mm:ss.fff tt")}");
 
             }
             catch (Exception ex)
@@ -112,7 +112,7 @@ namespace RemoteClient.Remote
         }
         public void ScreenEvent(byte[] data)
         {
-            Console.WriteLine($"Capture 1: {DateTime.Now.ToString("hh:mm:ss tt")}");
+            Console.WriteLine($"Capture 1: {DateTime.Now.ToString("hh:mm:ss.fff tt")}");
 
             if (this.InvokeRequired)
             {
@@ -135,7 +135,7 @@ namespace RemoteClient.Remote
                     _curScreen?.Dispose();
                     _curScreen = image;
                 }
-                Console.WriteLine($"Capture 2: {DateTime.Now.ToString("hh:mm:ss tt")}");
+                Console.WriteLine($"Capture 2: {DateTime.Now.ToString("hh: mm:ss.fff tt")}");
             }
             catch (Exception ex)
             {
