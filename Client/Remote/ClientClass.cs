@@ -192,7 +192,6 @@ namespace RemoteClient.Remote
                 {
                     Thread.Sleep(1);
                 }
-                Console.WriteLine($"1:{packet.Length} - {BitConverter.ToString(packet.Skip(packet.Length - 4).Take(4).ToArray())}");
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
             flag = true;
@@ -243,7 +242,6 @@ namespace RemoteClient.Remote
                 {
                     Thread.Sleep(1);
                 }
-                Console.WriteLine($"2:{packet.Length} - {BitConverter.ToString(packet.Skip(packet.Length - 4).Take(4).ToArray())}");
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
             flag = true;

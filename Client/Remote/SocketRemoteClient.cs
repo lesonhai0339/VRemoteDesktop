@@ -289,7 +289,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PChunkSend(byte[] data)
         {
-            Console.WriteLine($"2:{data.Length} - {BitConverter.ToString(data.Skip(data.Length - 4).Take(4).ToArray())}");
+            Console.WriteLine($"Chunk: {DateTime.Now.ToString("hh:mm:ss tt")}");
             SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
             if(sendScreenChunks != null)
             {
@@ -298,7 +298,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PCapture(byte[] data)
         {
-            Console.WriteLine($"1:{data.Length} - {BitConverter.ToString(data.Skip(data.Length - 4).Take(4).ToArray())}");
+            Console.WriteLine($"Capture: {DateTime.Now.ToString("hh:mm:ss tt")}");
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
             {
