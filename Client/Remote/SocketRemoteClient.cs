@@ -175,9 +175,9 @@ namespace RemoteClient.Remote
                     string filePath = Path.Combine(exePath, "log.txt");
                     if (!File.Exists(filePath))
                     {
-                        File.Create(filePath);
+                        File.Create(filePath).Dispose();
                     }
-                    using (StreamWriter writer = new StreamWriter(filePath))
+                    using (StreamWriter writer = new StreamWriter(filePath,true))
                     {
                         writer.WriteLine(BitConverter.ToString(datax));
                     }
