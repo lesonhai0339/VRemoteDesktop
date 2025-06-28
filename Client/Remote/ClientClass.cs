@@ -189,7 +189,7 @@ namespace RemoteClient.Remote
                 //data
                 Array.Copy(bytes, offset, packet, 0, packetSize);
 
-                string exePath = System.Reflection.Assembly.GetExecutingAssembly().Location;
+                string exePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
                 string filePath = Path.Combine(exePath, "logScreen.txt");
                 if (!File.Exists(filePath))
                 {
