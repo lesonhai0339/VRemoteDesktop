@@ -39,6 +39,7 @@ namespace RemoteClient.Remote
         public event SendScreenChunksEvent SendScreenChunksEventHandler;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
+        private int count = 0;
         public SocketRemoteClient() 
         {
             _isSocketConnected = false;
@@ -199,6 +200,7 @@ namespace RemoteClient.Remote
                         if (!(stateObject.ByteArrayBuilder.Length >= dataLength + paddingAdded + 4  + 4))
                         {
                             Console.WriteLine($"Waitting for length {dataLength + 4 + paddingAdded + 4} padding - {paddingAdded}");
+                            count++;
                             goto IL_163;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(dataLength + 4 + paddingAdded + 4).ToArray();
@@ -290,7 +292,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PChunkSend(byte[] data)
         {
-            Console.WriteLine("Received chunk");
+            Console.WriteLine($"Count chunk : {count}");
             SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
             if(sendScreenChunks != null)
             {
@@ -299,7 +301,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PCapture(byte[] data)
         {
-            Console.WriteLine(BitConverter.ToString(data));
+            Console.WriteLine($"Count : {count}");
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
             {

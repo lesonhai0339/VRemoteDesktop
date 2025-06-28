@@ -36,7 +36,7 @@ namespace RemoteClient.Remote
         private SocketRemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
         private readonly object _queueLock = new object(); // For thread safety
-
+        private int count = 0;
         public ClientClass(SocketRemoteClient remoteCLient, ConnectionInfo info)
         {
             Client = remoteCLient;
@@ -125,6 +125,7 @@ namespace RemoteClient.Remote
         }
         public void SendScreen(object state)
         {
+            Console.WriteLine($"Count: {count}");
             if (!BackgroundWorker.IsBusy)
             {
                 BackgroundWorker.RunWorkerAsync();
@@ -194,6 +195,8 @@ namespace RemoteClient.Remote
                     Thread.Sleep(1);
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
+                count++;
+
             }
             flag = true;
         }
@@ -246,6 +249,7 @@ namespace RemoteClient.Remote
                     Thread.Sleep(1);
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
+                count++;
             }
             flag = true;
         }
