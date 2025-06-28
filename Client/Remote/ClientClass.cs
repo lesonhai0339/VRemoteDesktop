@@ -36,7 +36,7 @@ namespace RemoteClient.Remote
         private SocketRemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
         private readonly object _queueLock = new object(); // For thread safety
-        private int count = 0;
+        private long count = 0;
         public ClientClass(SocketRemoteClient remoteCLient, ConnectionInfo info)
         {
             Client = remoteCLient;
@@ -125,7 +125,7 @@ namespace RemoteClient.Remote
         }
         public void SendScreen(object state)
         {
-            Console.WriteLine($"Count: {count}");
+            Console.WriteLine("Count: "+ count);
             if (!BackgroundWorker.IsBusy)
             {
                 BackgroundWorker.RunWorkerAsync();
@@ -136,6 +136,7 @@ namespace RemoteClient.Remote
                 var tasks = new List<TaskWork>();
                 Parallel.ForEach(screens, screen =>
                 {
+                    count = count + screen.TotalSize;
                     var task = new TaskWork
                     {
                         workType = screen.IsFullScreen ?  ClientEnum.FULLSCREEN : ClientEnum.REGIONSCREENS,
@@ -159,7 +160,6 @@ namespace RemoteClient.Remote
         }
         private void SendScreenData(CaptureCell cell, ref bool flag)
         {
-            Console.WriteLine(BitConverter.ToString(cell.Bytes));
             int CHUNK_SIZE = 1024;
 
             byte[] bytes = new byte[cell.Bytes.Length + 9];
@@ -195,15 +195,11 @@ namespace RemoteClient.Remote
                     Thread.Sleep(1);
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
-                count++;
-
             }
             flag = true;
         }
         private void SendChunk(CaptureCell cell, ref bool flag)
         {
-            Console.WriteLine("Send Chunk");
-
             int CHUNK_SIZE = 1024;
 
             byte[] bytes = new byte[cell.Bytes.Length + 25];
@@ -249,7 +245,6 @@ namespace RemoteClient.Remote
                     Thread.Sleep(1);
                 }
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
-                count++;
             }
             flag = true;
         }
