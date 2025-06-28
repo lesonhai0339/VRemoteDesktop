@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -83,6 +84,10 @@ namespace RemoteClient.Remote
                 using (Bitmap jpegBitmap = new Bitmap(ms))
                 using (Graphics g = Graphics.FromImage(_curScreen))
                 {
+                    g.CompositingMode = CompositingMode.SourceCopy;
+                    g.CompositingQuality = CompositingQuality.HighSpeed;
+                    g.InterpolationMode = InterpolationMode.NearestNeighbor;
+                    g.SmoothingMode = SmoothingMode.None;
                     g.DrawImage(jpegBitmap, rectangle);
                 }
 
@@ -103,7 +108,6 @@ namespace RemoteClient.Remote
         }
         public void ScreenEvent(byte[] data)
         {
-            Console.WriteLine(BitConverter.ToString(data));
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<byte[]>(ScreenEvent), data);

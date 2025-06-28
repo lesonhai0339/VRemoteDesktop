@@ -13,6 +13,7 @@ using System.Runtime.Remoting.Lifetime;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Markup;
 
 namespace RemoteClient.Remote
 {
@@ -36,7 +37,6 @@ namespace RemoteClient.Remote
         private SocketRemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
         private readonly object _queueLock = new object(); // For thread safety
-        private long count = 0;
         public ClientClass(SocketRemoteClient remoteCLient, ConnectionInfo info)
         {
             Client = remoteCLient;
@@ -125,7 +125,6 @@ namespace RemoteClient.Remote
         }
         public void SendScreen(object state)
         {
-            Console.WriteLine("Count: "+ count);
             if (!BackgroundWorker.IsBusy)
             {
                 BackgroundWorker.RunWorkerAsync();
@@ -136,7 +135,6 @@ namespace RemoteClient.Remote
                 var tasks = new List<TaskWork>();
                 Parallel.ForEach(screens, screen =>
                 {
-                    count = count + screen.TotalSize;
                     var task = new TaskWork
                     {
                         workType = screen.IsFullScreen ?  ClientEnum.FULLSCREEN : ClientEnum.REGIONSCREENS,
@@ -194,6 +192,7 @@ namespace RemoteClient.Remote
                 {
                     Thread.Sleep(1);
                 }
+                Console.WriteLine($"1:{packet.Length} - {BitConverter.ToString(packet.Skip(packet.Length - 4).Take(4).ToArray())}");
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
             flag = true;
@@ -244,6 +243,7 @@ namespace RemoteClient.Remote
                 {
                     Thread.Sleep(1);
                 }
+                Console.WriteLine($"2:{packet.Length} - {BitConverter.ToString(packet.Skip(packet.Length - 4).Take(4).ToArray())}");
                 Client.SendData(Enums.DataType.P2PDATASEND, packet);
             }
             flag = true;
