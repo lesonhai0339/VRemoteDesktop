@@ -179,7 +179,7 @@ namespace RemoteClient.Remote
                     }
                     using (StreamWriter writer = new StreamWriter(filePath,true))
                     {
-                        writer.WriteLine(BitConverter.ToString(datax));
+                        writer.WriteLine(BitConverter.ToString(datax) + "\n");
                     }
                     while (!CancellationToken.IsCancellationRequested)
                     {

@@ -197,7 +197,7 @@ namespace RemoteClient.Remote
                 }
                 using (StreamWriter writer = new StreamWriter(filePath,true))
                 {
-                    writer.WriteLine(BitConverter.ToString(packet));
+                    writer.WriteLine(BitConverter.ToString(packet) + "\n");
                 }
 
                 if (((i + 1) % 5) == 0)
