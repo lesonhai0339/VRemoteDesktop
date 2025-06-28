@@ -21,6 +21,7 @@ namespace RemoteServer
         {
             _sck = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _sck.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+            _sck.NoDelay = true;
             clients = new ConcurrentDictionary<string, Connection>();
             _socketStore = new List<Info>();
         }

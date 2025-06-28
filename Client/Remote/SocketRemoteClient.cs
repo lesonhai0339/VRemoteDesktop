@@ -81,6 +81,7 @@ namespace RemoteClient.Remote
                 if (Socket == null)
                 {
                     Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                    Socket.NoDelay = true;
                 }
                 Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
                 Socket.BeginConnect(endPoint, new AsyncCallback(ConnectCallback), Socket);

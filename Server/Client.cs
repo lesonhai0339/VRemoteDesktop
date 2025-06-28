@@ -21,6 +21,7 @@ namespace RemoteServer
         public Client(Socket sck, Func<Client, byte[], int, Task> callback, Action<Client> isDisconnected)
         {
             Socket = sck;
+            Socket.NoDelay = true;
             Callback = callback;
             _lastSendTime = DateTime.Now; //init before check timeout
             _isDisconnected = isDisconnected;
