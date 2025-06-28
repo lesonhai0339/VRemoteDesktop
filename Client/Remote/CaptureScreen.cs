@@ -39,19 +39,21 @@ namespace RemoteClient.Remote
         static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
         internal static List<CaptureCell> GetScreen()
         {
+            Stopwatch stopwatch = Stopwatch.StartNew();
             List<CaptureCell> cells = new List<CaptureCell>();
 
             lock (_lockObject)
             {
-                Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
-                using (Bitmap currentScreen = CaptureWindowsScreen1())
+                using (Bitmap currentScreen = CaptureWindowsScreen())
                 {
                     stopwatch.Stop();
-                    Console.WriteLine($"Capture time: {stopwatch.Elapsed.TotalMilliseconds}");
+                    Console.WriteLine("Total time to capture screen: "+ stopwatch.Elapsed.TotalMilliseconds);
+                    stopwatch.Restart();
                     if (_previousFrame == null)
                     {
 
+                        stopwatch.Start();
                         // First capture - send full screen
                         byte[] compressedData = null;
                         using (var stream = new MemoryStream())
@@ -59,12 +61,15 @@ namespace RemoteClient.Remote
                             currentScreen.Save(stream, ImageFormat.Jpeg);
                             compressedData = stream.ToArray();
                         }
+                        stopwatch.Stop();
+                        Console.WriteLine("Total time to capture full screen: "+ stopwatch.Elapsed.TotalMilliseconds);
+                        stopwatch.Restart();
                         CaptureCell cell = new CaptureCell
                         {
                             IsFullScreen = true,
                             Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
                             Bytes = compressedData
-                        };
+                        }; 
                         cells.Add(cell);
 
                         // Store current frame as previous
@@ -79,16 +84,24 @@ namespace RemoteClient.Remote
                         using (Bitmap cur = currentScreen.Clone() as Bitmap)
                         using (Bitmap pre = _previousFrame.Clone() as Bitmap)
                         {
+                            stopwatch.Start();
                             // Detect changes and create cells, 
                             dirtyRegions = DetectDirtyRegions(cur, pre);
+                            stopwatch.Stop();
+                            Console.WriteLine("Total time to detect region changed: "+ stopwatch.Elapsed.TotalMilliseconds);
+                            stopwatch.Restart();
                         }
 
 
                         if (dirtyRegions.Count > 0)
                         {
+                            stopwatch.Start();
                             // Merge adjacent regions for efficiency
                             List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
-
+                            stopwatch.Stop();
+                            Console.WriteLine("Total time to merge regions: "+ stopwatch.Elapsed.TotalMilliseconds);
+                            stopwatch.Restart();
+                            stopwatch.Start();
                             foreach (var region in mergedRegions)
                             {
                                 using (Bitmap regionBitmap = CropBitmap(currentScreen, region))
@@ -108,7 +121,8 @@ namespace RemoteClient.Remote
                                     cells.Add(cell);
                                 }
                             }
-
+                            stopwatch.Stop();
+                            Console.WriteLine("Total time to assign all regions changed: "+ stopwatch.Elapsed.TotalMilliseconds);
                             // Update previous frame
                             _previousFrame?.Dispose();
                             _previousFrame = currentScreen.Clone(

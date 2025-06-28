@@ -176,33 +176,33 @@ namespace RemoteClient.Remote
                             goto IL_163;
                         }
 
-                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
-                        int padding = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(4, 4).ToArray(), 0);
+                        int dataLength = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
+                        int paddingAdded = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(4, 4).ToArray(), 0);
 
                         if (stateObject.ByteArrayBuilder.Length > MAX_BUFFER_SIZE)
                         {
                             stateObject.ByteArrayBuilder.Clear();
                             goto IL_163;
                         }
-                        if(length < 0 || padding < 0)
+                        if(dataLength < 0 || paddingAdded < 0)
                         {
                             stateObject.ByteArrayBuilder.Clear();
                             goto IL_163;
                         }
-                        if (length > MAX_BUFFER_SIZE - 8 - padding)
+                        if (dataLength > MAX_BUFFER_SIZE - 8 - paddingAdded)
                         {
                             stateObject.ByteArrayBuilder.Clear();
                             goto IL_163;
                         }
-                        if (!(stateObject.ByteArrayBuilder.Length >= length + 4 +  padding + 4))
+                        if (!(stateObject.ByteArrayBuilder.Length >= dataLength + paddingAdded + 4  + 4))
                         {
-                            Console.WriteLine($"Waitting for length {length + 4 + padding + 4} padding - {padding}");
+                            Console.WriteLine($"Waitting for length {dataLength + 4 + paddingAdded + 4} padding - {paddingAdded}");
                             goto IL_163;
                         }
-                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4 + padding + 4).ToArray();
+                        Array src = stateObject.ByteArrayBuilder.Cut(dataLength + 4 + paddingAdded + 4).ToArray();
                         //stateObject.ByteArrayBuilder.Clear();
-                        byte[] array = new byte[length];
-                        Array.Copy(src, 8, array, 0, length);
+                        byte[] array = new byte[dataLength];
+                        Array.Copy(src, 8, array, 0, dataLength);
                         ProcessDataReceived(array, stateObject);
                         if (CancellationToken.IsCancellationRequested)
                             break;
@@ -288,7 +288,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PChunkSend(byte[] data)
         {
-
+            Console.WriteLine("Received chunk");
             SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
             if(sendScreenChunks != null)
             {
@@ -297,6 +297,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PCapture(byte[] data)
         {
+            Console.WriteLine(BitConverter.ToString(data));
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
             {
