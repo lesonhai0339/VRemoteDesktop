@@ -205,6 +205,25 @@ namespace RemoteClient.Remote
                         byte[] array = new byte[dataLength];
                         Array.Copy(src, 8, array, 0, dataLength);
                         ProcessDataReceived(array, stateObject);
+
+
+                        //int maxWorker, maxIOC;
+                        //int availableWorker, availableIOC;
+
+                        //ThreadPool.GetMaxThreads(out maxWorker, out maxIOC);
+                        //ThreadPool.GetAvailableThreads(out availableWorker, out availableIOC);
+
+                        //int inUseWorker = maxWorker - availableWorker;
+                        //int inUseIOC = maxIOC - availableIOC;
+
+                        //Console.WriteLine($"[ThreadPool]");
+                        //Console.WriteLine($"  Max Worker Threads:     {maxWorker}");
+                        //Console.WriteLine($"  Available Worker:       {availableWorker}");
+                        //Console.WriteLine($"  In Use Worker:          {inUseWorker}");
+                        //Console.WriteLine($"  Max IO Completion Port: {maxIOC}");
+                        //Console.WriteLine($"  In Use IOCP:            {inUseIOC}");
+                        //Console.WriteLine("--------------------------------------------\n\n");
+
                         if (CancellationToken.IsCancellationRequested)
                             break;
                     }
@@ -289,7 +308,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PChunkSend(byte[] data)
         {
-            Console.WriteLine($"Chunk: {data.Length}");
+            //Console.WriteLine($"Chunk: {data.Length}");
             Task.Run(() =>
             {
                 SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
@@ -306,7 +325,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PCapture(byte[] data)
         {
-            Console.WriteLine($"Screen: {data.Length}");
+            //Console.WriteLine($"Screen: {data.Length}");
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
             {

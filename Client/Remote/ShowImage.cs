@@ -26,7 +26,7 @@ namespace RemoteClient.Remote
         {
             InitializeComponent();
             Capture();
-            _timer = new System.Threading.Timer(ChunksCapture, null, 0, (1000 / 15));
+            _timer = new System.Threading.Timer(ChunksCapture, null, 0, (1000 / 10));
         }
         private void ShowImage_Load(object sender, EventArgs e)
         {
@@ -58,6 +58,7 @@ namespace RemoteClient.Remote
         }
         public void ScreenEvent(Bitmap bitmap)
         {
+
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<Bitmap>(ScreenEvent), bitmap);
@@ -131,6 +132,22 @@ namespace RemoteClient.Remote
         }
         private void ChunkScreen(CaptureCell cell)
         {
+            int maxWorker, maxIOC;
+            int availableWorker, availableIOC;
+
+            ThreadPool.GetMaxThreads(out maxWorker, out maxIOC);
+            ThreadPool.GetAvailableThreads(out availableWorker, out availableIOC);
+
+            int inUseWorker = maxWorker - availableWorker;
+            int inUseIOC = maxIOC - availableIOC;
+
+            Console.WriteLine($"[ThreadPool]");
+            Console.WriteLine($"  Max Worker Threads:     {maxWorker}");
+            Console.WriteLine($"  Available Worker:       {availableWorker}");
+            Console.WriteLine($"  In Use Worker:          {inUseWorker}");
+            Console.WriteLine($"  Max IO Completion Port: {maxIOC}");
+            Console.WriteLine($"  In Use IOCP:            {inUseIOC}");
+            Console.WriteLine("--------------------------------------------\n\n");
             try
             {
                 int x = cell.Rectangle.X;

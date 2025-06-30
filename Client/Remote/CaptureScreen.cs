@@ -269,7 +269,7 @@ namespace RemoteClient.Remote
                 byte* previousPtr = (byte*)previousData.Scan0;
 
                 int stride = currentData.Stride;
-                const int threshold = 30; // Noise threshold
+                const int threshold = 10; // Noise threshold
 
                 for (int y = 0; y < block.Height; y++)
                 {
