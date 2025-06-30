@@ -140,7 +140,7 @@ namespace RemoteClient.Remote
                 Rectangle rectangle = new Rectangle(x, y, width, height);
 
                 // Draw the chunk onto the main screen bitmap
-                using (MemoryStream ms = new MemoryStream(cell.Bytes))
+                using (MemoryStream ms = new MemoryStream(Utils.Decompress(cell.Bytes)))
                 using (Bitmap jpegBitmap = new Bitmap(ms))
                 {
                     lock (_screenLock)

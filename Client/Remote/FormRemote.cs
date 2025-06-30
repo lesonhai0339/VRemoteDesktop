@@ -85,15 +85,7 @@ namespace RemoteClient.Remote
             try
             {
                 int totalSize = BitConverter.ToInt32(data, 0);
-                if(_chunkTotalSize != 0)
-                {
-                    if(_chunkTotalSize != totalSize)
-                    {
-                        Console.WriteLine("Not the same total size");
-                        throw new Exception("Not the same chunk total size");
-                    }
-                }
-                else
+                if(_chunkTotalSize != totalSize)
                 {
                     _chunkTotalSize = totalSize;
                 }
@@ -112,15 +104,15 @@ namespace RemoteClient.Remote
                 if (dataDecompress == null || dataDecompress.Length == 0)
                     throw new Exception("Decompressed data is empty or null");
 
-                _curChunksSent = _curChunksSent + dataDecompress.Length;
                 using (MemoryStream stream = new MemoryStream(dataDecompress))
                 using (Bitmap bitmap = new Bitmap(stream))
                 {
                     Bitmap bm = bitmap.Clone() as  Bitmap;
                     _chunkBitmaps.Add(bm);
                 }
-                _chunkRecangles.Add(rectangle);
 
+                _curChunksSent = _curChunksSent + chunk.Length;
+                _chunkRecangles.Add(rectangle);
                 //update screen if enough data
                 if(_curChunksSent >= _chunkTotalSize)
                 {
