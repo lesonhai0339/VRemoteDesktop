@@ -15,6 +15,8 @@ namespace RemoteClient.Remote
     public partial class FormRemote :Form
     {
         private Bitmap _curScreen;
+        private Graphics _screenGraphics;
+        private readonly object _screenLock = new object();
         private SocketRemoteClient _client;
         private ConnectionInfo _connectionInfo;
         public FormRemote(SocketRemoteClient client, ConnectionInfo remoteData)
@@ -59,22 +61,19 @@ namespace RemoteClient.Remote
                 }
             }
         }
-
+        #endregion
+        private void FormRemote_Load(object sender, EventArgs e)
+        {
+        }
         private void ChunkScreen(byte[] data)
         {
-
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action<byte[]>(ChunkScreen), data);
-                return;
-            }
-
             try
             {
                 int x = BitConverter.ToInt32(data, 0);
                 int y = BitConverter.ToInt32(data, 4);
                 int width = BitConverter.ToInt32(data, 8);
                 int height = BitConverter.ToInt32(data, 12);
+
                 byte[] chunk = new byte[data.Length - 16];
                 Buffer.BlockCopy(data, 16, chunk, 0, chunk.Length);
 
@@ -83,31 +82,83 @@ namespace RemoteClient.Remote
                 // Draw the chunk onto the main screen bitmap
                 using (MemoryStream ms = new MemoryStream(chunk))
                 using (Bitmap jpegBitmap = new Bitmap(ms))
-                using (Graphics g = Graphics.FromImage(_curScreen))
                 {
-                    g.CompositingMode = CompositingMode.SourceCopy;
-                    g.CompositingQuality = CompositingQuality.HighSpeed;
-                    g.InterpolationMode = InterpolationMode.NearestNeighbor;
-                    g.SmoothingMode = SmoothingMode.None;
-                    g.DrawImage(jpegBitmap, rectangle);
+                    lock (_screenLock)
+                    {
+                        if(_curScreen != null && _screenGraphics != null)
+                        {
+                            _screenGraphics.DrawImage(jpegBitmap, rectangle);
+                        }
+                        if (this.InvokeRequired)
+                        {
+                            this.BeginInvoke(new Action<Rectangle>(InvalidateRegion), rectangle);
+                        }
+                        else
+                        {
+                            InvalidateRegion(rectangle);
+                        }
+                    }
                 }
 
                 // Refresh only the updated region (more efficient)
                 vPictureBox1.Invalidate(rectangle);
 
-                // OR if you need to update the entire image:
-                // RefreshPictureBox();
-
             }
-            catch (Exception ex)
+            catch ( Exception ex)
             {
                 Console.WriteLine($"ChunkScreen error: {ex.Message}");
             }
         }
-        #endregion
-        private void FormRemote_Load(object sender, EventArgs e)
+
+        private void InvalidateRegion(Rectangle rectangle)
         {
+            vPictureBox1.Invalidate(rectangle);
         }
+
+        /*  private void ChunkScreen(byte[] data)
+ {
+
+     if (this.InvokeRequired)
+     {
+         this.Invoke(new Action<byte[]>(ChunkScreen), data);
+         return;
+     }
+
+     try
+     {
+         int x = BitConverter.ToInt32(data, 0);
+         int y = BitConverter.ToInt32(data, 4);
+         int width = BitConverter.ToInt32(data, 8);
+         int height = BitConverter.ToInt32(data, 12);
+         byte[] chunk = new byte[data.Length - 16];
+         Buffer.BlockCopy(data, 16, chunk, 0, chunk.Length);
+
+         Rectangle rectangle = new Rectangle(x, y, width, height);
+
+         // Draw the chunk onto the main screen bitmap
+         using (MemoryStream ms = new MemoryStream(chunk))
+         using (Bitmap jpegBitmap = new Bitmap(ms))
+         using (Graphics g = Graphics.FromImage(_curScreen))
+         {
+             g.CompositingMode = CompositingMode.SourceCopy;
+             g.CompositingQuality = CompositingQuality.HighSpeed;
+             g.InterpolationMode = InterpolationMode.NearestNeighbor;
+             g.SmoothingMode = SmoothingMode.None;
+             g.DrawImage(jpegBitmap, rectangle);
+         }
+
+         // Refresh only the updated region (more efficient)
+         vPictureBox1.Invalidate(rectangle);
+
+         // OR if you need to update the entire image:
+         // RefreshPictureBox();
+
+     }
+     catch (Exception ex)
+     {
+         Console.WriteLine($"ChunkScreen error: {ex.Message}");
+     }
+ }*/
         public void ScreenEvent(byte[] data)
         {
             if (this.InvokeRequired)
@@ -119,17 +170,28 @@ namespace RemoteClient.Remote
             // UI thread code
             try
             {
-                using (MemoryStream stream = new MemoryStream(data))
+                lock (_screenLock)
                 {
-                    Bitmap image = (Bitmap)Image.FromStream(stream);
+                    using (MemoryStream stream = new MemoryStream(data))
+                    {
+                        Bitmap image = (Bitmap)Image.FromStream(stream);
 
-                    // Dispose old image to prevent memory leak
-                    var oldImage = vPictureBox1.Image;
-                    vPictureBox1.Image = image;
-                    oldImage?.Dispose();
+                        // Dispose old image to prevent memory leak
+                        var oldImage = vPictureBox1.Image;
+                        _screenGraphics?.Dispose();
+                        _curScreen?.Dispose();
 
-                    _curScreen?.Dispose();
-                    _curScreen = image;
+                        _curScreen = new Bitmap(image);
+                        _screenGraphics = Graphics.FromImage(_curScreen);
+
+                        InitializeGraphicsSettings();
+
+                        vPictureBox1.Image = _curScreen;
+
+
+                        oldImage?.Dispose();
+                        image?.Dispose();
+                    }
                 }
             }
             catch (Exception ex)
@@ -137,6 +199,20 @@ namespace RemoteClient.Remote
                 Console.WriteLine($"ScreenEvent error: {ex.Message}");
             }
         }
+
+        private void InitializeGraphicsSettings()
+        {
+            //config graphics
+            if (_screenGraphics != null)
+            {
+                _screenGraphics.CompositingMode = CompositingMode.SourceCopy;
+                _screenGraphics.CompositingQuality = CompositingQuality.HighSpeed;
+                _screenGraphics.InterpolationMode = InterpolationMode.NearestNeighbor;
+                _screenGraphics.SmoothingMode = SmoothingMode.None;
+                _screenGraphics.PixelOffsetMode = PixelOffsetMode.HighSpeed;
+            }
+        }
+
         public void KeyDownEventHandler(object sender, KeyEventArgs e)
         {
             Console.WriteLine($"Down: {e.KeyCode} - {e.Modifiers}");
