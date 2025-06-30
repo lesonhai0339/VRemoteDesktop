@@ -233,7 +233,7 @@ namespace RemoteClient.Remote
 
             int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
 
-            Console.WriteLine($"Chunk : {bytes.Length - 25}");
+            Console.WriteLine($"Chunk : {bytes.Length - 9}");
 
             for (int i = 0; i < numberOfChunk; i++)
             {

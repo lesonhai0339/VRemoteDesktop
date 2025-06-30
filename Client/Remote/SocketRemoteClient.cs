@@ -232,7 +232,7 @@ namespace RemoteClient.Remote
         private void ProcessDataReceived(byte[] array, StateObject stateObject)
         {
             byte[] data = array;
-            Console.WriteLine($"Data received: {data.Length} bytes");
+            //Console.WriteLine($"Data received: {data.Length} bytes");
             int response = data[0];
             switch (response)
             {
@@ -289,7 +289,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PChunkSend(byte[] data)
         {
-            Console.Write($"Chunk: {data.Length}");
+            Console.WriteLine($"Chunk: {data.Length}");
             SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
             if (sendScreenChunks != null)
             {
@@ -298,7 +298,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PCapture(byte[] data)
         {
-            Console.Write($"Screen: {data.Length}");
+            Console.WriteLine($"Screen: {data.Length}");
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
             {
