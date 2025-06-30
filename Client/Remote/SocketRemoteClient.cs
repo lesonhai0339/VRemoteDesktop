@@ -198,7 +198,7 @@ namespace RemoteClient.Remote
                         }
                         if (!(stateObject.ByteArrayBuilder.Length >= dataLength + paddingAdded + 4  + 4))
                         {
-                            Console.WriteLine($"Waitting for length {dataLength + 4 + paddingAdded + 4} padding - {paddingAdded}");
+                            //Console.WriteLine($"Waitting for length {dataLength + 4 + paddingAdded + 4} padding - {paddingAdded}");
                             goto IL_163;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(dataLength + 4 + paddingAdded + 4).ToArray();
