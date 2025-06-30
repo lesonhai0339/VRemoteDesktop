@@ -107,7 +107,7 @@ namespace RemoteClient.Remote
                             SendScreenData(taskWork.Cell, ref flag);
                             break;
                         case ClientEnum.REGIONSCREENS:
-                            SendChunk(taskWork.Cell, ref flag);
+                            SendChunk(taskWork.Cell, taskWork.TotalSize, ref flag);
                             break;
                         default:
                             flag = true; // Skip unknown types
@@ -210,7 +210,7 @@ namespace RemoteClient.Remote
             }
             flag = true;
         }
-        private void SendChunk(CaptureCell cell, ref bool flag)
+        private void SendChunk(CaptureCell cell,int totalChunksSize, ref bool flag)
         {
             int CHUNK_SIZE = 1024;
 
@@ -229,7 +229,7 @@ namespace RemoteClient.Remote
 
             bytes[8] = 5; //send chunk
 
-            Array.Copy(BitConverter.GetBytes(cell.TotalSize), 0, bytes, 9, 4);  // add total bytes of all chunks
+            Array.Copy(BitConverter.GetBytes(totalChunksSize), 0, bytes, 9, 4);  // add total bytes of all chunks
 
             int x = cell.Rectangle.X;   //rectangle x
             int y = cell.Rectangle.Y;   //rectangle y
