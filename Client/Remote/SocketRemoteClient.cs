@@ -290,6 +290,7 @@ namespace RemoteClient.Remote
         private void ProcessP2PChunkSend(byte[] data)
         {
             Console.WriteLine($"Chunk: {data.Length}");
+            byte[] dataDecompress = Utils.Decompress(data);
             SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
             if (sendScreenChunks != null)
             {
@@ -299,6 +300,7 @@ namespace RemoteClient.Remote
         private void ProcessP2PCapture(byte[] data)
         {
             Console.WriteLine($"Screen: {data.Length}");
+            byte[] dataDecompress = Utils.Decompress(data);
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
             {

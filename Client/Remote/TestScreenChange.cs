@@ -152,31 +152,33 @@ namespace RemoteClient.Remote
                 flag = false;
                 textBox1.Text = "";
             }
-            Capture(null);
-            return;
+            ShowImage showForm = new ShowImage(null);
+            showForm.Show();
+            //Capture(null);
+            //return;
            // _vCaptureScreen.Test();
 
-            Stopwatch stopwath = new Stopwatch();
-            stopwath.Start();
-            var bounds = Screen.PrimaryScreen.Bounds;
-            Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
-            using (Graphics g = Graphics.FromImage(bitmap))
-            {
-                g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
-            }
+            //Stopwatch stopwath = new Stopwatch();
+            //stopwath.Start();
+            //var bounds = Screen.PrimaryScreen.Bounds;
+            //Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
+            //using (Graphics g = Graphics.FromImage(bitmap))
+            //{
+            //    g.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
+            //}
 
 
-            //var a = _vCaptureScreen.SplitToRegions(bitmap);
-            //List<Bitmap> crops = a.Select(x => _vCaptureScreen.Crop(bitmap, x)).ToList();
-            //var mergeBitmap = MergeRegions(crops, a, bitmap.Size);
-            if (!flag1)
-            {
-                flag1 = true;
-                showImage = new ShowImage(bitmap);
-                showImage.Show();
-            }
-            stopwath.Stop();
-            Console.WriteLine($"Eslaped time: {stopwath.Elapsed.TotalMilliseconds}");
+            ////var a = _vCaptureScreen.SplitToRegions(bitmap);
+            ////List<Bitmap> crops = a.Select(x => _vCaptureScreen.Crop(bitmap, x)).ToList();
+            ////var mergeBitmap = MergeRegions(crops, a, bitmap.Size);
+            //if (!flag1)
+            //{
+            //    flag1 = true;
+            //    showImage = new ShowImage(bitmap);
+            //    showImage.Show();
+            //}
+            //stopwath.Stop();
+            //Console.WriteLine($"Eslaped time: {stopwath.Elapsed.TotalMilliseconds}");
         }
 
         public Bitmap MergeRegions(List<Bitmap> croppedBitmaps, List<Rectangle> regions, Size originalSize)

@@ -9,6 +9,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Markup;
 using System.Windows.Media.Imaging;
 
 namespace RemoteClient.Remote
@@ -55,7 +56,8 @@ namespace RemoteClient.Remote
                         using (var stream = new MemoryStream())
                         {
                             currentScreen.Save(stream, ImageFormat.Jpeg);
-                            compressedData = stream.ToArray();
+                            byte[] data = stream.ToArray();
+                            compressedData = Utils.Compress(data);
                         }
                         CaptureCell cell = new CaptureCell
                         {
@@ -94,7 +96,8 @@ namespace RemoteClient.Remote
                                     using (var stream = new MemoryStream())
                                     {
                                         regionBitmap.Save(stream , ImageFormat.Jpeg);
-                                        compressedData = stream.ToArray();
+                                        byte[] data = stream.ToArray();
+                                        compressedData = Utils.Compress(data);
                                     }
                                     CaptureCell cell = new CaptureCell
                                     {
@@ -117,7 +120,7 @@ namespace RemoteClient.Remote
                 }
             }
             stopwatch.Stop();
-            //Console.WriteLine("Total time to assign all regions changed: " + stopwatch.Elapsed.TotalMilliseconds);
+            Console.WriteLine("Total time to assign all regions changed: " + stopwatch.Elapsed.TotalMilliseconds);
             return cells;
         }
 

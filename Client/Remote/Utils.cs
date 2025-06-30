@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO.Compression;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -17,8 +19,28 @@ namespace RemoteClient.Remote
 		private static string digits = "0123456789";
 		private static bool bool_0 = false;
 		internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
-		//add padding byte(0x20) to output data = length
-		internal static byte[] AddPaddingToBytes(byte[] sourceByte , int length = 1025)
+        internal static byte[] Compress(byte[] data)
+        {
+            MemoryStream output = new MemoryStream();
+            using (DeflateStream dstream = new DeflateStream(output, CompressionLevel.Optimal))
+            {
+                dstream.Write(data, 0, data.Length);
+            }
+            return output.ToArray();
+        }
+
+        internal static byte[] Decompress(byte[] data)
+        {
+            MemoryStream input = new MemoryStream(data);
+            MemoryStream output = new MemoryStream();
+            using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
+            {
+                dstream.CopyTo(output);
+            }
+            return output.ToArray();
+        }
+        //add padding byte(0x20) to output data = length
+        internal static byte[] AddPaddingToBytes(byte[] sourceByte , int length = 1025)
 		{
             byte[] bytes = new byte[length];
             int byteNeededToAdd = Math.Max(0, length - sourceByte.Length);
