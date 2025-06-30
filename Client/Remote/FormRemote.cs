@@ -25,12 +25,14 @@ namespace RemoteClient.Remote
         private List<Rectangle> _chunkRecangles;
         private List<Bitmap> _chunkBitmaps;
         private int _chunkTotalSize;
+        private int _curChunksSent;
         public FormRemote(SocketRemoteClient client, ConnectionInfo remoteData)
         {
             InitializeComponent();
 
 
             _chunkTotalSize = 0;
+            _curChunksSent = 0;
             _chunkRecangles = new List<Rectangle>();
             _chunkBitmaps = new List<Bitmap>();
 
@@ -110,7 +112,7 @@ namespace RemoteClient.Remote
                 if (dataDecompress == null || dataDecompress.Length == 0)
                     throw new Exception("Decompressed data is empty or null");
 
-
+                _curChunksSent = _curChunksSent + dataDecompress.Length;
                 using (MemoryStream stream = new MemoryStream(dataDecompress))
                 using (Bitmap bitmap = new Bitmap(stream))
                 {
@@ -119,22 +121,28 @@ namespace RemoteClient.Remote
                 }
                 _chunkRecangles.Add(rectangle);
 
+                //update screen if enough data
+                if(_curChunksSent >= _chunkTotalSize)
+                {
+                    UpdateScreenByChunks();
+                }
+
             }
             catch ( Exception ex)
             {
                 Console.WriteLine($"ChunkScreen error: {ex.Message}");
             }
         }
-        private void UpdateScreenByChunks(List<Rectangle> rectangles, List<Bitmap> bitmaps)
+        private void UpdateScreenByChunks()
         {
             try
             {
-                if(rectangles.Count != bitmaps.Count)
+                if(_chunkRecangles.Count != _chunkBitmaps.Count)
                 {
                     Console.WriteLine("Rectangles and bitmaps not same number of packets");
                     throw new Exception("Rectangles and bitmaps not same number of packets");
                 }
-                if(!rectangles.Any() || !bitmaps.Any())
+                if(!_chunkRecangles.Any() || !_chunkBitmaps.Any())
                 {
                     Console.WriteLine("Rectangles or bitmaps is empty");
                     throw new Exception("Rectangles or bitmaps is empty");
@@ -143,7 +151,7 @@ namespace RemoteClient.Remote
                 {
                     if (_curScreen != null && _screenGraphics != null)
                     {
-                        bitmaps.Zip(rectangles, (bitmap, rectangle) =>
+                        _chunkBitmaps.Zip(_chunkRecangles, (bitmap, rectangle) =>
                         new
                         {
                             bitmap,
@@ -154,10 +162,10 @@ namespace RemoteClient.Remote
                             return true;
                         }).ToList();
 
-                        if (rectangles.Count > 0)
+                        if (_chunkRecangles.Count > 0)
                         {
-                            Rectangle unionRect = rectangles[0];
-                            rectangles.Skip(1).ToList().ForEach(rect =>
+                            Rectangle unionRect = _chunkRecangles[0];
+                            _chunkRecangles.Skip(1).ToList().ForEach(rect =>
                                 unionRect = Rectangle.Union(unionRect, rect));
 
                             if (this.InvokeRequired)
@@ -179,7 +187,9 @@ namespace RemoteClient.Remote
             }
             finally
             {
+                //clear chunks data
                 _chunkTotalSize = 0;
+                _curChunksSent = 0;
                 _chunkRecangles = new List<Rectangle>();
                 _chunkBitmaps = new List<Bitmap>();
             }
