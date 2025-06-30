@@ -137,6 +137,7 @@ namespace RemoteClient.Remote
         {
             try
             {
+                Console.WriteLine($"total chunks size: {_chunkTotalSize}");
                 if(_chunkRecangles.Count != _chunkBitmaps.Count)
                 {
                     Console.WriteLine("Rectangles and bitmaps not same number of packets");
