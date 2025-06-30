@@ -30,8 +30,11 @@ namespace RemoteClient.Remote
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.vPictureBox1 = new RemoteClient.Remote.VPictureBox();
+            this.bindingSource1 = new System.Windows.Forms.BindingSource(this.components);
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox1)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.bindingSource1)).BeginInit();
             this.SuspendLayout();
             // 
             // vPictureBox1
@@ -53,6 +56,7 @@ namespace RemoteClient.Remote
             this.Text = "FormRemote";
             this.Load += new System.EventHandler(this.FormRemote_Load);
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox1)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.bindingSource1)).EndInit();
             this.ResumeLayout(false);
 
         }
@@ -60,5 +64,6 @@ namespace RemoteClient.Remote
         #endregion
 
         private VPictureBox vPictureBox1;
+        private System.Windows.Forms.BindingSource bindingSource1;
     }
 }

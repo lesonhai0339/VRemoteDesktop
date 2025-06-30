@@ -179,6 +179,9 @@ namespace RemoteClient.Remote
             Array.Copy(cell.Bytes, 0, bytes, 9, cell.Bytes.Length);//real data
 
             int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
+
+            Console.WriteLine($"Screen : {bytes.Length}");
+
             for (int i = 0; i < numberOfChunk; i++)
             {
                 int offset = i * CHUNK_SIZE;
@@ -229,6 +232,8 @@ namespace RemoteClient.Remote
             Array.Copy(cell.Bytes, 0, bytes, 25, cell.Bytes.Length);//real data
 
             int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
+
+            Console.WriteLine($"Chunk : {bytes.Length}");
 
             for (int i = 0; i < numberOfChunk; i++)
             {
