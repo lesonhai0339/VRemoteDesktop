@@ -294,7 +294,7 @@ namespace RemoteClient.Remote
             SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
             if (sendScreenChunks != null)
             {
-                sendScreenChunks(data);
+                sendScreenChunks(dataDecompress);
             }
         }
         private void ProcessP2PCapture(byte[] data)
@@ -304,7 +304,7 @@ namespace RemoteClient.Remote
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
             {
-                sendScreenEvent(data);
+                sendScreenEvent(dataDecompress);
             }
         }
 
