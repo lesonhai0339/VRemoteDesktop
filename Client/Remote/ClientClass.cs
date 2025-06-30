@@ -216,7 +216,7 @@ namespace RemoteClient.Remote
 
             byte[] bytes = new byte[cell.Bytes.Length + 29];    //29 bytes for headers
 
-            Array.Copy(BitConverter.GetBytes(cell.Bytes.Length + 17), 0, bytes, 0, 4); // Add total bytes of current chunk
+            Array.Copy(BitConverter.GetBytes(cell.Bytes.Length + 21), 0, bytes, 0, 4); // Add total bytes of current chunk
 
             //caculate padding need to add
             int lastChunkSize = bytes.Length % CHUNK_SIZE;
