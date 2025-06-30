@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
@@ -80,164 +81,172 @@ namespace RemoteClient.Remote
         private void FormRemote_Load(object sender, EventArgs e)
         {
         }
+        /* private void ChunkScreen(byte[] data)
+         {
+             try
+             {
+                 int totalSize = BitConverter.ToInt32(data, 0);
+                 if(_chunkTotalSize != totalSize)
+                 {
+                     _chunkTotalSize = totalSize;
+                 }
+
+                 int x = BitConverter.ToInt32(data, 4);
+                 int y = BitConverter.ToInt32(data, 8);
+                 int width = BitConverter.ToInt32(data, 12);
+                 int height = BitConverter.ToInt32(data, 16);
+
+                 byte[] chunk = new byte[data.Length - 20];
+                 Buffer.BlockCopy(data, 20, chunk, 0, chunk.Length);
+                 byte[] dataDecompress = Utils.Decompress(chunk);
+
+                 Rectangle rectangle = new Rectangle(x, y, width, height);
+
+                 if (dataDecompress == null || dataDecompress.Length == 0)
+                     throw new Exception("Decompressed data is empty or null");
+
+                 using (MemoryStream stream = new MemoryStream(dataDecompress))
+                 using (Bitmap bitmap = new Bitmap(stream))
+                 {
+                     Bitmap bm = bitmap.Clone() as  Bitmap;
+                     _chunkBitmaps.Add(bm);
+                 }
+
+                 _curChunksSent = _curChunksSent + chunk.Length;
+                 _chunkRecangles.Add(rectangle);
+                 //update screen if enough data
+                 if(_curChunksSent >= _chunkTotalSize)
+                 {
+                     UpdateScreenByChunks();
+                 }
+
+             }
+             catch ( Exception ex)
+             {
+                 Console.WriteLine($"ChunkScreen error: {ex.Message}");
+             }
+         }
+         private void UpdateScreenByChunks()
+         {
+             try
+             {
+                 Console.WriteLine($"total chunks size: {_chunkTotalSize}");
+                 if(_chunkRecangles.Count != _chunkBitmaps.Count)
+                 {
+                     Console.WriteLine("Rectangles and bitmaps not same number of packets");
+                     throw new Exception("Rectangles and bitmaps not same number of packets");
+                 }
+                 if(!_chunkRecangles.Any() || !_chunkBitmaps.Any())
+                 {
+                     Console.WriteLine("Rectangles or bitmaps is empty");
+                     throw new Exception("Rectangles or bitmaps is empty");
+                 }
+                 lock (_screenLock)
+                 {
+                     if (_curScreen != null && _screenGraphics != null)
+                     {
+                         _chunkBitmaps.Zip(_chunkRecangles, (bitmap, rectangle) =>
+                         new
+                         {
+                             bitmap,
+                             rectangle
+                         }).Where(pair =>
+                         {
+                             _screenGraphics.DrawImage(pair.bitmap, pair.rectangle);
+                             return true;
+                         }).ToList();
+
+                         if (_chunkRecangles.Count > 0)
+                         {
+                             Rectangle unionRect = _chunkRecangles[0];
+                             _chunkRecangles.Skip(1).ToList().ForEach(rect =>
+                                 unionRect = Rectangle.Union(unionRect, rect));
+
+                             if (this.InvokeRequired)
+                             {
+                                 this.BeginInvoke(new Action<Rectangle>(InvalidateRegion), unionRect);
+                             }
+                             else
+                             {
+                                 InvalidateRegion(unionRect);
+                             }
+                         }
+                     }
+                 }
+
+             }
+             catch (Exception ex)
+             {
+                 Console.WriteLine($"ChunkScreen error: {ex.Message}");
+             }
+             finally
+             {
+                 //clear chunks data
+                 _chunkTotalSize = 0;
+                 _curChunksSent = 0;
+                 _chunkRecangles = new List<Rectangle>();
+                 _chunkBitmaps = new List<Bitmap>();
+             }
+         }
+         private void InvalidateRegion(Rectangle rectangle)
+         {
+             vPictureBox1.Invalidate(rectangle);
+         }*/
+
         private void ChunkScreen(byte[] data)
         {
             try
             {
+                // Parse data trên background thread
                 int totalSize = BitConverter.ToInt32(data, 0);
-                if(_chunkTotalSize != totalSize)
-                {
-                    _chunkTotalSize = totalSize;
-                }
-
                 int x = BitConverter.ToInt32(data, 4);
                 int y = BitConverter.ToInt32(data, 8);
                 int width = BitConverter.ToInt32(data, 12);
                 int height = BitConverter.ToInt32(data, 16);
-
                 byte[] chunk = new byte[data.Length - 20];
                 Buffer.BlockCopy(data, 20, chunk, 0, chunk.Length);
-                byte[] dataDecompress = Utils.Decompress(chunk);
 
+                // Decompression trên background thread
+                byte[] dataDecompress = Utils.Decompress(chunk);
                 Rectangle rectangle = new Rectangle(x, y, width, height);
 
-                if (dataDecompress == null || dataDecompress.Length == 0)
-                    throw new Exception("Decompressed data is empty or null");
-
-                using (MemoryStream stream = new MemoryStream(dataDecompress))
-                using (Bitmap bitmap = new Bitmap(stream))
+                // Drawing trên background thread với lock
+                using (MemoryStream ms = new MemoryStream(dataDecompress))
+                using (Bitmap jpegBitmap = new Bitmap(ms))
                 {
-                    Bitmap bm = bitmap.Clone() as  Bitmap;
-                    _chunkBitmaps.Add(bm);
-                }
-
-                _curChunksSent = _curChunksSent + chunk.Length;
-                _chunkRecangles.Add(rectangle);
-                //update screen if enough data
-                if(_curChunksSent >= _chunkTotalSize)
-                {
-                    UpdateScreenByChunks();
-                }
-
-            }
-            catch ( Exception ex)
-            {
-                Console.WriteLine($"ChunkScreen error: {ex.Message}");
-            }
-        }
-        private void UpdateScreenByChunks()
-        {
-            try
-            {
-                Console.WriteLine($"total chunks size: {_chunkTotalSize}");
-                if(_chunkRecangles.Count != _chunkBitmaps.Count)
-                {
-                    Console.WriteLine("Rectangles and bitmaps not same number of packets");
-                    throw new Exception("Rectangles and bitmaps not same number of packets");
-                }
-                if(!_chunkRecangles.Any() || !_chunkBitmaps.Any())
-                {
-                    Console.WriteLine("Rectangles or bitmaps is empty");
-                    throw new Exception("Rectangles or bitmaps is empty");
-                }
-                lock (_screenLock)
-                {
-                    if (_curScreen != null && _screenGraphics != null)
+                    lock (_screenLock)
                     {
-                        _chunkBitmaps.Zip(_chunkRecangles, (bitmap, rectangle) =>
-                        new
+                        if (_curScreen != null && _screenGraphics != null)
                         {
-                            bitmap,
-                            rectangle
-                        }).Where(pair =>
+                            _screenGraphics.DrawImage(jpegBitmap, rectangle);
+                        }
+                        if (this.InvokeRequired)
                         {
-                            _screenGraphics.DrawImage(pair.bitmap, pair.rectangle);
-                            return true;
-                        }).ToList();
-
-                        if (_chunkRecangles.Count > 0)
+                            this.BeginInvoke(new Action<Rectangle>(InvalidateRegion), rectangle);
+                        }
+                        else
                         {
-                            Rectangle unionRect = _chunkRecangles[0];
-                            _chunkRecangles.Skip(1).ToList().ForEach(rect =>
-                                unionRect = Rectangle.Union(unionRect, rect));
-
-                            if (this.InvokeRequired)
-                            {
-                                this.BeginInvoke(new Action<Rectangle>(InvalidateRegion), unionRect);
-                            }
-                            else
-                            {
-                                InvalidateRegion(unionRect);
-                            }
+                            InvalidateRegion(rectangle);
                         }
                     }
                 }
 
+                vPictureBox1.Invalidate(rectangle);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"ChunkScreen error: {ex.Message}");
             }
-            finally
-            {
-                //clear chunks data
-                _chunkTotalSize = 0;
-                _curChunksSent = 0;
-                _chunkRecangles = new List<Rectangle>();
-                _chunkBitmaps = new List<Bitmap>();
-            }
         }
+
         private void InvalidateRegion(Rectangle rectangle)
         {
             vPictureBox1.Invalidate(rectangle);
         }
 
-        /*  private void ChunkScreen(byte[] data)
- {
-
-     if (this.InvokeRequired)
-     {
-         this.Invoke(new Action<byte[]>(ChunkScreen), data);
-         return;
-     }
-
-     try
-     {
-         int x = BitConverter.ToInt32(data, 0);
-         int y = BitConverter.ToInt32(data, 4);
-         int width = BitConverter.ToInt32(data, 8);
-         int height = BitConverter.ToInt32(data, 12);
-         byte[] chunk = new byte[data.Length - 16];
-         Buffer.BlockCopy(data, 16, chunk, 0, chunk.Length);
-
-         Rectangle rectangle = new Rectangle(x, y, width, height);
-
-         // Draw the chunk onto the main screen bitmap
-         using (MemoryStream ms = new MemoryStream(chunk))
-         using (Bitmap jpegBitmap = new Bitmap(ms))
-         using (Graphics g = Graphics.FromImage(_curScreen))
-         {
-             g.CompositingMode = CompositingMode.SourceCopy;
-             g.CompositingQuality = CompositingQuality.HighSpeed;
-             g.InterpolationMode = InterpolationMode.NearestNeighbor;
-             g.SmoothingMode = SmoothingMode.None;
-             g.DrawImage(jpegBitmap, rectangle);
-         }
-
-         // Refresh only the updated region (more efficient)
-         vPictureBox1.Invalidate(rectangle);
-
-         // OR if you need to update the entire image:
-         // RefreshPictureBox();
-
-     }
-     catch (Exception ex)
-     {
-         Console.WriteLine($"ChunkScreen error: {ex.Message}");
-     }
- }*/
         public void ScreenEvent(byte[] data)
         {
+            // do chạy đồng bộ trên một luồng với socket nên bị bottleneck, cần chạy trên new thread
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<byte[]>(ScreenEvent), data);

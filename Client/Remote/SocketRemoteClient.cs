@@ -290,11 +290,19 @@ namespace RemoteClient.Remote
         private void ProcessP2PChunkSend(byte[] data)
         {
             Console.WriteLine($"Chunk: {data.Length}");
-            SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
-            if (sendScreenChunks != null)
+            Task.Run(() =>
             {
-                sendScreenChunks(data);
-            }
+                SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
+                if (sendScreenChunks != null)
+                {
+                    sendScreenChunks(data);
+                }
+            });
+            //SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
+            //if (sendScreenChunks != null)
+            //{
+            //    sendScreenChunks(data);
+            //}
         }
         private void ProcessP2PCapture(byte[] data)
         {

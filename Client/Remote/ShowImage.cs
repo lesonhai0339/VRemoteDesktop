@@ -9,8 +9,10 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace RemoteClient.Remote
 {
@@ -24,7 +26,7 @@ namespace RemoteClient.Remote
         {
             InitializeComponent();
             Capture();
-            _timer = new System.Threading.Timer(ChunksCapture, null, 0, (1000 / 5));
+            _timer = new System.Threading.Timer(ChunksCapture, null, 0, (1000 / 15));
         }
         private void ShowImage_Load(object sender, EventArgs e)
         {
