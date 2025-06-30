@@ -212,6 +212,7 @@ namespace RemoteClient.Remote
         }
         private void SendChunk(CaptureCell cell,int totalChunksSize, ref bool flag)
         {
+            Console.WriteLine($"Total chunks size: {totalChunksSize}");
             int CHUNK_SIZE = 1024;
 
             byte[] bytes = new byte[cell.Bytes.Length + 29];    //29 bytes for headers
