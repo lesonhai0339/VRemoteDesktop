@@ -76,11 +76,12 @@ namespace RemoteClient.Remote
 
                 byte[] chunk = new byte[data.Length - 16];
                 Buffer.BlockCopy(data, 16, chunk, 0, chunk.Length);
+                byte[] dataDecompress = Utils.Decompress(chunk);
 
                 Rectangle rectangle = new Rectangle(x, y, width, height);
 
                 // Draw the chunk onto the main screen bitmap
-                using (MemoryStream ms = new MemoryStream(chunk))
+                using (MemoryStream ms = new MemoryStream(dataDecompress))
                 using (Bitmap jpegBitmap = new Bitmap(ms))
                 {
                     lock (_screenLock)
@@ -170,9 +171,10 @@ namespace RemoteClient.Remote
             // UI thread code
             try
             {
+                byte[] dataDecompress = Utils.Decompress(data);
                 lock (_screenLock)
                 {
-                    using (MemoryStream stream = new MemoryStream(data))
+                    using (MemoryStream stream = new MemoryStream(dataDecompress))
                     {
                         Bitmap image = (Bitmap)Image.FromStream(stream);
 

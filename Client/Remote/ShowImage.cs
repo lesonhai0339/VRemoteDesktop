@@ -43,8 +43,13 @@ namespace RemoteClient.Remote
                 bitmap.Save(stream, ImageFormat.Jpeg);
                 byte[] data = stream.ToArray();
                 Console.WriteLine(data.Length);
+                Console.WriteLine(BitConverter.ToString(data.Take(20).ToArray()));
                 var dataCompressed = Utils.Compress(data);
                 Console.WriteLine(dataCompressed.Length);
+                Console.WriteLine(BitConverter.ToString(dataCompressed.Take(20).ToArray()));
+                var dataDecompressed = Utils.Decompress(dataCompressed);
+                Console.WriteLine(dataDecompressed.Length);
+                Console.WriteLine(BitConverter.ToString(dataDecompressed.Take(20).ToArray()));
             }
 
             ScreenEvent(bitmap);
