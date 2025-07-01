@@ -11,6 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using System.Windows.Markup;
 
 namespace RemoteClient.Remote
 {
@@ -36,7 +37,7 @@ namespace RemoteClient.Remote
         public event P2PDataSendSuccessEvent P2PDataSendSuccessEventHandler;
         public delegate void SendScreenEvent(byte[] data);
         public event SendScreenEvent SendScreenEventHandler;
-        public delegate void SendScreenChunksEvent(byte[] data);
+        public delegate void SendScreenChunksEvent(ScreenChunkEntity screenChunk);
         public event SendScreenChunksEvent SendScreenChunksEventHandler;
         private readonly CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         public CancellationToken CancellationToken => _cancellationTokenSource.Token;
@@ -72,8 +73,13 @@ namespace RemoteClient.Remote
         }
         private void PingServer(object state)
         {
-            if(_isSocketConnected)
-                SendData(Enums.DataType.PING, new byte[] { (int)Enums.DataType.PING });
+            if (_isSocketConnected)
+            {
+                if (!_isP2PConnected)
+                {
+                    SendData(Enums.DataType.PING, new byte[] { (int)Enums.DataType.PING });
+                }
+            }
         }
         public void Connect(IPEndPoint endPoint)
         {
@@ -217,7 +223,7 @@ namespace RemoteClient.Remote
                 }
                 catch
                 {
-                    workSocket.Close();
+                    //workSocket.Close();
                 }
             }
             catch (SocketException ex)
@@ -291,41 +297,135 @@ namespace RemoteClient.Remote
         private void ProcessP2PChunkSend(byte[] data)
         {
             Console.WriteLine($"Chunk: {data.Length}");
-            SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
-            if (sendScreenChunks != null)
+            var screenChunks = ProcessRawChunks(data);
+            if (screenChunks == null) return;
+            Task.Run(() =>
             {
-                sendScreenChunks(data);
-            }
+                SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
+                if (sendScreenChunks != null)
+                {
+                    sendScreenChunks(screenChunks);
+                }
+            });
         }
-        private void ProcessRawChunks(byte[] data)
-        {
+            private ScreenChunkEntity ProcessRawChunks(byte[] originalData)
+            {
+            Console.WriteLine(BitConverter.ToString(originalData));
+
+            /*            List<Rectangle> rects = new List<Rectangle>();
+                        List<byte[]> bytess = new List<byte[]>();
+
+                        try
+                        {
+                            int offset = 0;
+
+                            while (offset + 20 <= data.Length)
+                            {
+                                int chunkLength = BitConverter.ToInt32(data, offset);
+
+                                if (chunkLength < 0)
+                                {
+                                    Console.WriteLine($"Invalid chunk length: {chunkLength}");
+                                    break;
+                                }
+
+                                int totalLength = 20 + chunkLength;
+                                if (offset + totalLength > data.Length)
+                                {
+                                    Console.WriteLine($"Data truncated at offset {offset}");
+                                    break;
+                                }
+
+                                int X = BitConverter.ToInt32(data, offset + 4);
+                                int Y = BitConverter.ToInt32(data, offset + 8);
+                                int Width = BitConverter.ToInt32(data, offset + 12);
+                                int Height = BitConverter.ToInt32(data, offset + 16);
+
+                                if (Width <= 0 || Height <= 0)
+                                {
+                                    Console.WriteLine($"Invalid rectangle: {Width}x{Height}");
+                                    offset += totalLength;
+                                    continue;
+                                }
+
+                                try
+                                {
+                                    byte[] chunkData = new byte[chunkLength];
+                                    Buffer.BlockCopy(data, offset + 20, chunkData, 0, chunkLength);
+                                    byte[] chunkDecompressed = Utils.Decompress(chunkData);
+
+                                    if (chunkDecompressed != null && chunkDecompressed.Length > 0)
+                                    {
+                                        Rectangle rect = new Rectangle(X, Y, Width, Height);
+                                        rects.Add(rect);
+                                        bytess.Add(chunkDecompressed);
+                                        Console.WriteLine($"{X} - {Y} - {Width} - {Height} - {chunkLength}");
+                                    }
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"Error processing chunk at offset {offset}: {ex.Message}");
+                                }
+
+                                offset += totalLength;
+                            }
+
+                            // Debug remaining
+                            if (offset < data.Length)
+                            {
+                                Console.WriteLine($"Remaining bytes: {data.Length - offset}");
+                            }
+
+                            return rects.Count > 0 ? new ScreenChunkEntity { Rects = rects, Data = bytess } : null;
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("ProcessRawChunks error: " + ex.Message);
+                            return null;
+                        }*/
             List<Rectangle> rects = new List<Rectangle>();
-            List<byte[]> bytess = new List<byte[]>();
-            while(data.Length >= 20)
-            {
-                int chunkLength = BitConverter.ToInt32(data, 0);
-                int X = BitConverter.ToInt32(data, 4);
-                int Y = BitConverter.ToInt32(data, 8);
-                int Width = BitConverter.ToInt32(data, 12);
-                int Height = BitConverter.ToInt32(data, 16);
+                List<byte[]> bytess = new List<byte[]>();
+                try
+                {
+                    byte[] data = new byte[originalData.Length];
+                    Buffer.BlockCopy(originalData, 0, data, 0, originalData.Length);
+                    int offset = 0;
+                    while (data.Length - offset >= 20)
+                {
+                    int chunkLength = BitConverter.ToInt32(data, offset);
+                        if (chunkLength <= 0 || offset + 20 + chunkLength > data.Length)
+                        {
+                            Console.WriteLine("Truncated or corrupt chunk");
+                            break;
+                        }
 
-                Rectangle rect = new Rectangle(X,Y,Width,Height);
+                        int X = BitConverter.ToInt32(data, offset + 4);
+                        int Y = BitConverter.ToInt32(data, offset + 8);
+                        int Width = BitConverter.ToInt32(data, offset + 12);
+                        int Height = BitConverter.ToInt32(data, offset + 16);
 
-                int totalLength = 20 + chunkLength;
-                if (data.Length < totalLength)
-                    throw new InvalidOperationException("Data is truncated or corrupt.");
+                        Rectangle rect = new Rectangle(X, Y, Width, Height);
+                        byte[] chunkData = new byte[chunkLength];
+                        Buffer.BlockCopy(data, offset + 20, chunkData, 0, chunkLength);
+                        byte[] chunkDecompressed = Utils.Decompress(chunkData);
 
-                byte[] chunkData = new byte[chunkLength];
-                Buffer.BlockCopy(data, 20, chunkData, 0, chunkLength);
+                        rects.Add(rect);
+                        bytess.Add(chunkDecompressed);
 
-                byte[] chunkDecompressed = Utils.Decompress(chunkData);
-
-
-                rects.Add(rect);
-                bytess.Add(chunkDecompressed);
-                Utils.RemoveFirst(ref data, (chunkLength + 20));
+                        offset += 20 + chunkLength;
+                    }
+                    return new ScreenChunkEntity
+                    {
+                        Rects = rects,
+                        Data = bytess
+                    };
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("chunk raw error: " + ex.Message);
+                }
+                return null;
             }
-        }
         private void ProcessP2PCapture(byte[] data)
         {
             Console.WriteLine($"Screen: {data.Length}");
