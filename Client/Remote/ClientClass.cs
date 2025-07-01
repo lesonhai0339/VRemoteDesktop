@@ -46,7 +46,7 @@ namespace RemoteClient.Remote
 
 
             BackgroundWorker = new BackgroundWorker();
-            _timer = new Timer(SendScreen, null, 0, (1000 / 10));
+            _timer = new Timer(SendScreen, null, 0, (1000 / 5));
         }
         #region Properties
         public SocketRemoteClient Client
