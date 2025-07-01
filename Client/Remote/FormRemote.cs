@@ -192,52 +192,154 @@ namespace RemoteClient.Remote
          {
              vPictureBox1.Invalidate(rectangle);
          }*/
-
-        private void ChunkScreen(byte[] data)
+        private void ChunkScreen(ScreenChunkEntity screenChunk)
         {
             try
             {
-                // Parse data trên background thread
-                int totalSize = BitConverter.ToInt32(data, 0);
-                int x = BitConverter.ToInt32(data, 4);
-                int y = BitConverter.ToInt32(data, 8);
-                int width = BitConverter.ToInt32(data, 12);
-                int height = BitConverter.ToInt32(data, 16);
-                byte[] chunk = new byte[data.Length - 20];
-                Buffer.BlockCopy(data, 20, chunk, 0, chunk.Length);
-
-                // Decompression trên background thread
-                byte[] dataDecompress = Utils.Decompress(chunk);
-                Rectangle rectangle = new Rectangle(x, y, width, height);
-
-                // Drawing trên background thread với lock
-                using (MemoryStream ms = new MemoryStream(dataDecompress))
-                using (Bitmap jpegBitmap = new Bitmap(ms))
+                lock (_screenLock)
                 {
-                    lock (_screenLock)
+                    if (_curScreen != null && _screenGraphics != null)
                     {
-                        if (_curScreen != null && _screenGraphics != null)
+                        // Check if we have data to process
+                        if (screenChunk?.Data == null || screenChunk?.Rects == null ||
+                            screenChunk.Data.Count == 0 || screenChunk.Rects.Count == 0)
                         {
-                            _screenGraphics.DrawImage(jpegBitmap, rectangle);
+                            Console.WriteLine("No screen chunk data to process");
+                            return;
                         }
+
+                        // Ensure Data and Rects have same count
+                        if (screenChunk.Data.Count != screenChunk.Rects.Count)
+                        {
+                            Console.WriteLine("Data and Rects count mismatch");
+                            return;
+                        }
+
+                        // Process each chunk properly - use for loop instead of LINQ abuse
+                        for (int i = 0; i < screenChunk.Data.Count; i++)
+                        {
+                            try
+                            {
+                                using (MemoryStream stream = new MemoryStream(screenChunk.Data[i]))
+                                using (Bitmap bitmap = new Bitmap(stream))
+                                {
+                                    _screenGraphics.DrawImage(bitmap, screenChunk.Rects[i]);
+                                }
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"Error processing chunk {i}: {ex.Message}");
+                                // Continue processing other chunks
+                            }
+                        }
+
+                        // Calculate union rectangle safely
+                        Rectangle unionRect = screenChunk.Rects[0];
+                        for (int i = 1; i < screenChunk.Rects.Count; i++)
+                        {
+                            unionRect = Rectangle.Union(unionRect, screenChunk.Rects[i]);
+                        }
+
+                        // Invalidate the region
                         if (this.InvokeRequired)
                         {
-                            this.BeginInvoke(new Action<Rectangle>(InvalidateRegion), rectangle);
+                            this.BeginInvoke(new Action<Rectangle>(InvalidateRegion), unionRect);
                         }
                         else
                         {
-                            InvalidateRegion(rectangle);
+                            InvalidateRegion(unionRect);
                         }
+
+                        Console.WriteLine("Finished processing screen chunks");
                     }
                 }
-
-                vPictureBox1.Invalidate(rectangle);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"ChunkScreen error: {ex.Message}");
             }
         }
+        //private void ChunkScreen(ScreenChunkEntity screenChunk)
+        //{
+        //    try
+        //    {
+
+        //        lock (_screenLock)
+        //        {
+        //            if (_curScreen != null && _screenGraphics != null)
+        //            {
+        //                screenChunk.Data.Zip(screenChunk.Rects, (bytes, rectangle) =>
+        //                new
+        //                {
+        //                    bytes,
+        //                    rectangle
+        //                }).Where(pair =>
+        //                {
+        //                    using (MemoryStream stream=  new MemoryStream(pair.bytes))
+        //                    using (Bitmap bitmap = new Bitmap(stream))
+        //                    {
+        //                        _screenGraphics.DrawImage(bitmap, pair.rectangle);
+        //                    }
+        //                    return true;
+        //                }).ToList();
+
+        //                Rectangle unionRect = screenChunk.Rects[0];
+        //                screenChunk.Rects.Skip(1).ToList().ForEach(rect =>
+        //                    unionRect = Rectangle.Union(unionRect, rect));
+
+        //                if (this.InvokeRequired)
+        //                {
+        //                    this.BeginInvoke(new Action<Rectangle>(InvalidateRegion), unionRect);
+        //                }
+        //                else
+        //                {
+        //                    InvalidateRegion(unionRect);
+        //                }
+        //                Console.WriteLine("Finished");
+        //            }
+        //        }
+
+        //        //// Parse data trên background thread
+        //        //int totalSize = BitConverter.ToInt32(data, 0);
+        //        //int x = BitConverter.ToInt32(data, 4);
+        //        //int y = BitConverter.ToInt32(data, 8);
+        //        //int width = BitConverter.ToInt32(data, 12);
+        //        //int height = BitConverter.ToInt32(data, 16);
+        //        //byte[] chunk = new byte[data.Length - 20];
+        //        //Buffer.BlockCopy(data, 20, chunk, 0, chunk.Length);
+
+        //        //// Decompression trên background thread
+        //        //byte[] dataDecompress = Utils.Decompress(chunk);
+        //        //Rectangle rectangle = new Rectangle(x, y, width, height);
+
+        //        //// Drawing trên background thread với lock
+        //        //using (MemoryStream ms = new MemoryStream(dataDecompress))
+        //        //using (Bitmap jpegBitmap = new Bitmap(ms))
+        //        //{
+        //        //    lock (_screenLock)
+        //        //    {
+        //        //        if (_curScreen != null && _screenGraphics != null)
+        //        //        {
+        //        //            _screenGraphics.DrawImage(jpegBitmap, rectangle);
+        //        //        }
+        //        //        if (this.InvokeRequired)
+        //        //        {
+        //        //            this.BeginInvoke(new Action<Rectangle>(InvalidateRegion), rectangle);
+        //        //        }
+        //        //        else
+        //        //        {
+        //        //            InvalidateRegion(rectangle);
+        //        //        }
+        //        //    }
+        //        //}
+
+        //        //vPictureBox1.Invalidate(rectangle);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine($"ChunkScreen error: {ex.Message}");
+        //    }
+        //}
 
         private void InvalidateRegion(Rectangle rectangle)
         {

@@ -81,6 +81,7 @@
     </Compile>
     <Compile Include="KeyboardHook.cs" />
     <Compile Include="KeyboardSimulator.cs" />
+    <Compile Include="Remote\ScreenChunkEntity.cs" />
     <Compile Include="Remote\ScreenStateLogger.cs" />
     <Compile Include="Remote\ShowImage.cs">
       <SubType>Form</SubType>
