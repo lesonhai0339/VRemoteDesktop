@@ -19,6 +19,13 @@ namespace RemoteClient.Remote
 		private static string digits = "0123456789";
 		private static bool bool_0 = false;
 		internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
+		internal static void RemoveFirst(ref byte[] data, int cutLength)
+        {
+            if (cutLength < 0 || cutLength > data.Length)
+                throw new ArgumentOutOfRangeException(nameof(cutLength));
+
+            data = data.Skip(cutLength).ToArray();
+        }
         internal static byte[] Compress(byte[] data)
         {
             MemoryStream output = new MemoryStream();

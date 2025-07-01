@@ -157,7 +157,7 @@ namespace RemoteClient.Remote
 
             byte[] bytes = new byte[cells[0].Bytes.Length + 9];
 
-            Array.Copy(BitConverter.GetBytes(cells[0].Bytes.Length + 1), 0, bytes, 0, 4); // Add total bytes at the start
+            Buffer.BlockCopy(BitConverter.GetBytes(cells[0].Bytes.Length + 1), 0, bytes, 0, 4); // Add total bytes at the start
 
             //caculate padding need to add
             int lastChunkSize = bytes.Length % CHUNK_SIZE;
@@ -166,12 +166,12 @@ namespace RemoteClient.Remote
             {
                 padding = CHUNK_SIZE - lastChunkSize;
             }
-            Array.Copy(BitConverter.GetBytes(padding), 0, bytes, 4, 4); //padding added when not enough 1024 bytes
+            Buffer.BlockCopy(BitConverter.GetBytes(padding), 0, bytes, 4, 4); //padding added when not enough 1024 bytes
 
             bytes[8] = 4; //data type
 
             //data
-            Array.Copy(cells[0].Bytes, 0, bytes, 9, cells[0].Bytes.Length);//real data
+            Buffer.BlockCopy(cells[0].Bytes, 0, bytes, 9, cells[0].Bytes.Length);//real data
 
             int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
 
@@ -184,7 +184,7 @@ namespace RemoteClient.Remote
                 byte[] packet = new byte[packetSize];
 
                 //data
-                Array.Copy(bytes, offset, packet, 0, packetSize);
+                Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
 
                  if (((i + 1) % 5) == 0)
                 {
@@ -206,7 +206,7 @@ namespace RemoteClient.Remote
 
             byte[] bytes = new byte[chunks.Length + 9];    //9 bytes for common headers
 
-            Array.Copy(BitConverter.GetBytes(chunks.Length + 1), 0, bytes, 0, 4); // Add total bytes of current chunk
+            Buffer.BlockCopy(BitConverter.GetBytes(chunks.Length + 1), 0, bytes, 0, 4); // Add total bytes of current chunk
 
             //caculate padding need to add
             int lastChunkSize = bytes.Length % CHUNK_SIZE;
@@ -215,12 +215,12 @@ namespace RemoteClient.Remote
             {
                 padding = CHUNK_SIZE - lastChunkSize;
             }
-            Array.Copy(BitConverter.GetBytes(padding), 0, bytes, 4, 4);  //padding added to packet enough 1024 bytes
+            Buffer.BlockCopy(BitConverter.GetBytes(padding), 0, bytes, 4, 4);  //padding added to packet enough 1024 bytes
 
             bytes[8] = 5; //send chunk
 
             //data
-            Array.Copy(chunks, 0, bytes, 9, chunks.Length);    //chunk data
+            Buffer.BlockCopy(chunks, 0, bytes, 9, chunks.Length);    //chunk data
 
             for (int i = 0; i < numberOfChunk; i++)
             {
@@ -229,7 +229,7 @@ namespace RemoteClient.Remote
                 byte[] packet = new byte[packetSize];
 
                 //data
-                Array.Copy(bytes, offset, packet, 0, packetSize);
+                Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
 
                 if (((i + 1) % 5) == 0)
                 {
@@ -241,22 +241,19 @@ namespace RemoteClient.Remote
         }
         private byte[] MergeAllChunk(List<CaptureCell> cells,int data)
         {
+            int offset = 0;
             byte[] chunksData = new byte[data];
             foreach(var chunk in cells)
             {
-                Array.Copy(BitConverter.GetBytes(chunk.TotalSize), 0, chunksData, 0, 4);  //chunk length
+                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Bytes.Length), 0, chunksData, offset, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.X), 0, chunksData, offset + 4, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.Y), 0, chunksData, offset + 8, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.Width), 0, chunksData, offset + 12, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.Height), 0, chunksData, offset + 16, 4);
 
-                int x = chunk.Rectangle.X;   //rectangle x
-                int y = chunk.Rectangle.Y;   //rectangle y
-                int width = chunk.Rectangle.Width;   //rectangle width
-                int height = chunk.Rectangle.Height; //rectangle height
-                Array.Copy(BitConverter.GetBytes(x), 0, chunksData, 4, 4);  //4 bytes 
-                Array.Copy(BitConverter.GetBytes(y), 0, chunksData, 8, 4);  //4 bytes
-                Array.Copy(BitConverter.GetBytes(width), 0, chunksData, 12, 4);  //4 bytes
-                Array.Copy(BitConverter.GetBytes(height), 0, chunksData, 16, 4); //4 bytes
-
-                //chunk data
-                Array.Copy(chunk.Bytes, 0 , chunksData, 20, chunk.TotalSize);
+                // Copy chunk data
+                Buffer.BlockCopy(chunk.Bytes, 0, chunksData, offset + 20, chunk.Bytes.Length);
+                offset += 20 + chunk.Bytes.Length;
             }
             return chunksData;
         }

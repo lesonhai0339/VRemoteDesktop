@@ -2,6 +2,7 @@
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
@@ -294,6 +295,35 @@ namespace RemoteClient.Remote
             if (sendScreenChunks != null)
             {
                 sendScreenChunks(data);
+            }
+        }
+        private void ProcessRawChunks(byte[] data)
+        {
+            List<Rectangle> rects = new List<Rectangle>();
+            List<byte[]> bytess = new List<byte[]>();
+            while(data.Length >= 20)
+            {
+                int chunkLength = BitConverter.ToInt32(data, 0);
+                int X = BitConverter.ToInt32(data, 4);
+                int Y = BitConverter.ToInt32(data, 8);
+                int Width = BitConverter.ToInt32(data, 12);
+                int Height = BitConverter.ToInt32(data, 16);
+
+                Rectangle rect = new Rectangle(X,Y,Width,Height);
+
+                int totalLength = 20 + chunkLength;
+                if (data.Length < totalLength)
+                    throw new InvalidOperationException("Data is truncated or corrupt.");
+
+                byte[] chunkData = new byte[chunkLength];
+                Buffer.BlockCopy(data, 20, chunkData, 0, chunkLength);
+
+                byte[] chunkDecompressed = Utils.Decompress(chunkData);
+
+
+                rects.Add(rect);
+                bytess.Add(chunkDecompressed);
+                Utils.RemoveFirst(ref data, (chunkLength + 20));
             }
         }
         private void ProcessP2PCapture(byte[] data)
