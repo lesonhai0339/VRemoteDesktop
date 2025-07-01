@@ -198,7 +198,7 @@ namespace RemoteClient.Remote
         {
             int CHUNK_SIZE = 1024;
             int numberOfChunk = NumberPacketByTotalSIze(totalChunksSize);
-            int data = numberOfChunk * 20;
+            int data = totalChunksSize + (numberOfChunk * 20);
 
             Console.WriteLine("ALl chunks data send: "+ data);
             byte[] chunks = MergeAllChunk(cells, data);

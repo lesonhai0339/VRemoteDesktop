@@ -198,14 +198,13 @@ namespace RemoteClient.Remote
                         }
                         if (!(stateObject.ByteArrayBuilder.Length >= dataLength + paddingAdded + 4  + 4))
                         {
-                            //Console.WriteLine($"Waitting for length {dataLength + 4 + paddingAdded + 4} padding - {paddingAdded}");
+                            Console.WriteLine($"Waitting for length {dataLength + 4 + paddingAdded + 4} padding - {paddingAdded}");
                             goto IL_163;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(dataLength + 4 + paddingAdded + 4).ToArray();
                         byte[] array = new byte[dataLength];
                         Array.Copy(src, 8, array, 0, dataLength);
                         ProcessDataReceived(array, stateObject);
-
                         if (CancellationToken.IsCancellationRequested)
                             break;
                     }
@@ -299,7 +298,7 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PCapture(byte[] data)
         {
-            //Console.WriteLine($"Screen: {data.Length}");
+            Console.WriteLine($"Screen: {data.Length}");
             SendScreenEvent sendScreenEvent = SendScreenEventHandler;
             if (sendScreenEvent != null)
             {
