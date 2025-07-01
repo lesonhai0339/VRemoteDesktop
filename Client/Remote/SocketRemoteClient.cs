@@ -206,24 +206,6 @@ namespace RemoteClient.Remote
                         Array.Copy(src, 8, array, 0, dataLength);
                         ProcessDataReceived(array, stateObject);
 
-
-                        //int maxWorker, maxIOC;
-                        //int availableWorker, availableIOC;
-
-                        //ThreadPool.GetMaxThreads(out maxWorker, out maxIOC);
-                        //ThreadPool.GetAvailableThreads(out availableWorker, out availableIOC);
-
-                        //int inUseWorker = maxWorker - availableWorker;
-                        //int inUseIOC = maxIOC - availableIOC;
-
-                        //Console.WriteLine($"[ThreadPool]");
-                        //Console.WriteLine($"  Max Worker Threads:     {maxWorker}");
-                        //Console.WriteLine($"  Available Worker:       {availableWorker}");
-                        //Console.WriteLine($"  In Use Worker:          {inUseWorker}");
-                        //Console.WriteLine($"  Max IO Completion Port: {maxIOC}");
-                        //Console.WriteLine($"  In Use IOCP:            {inUseIOC}");
-                        //Console.WriteLine("--------------------------------------------\n\n");
-
                         if (CancellationToken.IsCancellationRequested)
                             break;
                     }
@@ -308,20 +290,12 @@ namespace RemoteClient.Remote
         }
         private void ProcessP2PChunkSend(byte[] data)
         {
-            //Console.WriteLine($"Chunk: {data.Length}");
-            Task.Run(() =>
+            Console.WriteLine($"Chunk: {data.Length}");
+            SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
+            if (sendScreenChunks != null)
             {
-                SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
-                if (sendScreenChunks != null)
-                {
-                    sendScreenChunks(data);
-                }
-            });
-            //SendScreenChunksEvent sendScreenChunks = SendScreenChunksEventHandler;
-            //if (sendScreenChunks != null)
-            //{
-            //    sendScreenChunks(data);
-            //}
+                sendScreenChunks(data);
+            }
         }
         private void ProcessP2PCapture(byte[] data)
         {
