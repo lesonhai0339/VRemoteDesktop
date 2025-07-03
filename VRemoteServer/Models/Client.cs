@@ -1,16 +1,19 @@
 ﻿using Serilog;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using VRemoteServer.Utils;
+using static VRemoteServer.Utils.Enums;
 
 namespace VRemoteServer.Models
 {
-    internal class Client : IDisposable
+    public class Client : IDisposable
     {
         private string _ip;
         private bool _isDisposed = false;
@@ -20,14 +23,15 @@ namespace VRemoteServer.Models
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
         private Action<Client> _disconnectCallback;
-        private Func<Client, byte[], int, Task<bool>> _dataCallback;
+        private Func<Enums.CommandType ,Client, byte[], Task<bool>> _dataCallback;
 
-        public Client(Socket socket, Action<Client> disconnectCallback, Func<Client, byte[], int, Task<bool>> dataCallback)
+        public Client(Socket socket, Action<Client> disconnectCallback, Func<Enums.CommandType, Client, byte[], Task<bool>> dataCallback)
         {
+            _lastSendTime = DateTime.Now; //init before check timeout
+
             Socket = socket;
             _disconnectCallback = disconnectCallback;
             _dataCallback = dataCallback;
-            _lastSendTime = DateTime.Now; //init before check timeout
             CheckTimeOut();
         }
         #region Properties
@@ -123,15 +127,10 @@ namespace VRemoteServer.Models
         {
             if (_dataCallback != null)
             {
-                bool flag = await _dataCallback(this, buffer, length);
-                if (!flag)
-                {
-                    Log.Warning("Data processing callback returned false, disconnecting client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
-                    Dispose();
-                }
+                await _dataCallback((CommandType)buffer[0],this, buffer);
             }
         }
-        public async Task StartReceiving(int bufferSize = 1024)
+        public async Task StartReceiving(int bufferSize = 8192)
         {
             try
             {
@@ -142,7 +141,6 @@ namespace VRemoteServer.Models
                     if (bytesRead == 0) break;
 
                     _lastSendTime = DateTime.Now;
-
                     try
                     {
                         //cannot use fire-and-forger because packet order may be messy

@@ -14,11 +14,16 @@ using VRemoteServer.Models;
 
 namespace VRemoteServer.Services
 {
-    internal static class SocketListener
+    public class SocketListener
     {
-        private static readonly SemaphoreSlim _connectionSemaphore = new(200); // Max 200 concurrent
-        private static readonly ConcurrentDictionary<string, Client> _clients = new();
-        public static async Task Listen()
+        private readonly SemaphoreSlim _connectionSemaphore = new(200); // Max 200 concurrent
+        private readonly ConcurrentDictionary<string, Client> _clients = new();
+        private RemoteDesktopServer _remoteDesktop;
+        public SocketListener(RemoteDesktopServer remoteDesktop)
+        {
+            _remoteDesktop = remoteDesktop;
+        }
+        public async Task Listen()
         {
             //init socket listener and config options
             Socket sck = new Socket(
@@ -45,8 +50,8 @@ namespace VRemoteServer.Services
                     Socket clientSck = await sck.AcceptAsync();
 
                     Client client = new Client(clientSck,
-                        RemoteDesktopServer.ClientDisconnectCallback,
-                        RemoteDesktopServer.ProcessDataCallback);
+                        _remoteDesktop.ClientDisconnectCallback,
+                        _remoteDesktop.ProcessDataCallback);
 
                     _clients.TryAdd(client.IP, client);
 

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace VRemoteServer.Utils
 {
-    internal class Extensions
+    public class Extensions
     {
     }
 }

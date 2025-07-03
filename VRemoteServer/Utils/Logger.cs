@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 
 namespace VRemoteServer.Utils
 {
-    internal static class Logger
+    public static class Logger
     {
         public static void Config()
         {

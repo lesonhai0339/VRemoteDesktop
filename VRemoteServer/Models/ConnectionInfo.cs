@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace VRemoteServer.Models
 {
-    internal class ConnectionInfo
+    public class ConnectionInfo
     {
         public ConnectionInfo(string sessionId, ClientInfo sender, ClientInfo receiver)
         {

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace VRemoteServer.Models
 {
-    internal class ClientInfo
+    public class ClientInfo
     {
         public ClientInfo() { }
         public ClientInfo(string id, string password, string computerName, int width, int height, string majorVersion, string minorVersion, string ip, string port, Client client)
