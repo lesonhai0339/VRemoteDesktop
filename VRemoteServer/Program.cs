@@ -12,7 +12,9 @@ namespace VRemoteServer
         {
             Logger.Config();
             Log.Information("Start Service");
-            await SocketListener.Listen();
+            RemoteDesktopServer remoteDesktop = new RemoteDesktopServer();
+            SocketListener socketListener = new SocketListener(remoteDesktop);
+            await socketListener.Listen();
         }
     }
 }
