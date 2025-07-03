@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace VRemoteServer
+namespace VRemoteServer.Models
 {
     internal class Client : IDisposable
     {
@@ -54,7 +54,7 @@ namespace VRemoteServer
             try
             {
                 bool part = Socket.Poll(1000, SelectMode.SelectRead);
-                bool part2 = (Socket.Available == 0);
+                bool part2 = Socket.Available == 0;
                 if (part && part2)
                 {
                     return false; // Socket is disconnected
@@ -64,11 +64,11 @@ namespace VRemoteServer
                     return true; // Socket is connected
                 }
             }
-            catch(SocketException)
+            catch (SocketException)
             {
                 return false; // Socket is disconnected
             }
-            catch(ObjectDisposedException)
+            catch (ObjectDisposedException)
             {
                 return false; // Socket is disposed
             }
@@ -77,7 +77,7 @@ namespace VRemoteServer
         {
             Task.Run(async () =>
             {
-                while(!_cts.Token.IsCancellationRequested)
+                while (!_cts.Token.IsCancellationRequested)
                 {
                     var timer = DateTime.Now - _lastSendTime;
                     if (timer > _timeout)
@@ -112,7 +112,7 @@ namespace VRemoteServer
                 {
                     tcs.TrySetResult(Socket.EndReceive(ar));
                 }
-                catch(Exception ex)
+                catch (Exception ex)
                 {
                     tcs.TrySetException(ex);
                 }
@@ -121,7 +121,7 @@ namespace VRemoteServer
         }
         private async Task ProcessData(byte[] buffer, int length)
         {
-            if(_dataCallback != null)
+            if (_dataCallback != null)
             {
                 bool flag = await _dataCallback(this, buffer, length);
                 if (!flag)
@@ -154,11 +154,11 @@ namespace VRemoteServer
                     }
                 }
             }
-            catch(SocketException ex)
+            catch (SocketException ex)
             {
                 Log.Error(ex, "Socket exception occurred while receiving data.");
             }
-            catch (OperationCanceledException) 
+            catch (OperationCanceledException)
             {
                 Log.Information("Receiving cancelled for client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
             }
@@ -181,9 +181,9 @@ namespace VRemoteServer
                 {
                     _cts.Cancel();
                     Socket?.Shutdown(SocketShutdown.Both);
-                    Socket?.Close();    
+                    Socket?.Close();
                 }
-                catch(Exception ex) 
+                catch (Exception ex)
                 {
                     Log.Error(ex, "An error occurred while disposing the client socket.");
                 }

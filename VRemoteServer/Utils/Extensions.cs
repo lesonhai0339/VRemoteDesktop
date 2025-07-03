@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VRemoteServer
+namespace VRemoteServer.Utils
 {
-    internal class Utils
+    internal class Extensions
     {
     }
 }

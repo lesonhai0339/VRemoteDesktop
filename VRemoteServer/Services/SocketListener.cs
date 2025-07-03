@@ -10,8 +10,9 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using VRemoteServer.Models;
 
-namespace VRemoteServer
+namespace VRemoteServer.Services
 {
     internal static class SocketListener
     {
@@ -43,8 +44,8 @@ namespace VRemoteServer
 
                     Socket clientSck = await sck.AcceptAsync();
 
-                    Client client = new Client(clientSck, 
-                        RemoteDesktopServer.ClientDisconnectCallback, 
+                    Client client = new Client(clientSck,
+                        RemoteDesktopServer.ClientDisconnectCallback,
                         RemoteDesktopServer.ProcessDataCallback);
 
                     _clients.TryAdd(client.IP, client);
@@ -69,7 +70,7 @@ namespace VRemoteServer
             {
                 Log.Error(ex, "SocketException occurred while listening for connections: {Message}", ex.Message);
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 Log.Error(ex, "An unexpected error occurred while listening for connections: {Message}", ex.Message);
             }
@@ -77,6 +78,6 @@ namespace VRemoteServer
             {
                 Log.Information("Closing Remote Desktop Server");
             }
-        } 
+        }
     }
 }
