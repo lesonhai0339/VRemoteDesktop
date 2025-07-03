@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Channels;
@@ -59,11 +60,28 @@ namespace VRemoteServer.Services
         {
 
         }
-        public void ClientDisconnectCallback(Client client)
+        public async void ClientDisconnectCallback(Client client)
         {
+            var connections = RemoteDesktop.Where(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).ToList();
+            if (connections.Any())
+            {
+                var tasks = connections.Select(async x =>
+                {
+                    var partner = x.Value.Sender.Client == client ? x.Value.Receiver : x.Value.Sender;
+                    if(partner.Client != null)
+                    {
+                        int result = await partner.Client.Socket.SendAsync(new byte[] { (byte)Enums.CommandType.Disconnect }, SocketFlags.None);
+                        if (result > 0)
+                        {
+                            RemoteDesktop.TryRemove(x.Key, out _);
+                        }
+                    }
+                    return true;
+                }).ToList();
+                await Task.WhenAll(tasks);
+            }
 
         }
-
         public void Dispose()
         {
             _taskWriter?.Complete();

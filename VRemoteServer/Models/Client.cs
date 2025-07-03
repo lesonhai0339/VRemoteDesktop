@@ -140,6 +140,7 @@ namespace VRemoteServer.Models
                     int bytesRead = await ReceiveAsync(buffer, 0, bufferSize, SocketFlags.None);
                     if (bytesRead == 0) break;
 
+                    Console.WriteLine("Received "+ bytesRead + " bytes");
                     _lastSendTime = DateTime.Now;
                     try
                     {
@@ -154,7 +155,7 @@ namespace VRemoteServer.Models
             }
             catch (SocketException ex)
             {
-                Log.Error(ex, "Socket exception occurred while receiving data.");
+                Log.Error($"Client IP:{IP} disconnected");
             }
             catch (OperationCanceledException)
             {
