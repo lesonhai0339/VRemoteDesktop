@@ -46,7 +46,7 @@ namespace RemoteClient.Remote
 
 
             BackgroundWorker = new BackgroundWorker();
-            _timer = new System.Threading.Timer(SendScreen, null, 0, (1000 / 10));
+            _timer = new System.Threading.Timer(SendScreen, null, 0, (1000 / 3));
         }
         #region Properties
         public SocketRemoteClient Client
@@ -202,6 +202,7 @@ namespace RemoteClient.Remote
 
             Console.WriteLine("ALl chunks data send: "+ data);
             byte[] chunks = MergeAllChunk(cells, data);
+            Console.WriteLine(BitConverter.ToString(chunks));
 
 
             byte[] bytes = new byte[chunks.Length + 9];    //9 bytes for common headers
@@ -245,6 +246,7 @@ namespace RemoteClient.Remote
             byte[] chunksData = new byte[data];
             foreach(var chunk in cells)
             {
+
                 Buffer.BlockCopy(BitConverter.GetBytes(chunk.Bytes.Length), 0, chunksData, offset, 4);
                 Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.X), 0, chunksData, offset + 4, 4);
                 Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.Y), 0, chunksData, offset + 8, 4);

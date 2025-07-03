@@ -120,7 +120,7 @@ namespace RemoteClient.Remote
                 }
             }
             stopwatch.Stop();
-            Console.WriteLine("Total time to assign all regions changed: " + stopwatch.Elapsed.TotalMilliseconds);
+            //Console.WriteLine("Total time to assign all regions changed: " + stopwatch.Elapsed.TotalMilliseconds);
             return cells;
         }
 
