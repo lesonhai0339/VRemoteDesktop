@@ -231,6 +231,7 @@ namespace RemoteServer
             }
             if (me == null || remoteClient == null)
             {
+
                 return false;
             }
             else
