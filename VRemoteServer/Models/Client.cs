@@ -144,11 +144,6 @@ namespace VRemoteServer.Models
                     _lastSendTime = DateTime.Now;
                     try
                     {
-                        //headers
-                        if(bytesRead == 5)
-                        {
-
-                        }
                         //cannot use fire-and-forger because packet order may be messy
                         await ProcessData(buffer, bytesRead);
                     }
