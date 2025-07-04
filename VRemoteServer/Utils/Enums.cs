@@ -8,11 +8,18 @@ namespace VRemoteServer.Utils
 {
     public class Enums
     {
+        public enum Test : int
+        {
+            PING= 0,
+            LOGIN =1,
+            P2PCONNECT = 2,
+            P2PDATASEND = 3,
+        }
         public enum CommandType: byte
         {
             None = 0x00,
             Login = 0x01,
-            Connect = 0x02,
+            P2PConnect = 0x02,
             Disconnect = 0x03,
             Data = 0x04,
             Ping = 0x05,

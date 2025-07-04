@@ -14,18 +14,26 @@ namespace VRemoteServer.Utils
         public static void Config()
         {
             var logFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
-            if (!Directory.Exists(logFolder))
-            {
-                Directory.CreateDirectory(logFolder);
-            }
+            Directory.CreateDirectory(logFolder);
 
-            var logPath = Path.Combine(logFolder, "log-.txt");
             Log.Logger = new LoggerConfiguration()
-            .MinimumLevel.Debug()
-            .WriteTo.Console()
-            .WriteTo.File(logPath, rollingInterval: RollingInterval.Day,
-                outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}")
-            .CreateLogger();
+                .MinimumLevel.Debug()
+                .WriteTo.Console()
+                .WriteTo.File(
+                    Path.Combine(logFolder, "log-.txt"),
+                    rollingInterval: RollingInterval.Day,
+                    outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+                )
+                .WriteTo.Map(
+                    keyPropertyName: "FileName",
+                    defaultKey: "default",
+                    configure: (fileName, wt) => wt.File(
+                        Path.Combine(logFolder, $"{fileName}-.txt"),
+                        rollingInterval: RollingInterval.Day,
+                        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff zzz} [{Level:u3}] {Message:lj}{NewLine}{Exception}"
+                    )
+                )
+                .CreateLogger();
         }
     }
 }
