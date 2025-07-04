@@ -24,7 +24,11 @@ namespace VRemoteServer.Utils
             Data = 0x04,
             Ping = 0x05,
             Pong = 0x06,
-            Error = 0x07
+            Error = 0x07,
+
+            LoginFailed = 0x90,
+            PartnerDisconnected = 0x91,
+            P2PConnectFailed = 0x92,    
         }
     }
 }

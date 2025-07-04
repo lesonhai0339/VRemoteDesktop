@@ -8,6 +8,11 @@ namespace VRemoteServer.Models
 {
     public class ConnectionInfo
     {
+        public ConnectionInfo(ClientInfo sender, ClientInfo receiver)
+        {
+            Sender = sender;
+            Receiver = receiver;
+        }
         public ConnectionInfo(string sessionId, ClientInfo sender, ClientInfo receiver)
         {
             SessionId = sessionId;
