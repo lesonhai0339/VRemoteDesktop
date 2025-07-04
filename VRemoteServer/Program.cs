@@ -11,7 +11,7 @@ namespace VRemoteServer
         static async Task Main(string[] args)
         {
             Logger.Config();
-            Log.Information("Start Service");
+            Log.ForContext("FileName", "Main").Information("Start Service");
             RemoteDesktopServer remoteDesktop = new RemoteDesktopServer();
             SocketListener socketListener = new SocketListener(remoteDesktop);
             await socketListener.Listen();

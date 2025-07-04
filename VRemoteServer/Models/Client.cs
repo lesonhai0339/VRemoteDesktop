@@ -25,6 +25,13 @@ namespace VRemoteServer.Models
         private Action<Client> _disconnectCallback;
         private Func<Enums.CommandType ,Client, byte[], Task<bool>> _dataCallback;
 
+
+        //data
+        private byte[] _currentHeader;
+        private byte[] _remainingData;
+        private int _dataExpected;
+        private int _dataReceived;
+
         public Client(Socket socket, Action<Client> disconnectCallback, Func<Enums.CommandType, Client, byte[], Task<bool>> dataCallback)
         {
             _lastSendTime = DateTime.Now; //init before check timeout
@@ -86,13 +93,13 @@ namespace VRemoteServer.Models
                     var timer = DateTime.Now - _lastSendTime;
                     if (timer > _timeout)
                     {
-                        Log.Warning("Client {ClientId} has been idle for too long, disconnecting...", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
+                        Log.ForContext("FileName", "Clients").Warning("Client {ClientId} has been idle for too long, disconnecting...", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
                         Dispose();
                         break;
                     }
                     if (!CheckAlive())
                     {
-                        Log.Warning("Client {ClientId} is not connected anymore, disconnecting...", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
+                        Log.ForContext("FileName", "Clients").Warning("Client {ClientId} is not connected anymore, disconnecting...", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
                         Dispose();
                         break;
                     }
@@ -123,11 +130,11 @@ namespace VRemoteServer.Models
             }, state: null);
             return tcs.Task;
         }
-        private async Task ProcessData(byte[] buffer, int length)
+        private async Task ProcessData(Enums.CommandType command, byte[] buffer)
         {
             if (_dataCallback != null)
             {
-                await _dataCallback((CommandType)buffer[0],this, buffer);
+                await _dataCallback(command,this, buffer);
             }
         }
         public async Task StartReceiving(int bufferSize = 8192)
@@ -144,31 +151,107 @@ namespace VRemoteServer.Models
                     _lastSendTime = DateTime.Now;
                     try
                     {
+                        byte[] data = new byte[bytesRead];
+                        Buffer.BlockCopy(buffer, 0, data, 0, bytesRead);
                         //cannot use fire-and-forger because packet order may be messy
-                        await ProcessData(buffer, bytesRead);
+                        await CaculateData(data);
                     }
                     catch
                     {
-                        Log.Error("Error when processing data from client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
+                        Log.ForContext("FileName", "Clients").Error("Error when processing data from client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
                     }
                 }
             }
             catch (SocketException ex)
             {
-                Log.Error($"Client IP:{IP} disconnected");
+                Log.ForContext("FileName", "Clients").Error($"Client IP:{IP} disconnected");
             }
             catch (OperationCanceledException)
             {
-                Log.Information("Receiving cancelled for client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
+                Log.ForContext("FileName", "Clients").Error("Receiving cancelled for client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "An unexpected error occurred while receiving data.");
+                Log.ForContext("FileName", "Clients").Error(ex, "An unexpected error occurred while receiving data.");
             }
             finally
             {
-                Log.Information($"End receive on socket {(Socket.RemoteEndPoint as IPEndPoint)?.Address.ToString()}");
+                Log.ForContext("FileName", "Clients").Information($"End receive on socket {(Socket.RemoteEndPoint as IPEndPoint)?.Address.ToString()}");
                 Dispose();
+            }
+        }
+        private async Task CaculateData(byte[] data)
+        {
+            if (_remainingData == null)
+                _remainingData = new byte[0];
+
+            byte[] totalData = new byte[_remainingData.Length + data.Length];
+            Buffer.BlockCopy(_remainingData, 0, totalData, 0, _remainingData.Length);
+            Buffer.BlockCopy(data, 0, totalData, _remainingData.Length, data.Length);
+            
+            int bytesProcessed = 0; 
+
+            while(bytesProcessed < totalData.Length)
+            {
+                if (_currentHeader == null)
+                {
+                    if (totalData.Length - bytesProcessed >= 5)
+                    {
+                        _currentHeader = new byte[5];
+                        Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 5);
+
+                        _dataExpected = BitConverter.ToInt32(_currentHeader, 1);
+                        bytesProcessed += 5;
+                        _dataReceived = 0;
+                    }
+                    else
+                    {
+                        break;
+                    }
+
+                }
+                if (_currentHeader != null)
+                {
+                    int remainingDataNeeded = _dataExpected - _dataReceived;
+                    int avaiblebleData = totalData.Length - bytesProcessed;
+                    int dataNeedtoReceive = Math.Min(remainingDataNeeded, avaiblebleData);
+
+                    if(dataNeedtoReceive > 0)
+                    {
+                        byte[] bytes = new byte[dataNeedtoReceive];
+                        Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive);
+
+                        _dataReceived += dataNeedtoReceive;
+                        bytesProcessed += dataNeedtoReceive;
+
+                        Console.WriteLine($"Type send: {(Enums.Test)_currentHeader[0]}");
+                        Console.WriteLine($"Expected: {_dataExpected} - received: {_dataReceived}");
+                        await ProcessData((Enums.CommandType)_currentHeader[0], bytes);
+
+                        if (_dataReceived >= _dataExpected)
+                        {
+                            Console.WriteLine($"Complete {_dataExpected} - {_dataReceived}");
+                            Console.WriteLine("-------------------------------\n");
+                            _dataExpected = 0;
+                            _dataReceived = 0;
+                            _currentHeader = null;
+                        }
+                    }
+                }
+                else
+                {
+                    break;
+                }
+            }
+            if(bytesProcessed < totalData.Length)
+            {
+                int remainingBytes = totalData.Length - bytesProcessed;
+                _remainingData = new byte[remainingBytes];
+                Buffer.BlockCopy(totalData, bytesProcessed, _remainingData, 0, remainingBytes);
+            }
+            else
+            {
+                _remainingData = new byte[0];
             }
         }
         public void Dispose()
