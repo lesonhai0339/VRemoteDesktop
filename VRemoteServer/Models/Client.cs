@@ -197,10 +197,11 @@ namespace VRemoteServer.Models
                 {
                     if (totalData.Length - bytesProcessed >= 5)
                     {
+                        //4 first byte is data length, 1 last byte is command type
                         _currentHeader = new byte[5];
                         Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 5);
 
-                        _dataExpected = BitConverter.ToInt32(_currentHeader, 1);
+                        _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
                         bytesProcessed += 5;
                         _dataReceived = 0;
                     }
@@ -224,9 +225,9 @@ namespace VRemoteServer.Models
                         _dataReceived += dataNeedtoReceive;
                         bytesProcessed += dataNeedtoReceive;
 
-                        Console.WriteLine($"Type send: {(Enums.Test)_currentHeader[0]}");
+                        Console.WriteLine($"Type send: {(Enums.Test)_currentHeader[4]}");
                         Console.WriteLine($"Expected: {_dataExpected} - received: {_dataReceived}");
-                        await ProcessData((Enums.CommandType)_currentHeader[0], bytes);
+                        await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
 
                         if (_dataReceived >= _dataExpected)
                         {

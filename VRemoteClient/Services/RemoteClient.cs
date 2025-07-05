@@ -6,8 +6,8 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using VRemoteClient.Models.;
 using VRemoteClient.Models.Entities;
+using VRemoteClient.Models.Enums;
 
 namespace VRemoteClient.Services
 {
@@ -19,7 +19,7 @@ namespace VRemoteClient.Services
 
         private bool _isSocketConnected;
         private bool _isP2PConnected;
-        private bool _isDisposed;
+        private bool _isDisposed; 
 
         private Socket _socket;
         private Timer _timer;
@@ -141,12 +141,110 @@ namespace VRemoteClient.Services
 
         private void DataCallback(IAsyncResult ar)
         {
-            throw new NotImplementedException();
+            try
+            {
+                StateObject stateObject = (StateObject)ar.AsyncState;
+                Socket workSocket = stateObject.WorkSocket;
+                int num = Socket.EndReceive(ar);
+                if(num > 0)
+                {
+                    stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
+                    while (!_cancellationToken.Token.IsCancellationRequested)
+                    {
+                        if(!(stateObject.ByteArrayBuilder.Length >= 4))
+                        {
+                            break;
+                        }
+                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
+
+                        if(!(stateObject.ByteArrayBuilder.Length >= length + 4))
+                        {
+                            break;
+                        }
+
+                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();
+                        byte[] data = new byte[length];
+                        Buffer.BlockCopy(src , 4, data, 0 , length);
+                        ProcessReceiveData(data);
+                        if (_cancellationToken.IsCancellationRequested) break;
+
+                    }
+                }
+                try
+                {
+                    Socket.BeginReceive(stateObject.Buffer, 0, stateObject.Buffer.Length, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);  
+                }
+                catch
+                {
+                    //Socket.Close();
+                }
+            }
+            catch(SocketException ex)
+            {
+                Log.Error(ex, "SocketException when receiving data from remote server");    
+            }
+            catch(Exception ex)
+            {
+                Log.Error(ex, "Unexpected error when receiving data from remote server");
+            }
         }
 
+        private void ProcessReceiveData(byte[] data)
+        {
+            CommandType commandType = (CommandType)data[0];
+            switch (commandType)
+            {
+                case CommandType.Login:
+                    break;
+                case CommandType.P2PConnect:
+                    break;
+                case CommandType.Disconnect:
+                    break;
+                case CommandType.Data:
+                    break;
+                case CommandType.Ping:
+                    break;
+                case CommandType.Pong:
+                    break;
+                case CommandType.Error:
+                    break;
+                case CommandType.LoginFailed:
+                    break;
+                case CommandType.PartnerDisconnected:
+                    break;
+                case CommandType.P2PConnectFailed:
+                    break;
+                default:
+                    break;
+            }
+        }
+        public void Send(CommandType commandType, byte[] data)
+        {
+            try
+            {
+                //send header before send data
+                byte[] header = new byte[5];
+                Buffer.BlockCopy(BitConverter.GetBytes(data.Length), 0, header, 0, 4);
+                header[4] = (byte)commandType; //set command type
+                Socket.BeginSend(header, 0, header.Length, SocketFlags.None, null, null);
+
+                //send data
+                Socket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error when sending data to remote server");
+            }
+        }
         public void Dispose()
         {
-            throw new NotImplementedException();
+            if (!_isDisposed)
+            {
+                _cancellationToken.Cancel();
+                _cancellationToken.Dispose();
+                _socket?.Close();
+                _isDisposed = true;
+            }
         }
     }
 }

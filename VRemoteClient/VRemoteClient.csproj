@@ -9,7 +9,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Models\Enums\" />
 	<Content Include="Resources\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
