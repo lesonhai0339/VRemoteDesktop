@@ -47,7 +47,7 @@ namespace VRemoteServer.Services
                             await ProcessLogin(task.Client, task.Data);
                             break;
                         case Enums.CommandType.P2PConnect:
-                            ProcessP2PConnect(task.Client, task.Data);
+                            await ProcessP2PConnect(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Disconnect:
                             break;
@@ -103,11 +103,14 @@ namespace VRemoteServer.Services
         {
             try
             {
-                byte[] bytes= (data != null) ? new byte[data.Length + 1] : new byte[1];
-                bytes[0] = (byte)commandType;
+                byte[] bytes= (data != null) ? new byte[data.Length + 5] : new byte[5];
+                //4 first bytes is packet length
+                Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length - 4), 0, bytes, 0, 4);
+                // The five byte is the command type, followed by the data length and then the data itself
+                bytes[4] = (byte)commandType;
                 if (data != null)
                 {
-                    Buffer.BlockCopy(data, 0, bytes, 1, data.Length);
+                    Buffer.BlockCopy(data, 0, bytes, 5, data.Length);
                 }
                 int response = await client.Socket.SendAsync(bytes, SocketFlags.None);
                 return response;
@@ -190,6 +193,8 @@ namespace VRemoteServer.Services
                 Client = client
             };
             _clientsActing.TryAdd(loginInfo.Id, loginInfo);
+            await SendCommandAsync(client, Enums.CommandType.Login);
+
         }
         public void ProcessDisconnect(Client client, byte[] data)
         {

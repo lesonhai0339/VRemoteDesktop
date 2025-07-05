@@ -96,7 +96,7 @@ namespace RemoteClient.Remote
             screenStateLogger.ScreenRefreshed += (sender, data) =>
             {
                 //New frame in data
-                Console.WriteLine($"Call {data.Length} - {DateTime.Now.ToString("hh:mm:ss tt")}");
+                Console.WriteLine($"Call {data.Data.Length} - {DateTime.Now.ToString("hh:mm:ss tt")}");
             };
             screenStateLogger.Start();
             stopwatch.Stop();

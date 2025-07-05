@@ -94,7 +94,7 @@ namespace RemoteClient.Remote
             this.label1.Location = new System.Drawing.Point(16, 27);
             this.label1.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(74, 17);
+            this.label1.Size = new System.Drawing.Size(69, 16);
             this.label1.TabIndex = 5;
             this.label1.Text = "Id của bạn";
             // 
@@ -104,7 +104,7 @@ namespace RemoteClient.Remote
             this.label2.Location = new System.Drawing.Point(231, 27);
             this.label2.Margin = new System.Windows.Forms.Padding(4, 0, 4, 0);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(67, 17);
+            this.label2.Size = new System.Drawing.Size(63, 16);
             this.label2.TabIndex = 6;
             this.label2.Text = "ID đối tác";
             // 
@@ -114,13 +114,14 @@ namespace RemoteClient.Remote
             this.panel1.Name = "panel1";
             this.panel1.Size = new System.Drawing.Size(15, 15);
             this.panel1.TabIndex = 7;
+            this.panel1.Paint += new System.Windows.Forms.PaintEventHandler(this.panel1_Paint_1);
             // 
             // lbConnectStatus
             // 
             this.lbConnectStatus.AutoSize = true;
             this.lbConnectStatus.Location = new System.Drawing.Point(33, 173);
             this.lbConnectStatus.Name = "lbConnectStatus";
-            this.lbConnectStatus.Size = new System.Drawing.Size(87, 17);
+            this.lbConnectStatus.Size = new System.Drawing.Size(0, 16);
             this.lbConnectStatus.TabIndex = 8;
             // 
             // FormMain

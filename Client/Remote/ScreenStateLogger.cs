@@ -102,7 +102,7 @@ public class ScreenStateLogger
                             using (var ms = new MemoryStream())
                             {
                                 bitmap.Save(ms, ImageFormat.Bmp);
-                                ScreenRefreshed?.Invoke(this, ms.ToArray());
+                                ScreenRefreshed?.Invoke(this, new ScreenRefreshEventArgs(ms.ToArray()));
                                 _init = true;
                             }
                         }
@@ -130,5 +130,14 @@ public class ScreenStateLogger
         _run = false;
     }
 
-    public EventHandler<byte[]> ScreenRefreshed;
+    public EventHandler<ScreenRefreshEventArgs> ScreenRefreshed;
+}
+public class ScreenRefreshEventArgs : EventArgs
+{
+    public byte[] Data { get; }
+
+    public ScreenRefreshEventArgs(byte[] data)
+    {
+        Data = data;
+    }
 }

@@ -7,7 +7,9 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteServer", "Server\Remo
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteClient", "Client\RemoteClient.csproj", "{3EA164A8-95EA-4CFD-9E99-F1EA6EA009C0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteServer", "VRemoteServer\VRemoteServer.csproj", "{7DAB01DF-DCCA-4271-8481-E422C864F602}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VRemoteServer", "VRemoteServer\VRemoteServer.csproj", "{7DAB01DF-DCCA-4271-8481-E422C864F602}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteClient", "VRemoteClient\VRemoteClient.csproj", "{801824C2-2E66-4EF9-9E46-B1267B84B704}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -41,6 +43,14 @@ Global
 		{7DAB01DF-DCCA-4271-8481-E422C864F602}.Release|Any CPU.Build.0 = Release|Any CPU
 		{7DAB01DF-DCCA-4271-8481-E422C864F602}.Release|x86.ActiveCfg = Release|Any CPU
 		{7DAB01DF-DCCA-4271-8481-E422C864F602}.Release|x86.Build.0 = Release|Any CPU
+		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Debug|x86.Build.0 = Debug|Any CPU
+		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Release|Any CPU.Build.0 = Release|Any CPU
+		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Release|x86.ActiveCfg = Release|Any CPU
+		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
