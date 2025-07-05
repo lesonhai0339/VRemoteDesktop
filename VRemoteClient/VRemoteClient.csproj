@@ -10,10 +10,18 @@
 
   <ItemGroup>
 	<Content Include="Resources\**\*" CopyToOutputDirectory="PreserveNewest" />
+	 <Content Include="Resources\logo.ico" CopyToOutputDirectory="PreserveNewest" />
+
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="Serilog" Version="1.5.14" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Configuration">
+      <HintPath>..\..\..\..\..\..\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Configuration.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>

@@ -1,4 +1,8 @@
-﻿namespace VRemoteClient
+﻿using System;
+using System.Drawing;
+using System.Windows.Forms;
+
+namespace VRemoteClient
 {
     partial class FormMain
     {
@@ -28,6 +32,8 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.Text = "VRemote - Vinhhy";
+            this.BackColor = System.Drawing.Color.White;
             this.txtOwnerId = new System.Windows.Forms.TextBox();
             this.txtOwnerPassword = new System.Windows.Forms.TextBox();
             this.txtPartnerPassword = new System.Windows.Forms.TextBox();
@@ -49,6 +55,10 @@
             this.txtOwnerId.Name = "txtOwnerId";
             this.txtOwnerId.Size = new System.Drawing.Size(150, 22);
             this.txtOwnerId.TabIndex = 0;
+            this.txtOwnerId.ReadOnly = true;
+            this.txtOwnerId.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.txtOwnerId.BorderStyle = BorderStyle.FixedSingle;
+
             // 
             // txtOwnerPassword
             // 
@@ -56,6 +66,10 @@
             this.txtOwnerPassword.Name = "txtOwnerPassword";
             this.txtOwnerPassword.Size = new System.Drawing.Size(150, 22);
             this.txtOwnerPassword.TabIndex = 1;
+            this.txtOwnerPassword.ReadOnly = true;
+            this.txtOwnerPassword.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.txtOwnerPassword.BorderStyle = BorderStyle.FixedSingle;
+
             // 
             // txtPartnerPassword
             // 
@@ -63,6 +77,8 @@
             this.txtPartnerPassword.Name = "txtPartnerPassword";
             this.txtPartnerPassword.Size = new System.Drawing.Size(150, 22);
             this.txtPartnerPassword.TabIndex = 2;
+            this.txtPartnerPassword.BorderStyle = BorderStyle.FixedSingle;
+
             // 
             // txtPartnerId
             // 
@@ -70,6 +86,8 @@
             this.txtPartnerId.Name = "txtPartnerId";
             this.txtPartnerId.Size = new System.Drawing.Size(150, 22);
             this.txtPartnerId.TabIndex = 3;
+            this.txtPartnerId.BorderStyle = BorderStyle.FixedSingle;
+
             // 
             // label1
             // 
@@ -114,7 +132,9 @@
             this.lbStatus.Name = "lbStatus";
             this.lbStatus.Size = new System.Drawing.Size(96, 16);
             this.lbStatus.TabIndex = 8;
-            this.lbStatus.Text = "Chưa sẵn sàng";
+            this.lbStatus.Text = "Chưa sẵn sàng"; 
+            this.pnStatus.Paint += pnStatus_Paint;
+
             // 
             // label4
             // 
@@ -173,6 +193,7 @@
             this.Name = "FormMain";
             this.Text = "Form1";
             this.Load += new System.EventHandler(this.FormMain_Load);
+            this.Shown += new System.EventHandler(this.FormMain_Shown);
             this.ResumeLayout(false);
             this.PerformLayout();
 

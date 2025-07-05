@@ -24,13 +24,13 @@ namespace VRemoteClient.Services
         private Socket _socket;
         private Timer _timer;
 
-        public delegate void ConnectEvent();
+        public delegate void ConnectSckEvent();
         public delegate void LoginEvent();
         public delegate void P2PConnectEvent();
         public delegate void P2PDataSendSuccessEvent();
         public delegate void P2PScreenEvent(byte[] screen);
 
-        public event ConnectEvent ConnectedEventHandler;
+        public event ConnectSckEvent ConnectSckEventHandler;
         public event LoginEvent LoginEventHandler;
         public event P2PConnectEvent P2PConnectEventHandler;
         public event P2PDataSendSuccessEvent P2PDataSendSuccessEventHandler;
@@ -117,7 +117,7 @@ namespace VRemoteClient.Services
                 {
                     SocketConnected = true;
                 }
-                ConnectEvent connectEvent = ConnectedEventHandler;
+                ConnectSckEvent connectEvent = ConnectSckEventHandler;
                 if (connectEvent != null)
                 {
                     connectEvent();
@@ -195,6 +195,11 @@ namespace VRemoteClient.Services
             switch (commandType)
             {
                 case CommandType.Login:
+                    LoginEvent loginEvent = LoginEventHandler;
+                    if(loginEvent != null)
+                    {
+                        loginEvent();
+                    }
                     break;
                 case CommandType.P2PConnect:
                     break;
