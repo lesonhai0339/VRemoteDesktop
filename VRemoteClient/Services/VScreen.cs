@@ -13,7 +13,6 @@ namespace VRemoteClient.Services
 {
     public class VScreen
     {
-        private System.Threading.Timer _timer;
         private BackgroundWorker _backgroundWorker;
         private Queue<ScreenTask> _queueTask;
         private RemoteClient _remoteClient;
@@ -22,9 +21,9 @@ namespace VRemoteClient.Services
         public VScreen(RemoteClient client) 
         {
             _remoteClient = client;
+            _queueTask = new Queue<ScreenTask>(); 
             BackgroundWorker = new BackgroundWorker();
-            _queueTask = new Queue<ScreenTask>();
-            _timer = new System.Threading.Timer(SendScreen, null, 0, (1000/1));
+            BackgroundWorker.RunWorkerAsync();
         }
         #region Properties
         public BackgroundWorker BackgroundWorker
@@ -46,61 +45,35 @@ namespace VRemoteClient.Services
                 }
             }
         }
-
+        #endregion
         private void DoWork(object sender, DoWorkEventArgs e)
         {
-            while (_queueTask.Count > 0)
+            while (true)
             {
-                bool flag = false;  // Task not completed yet
-                ScreenTask taskWork = _queueTask.Dequeue();
-
-                if (taskWork != null)
+                var screens = Utils.Capture.GetScreen();
+                if (screens.Any())
                 {
-                    switch (taskWork.WorkType)
+                    int totalSize = checked(screens.Sum(x => x.TotalSize));
+                    var task = new ScreenTask
+                    {
+                        WorkType = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS,
+                        Blocks = screens,
+                        TotalSize = totalSize
+                    };
+
+                    bool flag = false;
+                    switch (task.WorkType)
                     {
                         case ScreenEnum.FULLSCREEN:
-                            SendScreenData(taskWork.Blocks, ref flag);
+                            SendScreenData(task.Blocks, ref flag);
                             break;
                         case ScreenEnum.REGIONSCREENS:
-                            SendChunk(taskWork.Blocks, taskWork.TotalSize, ref flag);
+                            SendChunk(task.Blocks, task.TotalSize, ref flag);
                             break;
-                        default:
-                            flag = true; // Skip unknown types
-                            break;
-                    }
-
-                    // Wait until the task is completed
-                    while (!flag)
-                    {
-                        Thread.Sleep(10);
                     }
                 }
 
-                Thread.Sleep(10); // Small delay between tasks
-            }
-        }
-        #endregion
-        public void SendScreen(object state)
-        {
-            if (!BackgroundWorker.IsBusy)
-            {
-                BackgroundWorker.RunWorkerAsync();
-            }
-            var screens = Utils.Capture.GetScreen();
-            if (screens.Any())
-            {
-                int totalSize = checked(screens.Sum(x => x.TotalSize));
-                var task = new ScreenTask
-                {
-                    WorkType = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS,
-                    Blocks = screens,
-                    TotalSize = totalSize
-                };
-                // Thread-safe enqueue
-                lock (_queueLock)
-                {
-                    _queueTask.Enqueue(task);
-                }
+                Thread.Sleep(1000); // thay cho timer
             }
         }
         private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)

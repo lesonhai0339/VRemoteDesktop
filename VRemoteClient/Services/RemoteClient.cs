@@ -223,6 +223,12 @@ namespace VRemoteClient.Services
                 case CommandType.Pong:
                     Console.WriteLine("Pong received from server"); 
                     break;
+                case CommandType.Screen:
+                    Console.WriteLine("Screen received from server");
+                    break;
+                case CommandType.Chunks:
+                    Console.WriteLine("Chunks received from server");
+                    break;
                 case CommandType.Error:
                     break;
                 case CommandType.LoginFailed:
