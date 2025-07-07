@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -143,14 +144,15 @@ namespace VRemoteServer.Models
             {
                 while (!_cts.Token.IsCancellationRequested)
                 {
-                    byte[] buffer = new byte[bufferSize];
-                    int bytesRead = await ReceiveAsync(buffer, 0, bufferSize, SocketFlags.None);
-                    if (bytesRead == 0) break;
-
-                    Console.WriteLine("Received "+ bytesRead + " bytes");
-                    _lastSendTime = DateTime.Now;
+                    var buffer = ArrayPool<byte>.Shared.Rent(bufferSize);
                     try
                     {
+                        int bytesRead = await ReceiveAsync(buffer, 0, bufferSize, SocketFlags.None);
+                        if (bytesRead == 0) break;
+
+                        Console.WriteLine("Received " + bytesRead + " bytes");
+
+                        _lastSendTime = DateTime.Now;
                         byte[] data = new byte[bytesRead];
                         Buffer.BlockCopy(buffer, 0, data, 0, bytesRead);
                         //cannot use fire-and-forger because packet order may be messy
@@ -159,6 +161,10 @@ namespace VRemoteServer.Models
                     catch
                     {
                         Log.ForContext("FileName", "Clients").Error("Error when processing data from client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
+                    }
+                    finally
+                    {
+                        ArrayPool<byte>.Shared.Return(buffer, clearArray: true);
                     }
                 }
             }
@@ -263,7 +269,7 @@ namespace VRemoteServer.Models
             }
             else
             {
-                _remainingData = new byte[0];
+                _remainingData = Array.Empty<byte>();
             }
         }
         public void Dispose()
