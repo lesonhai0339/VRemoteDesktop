@@ -57,7 +57,7 @@ namespace VRemoteClient
                 client = _remoteClient;
                 if (client != null)
                 {
-                    client.ConnectSckEventHandler -= SocketEvent;
+                    client.ConnectSckEventHandler += SocketEvent;
                     client.LoginEventHandler += LoginSuccessEvent;
                     client.P2PConnectEventHandler += P2PConnectEvent;
                 }

@@ -236,7 +236,11 @@ namespace VRemoteServer.Services
                 }).ToList();
                 await Task.WhenAll(tasks);
             }
-            _clientsActing.TryRemove(_clientsActing.FirstOrDefault(x => x.Value.Client == client));
+            var a = _clientsActing.FirstOrDefault(x => x.Value.Client == client);
+            if(a.Value != null)
+            {
+                _clientsActing.TryRemove(a.Key, out _);
+            }
         }
         public void Dispose()
         {
