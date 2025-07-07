@@ -44,6 +44,7 @@ namespace VRemoteClient.Services
             _isP2PConnected = false;
             _isDisposed = false;
             _cancellationToken = new CancellationTokenSource();
+            _timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
         }
         #region Properties
         public Socket Socket
