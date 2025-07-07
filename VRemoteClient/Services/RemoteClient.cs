@@ -287,7 +287,7 @@ namespace VRemoteClient.Services
                         };
                         connectionInfo.Receiver = _me;
                     }
-                    else if(partnerInfo[0].ToLower() == "0")
+                    else if(partnerInfo[0].ToLower() == "1")
                     {
                         connectionInfo.Receiver = new ClientInfo
                         {
