@@ -60,6 +60,10 @@ namespace VRemoteServer.Services
                             break;
                         case Enums.CommandType.Error:
                             break;
+                        case Enums.CommandType.Screen:
+                            break;
+                        case Enums.CommandType.Chunks:
+                            break;
                         default:
                             break;
                     }
