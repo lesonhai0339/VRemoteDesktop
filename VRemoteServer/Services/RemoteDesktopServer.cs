@@ -177,13 +177,23 @@ namespace VRemoteServer.Services
                 }
                 ConnectionInfo connection = new ConnectionInfo(sender: connecter, receiver: receiver);
 
-                //infomation of connector and receiver
-                StringBuilder receiveInfo = new StringBuilder().Append("1").Append("|").Append(connection.SessionId).Append("|").Append(receiver.ToString());
-                StringBuilder connecterInfo = new StringBuilder().Append("0").Append("|").Append(connection.SessionId).Append("|").Append(connecter.ToString());
+                bool flag = RemoteDesktop.TryAdd(connection.SessionId, connection);
+                if (flag)
+                {
+                    //infomation of connector and receiver
+                    StringBuilder receiveInfo = new StringBuilder().Append("1").Append("|").Append(connection.SessionId).Append("|").Append(receiver.ToString());
+                    StringBuilder connecterInfo = new StringBuilder().Append("0").Append("|").Append(connection.SessionId).Append("|").Append(connecter.ToString());
 
-                //send the connection information to both clients
-                await SendCommandAsync(connecter.Client, Enums.CommandType.P2PConnect, Encoding.ASCII.GetBytes(receiveInfo.ToString()));
-                await SendCommandAsync(receiver.Client, Enums.CommandType.P2PConnect, Encoding.ASCII.GetBytes(connecterInfo.ToString()));
+                    //send the connection information to both clients
+                    await SendCommandAsync(connecter.Client, Enums.CommandType.P2PConnect, Encoding.ASCII.GetBytes(receiveInfo.ToString()));
+                    await SendCommandAsync(receiver.Client, Enums.CommandType.P2PConnect, Encoding.ASCII.GetBytes(connecterInfo.ToString()));
+                }
+                else
+                {
+                    await SendCommandAsync(client, Enums.CommandType.P2PConnectFailed);
+                    Log.ForContext("FileName", "RemoteDesktopServer")
+                        .Error($"P2P connect failed. connecter: {client.IP}");
+                }
             }
         }
         public async Task ProcessLogin(Client client, byte[] data)
