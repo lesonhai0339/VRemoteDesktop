@@ -111,14 +111,14 @@ namespace VRemoteClient.Services
             //send header before send data
             byte[] header = new byte[5];
             int dataLength = blocks[0].TotalSize;
-            Buffer.BlockCopy(BitConverter.GetBytes(dataLength + 1), 0, header, 0, 4); // Add total bytes at the start
+            Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
             header[4] = (byte)CommandType.Screen; //data type
             _remoteClient.Send(CommandType.None, header, false);
 
 
 
             //data send
-            int CHUNK_SIZE = 1024;
+            int CHUNK_SIZE = 8192;
 
             byte[] bytes = new byte[blocks[0].Bytes.Length];
             //data
@@ -142,7 +142,7 @@ namespace VRemoteClient.Services
         }
         private void SendChunk(List<ScreenBlock> blocks, int totalChunksSize, ref bool flag)
         {
-            int CHUNK_SIZE = 1024;
+            int CHUNK_SIZE = 8192;
             int numberOfChunk = NumberPacketByTotalSIze(totalChunksSize);
             int data = totalChunksSize + (numberOfChunk * 20);
 
@@ -153,7 +153,7 @@ namespace VRemoteClient.Services
             //header
             byte[] header = new byte[5];
             int totalLength = chunks.Length;
-            Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 1), 0, header, 0, 4); // Add total bytes at the start
+            Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
             header[4] = (byte)CommandType.Chunks; //data type
             _remoteClient.Send(CommandType.None, header, false);
 
@@ -197,7 +197,7 @@ namespace VRemoteClient.Services
         }
         private int NumberPacketByTotalSIze(int totalData)
         {
-            return (int)Math.Ceiling((double)totalData / 1024);
+            return (int)Math.Ceiling((double)totalData / 8192);
         }
     }
 }
