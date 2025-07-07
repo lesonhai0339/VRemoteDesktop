@@ -30,6 +30,7 @@ namespace VRemoteClient
 
             _isSocketConnected = false;
             _isP2PConnected = false;
+            _resetEvent = new ManualResetEvent(false);
 
             Me = Utils.Extensions.InitInfo();
             RemoteClient = new RemoteClient(Me);
