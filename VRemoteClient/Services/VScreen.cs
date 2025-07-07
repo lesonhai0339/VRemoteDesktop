@@ -15,11 +15,12 @@ namespace VRemoteClient.Services
         private BackgroundWorker _backgroundWorker;
         private Queue<ScreenTask> _queueTask;
         private RemoteClient _remoteClient;
-        private ConnectionInfo _connectionInfo;
         private readonly object _queueLock = new object(); // For thread safety
         public VScreen(RemoteClient client) 
         {
             _remoteClient = client;
+            BackgroundWorker = new BackgroundWorker();
+            _queueTask = new Queue<ScreenTask>();
             _timer = new System.Threading.Timer(SendScreen, null, 0, (1000 / 1));
         }
         #region Properties
