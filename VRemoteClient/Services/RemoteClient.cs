@@ -23,8 +23,8 @@ namespace VRemoteClient.Services
 
         private Socket _socket;
         private Timer _timer;
-
         private ClientInfo _me;
+        private VScreen _vscreen;
 
         public delegate void ConnectSckEvent();
         public delegate void LoginEvent(bool flag);
@@ -286,6 +286,10 @@ namespace VRemoteClient.Services
                             MinorVersion = partnerInfo[8],
                         };
                         connectionInfo.Receiver = _me;
+                        if(_vscreen == null)
+                        {
+                            _vscreen = new VScreen();
+                        }
                     }
                     else if(partnerInfo[0].ToLower() == "1")
                     {
@@ -308,6 +312,7 @@ namespace VRemoteClient.Services
                         return;
                     }
                     p2pConnect(true, connectionInfo);
+                    _isP2PConnected = true;
                 }
                 catch (Exception ex)
                 {
@@ -317,15 +322,18 @@ namespace VRemoteClient.Services
             }
         }
 
-        public void Send(CommandType commandType, byte[] data)
+        public void Send(CommandType commandType, byte[] data, bool sendHeader = true)
         {
             try
             {
-                //send header before send data
-                byte[] header = new byte[5];
-                Buffer.BlockCopy(BitConverter.GetBytes(data.Length), 0, header, 0, 4);
-                header[4] = (byte)commandType; //set command type
-                Socket.BeginSend(header, 0, header.Length, SocketFlags.None, null, null);
+                if (sendHeader)
+                {
+                    //send header before send data
+                    byte[] header = new byte[5];
+                    Buffer.BlockCopy(BitConverter.GetBytes(data.Length), 0, header, 0, 4);
+                    header[4] = (byte)commandType; //set command type
+                    Socket.BeginSend(header, 0, header.Length, SocketFlags.None, null, null);
+                }
 
                 //send data
                 Socket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);

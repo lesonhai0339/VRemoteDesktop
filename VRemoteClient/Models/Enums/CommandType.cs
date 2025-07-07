@@ -15,6 +15,8 @@ namespace VRemoteClient.Models.Enums
         Ping = 0x05,
         Pong = 0x06,
         Error = 0x07,
+        Screen = 0x08,
+        Chunks = 0x09,
 
         LoginFailed = 0x90,
         PartnerDisconnected = 0x91,

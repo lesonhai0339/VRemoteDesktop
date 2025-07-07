@@ -26,15 +26,15 @@ namespace VRemoteClient.Utils
 
             data = data.Skip(cutLength).ToArray();
         }
-        //internal static byte[] Compress(byte[] data)
-        //{
-        //    MemoryStream output = new MemoryStream();
-        //    using (DeflateStream dstream = new DeflateStream(output, CompressionLevel.Optimal))
-        //    {
-        //        dstream.Write(data, 0, data.Length);
-        //    }
-        //    return output.ToArray();
-        //}
+        internal static byte[] Compress(byte[] data)
+        {
+            MemoryStream output = new MemoryStream();
+            using (DeflateStream dstream = new DeflateStream(output, CompressionMode.Compress))
+            {
+                dstream.Write(data, 0, data.Length);
+            }
+            return output.ToArray();
+        }
 
         internal static byte[] Decompress(byte[] data)
         {

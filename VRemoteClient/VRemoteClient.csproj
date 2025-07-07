@@ -5,7 +5,8 @@
 	  <TargetFramework>net40</TargetFramework>
 	  <LangVersion>8.0</LangVersion>
 	  <Nullable>enable</Nullable>
-    <UseWindowsForms>true</UseWindowsForms>
+	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	  <UseWindowsForms>true</UseWindowsForms>
   </PropertyGroup>
 
   <ItemGroup>
