@@ -288,7 +288,7 @@ namespace VRemoteClient.Services
                         connectionInfo.Receiver = _me;
                         if(_vscreen == null)
                         {
-                            _vscreen = new VScreen();
+                            _vscreen = new VScreen(this);
                         }
                     }
                     else if(partnerInfo[0].ToLower() == "1")
