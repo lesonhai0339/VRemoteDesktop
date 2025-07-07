@@ -34,6 +34,7 @@ namespace VRemoteClient.Utils
                 using (Bitmap currentScreen = CaptureWindowsScreen1())
                 {
                     if (_previousFrame == null)
+                        //if (true)
                     {
 
                         // First capture - send full screen
