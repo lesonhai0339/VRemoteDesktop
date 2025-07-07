@@ -61,8 +61,10 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.Error:
                             break;
                         case Enums.CommandType.Screen:
+                            await ProcessScreenSend(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Chunks:
+                            await ProcessChunkSend(task.Client, task.Data);
                             break;
                         default:
                             break;
@@ -74,6 +76,19 @@ namespace VRemoteServer.Services
                 }
             }
         }
+
+        private async Task ProcessChunkSend(Client client, byte[] data)
+        {
+            var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
+            await SendDataAsync(partner.Sender.Client, data);
+        }
+
+        private async Task ProcessScreenSend(Client client, byte[] data)
+        {
+            var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
+            await SendDataAsync(partner.Sender.Client, data);
+        }
+
         public async Task<bool> ProcessDataCallback(Enums.CommandType commandType ,Client client, byte[] buffer)
         {
             Console.WriteLine("Callback");
