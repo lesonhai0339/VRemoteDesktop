@@ -19,14 +19,20 @@ namespace VRemoteClient
     public partial class FormMain : Form
     {
         private bool _isSocketConnected;
+        private bool _isP2PConnected;   
         private ManualResetEvent _resetEvent;
         private ClientInfo _clientInfo;
         private RemoteClient _remoteClient;
+        private ConnectionInfo _connectionInfo;
         public FormMain()
         {
             InitializeComponent();
+
+            _isSocketConnected = false;
+            _isP2PConnected = false;
+
             Me = Utils.Extensions.InitInfo();
-            RemoteClient = new RemoteClient();
+            RemoteClient = new RemoteClient(Me);
 
             this.Icon = new Icon(@"Resources\logo.ico");
             this.txtOwnerId.Text = Me.Id;
@@ -50,7 +56,7 @@ namespace VRemoteClient
                 if(client != null)
                 {
                     client.ConnectSckEventHandler -= SocketEvent;
-                    client.LoginEventHandler -= LoginSuccessEvent;
+                    client.LoginEventHandler -= LoginCallback;
                     client.P2PConnectEventHandler -= P2PConnectEvent;
                 }
                 _remoteClient = value;
@@ -58,7 +64,7 @@ namespace VRemoteClient
                 if (client != null)
                 {
                     client.ConnectSckEventHandler += SocketEvent;
-                    client.LoginEventHandler += LoginSuccessEvent;
+                    client.LoginEventHandler += LoginCallback;
                     client.P2PConnectEventHandler += P2PConnectEvent;
                 }
             }
@@ -96,27 +102,47 @@ namespace VRemoteClient
         {
             Login();
         }
-        private void P2PConnectEvent()
+        private void P2PConnectEvent(bool flag, ConnectionInfo? info)
         {
-            throw new NotImplementedException();
-        }
-
-        private void LoginSuccessEvent()
-        {
-            _isSocketConnected = true;
-            if (lbStatus.InvokeRequired)
+            if (!flag)
             {
-                lbStatus.Invoke(new Action(() =>
-                {
-                    lbStatus.Text = "Sẵn sàng";
-                    pnStatus.Invalidate();
-                }));
+                MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else
             {
-                lbStatus.Text = "Sẵn sàng";
-                pnStatus.Invalidate();
+                if(info != null)
+                {
+                    _resetEvent.Set();
+                    _isP2PConnected = true;
+                    _connectionInfo = info;
+                }
             }
+        }
+
+        private void LoginCallback(bool flag)
+        {
+            if (flag)
+            {
+                _isSocketConnected = true;
+                if (lbStatus.InvokeRequired)
+                {
+                    lbStatus.Invoke(new Action(() =>
+                    {
+                        lbStatus.Text = "Sẵn sàng";
+                        pnStatus.Invalidate();
+                    }));
+                }
+                else
+                {
+                    lbStatus.Text = "Sẵn sàng";
+                    pnStatus.Invalidate();
+                }
+            }
+            else
+            {
+                MessageBox.Show("Đăng nhập thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+           
         }
         private void Login()
         {
@@ -125,5 +151,27 @@ namespace VRemoteClient
             RemoteClient.Send(Models.Enums.CommandType.Login, dataBytes);
         }
         #endregion
+
+        private void btnConnect_Click(object sender, EventArgs e)
+        {
+            if (string.IsNullOrEmpty(txtPartnerId.Text) || string.IsNullOrEmpty(txtPartnerPassword.Text))
+            {
+                MessageBox.Show("Vui lòng nhập ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+            }
+            string receiverInfo = Utils.Extensions.DataStringBuilder(new string[] { Me.Id, txtPartnerId.Text.Trim(), txtPartnerPassword.Text.Trim() });
+            byte[] dataBytes = Encoding.ASCII.GetBytes(receiverInfo);
+            RemoteClient.Send(Models.Enums.CommandType.P2PConnect, dataBytes);
+            _resetEvent.WaitOne(1000 * 10);
+            _resetEvent.Reset();
+            if (_isP2PConnected)
+            {
+                FormRemote frmRemote = new FormRemote(RemoteClient, _connectionInfo);
+                frmRemote.Show();
+            }
+            else
+            {
+                MessageBox.Show($"Không thể kết nối đến {txtPartnerId.Text}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            } 
+        }
     }
 }

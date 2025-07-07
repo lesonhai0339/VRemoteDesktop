@@ -213,29 +213,39 @@ namespace VRemoteServer.Models
                 }
                 if (_currentHeader != null)
                 {
-                    int remainingDataNeeded = _dataExpected - _dataReceived;
-                    int avaiblebleData = totalData.Length - bytesProcessed;
-                    int dataNeedtoReceive = Math.Min(remainingDataNeeded, avaiblebleData);
-
-                    if(dataNeedtoReceive > 0)
+                    //only command, not data send
+                    if(_dataExpected == 0)
                     {
-                        byte[] bytes = new byte[dataNeedtoReceive];
-                        Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive);
+                        await ProcessData((Enums.CommandType)_currentHeader[4], new byte[0]);
+                        _dataExpected = 0;
+                        _currentHeader = null;
+                    }
+                    else
+                    {
+                        int remainingDataNeeded = _dataExpected - _dataReceived;
+                        int avaiblebleData = totalData.Length - bytesProcessed;
+                        int dataNeedtoReceive = Math.Min(remainingDataNeeded, avaiblebleData);
 
-                        _dataReceived += dataNeedtoReceive;
-                        bytesProcessed += dataNeedtoReceive;
-
-                        Console.WriteLine($"Type send: {(Enums.Test)_currentHeader[4]}");
-                        Console.WriteLine($"Expected: {_dataExpected} - received: {_dataReceived}");
-                        await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
-
-                        if (_dataReceived >= _dataExpected)
+                        if (dataNeedtoReceive > 0)
                         {
-                            Console.WriteLine($"Complete {_dataExpected} - {_dataReceived}");
-                            Console.WriteLine("-------------------------------\n");
-                            _dataExpected = 0;
-                            _dataReceived = 0;
-                            _currentHeader = null;
+                            byte[] bytes = new byte[dataNeedtoReceive];
+                            Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive);
+
+                            _dataReceived += dataNeedtoReceive;
+                            bytesProcessed += dataNeedtoReceive;
+
+                            Console.WriteLine($"Type send: {(Enums.Test)_currentHeader[4]}");
+                            Console.WriteLine($"Expected: {_dataExpected} - received: {_dataReceived}");
+                            await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
+
+                            if (_dataReceived >= _dataExpected)
+                            {
+                                Console.WriteLine($"Complete {_dataExpected} - {_dataReceived}");
+                                Console.WriteLine("-------------------------------\n");
+                                _dataExpected = 0;
+                                _dataReceived = 0;
+                                _currentHeader = null;
+                            }
                         }
                     }
                 }

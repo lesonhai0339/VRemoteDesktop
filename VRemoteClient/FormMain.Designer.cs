@@ -32,8 +32,6 @@ namespace VRemoteClient
         /// </summary>
         private void InitializeComponent()
         {
-            this.Text = "VRemote - Vinhhy";
-            this.BackColor = System.Drawing.Color.White;
             this.txtOwnerId = new System.Windows.Forms.TextBox();
             this.txtOwnerPassword = new System.Windows.Forms.TextBox();
             this.txtPartnerPassword = new System.Windows.Forms.TextBox();
@@ -51,43 +49,39 @@ namespace VRemoteClient
             // 
             // txtOwnerId
             // 
+            this.txtOwnerId.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.txtOwnerId.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtOwnerId.Location = new System.Drawing.Point(19, 73);
             this.txtOwnerId.Name = "txtOwnerId";
+            this.txtOwnerId.ReadOnly = true;
             this.txtOwnerId.Size = new System.Drawing.Size(150, 22);
             this.txtOwnerId.TabIndex = 0;
-            this.txtOwnerId.ReadOnly = true;
-            this.txtOwnerId.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.txtOwnerId.BorderStyle = BorderStyle.FixedSingle;
-
             // 
             // txtOwnerPassword
             // 
+            this.txtOwnerPassword.BackColor = System.Drawing.SystemColors.ControlLightLight;
+            this.txtOwnerPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtOwnerPassword.Location = new System.Drawing.Point(19, 132);
             this.txtOwnerPassword.Name = "txtOwnerPassword";
+            this.txtOwnerPassword.ReadOnly = true;
             this.txtOwnerPassword.Size = new System.Drawing.Size(150, 22);
             this.txtOwnerPassword.TabIndex = 1;
-            this.txtOwnerPassword.ReadOnly = true;
-            this.txtOwnerPassword.BackColor = System.Drawing.SystemColors.ControlLightLight;
-            this.txtOwnerPassword.BorderStyle = BorderStyle.FixedSingle;
-
             // 
             // txtPartnerPassword
             // 
+            this.txtPartnerPassword.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtPartnerPassword.Location = new System.Drawing.Point(213, 132);
             this.txtPartnerPassword.Name = "txtPartnerPassword";
             this.txtPartnerPassword.Size = new System.Drawing.Size(150, 22);
             this.txtPartnerPassword.TabIndex = 2;
-            this.txtPartnerPassword.BorderStyle = BorderStyle.FixedSingle;
-
             // 
             // txtPartnerId
             // 
+            this.txtPartnerId.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
             this.txtPartnerId.Location = new System.Drawing.Point(213, 73);
             this.txtPartnerId.Name = "txtPartnerId";
             this.txtPartnerId.Size = new System.Drawing.Size(150, 22);
             this.txtPartnerId.TabIndex = 3;
-            this.txtPartnerId.BorderStyle = BorderStyle.FixedSingle;
-
             // 
             // label1
             // 
@@ -117,6 +111,7 @@ namespace VRemoteClient
             this.btnConnect.TabIndex = 6;
             this.btnConnect.Text = "Kết nối";
             this.btnConnect.UseVisualStyleBackColor = true;
+            this.btnConnect.Click += new System.EventHandler(this.btnConnect_Click);
             // 
             // pnStatus
             // 
@@ -132,9 +127,7 @@ namespace VRemoteClient
             this.lbStatus.Name = "lbStatus";
             this.lbStatus.Size = new System.Drawing.Size(96, 16);
             this.lbStatus.TabIndex = 8;
-            this.lbStatus.Text = "Chưa sẵn sàng"; 
-            this.pnStatus.Paint += pnStatus_Paint;
-
+            this.lbStatus.Text = "Chưa sẵn sàng";
             // 
             // label4
             // 
@@ -176,6 +169,7 @@ namespace VRemoteClient
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.BackColor = System.Drawing.Color.White;
             this.ClientSize = new System.Drawing.Size(386, 221);
             this.Controls.Add(this.label7);
             this.Controls.Add(this.label6);

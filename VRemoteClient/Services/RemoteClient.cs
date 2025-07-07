@@ -24,9 +24,11 @@ namespace VRemoteClient.Services
         private Socket _socket;
         private Timer _timer;
 
+        private ClientInfo _me;
+
         public delegate void ConnectSckEvent();
-        public delegate void LoginEvent();
-        public delegate void P2PConnectEvent();
+        public delegate void LoginEvent(bool flag);
+        public delegate void P2PConnectEvent(bool flag, ConnectionInfo? info);
         public delegate void P2PDataSendSuccessEvent();
         public delegate void P2PScreenEvent(byte[] screen);
 
@@ -38,13 +40,14 @@ namespace VRemoteClient.Services
 
         CancellationTokenSource _cancellationToken;
 
-        public RemoteClient()
+        public RemoteClient(ClientInfo me)
         {
             _isSocketConnected = false;
             _isP2PConnected = false;
             _isDisposed = false;
             _cancellationToken = new CancellationTokenSource();
             _timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
+            _me = me;
         }
         #region Properties
         public Socket Socket
@@ -206,13 +209,10 @@ namespace VRemoteClient.Services
             switch (commandType)
             {
                 case CommandType.Login:
-                    LoginEvent loginEvent = LoginEventHandler;
-                    if(loginEvent != null)
-                    {
-                        loginEvent();
-                    }
+                    ProcessLogin(true);
                     break;
                 case CommandType.P2PConnect:
+                    ProcessP2PConnect(true, data);
                     break;
                 case CommandType.Disconnect:
                     break;
@@ -226,15 +226,97 @@ namespace VRemoteClient.Services
                 case CommandType.Error:
                     break;
                 case CommandType.LoginFailed:
+                    ProcessLogin(false);
                     break;
                 case CommandType.PartnerDisconnected:
                     break;
                 case CommandType.P2PConnectFailed:
+                    ProcessP2PConnect(false, data);
                     break;
                 default:
                     break;
             }
         }
+        private void ProcessLogin(bool flag)
+        {
+            if (flag)
+            {
+                LoginEvent loginSuccess = LoginEventHandler;
+                if (loginSuccess != null)
+                {
+                    loginSuccess(true);
+                }
+            }
+            else
+            {
+                LoginEvent loginSuccess = LoginEventHandler;
+                if (loginSuccess != null)
+                {
+                    loginSuccess(false);
+                }
+            }
+        }
+        private void ProcessP2PConnect(bool flag, byte[] data)
+        {
+            P2PConnectEvent p2pConnect = P2PConnectEventHandler;
+            if (p2pConnect == null)
+            {
+                return;
+            }
+            if (!flag)
+            {
+                p2pConnect(false, null);
+            }
+            else
+            {
+                try
+                {
+                    string[] partnerInfo = Encoding.ASCII.GetString(data, 1, data.Length - 1).Split('|');
+                    ConnectionInfo connectionInfo = new ConnectionInfo(sessionId: partnerInfo[1]);
+                    if (partnerInfo[0].ToLower() == "0")
+                    {
+                        connectionInfo.Sender = new ClientInfo
+                        {
+                            Id = partnerInfo[2],
+                            Password = partnerInfo[3],
+                            ComputerName = partnerInfo[4],
+                            Width = int.Parse(partnerInfo[5]),
+                            Height = int.Parse(partnerInfo[6]),
+                            MajorVersion = partnerInfo[7],
+                            MinorVersion = partnerInfo[8],
+                        };
+                        connectionInfo.Receiver = _me;
+                    }
+                    else if(partnerInfo[0].ToLower() == "0")
+                    {
+                        connectionInfo.Receiver = new ClientInfo
+                        {
+                            Id = partnerInfo[2],
+                            Password = partnerInfo[3],
+                            ComputerName = partnerInfo[4],
+                            Width = int.Parse(partnerInfo[5]),
+                            Height = int.Parse(partnerInfo[6]),
+                            MajorVersion = partnerInfo[7],
+                            MinorVersion = partnerInfo[8],
+                        };
+                        connectionInfo.Sender = _me;
+                    }
+                    else
+                    {
+                        Log.Error("P2PConnect error");
+                        p2pConnect(false, null);
+                        return;
+                    }
+                    p2pConnect(true, connectionInfo);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error(ex, "P2PConnect error");
+                    p2pConnect(false, null);
+                }
+            }
+        }
+
         public void Send(CommandType commandType, byte[] data)
         {
             try
