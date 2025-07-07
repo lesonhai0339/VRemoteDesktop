@@ -31,7 +31,8 @@ namespace VRemoteServer.Utils
 
             LoginFailed = 0x90,
             PartnerDisconnected = 0x91,
-            P2PConnectFailed = 0x92,    
+            P2PConnectFailed = 0x92,   
+            Header = 0x93, // Header for chunked data
         }
     }
 }
