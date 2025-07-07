@@ -18,12 +18,13 @@ namespace VRemoteClient.Services
         private Queue<ScreenTask> _queueTask;
         private RemoteClient _remoteClient;
         private readonly object _queueLock = new object(); // For thread safety
+        private readonly object _lock = new object(); // For thread safety
         public VScreen(RemoteClient client) 
         {
             _remoteClient = client;
             BackgroundWorker = new BackgroundWorker();
             _queueTask = new Queue<ScreenTask>();
-            _timer = new System.Threading.Timer(SendScreen, null, 0, (1000 / 1));
+            _timer = new System.Threading.Timer(SendScreen, null, 0, 2);
         }
         #region Properties
         public BackgroundWorker BackgroundWorker
@@ -104,76 +105,82 @@ namespace VRemoteClient.Services
         }
         private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)
         {
-            if (blocks.Count != 1)
+            lock (_lock)
             {
-                throw new Exception("Error when send screen");
-            }
+                if (blocks.Count != 1)
+                {
+                    throw new Exception("Error when send screen");
+                }
 
-            //send header before send data
-            byte[] header = new byte[5];
-            int dataLength = blocks[0].TotalSize;
-            Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
-            header[4] = (byte)CommandType.Screen; //data type
-            _remoteClient.Send(CommandType.None, header, false);
+                //send header before send data
+                byte[] header = new byte[5];
+                int dataLength = blocks[0].TotalSize;
+                Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
+                header[4] = (byte)CommandType.Screen; //data type
+                _remoteClient.Send(CommandType.None, header, false);
 
 
 
-            //data send
-            int CHUNK_SIZE = 8192;
+                //data send
+                int CHUNK_SIZE = 8192;
 
-            byte[] bytes = new byte[blocks[0].Bytes.Length];
-            //data
-            Buffer.BlockCopy(blocks[0].Bytes, 0, bytes, 0, blocks[0].Bytes.Length);//real data
-
-            int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
-
-            for (int i = 0; i < numberOfChunk; i++)
-            {
-                int offset = i * CHUNK_SIZE;
-                int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
-                byte[] packet = new byte[packetSize];
-
+                byte[] bytes = new byte[blocks[0].Bytes.Length];
                 //data
-                Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
+                Buffer.BlockCopy(blocks[0].Bytes, 0, bytes, 0, blocks[0].Bytes.Length);//real data
 
-                _remoteClient.Send(CommandType.None, packet, false);
-                Thread.Sleep(1); // Small delay to avoid flooding the network
+                int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
+
+                for (int i = 0; i < numberOfChunk; i++)
+                {
+                    int offset = i * CHUNK_SIZE;
+                    int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
+                    byte[] packet = new byte[packetSize];
+
+                    //data
+                    Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
+
+                    _remoteClient.Send(CommandType.None, packet, false);
+                    Thread.Sleep(1); // Small delay to avoid flooding the network
+                }
             }
             flag = true;
         }
         private void SendChunk(List<ScreenBlock> blocks, int totalChunksSize, ref bool flag)
         {
-            int CHUNK_SIZE = 8192;
-            int numberOfChunk = NumberPacketByTotalSIze(totalChunksSize);
-            int data = totalChunksSize + (numberOfChunk * 20);
-
-            Console.WriteLine("ALl chunks data send: " + data);
-            byte[] chunks = MergeAllChunk(blocks, data);
-
-
-            //header
-            byte[] header = new byte[5];
-            int totalLength = chunks.Length;
-            Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
-            header[4] = (byte)CommandType.Chunks; //data type
-            _remoteClient.Send(CommandType.None, header, false);
-
-
-            //data
-            byte[] bytes = new byte[chunks.Length];
-            Buffer.BlockCopy(chunks, 0, bytes, 0, chunks.Length);    //chunk data
-
-            for (int i = 0; i < numberOfChunk; i++)
+            lock (_lock)
             {
-                int offset = i * CHUNK_SIZE;
-                int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
-                byte[] packet = new byte[packetSize];
+                int CHUNK_SIZE = 8192;
+                int numberOfChunk = NumberPacketByTotalSIze(totalChunksSize);
+                int data = totalChunksSize + (numberOfChunk * 20);
+
+                Console.WriteLine("ALl chunks data send: " + data);
+                byte[] chunks = MergeAllChunk(blocks, data);
+
+
+                //header
+                byte[] header = new byte[5];
+                int totalLength = chunks.Length;
+                Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
+                header[4] = (byte)CommandType.Chunks; //data type
+                _remoteClient.Send(CommandType.None, header, false);
+
 
                 //data
-                Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
+                byte[] bytes = new byte[chunks.Length];
+                Buffer.BlockCopy(chunks, 0, bytes, 0, chunks.Length);    //chunk data
 
-                _remoteClient.Send(CommandType.None, packet, false);
-                Thread.Sleep(1); // Small delay to avoid flooding the network
+                for (int i = 0; i < numberOfChunk; i++)
+                {
+                    int offset = i * CHUNK_SIZE;
+                    int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
+                    byte[] packet = new byte[packetSize];
+
+                    //data
+                    Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
+
+                    _remoteClient.Send(CommandType.None, packet, false);
+                    Thread.Sleep(1); // Small delay to avoid flooding the network
+                }
             }
             flag = true;
         }
