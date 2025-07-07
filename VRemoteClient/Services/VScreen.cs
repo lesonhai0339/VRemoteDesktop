@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -178,22 +179,19 @@ namespace VRemoteClient.Services
         }
         private byte[] MergeAllChunk(List<ScreenBlock> cells, int data)
         {
-            int offset = 0;
-            byte[] chunksData = new byte[data];
-            foreach (var chunk in cells)
+            using (var ms = new MemoryStream())
             {
-
-                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Bytes.Length), 0, chunksData, offset, 4);
-                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.X), 0, chunksData, offset + 4, 4);
-                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.Y), 0, chunksData, offset + 8, 4);
-                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.Width), 0, chunksData, offset + 12, 4);
-                Buffer.BlockCopy(BitConverter.GetBytes(chunk.Rectangle.Height), 0, chunksData, offset + 16, 4);
-
-                // Copy chunk data
-                Buffer.BlockCopy(chunk.Bytes, 0, chunksData, offset + 20, chunk.Bytes.Length);
-                offset += 20 + chunk.Bytes.Length;
+                foreach (var chunk in cells)
+                {
+                    ms.Write(BitConverter.GetBytes(chunk.Bytes.Length), 0, 4);
+                    ms.Write(BitConverter.GetBytes(chunk.Rectangle.X), 0, 4);
+                    ms.Write(BitConverter.GetBytes(chunk.Rectangle.Y), 0, 4);
+                    ms.Write(BitConverter.GetBytes(chunk.Rectangle.Width), 0, 4);
+                    ms.Write(BitConverter.GetBytes(chunk.Rectangle.Height), 0, 4);
+                    ms.Write(chunk.Bytes, 0, chunk.Bytes.Length);
+                }
+                return ms.ToArray();
             }
-            return chunksData;
         }
         private int NumberPacketByTotalSIze(int totalData)
         {
