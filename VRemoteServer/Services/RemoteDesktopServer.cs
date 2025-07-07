@@ -54,6 +54,7 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.Data:
                             break;
                         case Enums.CommandType.Ping:
+                            ProcessPing(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Pong:
                             break;
@@ -204,8 +205,9 @@ namespace VRemoteServer.Services
         {
             // Handle data processing logic here
         }
-        public void ProcessPing(Client client, byte[] data)
+        public async void ProcessPing(Client client, byte[] data)
         {
+            await SendCommandAsync(client, Enums.CommandType.Pong);
             // Handle ping logic here
         }
         public void ProcessPong(Client client, byte[] data)

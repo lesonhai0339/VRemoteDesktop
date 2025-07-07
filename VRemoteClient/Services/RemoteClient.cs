@@ -68,6 +68,16 @@ namespace VRemoteClient.Services
             }
         }
         #endregion
+        private void PingToServer(object state)
+        {
+            if (_isSocketConnected)
+            {
+                if (!_isP2PConnected)
+                {
+                    Send(CommandType.Ping, new byte[0]);
+                }
+            }
+        }
         public void Cancel()
         {
             _cancellationToken.Cancel();
@@ -210,6 +220,7 @@ namespace VRemoteClient.Services
                 case CommandType.Ping:
                     break;
                 case CommandType.Pong:
+                    Console.WriteLine("Pong received from server"); 
                     break;
                 case CommandType.Error:
                     break;
