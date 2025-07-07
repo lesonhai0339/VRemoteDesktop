@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using VRemoteClient.Models.Entities;
@@ -112,6 +113,7 @@ namespace VRemoteClient.Services
             int dataLength = blocks[0].TotalSize;
             Buffer.BlockCopy(BitConverter.GetBytes(dataLength + 1), 0, header, 0, 4); // Add total bytes at the start
             header[4] = (byte)CommandType.Screen; //data type
+            _remoteClient.Send(CommandType.None, header, false);
 
 
 
@@ -153,12 +155,12 @@ namespace VRemoteClient.Services
             int totalLength = chunks.Length;
             Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 1), 0, header, 0, 4); // Add total bytes at the start
             header[4] = (byte)CommandType.Chunks; //data type
+            _remoteClient.Send(CommandType.None, header, false);
 
-
-            byte[] bytes = new byte[chunks.Length];
 
             //data
-            Buffer.BlockCopy(chunks, 0, bytes, 5, chunks.Length);    //chunk data
+            byte[] bytes = new byte[chunks.Length];
+            Buffer.BlockCopy(chunks, 0, bytes, 0, chunks.Length);    //chunk data
 
             for (int i = 0; i < numberOfChunk; i++)
             {
