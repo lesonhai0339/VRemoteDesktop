@@ -34,6 +34,7 @@ namespace VRemoteClient
             Me = Utils.Extensions.InitInfo();
             RemoteClient = new RemoteClient(Me);
 
+            this.Text = "VRemote - Vinhhy";
             this.Icon = new Icon(@"Resources\logo.ico");
             this.txtOwnerId.Text = Me.Id;
             this.txtOwnerPassword.Text = Me.Password;
@@ -87,7 +88,7 @@ namespace VRemoteClient
             Color circleColor = RemoteClient.SocketConnected ? Color.Green : Color.Red;
             using (SolidBrush brush = new SolidBrush(circleColor))
             {
-                g.FillEllipse(brush, 0, 0, pnStatus.Width - 1, pnStatus.Height - 1);
+                g.FillEllipse(brush, 1, 1, pnStatus.Width - 2, pnStatus.Height - 2);
             }
         }
         private void ConnectToServer()

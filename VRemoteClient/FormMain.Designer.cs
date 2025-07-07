@@ -117,8 +117,9 @@ namespace VRemoteClient
             // 
             this.pnStatus.Location = new System.Drawing.Point(12, 189);
             this.pnStatus.Name = "pnStatus";
-            this.pnStatus.Size = new System.Drawing.Size(15, 16);
+            this.pnStatus.Size = new System.Drawing.Size(15, 15);
             this.pnStatus.TabIndex = 7;
+            this.pnStatus.Paint += new PaintEventHandler(pnStatus_Paint);
             // 
             // lbStatus
             // 
