@@ -81,8 +81,12 @@ namespace VRemoteServer.Services
         }
         private async Task SendHeader(Client client, byte[] header)
         {
+            byte[] data = new byte[header.Length];
+            int length = BitConverter.ToInt32(header, 0);
+            data[0] = (byte)Enums.CommandType.Header;
+            Buffer.BlockCopy(BitConverter.GetBytes(length + 1), 0, data, 1, 4);
             var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
-            await SendDataAsync(partner.Sender.Client, header);
+            await SendDataAsync(partner.Sender.Client, data);
         }
         private async Task ProcessChunkSend(Client client, byte[] data)
         {

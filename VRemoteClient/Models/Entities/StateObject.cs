@@ -17,7 +17,7 @@ namespace VRemoteClient.Models.Entities
             SckId = "";
         }
         public Socket WorkSocket;
-        public const int BufferSize = 1024;
+        public int BufferSize = 1024;
         public byte[] Buffer;
         public ByteArrayBuilder ByteArrayBuilder;
         public Dictionary<byte, ByteArrayBuilder> ColPendingContinousPacket;

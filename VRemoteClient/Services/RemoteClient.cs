@@ -140,7 +140,7 @@ namespace VRemoteClient.Services
                 stateObject.WorkSocket = Socket;
 
 
-                Socket.BeginReceive(stateObject.Buffer, 0, 1024, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
+                Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
 
             }
             catch(SocketException ex)
@@ -173,6 +173,7 @@ namespace VRemoteClient.Services
 
                         if(!(stateObject.ByteArrayBuilder.Length >= length + 4))
                         {
+                            Console.WriteLine("Waitting "+ length + " - receive "+ num);
                             break;
                         }
 
