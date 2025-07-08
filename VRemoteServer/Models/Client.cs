@@ -213,13 +213,8 @@ namespace VRemoteServer.Models
                         Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 5);
 
                         _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
-                        bytesProcessed += 5;
+                        //bytesProcessed += 5; //header
                         _dataReceived = 0;
-                        CommandType cmd = (CommandType)_currentHeader[4];
-                        if (cmd == CommandType.Data || cmd == CommandType.Screen|| cmd == CommandType.Chunks)
-                        {
-                            await ProcessData(CommandType.Header, _currentHeader);
-                        }
                     }
                     else
                     {
@@ -235,6 +230,7 @@ namespace VRemoteServer.Models
                         await ProcessData((Enums.CommandType)_currentHeader[4], new byte[0]);
                         _dataExpected = 0;
                         _currentHeader = null;
+                        bytesProcessed += 5;
                     }
                     else
                     {
