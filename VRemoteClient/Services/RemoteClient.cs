@@ -48,7 +48,7 @@ namespace VRemoteClient.Services
             _isP2PConnected = false;
             _isDisposed = false;
             _cancellationToken = new CancellationTokenSource();
-            _timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
+            //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
             _me = me;
         }
         #region Properties
@@ -346,7 +346,7 @@ namespace VRemoteClient.Services
                 {
                     //send data with header
                     byte[] dataWithHeader = new byte[data.Length + 5];
-                    Buffer.BlockCopy(BitConverter.GetBytes(data.Length), 0, dataWithHeader, 0, 4);
+                    Buffer.BlockCopy(BitConverter.GetBytes(dataWithHeader.Length), 0, dataWithHeader, 0, 4);
                     dataWithHeader[4] = (byte)commandType; //set command type
                     Buffer.BlockCopy(data, 0, dataWithHeader, 5, data.Length);
                     Socket.BeginSend(dataWithHeader, 0, dataWithHeader.Length, SocketFlags.None, null, null);
