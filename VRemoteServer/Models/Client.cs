@@ -164,7 +164,7 @@ namespace VRemoteServer.Models
                     }
                     catch
                     {
-                        Log.ForContext("FileName", "Clients").Error("Error when processing data from client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
+                        //Log.ForContext("FileName", "Clients").Error("Error when processing data from client {ClientId}", Socket.RemoteEndPoint?.ToString() ?? "Unknown");
                     }
                     finally
                     {

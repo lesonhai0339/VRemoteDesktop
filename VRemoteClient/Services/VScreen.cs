@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Serilog;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
@@ -13,19 +14,47 @@ namespace VRemoteClient.Services
 {
     public class VScreen
     {
+        private const int TIME_OUT = 10;
         private BackgroundWorker _backgroundWorker;
         private Queue<ScreenTask> _queueTask;
         private RemoteClient _remoteClient;
+
+        private ManualResetEvent _resetEvent;
         private readonly object _queueLock = new object(); // For thread safety
         private readonly object _lock = new object(); // For thread safety
         public VScreen(RemoteClient client) 
         {
-            _remoteClient = client;
+            RemoteClient = client;
+            _resetEvent = new ManualResetEvent(false);
             _queueTask = new Queue<ScreenTask>(); 
             BackgroundWorker = new BackgroundWorker();
             BackgroundWorker.RunWorkerAsync();
         }
         #region Properties
+        public RemoteClient RemoteClient
+        {
+            get => _remoteClient;
+            set
+            {
+                RemoteClient client = _remoteClient;
+                if (client != null)
+                {
+                    client.AckEventHandler -= ()=>
+                    {
+                        _resetEvent.Set(); // Reset the event when an ack is received
+                    };
+                }
+                _remoteClient = value;
+                client = _remoteClient;
+                if (client != null)
+                {
+                    client.AckEventHandler += ()=>
+                    {
+                        _resetEvent.Set(); // Reset the event when an ack is received
+                    };
+                }
+            }
+        }
         public BackgroundWorker BackgroundWorker
         {
             get => _backgroundWorker;
@@ -90,8 +119,7 @@ namespace VRemoteClient.Services
                 int dataLength = blocks[0].TotalSize;
                 Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
                 header[4] = (byte)CommandType.Screen; //data type
-                _remoteClient.Send(CommandType.None, header, false);
-
+                Send(CommandType.None, header);
 
 
                 //data send
@@ -112,7 +140,7 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
 
-                    _remoteClient.Send(CommandType.None, packet, false);
+                    Send(CommandType.None, packet);
                     Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
             }
@@ -135,7 +163,7 @@ namespace VRemoteClient.Services
                 int totalLength = chunks.Length;
                 Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
                 header[4] = (byte)CommandType.Chunks; //data type
-                _remoteClient.Send(CommandType.None, header, false);
+                Send(CommandType.None, header);
 
 
                 //data
@@ -151,7 +179,7 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
 
-                    _remoteClient.Send(CommandType.None, packet, false);
+                    Send(CommandType.None, packet);
                     Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
             }
@@ -176,6 +204,17 @@ namespace VRemoteClient.Services
         private int NumberPacketByTotalSIze(int totalData)
         {
             return (int)Math.Ceiling((double)totalData / 8192);
+        }
+        private void Send(CommandType cmdType, byte[] data)
+        {
+            _resetEvent.Reset(); // Reset the event before sending
+            RemoteClient.Send(cmdType, data, false);
+            bool flag = _resetEvent.WaitOne(1000 * TIME_OUT);
+            if (!flag)
+            {
+                Console.WriteLine("Timeout waiting for ACK from server. Command: " + cmdType);
+            }
+            _resetEvent.Reset(); // Reset the event after receiving ACK
         }
     }
 }
