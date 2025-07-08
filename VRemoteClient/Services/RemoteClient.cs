@@ -171,15 +171,15 @@ namespace VRemoteClient.Services
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
 
-                        if(!(stateObject.ByteArrayBuilder.Length >= length + 4))
+                        if(!(stateObject.ByteArrayBuilder.Length >= length + 4 + 1))
                         {
                             Console.WriteLine("Waitting "+ length + " - receive "+ num);
                             break;
                         }
 
-                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();
-                        byte[] data = new byte[length];
-                        Buffer.BlockCopy(src , 4, data, 0 , length);
+                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4 + 1).ToArray();
+                        byte[] data = new byte[length + 1];
+                        Buffer.BlockCopy(src , 4, data, 0 , length + 1);
                         ProcessReceiveData(data);
                         if (_cancellationToken.IsCancellationRequested) break;
 
