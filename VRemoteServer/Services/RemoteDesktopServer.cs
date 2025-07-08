@@ -89,7 +89,16 @@ namespace VRemoteServer.Services
         private async Task SendHeader(Client client, byte[] header)
         {
             var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
-            await SendDataAsync(partner.Sender.Client, header);
+            if(partner == null)
+            {
+                Log.ForContext("FileName", "RemoteDesktopServer")
+                    .Error($"No partner found for client: {client.IP}");
+                return;
+            }
+            else
+            {
+                await SendDataAsync(partner.Sender.Client, header);
+            }
         }
         private async Task ProcessChunkSend(Client client, byte[] data)
         {
