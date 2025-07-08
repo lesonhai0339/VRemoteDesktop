@@ -69,6 +69,9 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.Header:
                             await SendHeader(task.Client, task.Data);
                             break;
+                        case Enums.CommandType.Ack:
+                            await SendAck(task.Client, task.Data);
+                            break;
                         default:
                             break;
                     }
@@ -78,6 +81,10 @@ namespace VRemoteServer.Services
                     Log.ForContext("FileName", "RemoteDesktopServer").Error(ex, $"Error processing task");
                 }
             }
+        }
+        private async Task SendAck(Client client, byte[] data)
+        {
+            await SendCommandAsync(client, Enums.CommandType.Ack, data);
         }
         private async Task SendHeader(Client client, byte[] header)
         {

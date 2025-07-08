@@ -149,6 +149,7 @@ namespace VRemoteServer.Models
                     {
                         int bytesRead = await ReceiveAsync(buffer, 0, bufferSize, SocketFlags.None);
                         if (bytesRead == 0) break;
+                        await ProcessData(CommandType.Ack, new byte[0]);
 
                         Console.WriteLine("Received " + bytesRead + " bytes: ");
                         if(bytesRead == 5)
