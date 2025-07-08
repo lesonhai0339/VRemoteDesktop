@@ -33,6 +33,7 @@ namespace VRemoteServer.Utils
             PartnerDisconnected = 0x91,
             P2PConnectFailed = 0x92,   
             Header = 0x93, // Header for chunked data
+            Ack = 0x94, // Acknowledgment for received data
         }
     }
 }

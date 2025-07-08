@@ -26,6 +26,8 @@ namespace VRemoteClient.Services
         private ClientInfo _me;
         private VScreen _vscreen;
 
+        private ManualResetEvent _resetEventl;
+
         public delegate void ConnectSckEvent();
         public delegate void LoginEvent(bool flag);
         public delegate void P2PConnectEvent(bool flag, ConnectionInfo? info);
@@ -45,6 +47,7 @@ namespace VRemoteClient.Services
             _isSocketConnected = false;
             _isP2PConnected = false;
             _isDisposed = false;
+            _resetEventl = new ManualResetEvent(false); 
             _cancellationToken = new CancellationTokenSource();
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
             _me = me;
@@ -240,6 +243,9 @@ namespace VRemoteClient.Services
                 case CommandType.P2PConnectFailed:
                     ProcessP2PConnect(false, data);
                     break;
+                case CommandType.Ack:
+                    _resetEventl.Set(); // Signal that data has been sent successfully
+                    break;
                 default:
                     break;
             }
@@ -333,6 +339,7 @@ namespace VRemoteClient.Services
         {
             try
             {
+                _resetEventl.Reset();
                 if (sendHeader)
                 {
                     //send header before send data
@@ -340,10 +347,13 @@ namespace VRemoteClient.Services
                     Buffer.BlockCopy(BitConverter.GetBytes(data.Length), 0, header, 0, 4);
                     header[4] = (byte)commandType; //set command type
                     Socket.BeginSend(header, 0, header.Length, SocketFlags.None, null, null);
+                    _resetEventl.WaitOne(10 * 1000); // Wait for the acknowledgment from the server
                 }
 
                 //send data
                 Socket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                _resetEventl.WaitOne(10 * 1000); // Wait for the acknowledgment from the server
+
             }
             catch (Exception ex)
             {
