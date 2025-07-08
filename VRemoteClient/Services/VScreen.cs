@@ -15,6 +15,7 @@ namespace VRemoteClient.Services
     public class VScreen
     {
         private const int TIME_OUT = 10;
+        private const int CHUNK_SIZE = 8192;
         private BackgroundWorker _backgroundWorker;
         private Queue<ScreenTask> _queueTask;
         private RemoteClient _remoteClient;
@@ -82,6 +83,45 @@ namespace VRemoteClient.Services
                 var screens = Utils.Capture.GetScreen();
                 if (screens.Any())
                 {
+                    //header
+                    if (screens.Count == 1)
+                    {
+                        //send header before send data
+                        byte[] header = new byte[5];
+                        int dataLength = screens[0].TotalSize;
+                        Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
+                        header[4] = (byte)CommandType.Screen; //data type
+                        if (!SendAndWaitAck(CommandType.None, header))
+                        {
+                            Console.WriteLine("Failed to send header for screen data");
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        int tt = checked(screens.Sum(x => x.TotalSize));
+                        int numberOfChunk = NumberPacketByTotalSIze(tt);
+                        int data = tt + (numberOfChunk * 20);
+
+                        Console.WriteLine("ALl chunks data send: " + data);
+                        byte[] chunks = MergeAllChunk(screens, data);
+                        Console.WriteLine("ALl chunks data send: " + data);
+
+                        //header
+                        byte[] header = new byte[5];
+                        int totalLength = chunks.Length;
+                        Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
+                        header[4] = (byte)CommandType.Chunks; //data type
+                        if (!SendAndWaitAck(CommandType.None, header))
+                        {
+                            Console.WriteLine("Failed to send header for chunk data");
+                            return;
+                        }
+                    }
+
+
+
+                    //data
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
                     var task = new ScreenTask
                     {
@@ -112,17 +152,6 @@ namespace VRemoteClient.Services
                 if (blocks.Count != 1)
                 {
                     throw new Exception("Error when send screen");
-                }
-
-                //send header before send data
-                byte[] header = new byte[5];
-                int dataLength = blocks[0].TotalSize;
-                Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
-                header[4] = (byte)CommandType.Screen; //data type
-                if (!SendAndWaitAck(CommandType.None, header))
-                {
-                    Console.WriteLine("Failed to send header for screen data");
-                    return;
                 }
 
                 //data send
@@ -165,16 +194,6 @@ namespace VRemoteClient.Services
                 byte[] chunks = MergeAllChunk(blocks, data);
                 Console.WriteLine("ALl chunks data send: " + data);
 
-                //header
-                byte[] header = new byte[5];
-                int totalLength = chunks.Length;
-                Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
-                header[4] = (byte)CommandType.Chunks; //data type
-                if (!SendAndWaitAck(CommandType.None, header))
-                {
-                    Console.WriteLine("Failed to send header for chunk data");
-                    return;
-                }
 
                 //data
                 byte[] bytes = new byte[chunks.Length];
