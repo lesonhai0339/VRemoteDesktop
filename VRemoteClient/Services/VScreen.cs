@@ -128,7 +128,7 @@ namespace VRemoteClient.Services
 
                 Console.WriteLine("ALl chunks data send: " + data);
                 byte[] chunks = MergeAllChunk(blocks, data);
-                Console.WriteLine(BitConverter.ToString(chunks));
+                Console.WriteLine(BitConverter.ToString(chunks.Take(20).ToArray()));
                 Console.WriteLine("ALl chunks data send: " + data);
 
                 //header
