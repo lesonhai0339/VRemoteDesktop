@@ -249,7 +249,7 @@ namespace VRemoteServer.Models
                             Console.WriteLine($"Expected: {_dataExpected} - received: {_dataReceived}");
                             await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
 
-                            if (_dataReceived >= (_dataExpected - 1))
+                            if (_dataReceived >= _dataExpected)
                             {
                                 Console.WriteLine($"Complete {_dataExpected} - {_dataReceived}");
                                 Console.WriteLine("-------------------------------\n");

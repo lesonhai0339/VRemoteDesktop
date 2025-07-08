@@ -228,7 +228,8 @@ namespace VRemoteClient.Services
                     Console.WriteLine("Screen received from server");
                     break;
                 case CommandType.Chunks:
-                    Console.WriteLine("Chunks received from server");
+                    Console.WriteLine(data.Length -1);
+                    Console.WriteLine("Chunks received from server\n");
                     break;
                 case CommandType.Error:
                     break;
