@@ -253,7 +253,6 @@ namespace VRemoteServer.Models
                             Console.WriteLine($"Processing data: {_dataReceived}/{_dataExpected} bytes received");
 
                             await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
-                            await Socket.SendAsync(new byte[] { (byte)CommandType.Ack}, SocketFlags.None);
                             if (_dataReceived >= _dataExpected)
                             {
                                 Console.WriteLine($"Complete {_dataExpected} - {_dataReceived}");
