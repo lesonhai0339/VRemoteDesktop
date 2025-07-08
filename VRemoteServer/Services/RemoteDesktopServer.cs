@@ -67,7 +67,7 @@ namespace VRemoteServer.Services
                             await ProcessChunkSend(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Header:
-                            await ProcessChunkSend(task.Client, task.Data);
+                            await SendHeader(task.Client, task.Data);
                             break;
                         default:
                             break;
