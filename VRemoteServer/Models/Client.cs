@@ -20,7 +20,7 @@ namespace VRemoteServer.Models
         private bool _isDisposed = false;
         public Socket Socket { get; set; }
         private DateTime _lastSendTime { get; set; }
-        private readonly TimeSpan _timeout = TimeSpan.FromSeconds(300);
+        private readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
         private Action<Client> _disconnectCallback;
