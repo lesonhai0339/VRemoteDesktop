@@ -249,6 +249,8 @@ namespace VRemoteServer.Models
                             _dataReceived += dataNeedtoReceive;
                             bytesProcessed += dataNeedtoReceive;
 
+                            Console.WriteLine($"Processing data: {_dataReceived}/{_dataExpected} bytes received");
+
                             await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
 
                             if (_dataReceived >= _dataExpected)
