@@ -176,7 +176,7 @@ namespace VRemoteClient.Services
                             Console.WriteLine("Waitting "+ length + " - receive "+ num);
                             break;
                         }
-
+                        Console.WriteLine("Header: " + BitConverter.ToString(stateObject.ByteArrayBuilder.lsByte.Take(5).ToArray()));
                         Array src = stateObject.ByteArrayBuilder.Cut(length + 4 + 1).ToArray();
                         byte[] data = new byte[length + 1];
                         Buffer.BlockCopy(src , 4, data, 0 , length + 1);
@@ -228,7 +228,6 @@ namespace VRemoteClient.Services
                     Console.WriteLine("Screen received from server");
                     break;
                 case CommandType.Chunks:
-                    Console.WriteLine(BitConverter.ToString(data.Skip(1).Reverse().Take(20).ToArray()));
                     Console.WriteLine("Chunks received from server\n");
                     break;
                 case CommandType.Error:

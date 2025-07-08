@@ -270,6 +270,8 @@ namespace VRemoteServer.Models
                 int remainingBytes = totalData.Length - bytesProcessed;
                 _remainingData = new byte[remainingBytes];
                 Buffer.BlockCopy(totalData, bytesProcessed, _remainingData, 0, remainingBytes);
+                Console.WriteLine($"Buffering {remainingBytes} bytes for next callback");
+
             }
             else
             {
