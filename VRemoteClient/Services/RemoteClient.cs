@@ -344,16 +344,18 @@ namespace VRemoteClient.Services
             {
                 if (sendHeader)
                 {
-                    //send header before send data
-                    byte[] header = new byte[5];
-                    Buffer.BlockCopy(BitConverter.GetBytes(data.Length), 0, header, 0, 4);
-                    header[4] = (byte)commandType; //set command type
-                    Socket.BeginSend(header, 0, header.Length, SocketFlags.None, null, null);
+                    //send data with header
+                    byte[] dataWithHeader = new byte[data.Length + 5];
+                    Buffer.BlockCopy(BitConverter.GetBytes(data.Length), 0, dataWithHeader, 0, 4);
+                    dataWithHeader[4] = (byte)commandType; //set command type
+                    Buffer.BlockCopy(data, 0, dataWithHeader, 5, data.Length);
+                    Socket.BeginSend(dataWithHeader, 0, dataWithHeader.Length, SocketFlags.None, null, null);
                 }
-
-                //send data
-                Socket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
-
+                else
+                {
+                    //send data
+                    Socket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                }
             }
             catch (Exception ex)
             {
