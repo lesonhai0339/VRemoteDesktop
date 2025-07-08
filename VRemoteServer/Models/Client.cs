@@ -210,7 +210,7 @@ namespace VRemoteServer.Models
                         _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
                         bytesProcessed += 5;
                         _dataReceived = 0;
-
+                        await ProcessData(CommandType.Header, _currentHeader);
                     }
                     else
                     {

@@ -66,6 +66,9 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.Chunks:
                             await ProcessChunkSend(task.Client, task.Data);
                             break;
+                        case Enums.CommandType.Header:
+                            await ProcessChunkSend(task.Client, task.Data);
+                            break;
                         default:
                             break;
                     }
@@ -76,7 +79,11 @@ namespace VRemoteServer.Services
                 }
             }
         }
-
+        private async Task SendHeader(Client client, byte[] header)
+        {
+            var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
+            await SendDataAsync(partner.Sender.Client, header);
+        }
         private async Task ProcessChunkSend(Client client, byte[] data)
         {
             var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
