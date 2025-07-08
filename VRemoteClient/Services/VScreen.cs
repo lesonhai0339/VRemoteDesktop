@@ -15,6 +15,8 @@ namespace VRemoteClient.Services
     public class VScreen
     {
         private const int TIME_OUT = 10;
+        private const int CHUNK_SIZE = 8192;
+
         private BackgroundWorker _backgroundWorker;
         private Queue<ScreenTask> _queueTask;
         private RemoteClient _remoteClient;
@@ -114,34 +116,26 @@ namespace VRemoteClient.Services
                     throw new Exception("Error when send screen");
                 }
 
-                //send header before send data
-                byte[] header = new byte[5];
                 int dataLength = blocks[0].TotalSize;
-                Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
-                header[4] = (byte)CommandType.Screen; //data type
-                if (!SendAndWaitAck(CommandType.None, header))
-                {
-                    Console.WriteLine("Failed to send header for screen data");
-                    return;
-                }
 
-                //data send
-                int CHUNK_SIZE = 8192;
+                byte[] dataSend = new byte[dataLength + 5]; //5 bytes for header
+                Buffer.BlockCopy(BitConverter.GetBytes(dataLength + 5), 0, dataSend, 0, 4); // Add total bytes at the start
+                dataSend[4] = (byte)CommandType.Screen; //data type
 
-                byte[] bytes = new byte[blocks[0].Bytes.Length];
+
                 //data
-                Buffer.BlockCopy(blocks[0].Bytes, 0, bytes, 0, blocks[0].Bytes.Length);//real data
+                Buffer.BlockCopy(blocks[0].Bytes, 0, dataSend, 5, dataLength);//real data
 
-                int numberOfChunk = (int)Math.Ceiling((double)bytes.Length / CHUNK_SIZE);
+                int numberOfChunk = (int)Math.Ceiling((double)dataSend.Length / CHUNK_SIZE);
 
                 for (int i = 0; i < numberOfChunk; i++)
                 {
                     int offset = i * CHUNK_SIZE;
-                    int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
+                    int packetSize = Math.Min(CHUNK_SIZE, dataSend.Length - i * CHUNK_SIZE);
                     byte[] packet = new byte[packetSize];
 
                     //data
-                    Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
+                    Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
 
                     if (!SendAndWaitAck(CommandType.None, packet))
                     {
@@ -161,33 +155,25 @@ namespace VRemoteClient.Services
                 int numberOfChunk = NumberPacketByTotalSIze(totalChunksSize);
                 int data = totalChunksSize + (numberOfChunk * 20);
 
-                Console.WriteLine("ALl chunks data send: " + data);
                 byte[] chunks = MergeAllChunk(blocks, data);
-                Console.WriteLine("ALl chunks data send: " + data);
 
-                //header
-                byte[] header = new byte[5];
                 int totalLength = chunks.Length;
-                Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
-                header[4] = (byte)CommandType.Chunks; //data type
-                if (!SendAndWaitAck(CommandType.None, header))
-                {
-                    Console.WriteLine("Failed to send header for chunk data");
-                    return;
-                }
+
+                byte[] dataSend = new byte[totalLength + 5];
+                Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Add total bytes at the start
+                dataSend[4] = (byte)CommandType.Chunks; //data type
 
                 //data
-                byte[] bytes = new byte[chunks.Length];
-                Buffer.BlockCopy(chunks, 0, bytes, 0, chunks.Length);    //chunk data
+                Buffer.BlockCopy(chunks, 0, dataSend, 5, totalLength);    //chunk data
 
                 for (int i = 0; i < numberOfChunk; i++)
                 {
                     int offset = i * CHUNK_SIZE;
-                    int packetSize = Math.Min(CHUNK_SIZE, bytes.Length - i * CHUNK_SIZE);
+                    int packetSize = Math.Min(CHUNK_SIZE, dataSend.Length - i * CHUNK_SIZE);
                     byte[] packet = new byte[packetSize];
 
                     //data
-                    Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
+                    Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
 
                     if (!SendAndWaitAck(CommandType.None, packet))
                     {
