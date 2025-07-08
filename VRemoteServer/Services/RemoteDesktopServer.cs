@@ -173,7 +173,7 @@ namespace VRemoteServer.Services
         public async Task ProcessP2PConnect(Client client, byte[] data)
         {
             byte[] x = new byte[data.Length - 5];
-            Buffer.BlockCopy(data, 5, x, 0, data.Length);
+            Buffer.BlockCopy(data, 5, x, 0, data.Length -5);
             ClientInfo connecter;
             ClientInfo receiver;
             var receiverData = Encoding.ASCII.GetString(x).Replace(" ", "").Split('|');
