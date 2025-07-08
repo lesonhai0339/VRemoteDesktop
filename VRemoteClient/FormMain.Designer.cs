@@ -55,7 +55,8 @@ namespace VRemoteClient
             this.txtOwnerId.Name = "txtOwnerId";
             this.txtOwnerId.ReadOnly = true;
             this.txtOwnerId.Size = new System.Drawing.Size(150, 22);
-            this.txtOwnerId.TabIndex = 0;
+            this.txtOwnerId.TabIndex = 3;
+            this.txtOwnerId.TabStop = false;
             // 
             // txtOwnerPassword
             // 
@@ -65,7 +66,9 @@ namespace VRemoteClient
             this.txtOwnerPassword.Name = "txtOwnerPassword";
             this.txtOwnerPassword.ReadOnly = true;
             this.txtOwnerPassword.Size = new System.Drawing.Size(150, 22);
-            this.txtOwnerPassword.TabIndex = 1;
+            this.txtOwnerPassword.TabIndex = 4;
+            this.txtOwnerPassword.TabStop = false;
+
             // 
             // txtPartnerPassword
             // 
@@ -73,7 +76,7 @@ namespace VRemoteClient
             this.txtPartnerPassword.Location = new System.Drawing.Point(213, 132);
             this.txtPartnerPassword.Name = "txtPartnerPassword";
             this.txtPartnerPassword.Size = new System.Drawing.Size(150, 22);
-            this.txtPartnerPassword.TabIndex = 2;
+            this.txtPartnerPassword.TabIndex = 1;
             // 
             // txtPartnerId
             // 
@@ -81,7 +84,7 @@ namespace VRemoteClient
             this.txtPartnerId.Location = new System.Drawing.Point(213, 73);
             this.txtPartnerId.Name = "txtPartnerId";
             this.txtPartnerId.Size = new System.Drawing.Size(150, 22);
-            this.txtPartnerId.TabIndex = 3;
+            this.txtPartnerId.TabIndex = 0;
             // 
             // label1
             // 
@@ -90,7 +93,7 @@ namespace VRemoteClient
             this.label1.Location = new System.Drawing.Point(16, 21);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(37, 18);
-            this.label1.TabIndex = 4;
+            this.label1.TabIndex = 2;
             this.label1.Text = "Bạn";
             // 
             // label2
