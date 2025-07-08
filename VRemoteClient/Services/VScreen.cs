@@ -102,7 +102,7 @@ namespace VRemoteClient.Services
                     }
                 }
 
-                Thread.Sleep(1000); // thay cho timer
+                Thread.Sleep(1000);
             }
         }
         private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)
@@ -119,8 +119,11 @@ namespace VRemoteClient.Services
                 int dataLength = blocks[0].TotalSize;
                 Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
                 header[4] = (byte)CommandType.Screen; //data type
-                Send(CommandType.None, header);
-
+                if (!SendAndWaitAck(CommandType.None, header))
+                {
+                    Console.WriteLine("Failed to send header for screen data");
+                    return;
+                }
 
                 //data send
                 int CHUNK_SIZE = 8192;
@@ -140,7 +143,11 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
 
-                    Send(CommandType.None, packet);
+                    if (!SendAndWaitAck(CommandType.None, packet))
+                    {
+                        Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
+                        return;
+                    }
                     Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
             }
@@ -163,8 +170,11 @@ namespace VRemoteClient.Services
                 int totalLength = chunks.Length;
                 Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
                 header[4] = (byte)CommandType.Chunks; //data type
-                Send(CommandType.None, header);
-
+                if (!SendAndWaitAck(CommandType.None, header))
+                {
+                    Console.WriteLine("Failed to send header for chunk data");
+                    return;
+                }
 
                 //data
                 byte[] bytes = new byte[chunks.Length];
@@ -179,7 +189,11 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(bytes, offset, packet, 0, packetSize);
 
-                    Send(CommandType.None, packet);
+                    if (!SendAndWaitAck(CommandType.None, packet))
+                    {
+                        Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
+                        return;
+                    }
                     Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
             }
@@ -205,6 +219,28 @@ namespace VRemoteClient.Services
         {
             return (int)Math.Ceiling((double)totalData / 8192);
         }
+        private bool SendAndWaitAck(CommandType cmdType, byte[] data)
+        {
+            try
+            {
+                _resetEvent.Reset(); // Reset the event before sending
+                RemoteClient.Send(cmdType, data, false);
+                bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
+
+                if (!ackReceived)
+                {
+                    Console.WriteLine("Timeout waiting for ACK from server. Command: " + cmdType);
+                }
+
+                return ackReceived;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending data: {ex.Message}");
+                return false;
+            }
+        }
+        [Obsolete("Use SendAndWaitAck instead")]
         private void Send(CommandType cmdType, byte[] data)
         {
             _resetEvent.Reset(); // Reset the event before sending
