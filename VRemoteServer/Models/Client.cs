@@ -210,7 +210,11 @@ namespace VRemoteServer.Models
                         _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
                         bytesProcessed += 5;
                         _dataReceived = 0;
-                        await ProcessData(CommandType.Header, _currentHeader);
+                        CommandType cmd = (CommandType)_currentHeader[4];
+                        if (cmd == CommandType.Data || cmd == CommandType.Screen|| (cmd == CommandType.Chunks)
+                        {
+                            await ProcessData(CommandType.Header, _currentHeader);
+                        }
                     }
                     else
                     {
