@@ -207,7 +207,7 @@ namespace VRemoteServer.Models
                         _currentHeader = new byte[5];
                         Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 5);
 
-                        _dataExpected = BitConverter.ToInt32(_currentHeader, 0) -1;
+                        _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
                         bytesProcessed += 5;
                         _dataReceived = 0;
                         CommandType cmd = (CommandType)_currentHeader[4];
@@ -249,7 +249,7 @@ namespace VRemoteServer.Models
                             Console.WriteLine($"Expected: {_dataExpected} - received: {_dataReceived}");
                             await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
 
-                            if (_dataReceived >= _dataExpected)
+                            if (_dataReceived >= (_dataExpected - 1))
                             {
                                 Console.WriteLine($"Complete {_dataExpected} - {_dataReceived}");
                                 Console.WriteLine("-------------------------------\n");
