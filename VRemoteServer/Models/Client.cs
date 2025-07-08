@@ -207,7 +207,7 @@ namespace VRemoteServer.Models
                         _currentHeader = new byte[5];
                         Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 5);
 
-                        _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
+                        _dataExpected = BitConverter.ToInt32(_currentHeader, 0) -1;
                         bytesProcessed += 5;
                         _dataReceived = 0;
                         CommandType cmd = (CommandType)_currentHeader[4];
