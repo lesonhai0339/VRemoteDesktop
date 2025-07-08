@@ -132,7 +132,7 @@ namespace VRemoteServer.Services
             {
                 byte[] bytes= (data != null) ? new byte[data.Length + 5] : new byte[5];
                 //4 first bytes is packet length
-                Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length - 5), 0, bytes, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length - 4), 0, bytes, 0, 4);
                 // The five byte is the command type, followed by the data length and then the data itself
                 bytes[4] = (byte)commandType;
                 if (data != null)

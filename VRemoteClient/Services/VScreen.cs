@@ -88,7 +88,7 @@ namespace VRemoteClient.Services
                 //send header before send data
                 byte[] header = new byte[5];
                 int dataLength = blocks[0].TotalSize;
-                Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, header, 0, 4); // Add total bytes at the start
+                Buffer.BlockCopy(BitConverter.GetBytes(dataLength + 1), 0, header, 0, 4); // Add total bytes at the start
                 header[4] = (byte)CommandType.Screen; //data type
                 _remoteClient.Send(CommandType.None, header, false);
 
@@ -133,7 +133,7 @@ namespace VRemoteClient.Services
                 //header
                 byte[] header = new byte[5];
                 int totalLength = chunks.Length;
-                Buffer.BlockCopy(BitConverter.GetBytes(totalLength), 0, header, 0, 4); // Add total bytes at the start
+                Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 1), 0, header, 0, 4); // Add total bytes at the start
                 header[4] = (byte)CommandType.Chunks; //data type
                 _remoteClient.Send(CommandType.None, header, false);
 
