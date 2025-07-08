@@ -150,7 +150,7 @@ namespace VRemoteServer.Models
                         int bytesRead = await ReceiveAsync(buffer, 0, bufferSize, SocketFlags.None);
                         if (bytesRead == 0) break;
 
-                        Console.WriteLine("Received " + bytesRead + " bytes");
+                        Console.WriteLine("Received " + bytesRead + " bytes: "+ BitConverter.ToString(buffer));
 
                         _lastSendTime = DateTime.Now;
                         byte[] data = new byte[bytesRead];
@@ -245,8 +245,6 @@ namespace VRemoteServer.Models
                             _dataReceived += dataNeedtoReceive;
                             bytesProcessed += dataNeedtoReceive;
 
-                            Console.WriteLine($"Type send: {(Enums.Test)_currentHeader[4]}");
-                            Console.WriteLine($"Expected: {_dataExpected} - received: {_dataReceived}");
                             await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
 
                             if (_dataReceived >= _dataExpected)
@@ -270,7 +268,6 @@ namespace VRemoteServer.Models
                 int remainingBytes = totalData.Length - bytesProcessed;
                 _remainingData = new byte[remainingBytes];
                 Buffer.BlockCopy(totalData, bytesProcessed, _remainingData, 0, remainingBytes);
-                Console.WriteLine($"Buffering {remainingBytes} bytes for next callback");
 
             }
             else

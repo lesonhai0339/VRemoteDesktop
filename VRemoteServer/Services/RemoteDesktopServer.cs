@@ -81,7 +81,6 @@ namespace VRemoteServer.Services
         }
         private async Task SendHeader(Client client, byte[] header)
         {
-            Console.WriteLine("Header: " + BitConverter.ToString(header));
             var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
             await SendDataAsync(partner.Sender.Client, header);
         }
@@ -99,7 +98,6 @@ namespace VRemoteServer.Services
 
         public async Task<bool> ProcessDataCallback(Enums.CommandType commandType ,Client client, byte[] buffer)
         {
-            Console.WriteLine("Callback");
             await Enqueue(new RemoteTask
             {
                 CommandType = commandType,
