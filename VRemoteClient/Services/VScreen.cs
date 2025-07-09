@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -81,6 +82,8 @@ namespace VRemoteClient.Services
         {
             while (true)
             {
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
                 var screens = Utils.Capture.GetScreen();
                 if (screens.Any())
                 {
@@ -103,7 +106,8 @@ namespace VRemoteClient.Services
                             break;
                     }
                 }
-
+                stopwatch.Stop();
+                Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
                 Thread.Sleep(1000/3);
             }
         }
