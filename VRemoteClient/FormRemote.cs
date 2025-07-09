@@ -2,11 +2,13 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Services;
@@ -54,15 +56,18 @@ namespace VRemoteClient
                 if(client != null)
                 {
                     client.P2PScreenEventHandler -= ScreenEvent;
+                    client.P2PChunksEventHandler -= ChunksEvent;
                 }
                 _remoteClient = value;
                 client = _remoteClient;
                 if(client != null)
                 {
                     client.P2PScreenEventHandler += ScreenEvent;
+                    client.P2PChunksEventHandler += ChunksEvent;
                 }
             }
         }
+
         #endregion
         #region Methods
         private void FormRemote_Load(object sender, EventArgs e)
@@ -126,6 +131,44 @@ namespace VRemoteClient
             {
                 Console.WriteLine($"ScreenEvent error: {ex.Message}");
             }
+        }
+        private void ChunksEvent(List<ScreenBlock> blocks)
+        {
+            if (blocks == null || blocks.Count == 0)
+                return;
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            Rectangle dirtyRegion = blocks[0].Rectangle;
+            lock (_screenLock)
+            {
+                foreach (var block in blocks)
+                {
+                    try
+                    {
+                        using MemoryStream ms = new MemoryStream(Utils.Extensions.Decompress(block.Bytes));
+                        using Bitmap chunkBitmap = new Bitmap(ms);
+                        // draw on _curScreen
+                        _screenGraphics.DrawImage(chunkBitmap, block.Rectangle);
+
+                        // merge dirty region
+                        dirtyRegion = Rectangle.Union(dirtyRegion, block.Rectangle);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Draw block error: " + ex.Message);
+                    }
+                }
+            }
+
+            // Invalidate last merge region
+            if (this.InvokeRequired)
+                this.BeginInvoke(new Action(() => vPictureBox.Invalidate(dirtyRegion)));
+            else
+                vPictureBox.Invalidate(dirtyRegion);
+
+            stopwatch.Stop();
+            Console.WriteLine($"ChunksEvent processed {blocks.Count} blocks in {stopwatch.ElapsedMilliseconds} ms");
         }
         #endregion
         #region Event Handlers

@@ -1,6 +1,7 @@
 ﻿using Serilog;
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -31,6 +32,7 @@ namespace VRemoteClient.Services
         public delegate void P2PConnectEvent(bool flag, ConnectionInfo? info);
         public delegate void P2PDataSendSuccessEvent();
         public delegate void P2PScreenEvent(byte[] screen);
+        public delegate void P2PChunksEvent(List<ScreenBlock> blocks);
         public delegate void AckEvent();
 
         public event ConnectSckEvent ConnectSckEventHandler;
@@ -38,6 +40,7 @@ namespace VRemoteClient.Services
         public event P2PConnectEvent P2PConnectEventHandler;
         public event P2PDataSendSuccessEvent P2PDataSendSuccessEventHandler;
         public event P2PScreenEvent P2PScreenEventHandler;
+        public event P2PChunksEvent P2PChunksEventHandler;
         public event AckEvent AckEventHandler;
 
         CancellationTokenSource _cancellationToken;
@@ -175,12 +178,12 @@ namespace VRemoteClient.Services
 
                         if(!(stateObject.ByteArrayBuilder.Length >= length))
                         {
-                            Console.WriteLine("Waitting "+ length + " - receive "+ num);
+                            //Console.WriteLine("Waitting "+ length + " - receive "+ num);
                             break;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(length).ToArray();
-                        byte[] data = new byte[length];
-                        Buffer.BlockCopy(src, 4, data, 0, length -4 );
+                        byte[] data = new byte[length - 4];
+                        Buffer.BlockCopy(src, 4, data, 0, data.Length);
                         ProcessReceiveData(data);
                         if (_cancellationToken.IsCancellationRequested) break;
                     }
@@ -222,13 +225,13 @@ namespace VRemoteClient.Services
                 case CommandType.Ping:
                     break;
                 case CommandType.Pong:
-                    Console.WriteLine("Pong received from server"); 
+                    Console.WriteLine("Pong received from server");
                     break;
                 case CommandType.Screen:
-                    Console.WriteLine("Screen received from server");
+                    ProcessScreen(data);
                     break;
                 case CommandType.Chunks:
-                    Console.WriteLine("Chunks received from server\n");
+                    ProcessChunks(data);
                     break;
                 case CommandType.Error:
                     break;
@@ -242,7 +245,7 @@ namespace VRemoteClient.Services
                     break;
                 case CommandType.Ack:
                     AckEvent ack = AckEventHandler;
-                    if(ack!= null)
+                    if (ack != null)
                     {
                         ack();
                     }
@@ -253,15 +256,57 @@ namespace VRemoteClient.Services
         }
         private void ProcessScreen(byte[] data)
         {
+            byte[] screenData = new byte[data.Length - 1];
+            Buffer.BlockCopy(data, 1, screenData, 0, data.Length - 1);
             P2PScreenEvent p2pScreen = P2PScreenEventHandler;
             if (p2pScreen != null)
             {
-                p2pScreen(data);
+                p2pScreen(screenData);
             }
         }
         private void ProcessChunks(byte[] data)
         {
+            try
+            {
+                List<ScreenBlock> blocks = new List<ScreenBlock>();
+                byte[] chunks = new byte[data.Length - 1];
+                Buffer.BlockCopy(data, 1, chunks, 0, data.Length - 1);
 
+                int offset = 0;
+                while(offset < chunks.Length)
+                {
+                    Console.WriteLine($"Cur offset: {offset} - data: {chunks.Length}");
+                    int length = BitConverter.ToInt32(chunks, offset + 0);
+                    int x = BitConverter.ToInt32(chunks, offset + 4);
+                    int y = BitConverter.ToInt32(chunks, offset + 8);
+                    int width = BitConverter.ToInt32(chunks, offset + 12);
+                    int height = BitConverter.ToInt32(chunks, offset + 16);
+                    byte[] chunk = new byte[length];
+                    Buffer.BlockCopy(chunks, offset + 20, chunk, 0, length);
+                    //Console.WriteLine($"Received screen data: Length={length}, X={x}, Y={y}, Width={width}, Height={height}");
+
+                    offset += length + 20 ;
+                    blocks.Add(new ScreenBlock
+                    {
+                        IsFullScreen = false,
+                        Rectangle = new Rectangle(x, y, width, height),
+                        Bytes = chunk
+                    });
+                }
+                //Console.WriteLine("------------------------------------------------------------\n");
+                P2PChunksEvent p2pChunks = P2PChunksEventHandler;
+                if(p2pChunks != null)
+                {
+                    if (blocks.Any())
+                    {
+                        p2pChunks(blocks);
+                    }
+                }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
         }
         private void ProcessLogin(bool flag)
         {
