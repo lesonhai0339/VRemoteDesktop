@@ -151,12 +151,9 @@ namespace VRemoteClient.Services
         {
             lock (_lock)
             {
-                int CHUNK_SIZE = 8192;
-                int numberOfChunk = NumberPacketByTotalSIze(totalChunksSize);
-                int data = totalChunksSize + (numberOfChunk * 20);
+                byte[] chunks = MergeAllChunk(blocks);
 
-                byte[] chunks = MergeAllChunk(blocks, data);
-
+                int numberOfChunk = NumberPacketByTotalSIze(chunks.Length + 5);
                 int totalLength = chunks.Length;
 
                 byte[] dataSend = new byte[totalLength + 5];
@@ -169,7 +166,7 @@ namespace VRemoteClient.Services
                 for (int i = 0; i < numberOfChunk; i++)
                 {
                     int offset = i * CHUNK_SIZE;
-                    int packetSize = Math.Min(CHUNK_SIZE, dataSend.Length - i * CHUNK_SIZE);
+                    int packetSize = Math.Min(CHUNK_SIZE, dataSend.Length - offset);
                     byte[] packet = new byte[packetSize];
 
                     //data
@@ -185,7 +182,7 @@ namespace VRemoteClient.Services
             }
             flag = true;
         }
-        private byte[] MergeAllChunk(List<ScreenBlock> cells, int data)
+        private byte[] MergeAllChunk(List<ScreenBlock> cells)
         {
             using (var ms = new MemoryStream())
             {
