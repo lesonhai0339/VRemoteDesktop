@@ -181,7 +181,7 @@ namespace VRemoteClient.Services
                         Console.WriteLine("Header: " + BitConverter.ToString(stateObject.ByteArrayBuilder.lsByte.Take(5).ToArray()));
                         Array src = stateObject.ByteArrayBuilder.Cut(length).ToArray();
                         byte[] data = new byte[length];
-                        Buffer.BlockCopy(src, 4, data, 0, length);
+                        Buffer.BlockCopy(src, 4, data, 0, length -4 );
                         ProcessReceiveData(data);
                         if (_cancellationToken.IsCancellationRequested) break;
 
