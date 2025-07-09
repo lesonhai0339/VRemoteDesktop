@@ -392,7 +392,29 @@ namespace VRemoteClient.Services
                 }
             }
         }
-
+        /// <summary>
+        /// send data with spicific length
+        /// </summary>
+        /// <param name="commandType"></param>
+        /// <param name="data"></param>
+        /// <param name="sendLength"></param>
+        public void Send(CommandType commandType, byte[] data, int sendLength)
+        {
+            try
+            {
+                Socket.BeginSend(data, 0, sendLength, SocketFlags.None, null, null);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Error when sending data to remote server");
+            }
+        }
+        /// <summary>
+        /// send data with header(option)
+        /// </summary>
+        /// <param name="commandType"></param>
+        /// <param name="data"></param>
+        /// <param name="sendHeader"></param>
         public void Send(CommandType commandType, byte[] data, bool sendHeader = true)
         {
             try

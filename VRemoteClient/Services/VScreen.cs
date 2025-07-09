@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 
@@ -19,17 +20,14 @@ namespace VRemoteClient.Services
         private const int CHUNK_SIZE = 8192;
 
         private BackgroundWorker _backgroundWorker;
-        private Queue<ScreenTask> _queueTask;
         private RemoteClient _remoteClient;
 
         private ManualResetEvent _resetEvent;
-        private readonly object _queueLock = new object(); // For thread safety
         private readonly object _lock = new object(); // For thread safety
         public VScreen(RemoteClient client) 
         {
             RemoteClient = client;
             _resetEvent = new ManualResetEvent(false);
-            _queueTask = new Queue<ScreenTask>(); 
             BackgroundWorker = new BackgroundWorker();
             BackgroundWorker.RunWorkerAsync();
         }
@@ -92,23 +90,33 @@ namespace VRemoteClient.Services
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
-                    var task = new ScreenTask
-                    {
-                        WorkType = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS,
-                        Blocks = screens,
-                        TotalSize = totalSize
-                    };
-
+                    ScreenEnum screenEnum = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
                     bool flag = false;
-                    switch (task.WorkType)
+                    switch (screenEnum)
                     {
                         case ScreenEnum.FULLSCREEN:
-                            SendScreenData(task.Blocks, ref flag);
+                            SendScreenData(screens, ref flag);
                             break;
                         case ScreenEnum.REGIONSCREENS:
-                            SendChunk(task.Blocks, task.TotalSize, ref flag);
+                            SendChunk(screens, totalSize, ref flag);
                             break;
                     }
+                    //var task = new ScreenTask
+                    //{
+                    //    WorkType = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS,
+                    //    Blocks = screens,
+                    //    TotalSize = totalSize
+                    //};
+                    //bool flag = false;
+                    //switch (task.WorkType)
+                    //{
+                    //    case ScreenEnum.FULLSCREEN:
+                    //        SendScreenData(task.Blocks, ref flag);
+                    //        break;
+                    //    case ScreenEnum.REGIONSCREENS:
+                    //        SendChunk(task.Blocks, task.TotalSize, ref flag);
+                    //        break;
+                    //}
                 }
                 stopwatch.Stop();
                 Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
@@ -127,6 +135,8 @@ namespace VRemoteClient.Services
                 int dataLength = blocks[0].TotalSize;
 
                 byte[] dataSend = new byte[dataLength + 5]; //5 bytes for header
+
+                //header
                 Buffer.BlockCopy(BitConverter.GetBytes(dataLength + 5), 0, dataSend, 0, 4); // Add total bytes at the start
                 dataSend[4] = (byte)CommandType.Screen; //data type
 
@@ -136,16 +146,16 @@ namespace VRemoteClient.Services
 
                 int numberOfChunk = (int)Math.Ceiling((double)dataSend.Length / CHUNK_SIZE);
 
+                byte[] packet = new byte[CHUNK_SIZE];
                 for (int i = 0; i < numberOfChunk; i++)
                 {
                     int offset = i * CHUNK_SIZE;
                     int packetSize = Math.Min(CHUNK_SIZE, dataSend.Length - i * CHUNK_SIZE);
-                    byte[] packet = new byte[packetSize];
 
                     //data
                     Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
 
-                    if (!SendAndWaitAck(CommandType.None, packet))
+                    if (!SendAndWaitAck(CommandType.None, packet, packetSize))
                     {
                         Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
                         return;
@@ -161,26 +171,39 @@ namespace VRemoteClient.Services
             {
                 byte[] chunks = MergeAllChunk(blocks);
 
-                int numberOfChunk = NumberPacketByTotalSIze(chunks.Length + 5);
+                int numberOfChunk = (chunks.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5);
                 int totalLength = chunks.Length;
 
                 byte[] dataSend = new byte[totalLength + 5];
-                Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Add total bytes at the start
-                dataSend[4] = (byte)CommandType.Chunks; //data type
+                int dataSendLength = dataSend.Length;
+
+                //header
+                //Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Set total bytes at the start
+                //dataSend[4] = (byte)CommandType.Chunks; // Set command type at offset 4
+                unsafe
+                {
+                    fixed(byte* ptr= dataSend)
+                    {
+                        *(int*)ptr = totalLength + 5; // Set total bytes at the start
+                        *(ptr + 4) = (byte)CommandType.Chunks; // Set command type at offset 4
+                    }
+                }
 
                 //data
                 Buffer.BlockCopy(chunks, 0, dataSend, 5, totalLength);    //chunk data
 
+                byte[] packet = new byte[CHUNK_SIZE];
                 for (int i = 0; i < numberOfChunk; i++)
                 {
                     int offset = i * CHUNK_SIZE;
-                    int packetSize = Math.Min(CHUNK_SIZE, dataSend.Length - offset);
-                    byte[] packet = new byte[packetSize];
+                    int remain = dataSendLength - offset;
 
+                    int packetSize = Math.Min(CHUNK_SIZE, remain);
+  
                     //data
                     Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
 
-                    if (!SendAndWaitAck(CommandType.None, packet))
+                    if (!SendAndWaitAck(CommandType.None, packet, packetSize))
                     {
                         Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
                         return;
@@ -190,32 +213,57 @@ namespace VRemoteClient.Services
             }
             flag = true;
         }
-        private byte[] MergeAllChunk(List<ScreenBlock> cells)
+        private unsafe byte[] MergeAllChunk(List<ScreenBlock> blocks)
         {
             using (var ms = new MemoryStream())
             {
-                foreach (var chunk in cells)
+                byte[] buffer = new byte[20];
+                int count = blocks.Count;
+
+                for (int i = 0; i< count; i++)
                 {
-                    ms.Write(BitConverter.GetBytes(chunk.Bytes.Length), 0, 4);
-                    ms.Write(BitConverter.GetBytes(chunk.Rectangle.X), 0, 4);
-                    ms.Write(BitConverter.GetBytes(chunk.Rectangle.Y), 0, 4);
-                    ms.Write(BitConverter.GetBytes(chunk.Rectangle.Width), 0, 4);
-                    ms.Write(BitConverter.GetBytes(chunk.Rectangle.Height), 0, 4);
-                    ms.Write(chunk.Bytes, 0, chunk.Bytes.Length);
+
+                    fixed (byte* p = buffer)
+                    {
+                        int* pInt = (int*)p;
+                        pInt[0] = blocks[i].Bytes.Length; // Length of the chunk
+                        pInt[1] = blocks[i].Rectangle.X; // X coordinate of the rectangle
+                        pInt[2] = blocks[i].Rectangle.Y; // Y coordinate of the rectangle
+                        pInt[3] = blocks[i].Rectangle.Width; // Width of the rectangle
+                        pInt[4] = blocks[i].Rectangle.Height; // Height of the rectangle
+
+                        //note: can write like this *(pInt + 1) = blocks[i].Rectangle.X; 
+                    }
+                    ms.Write(buffer, 0, buffer.Length); // Write the header
+                    ms.Write(blocks[i].Bytes, 0 , blocks[i].Bytes.Length); // Write the chunk data
+                    //ms.Write(BitConverter.GetBytes(blocks[i].Bytes.Length), 0, 4);
+                    //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.X), 0, 4);
+                    //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Y), 0, 4);
+                    //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Width), 0, 4);
+                    //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Height), 0, 4);
+                    //ms.Write(blocks[i].Bytes, 0, blocks[i].Bytes.Length);
                 }
                 return ms.ToArray();
             }
         }
-        private int NumberPacketByTotalSIze(int totalData)
-        {
-            return (int)Math.Ceiling((double)totalData / 8192);
-        }
-        private bool SendAndWaitAck(CommandType cmdType, byte[] data)
+        //private int NumberPacketByTotalSIze(int totalData)
+        //{
+        //    //case 1
+        //    //return (int)Math.Ceiling((double)totalData / 8192);
+        //    //case 2
+        //    //int even = totalData / 8192;
+        //    //int odd = totalData % 8192;
+        //    //if (odd != 0) even++;
+        //    //return even;
+        //    //case 3
+        //    return (totalData + 8191) / 8192;
+        //}
+        private bool SendAndWaitAck(CommandType cmdType, byte[] data, int sendLength)
         {
             try
             {
                 _resetEvent.Reset(); // Reset the event before sending
-                RemoteClient.Send(cmdType, data, false);
+                RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
                 bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
 
                 if (!ackReceived)
