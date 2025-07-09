@@ -178,13 +178,11 @@ namespace VRemoteClient.Services
                             Console.WriteLine("Waitting "+ length + " - receive "+ num);
                             break;
                         }
-                        Console.WriteLine("Header: " + BitConverter.ToString(stateObject.ByteArrayBuilder.lsByte.Take(5).ToArray()));
                         Array src = stateObject.ByteArrayBuilder.Cut(length).ToArray();
                         byte[] data = new byte[length];
                         Buffer.BlockCopy(src, 4, data, 0, length -4 );
                         ProcessReceiveData(data);
                         if (_cancellationToken.IsCancellationRequested) break;
-
                     }
                 }
                 try
@@ -252,6 +250,18 @@ namespace VRemoteClient.Services
                 default:
                     break;
             }
+        }
+        private void ProcessScreen(byte[] data)
+        {
+            P2PScreenEvent p2pScreen = P2PScreenEventHandler;
+            if (p2pScreen != null)
+            {
+                p2pScreen(data);
+            }
+        }
+        private void ProcessChunks(byte[] data)
+        {
+
         }
         private void ProcessLogin(bool flag)
         {

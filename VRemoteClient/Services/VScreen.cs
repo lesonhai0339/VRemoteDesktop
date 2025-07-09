@@ -104,7 +104,7 @@ namespace VRemoteClient.Services
                     }
                 }
 
-                Thread.Sleep(1000);
+                Thread.Sleep(1000/3);
             }
         }
         private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)
