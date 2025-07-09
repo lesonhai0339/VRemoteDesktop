@@ -85,6 +85,10 @@ namespace VRemoteClient.Services
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
                 var screens = Utils.Capture.GetScreen();
+                stopwatch.Stop();
+                Console.WriteLine("Capture screen time: " + stopwatch.Elapsed.TotalMilliseconds);
+                stopwatch.Restart();
+                stopwatch.Start();
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
