@@ -33,8 +33,8 @@ namespace VRemoteClient.Utils
                 stopwatch.Start();
                 using (Bitmap currentScreen = CaptureWindowsScreen1())
                 {
-                    //if (_previousFrame == null)
-                        if (true)
+                    if (_previousFrame == null)
+                        //if (true)
                     {
 
                         // First capture - send full screen

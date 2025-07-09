@@ -105,6 +105,8 @@ namespace VRemoteServer.Services
             var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
             await SendDataAsync(partner.Sender.Client, data);
             await SendAck(client, new byte[0]);
+            partner.Sender.Client._lastSendTime = DateTime.Now;
+            partner.Receiver.Client._lastSendTime = DateTime.Now;
         }
 
         private async Task ProcessScreenSend(Client client, byte[] data)
@@ -112,6 +114,8 @@ namespace VRemoteServer.Services
             var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
             await SendDataAsync(partner.Sender.Client, data);
             await SendAck(client, new byte[0]);
+            partner.Sender.Client._lastSendTime = DateTime.Now;
+            partner.Receiver.Client._lastSendTime = DateTime.Now;
         }
 
         public async Task<bool> ProcessDataCallback(Enums.CommandType commandType ,Client client, byte[] buffer)

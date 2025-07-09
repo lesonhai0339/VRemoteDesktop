@@ -19,7 +19,7 @@ namespace VRemoteServer.Models
         private string _ip;
         private bool _isDisposed = false;
         public Socket Socket { get; set; }
-        private DateTime _lastSendTime { get; set; }
+        public DateTime _lastSendTime { get; set; }
         private readonly TimeSpan _timeout = TimeSpan.FromSeconds(30);
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
