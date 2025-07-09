@@ -173,13 +173,13 @@ namespace VRemoteClient.Services
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
 
-                        if(!(stateObject.ByteArrayBuilder.Length >= length + 4))
+                        if(!(stateObject.ByteArrayBuilder.Length >= length))
                         {
                             Console.WriteLine("Waitting "+ length + " - receive "+ num);
                             break;
                         }
                         Console.WriteLine("Header: " + BitConverter.ToString(stateObject.ByteArrayBuilder.lsByte.Take(5).ToArray()));
-                        Array src = stateObject.ByteArrayBuilder.Cut(length + 4).ToArray();
+                        Array src = stateObject.ByteArrayBuilder.Cut(length).ToArray();
                         byte[] data = new byte[length];
                         Buffer.BlockCopy(src, 4, data, 0, length);
                         ProcessReceiveData(data);
