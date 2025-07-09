@@ -94,7 +94,7 @@ namespace VRemoteClient
         }
         private void ConnectToServer()
         {
-            string serverIp = "192.168.1.7";// ConfigurationManager.AppSettings["RemoteServerIP"];
+            string serverIp = ConfigurationManager.AppSettings["RemoteServerIP"];
             string serverPort = ConfigurationManager.AppSettings["RemoteServerPort"];
             var address = IPAddress.Parse(serverIp);
             IPEndPoint remoteEP = new IPEndPoint(address, int.Parse(serverPort));

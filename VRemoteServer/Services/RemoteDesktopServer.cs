@@ -147,7 +147,7 @@ namespace VRemoteServer.Services
             {
                 byte[] bytes= (data != null) ? new byte[data.Length + 5] : new byte[5];
                 //4 first bytes is packet length
-                Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length - 5), 0, bytes, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length), 0, bytes, 0, 4);
                 // The five byte is the command type, followed by the data length and then the data itself
                 bytes[4] = (byte)commandType;
                 if (data != null)
@@ -221,11 +221,13 @@ namespace VRemoteServer.Services
             }
         }
         public async Task ProcessLogin(Client client, byte[] data)
-        {   
+        {
+            byte[] x = new byte[data.Length - 5];
+            Buffer.BlockCopy(data, 5, x, 0, data.Length - 5);
             // Handle login logic here
             IPEndPoint ep = client.Socket.RemoteEndPoint as IPEndPoint;
             
-            var clientInfo = Encoding.ASCII.GetString(data).Replace(" ", "").Split('|');
+            var clientInfo = Encoding.ASCII.GetString(x).Replace(" ", "").Split('|');
             if(clientInfo.Length != 7)
             {
                 await SendCommandAsync(client, Enums.CommandType.LoginFailed);
