@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Net;
@@ -24,6 +25,7 @@ namespace VRemoteClient
         private ClientInfo _clientInfo;
         private RemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
+        private VKeyboardHook vKeyboardHook;
         public FormMain()
         {
             InitializeComponent();
@@ -34,11 +36,18 @@ namespace VRemoteClient
 
             Me = Utils.Extensions.InitInfo();
             RemoteClient = new RemoteClient(Me);
+            vKeyboardHook = new VKeyboardHook();
+            vKeyboardHook.KeyPressed += VKeyboardHook_KeyPressed;
 
             this.Text = "VRemote - Vinhhy";
             this.Icon = new Icon(@"Resources\logo.ico");
             this.txtOwnerId.Text = Me.Id;
             this.txtOwnerPassword.Text = Me.Password;
+        }
+
+        private void VKeyboardHook_KeyPressed(object sender, KeyMessageEventArgs e)
+        {
+            Console.WriteLine("Key pressed: " + e.KeyCode + " - " + e.KeyType);
         }
         #region Properties
         public ClientInfo Me
@@ -80,6 +89,10 @@ namespace VRemoteClient
         private void FormMain_Shown(object sender, EventArgs e)
         {
             ConnectToServer();
+            IntPtr myFormHandle = this.Handle;
+            uint myFormProcessId = (uint)Process.GetCurrentProcess().Id;
+            vKeyboardHook.Start(myFormProcessId);
+
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
         {

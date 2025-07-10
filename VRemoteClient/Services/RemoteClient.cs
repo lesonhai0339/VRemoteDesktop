@@ -257,6 +257,10 @@ namespace VRemoteClient.Services
                     break;
             }
         }
+        private void ProcessKeyboard(byte[] data)
+        {
+
+        }
         private void ProcessScreen(byte[] data)
         {
             byte[] screenData = new byte[data.Length - 1];
