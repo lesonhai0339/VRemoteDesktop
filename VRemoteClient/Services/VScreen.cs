@@ -155,11 +155,11 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
 
-                    //if (!SendAndWaitAck(CommandType.None, packet, packetSize))
-                    //{
-                    //    Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
-                    //    return;
-                    //}
+                    if (!SendAndWaitAck(CommandType.None, packet, packetSize))
+                    {
+                        Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
+                        return;
+                    }
                     Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
             }
@@ -203,11 +203,11 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
 
-                    //if (!SendAndWaitAck(CommandType.None, packet, packetSize))
-                    //{
-                    //    Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
-                    //    return;
-                    //}
+                    if (!SendAndWaitAck(CommandType.None, packet, packetSize))
+                    {
+                        Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
+                        return;
+                    }
                     Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
             }
@@ -262,16 +262,17 @@ namespace VRemoteClient.Services
         {
             try
             {
-                _resetEvent.Reset(); // Reset the event before sending
+               // _resetEvent.Reset(); // Reset the event before sending
                 RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
-                bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
+                //bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
 
-                if (!ackReceived)
-                {
-                    Console.WriteLine("Timeout waiting for ACK from server. Command: " + cmdType);
-                }
+                //if (!ackReceived)
+                //{
+                //    Console.WriteLine("Timeout waiting for ACK from server. Command: " + cmdType);
+                //}
 
-                return ackReceived;
+                //return ackReceived;
+                return true;
             }
             catch (Exception ex)
             {
