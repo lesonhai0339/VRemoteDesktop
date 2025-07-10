@@ -97,7 +97,7 @@ namespace VRemoteServer.Services
             }
             else
             {
-                await SendDataAsync(partner.Sender.Client, data);
+                await SendDataAsync(partner.Receiver.Client, data);
             }
         }
 
