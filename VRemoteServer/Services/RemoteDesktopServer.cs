@@ -66,6 +66,9 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.Chunks:
                             await ProcessChunkSend(task.Client, task.Data);
                             break;
+                        case Enums.CommandType.Keyboard:
+                            await KeyBoardEvent(task.Client, task.Data);
+                            break;
                         case Enums.CommandType.Header:
                             await SendHeader(task.Client, task.Data);
                             break;
@@ -82,6 +85,22 @@ namespace VRemoteServer.Services
                 }
             }
         }
+
+        private async Task KeyBoardEvent(Client client, byte[] data)
+        {
+            var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
+            if (partner == null)
+            {
+                Log.ForContext("FileName", "RemoteDesktopServer")
+                    .Error($"No partner found for client: {client.IP}");
+                return;
+            }
+            else
+            {
+                await SendDataAsync(partner.Sender.Client, data);
+            }
+        }
+
         private async Task SendAck(Client client, byte[] data)
         {
             await SendCommandAsync(client, Enums.CommandType.Ack, data);

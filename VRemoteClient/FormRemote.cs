@@ -189,11 +189,15 @@ namespace VRemoteClient
 
         private void KeyUpEventHandler(object sender, KeyEventArgs e)
         {
+            string command =  string.Format("KeyUp:{0}", e.KeyCode.ToString());
+            Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
             Console.WriteLine("Key Up Event Triggered: " + e.KeyCode.ToString());
         }
 
         private void KeyDownEventHandler(object sender, KeyEventArgs e)
         {
+            string command = string.Format("KeyDown:{0}", e.KeyCode.ToString());
+            Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
             Console.WriteLine("Key Down Event Triggered: " + e.KeyCode.ToString());
         }
         #endregion

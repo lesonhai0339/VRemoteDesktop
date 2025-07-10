@@ -23,97 +23,94 @@ namespace VRemoteClient.Utils
         [DllImport("user32.dll")]
 
         static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        static ImageCodecInfo encoder = ImageCodecInfo.GetImageEncoders()
+                .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
+        static EncoderParameters encoderParams = new EncoderParameters(1);
+
         internal static List<ScreenBlock> GetScreen()
         {
-            Stopwatch stopwatch = Stopwatch.StartNew();
+            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
             List<ScreenBlock> cells = new List<ScreenBlock>();
-
-            lock (_lockObject)
+            try
             {
-                stopwatch.Start();
-                using (Bitmap currentScreen = CaptureWindowsScreen1())
+                lock (_lockObject)
                 {
-                    if (_previousFrame == null)
-                        //if (true)
+                    using (Bitmap currentScreen = CaptureWindowsScreen1())
                     {
-
-                        // First capture - send full screen
-                        byte[] compressedData = null;
-                        using (var stream = new MemoryStream())
+                        if (_previousFrame == null)
                         {
-                            var encoder = ImageCodecInfo.GetImageEncoders()
-                                                        .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
-                            var encoderParams = new EncoderParameters(1);
-                            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
-
-                            currentScreen.Save(stream, encoder, encoderParams);
-                            compressedData = Utils.Extensions.Compress(stream.ToArray());
-                        }
-                        ScreenBlock cell = new ScreenBlock
-                        {
-                            IsFullScreen = true,
-                            Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                            Bytes = compressedData
-                        };
-                        cells.Add(cell);
-
-                        // Store current frame as previous
-                        _previousFrame = currentScreen.Clone(
-                            new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                            PixelFormat.Format24bppRgb
-                        );
-                    }
-                    else
-                    {
-                        List<Rectangle> dirtyRegions = new List<Rectangle>();
-                        using (Bitmap cur = currentScreen.Clone() as Bitmap)
-                        using (Bitmap pre = _previousFrame.Clone() as Bitmap)
-                        {
-                            // Detect changes and create cells, 
-                            dirtyRegions = DetectDirtyRegions(cur, pre);
-                        }
-
-
-                        if (dirtyRegions.Count > 0)
-                        {
-                            // Merge adjacent regions for efficiency
-                            List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
-                            foreach (var region in mergedRegions)
+                            // First capture - send full screen
+                            byte[] compressedData = null;
+                            using (var stream = new MemoryStream())
                             {
-                                using (Bitmap regionBitmap = CropBitmap(currentScreen, region))
-                                {
-                                    byte[] compressedData = null;
-                                    using (var stream = new MemoryStream())
-                                    {
-                                        var encoder = ImageCodecInfo.GetImageEncoders()
-                                                        .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
-                                        var encoderParams = new EncoderParameters(1);
-                                        encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
-
-                                        regionBitmap.Save(stream, encoder, encoderParams);
-                                        compressedData = Utils.Extensions.Compress(stream.ToArray());
-                                    }
-                                    ScreenBlock cell = new ScreenBlock
-                                    {
-                                        IsFullScreen = false,
-                                        Rectangle = region,
-                                        Bytes = compressedData
-                                    };
-                                    cells.Add(cell);
-                                }
+                                currentScreen.Save(stream, encoder, encoderParams);
+                                compressedData = Utils.Extensions.Compress(stream.ToArray());
                             }
-                            // Update previous frame
-                            _previousFrame?.Dispose();
+                            ScreenBlock cell = new ScreenBlock
+                            {
+                                IsFullScreen = true,
+                                Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                                Bytes = compressedData
+                            };
+                            cells.Add(cell);
+
+                            // Store current frame as previous
                             _previousFrame = currentScreen.Clone(
                                 new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
                                 PixelFormat.Format24bppRgb
                             );
                         }
-                        // If no changes, return empty list
+                        else
+                        {
+                            List<Rectangle> dirtyRegions = new List<Rectangle>();
+                            using (Bitmap cur = currentScreen.Clone() as Bitmap)
+                            using (Bitmap pre = _previousFrame.Clone() as Bitmap)
+                            {
+                                // Detect changes and create cells, 
+                                dirtyRegions = DetectDirtyRegions(cur, pre);
+                            }
+
+                            if (dirtyRegions.Count > 0)
+                            {
+                                // Merge adjacent regions for efficiency
+                                List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
+                                for (int i = 0; i < mergedRegions.Count; i++)
+                                {
+                                    using (Bitmap regionBitmap = CropBitmap(currentScreen, mergedRegions[i]))
+                                    {
+                                        byte[] compressedData;
+                                        using (var stream = new MemoryStream())
+                                        {
+                                            regionBitmap.Save(stream, encoder, encoderParams);
+                                            compressedData = Utils.Extensions.Compress(stream.ToArray());
+                                        }
+                                        ScreenBlock cell = new ScreenBlock
+                                        {
+                                            IsFullScreen = false,
+                                            Rectangle = mergedRegions[i],
+                                            Bytes = compressedData
+                                        };
+                                        cells.Add(cell);
+                                    }
+                                }
+                                // Update previous frame
+                                _previousFrame?.Dispose();
+                                _previousFrame = currentScreen.Clone(
+                                    new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                                    PixelFormat.Format24bppRgb
+                                );
+                            }
+                            // If no changes, return empty list
+                        }
                     }
                 }
+                return cells;
             }
-            return cells;
+            finally
+            {
+                cells.Clear();
+            }
         }
 
         internal static Bitmap CropBitmap(Bitmap source, Rectangle region)
@@ -276,41 +273,42 @@ namespace VRemoteClient.Utils
             }
             return false;
         }
-        //private unsafe static bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
-        //{
-        //    byte* currentPtr = (byte*)currentData.Scan0;
-        //    byte* previousPtr = (byte*)previousData.Scan0;
+       /* [Obsolete("Not Use")]
+        private unsafe static bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
+        {
+            byte* currentPtr = (byte*)currentData.Scan0;
+            byte* previousPtr = (byte*)previousData.Scan0;
 
-        //    int stride = currentData.Stride;
-        //    const int threshold = 10; // Noise threshold
+            int stride = currentData.Stride;
+            const int threshold = 10; // Noise threshold
 
-        //    for (int y = 0; y < block.Height; y++)
-        //    {
-        //        int rowOffset = (block.Y + y) * stride + block.X * 3;
+            for (int y = 0; y < block.Height; y++)
+            {
+                int rowOffset = (block.Y + y) * stride + block.X * 3;
 
-        //        for (int x = 0; x < block.Width; x++)
-        //        {
-        //            // CRITICAL FIX: Add block's position to get actual pixel coordinates
-        //            int actualY = block.Y + y;
-        //            int actualX = block.X + x;
-        //            int offset = actualY * stride + actualX * 3;
+                for (int x = 0; x < block.Width; x++)
+                {
+                    // CRITICAL FIX: Add block's position to get actual pixel coordinates
+                    int actualY = block.Y + y;
+                    int actualX = block.X + x;
+                    int offset = actualY * stride + actualX * 3;
 
-        //            int bDiff = currentPtr[offset] - previousPtr[offset]; //B in RGB
-        //            int gDiff = currentPtr[offset + 1] - previousPtr[offset + 1]; //G in RGB
-        //            int rDiff = currentPtr[offset + 2] - previousPtr[offset + 2]; //R in RGB
+                    int bDiff = currentPtr[offset] - previousPtr[offset]; //B in RGB
+                    int gDiff = currentPtr[offset + 1] - previousPtr[offset + 1]; //G in RGB
+                    int rDiff = currentPtr[offset + 2] - previousPtr[offset + 2]; //R in RGB
 
-        //            // Check with threshold to avoid false positives from noise
-        //            if (((bDiff + (bDiff >> 31)) ^ (bDiff >> 31)) > threshold ||
-        //                ((gDiff + (gDiff >> 31)) ^ (gDiff >> 31)) > threshold ||
-        //                ((rDiff + (rDiff >> 31)) ^ (rDiff >> 31)) > threshold)
-        //            {
-        //                return true;
-        //            }
-        //        }
-        //    }
+                    // Check with threshold to avoid false positives from noise
+                    if (((bDiff + (bDiff >> 31)) ^ (bDiff >> 31)) > threshold ||
+                        ((gDiff + (gDiff >> 31)) ^ (gDiff >> 31)) > threshold ||
+                        ((rDiff + (rDiff >> 31)) ^ (rDiff >> 31)) > threshold)
+                    {
+                        return true;
+                    }
+                }
+            }
 
-        //    return false;
-        //}
+            return false;
+        }*/
 
         // Cleanup method
         internal static void Dispose()

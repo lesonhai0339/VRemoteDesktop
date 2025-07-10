@@ -17,6 +17,8 @@ namespace VRemoteClient.Models.Enums
         Error = 0x07,
         Screen = 0x08,
         Chunks = 0x09,
+        Keyboard = 0x0A,
+
 
         LoginFailed = 0x90,
         PartnerDisconnected = 0x91,

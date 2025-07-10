@@ -80,13 +80,13 @@ namespace VRemoteClient.Services
         {
             while (true)
             {
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
+                //Stopwatch stopwatch = new Stopwatch();
+                //stopwatch.Start();
                 var screens = Utils.Capture.GetScreen();
-                stopwatch.Stop();
-                Console.WriteLine("Capture screen time: " + stopwatch.Elapsed.TotalMilliseconds);
-                stopwatch.Restart();
-                stopwatch.Start();
+                //stopwatch.Stop();
+                //Console.WriteLine("Capture screen time: " + stopwatch.Elapsed.TotalMilliseconds);
+                //stopwatch.Restart();
+                //stopwatch.Start();
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
@@ -101,25 +101,9 @@ namespace VRemoteClient.Services
                             SendChunk(screens, totalSize, ref flag);
                             break;
                     }
-                    //var task = new ScreenTask
-                    //{
-                    //    WorkType = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS,
-                    //    Blocks = screens,
-                    //    TotalSize = totalSize
-                    //};
-                    //bool flag = false;
-                    //switch (task.WorkType)
-                    //{
-                    //    case ScreenEnum.FULLSCREEN:
-                    //        SendScreenData(task.Blocks, ref flag);
-                    //        break;
-                    //    case ScreenEnum.REGIONSCREENS:
-                    //        SendChunk(task.Blocks, task.TotalSize, ref flag);
-                    //        break;
-                    //}
                 }
-                stopwatch.Stop();
-                Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
+                //stopwatch.Stop();
+                //Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
                 Thread.Sleep(1000/5);
             }
         }
@@ -157,7 +141,7 @@ namespace VRemoteClient.Services
 
                     if (!SendAndWaitAck(CommandType.None, packet, packetSize))
                     {
-                        Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
+                        //Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
                         return;
                     }
                     Thread.Sleep(1); // Small delay to avoid flooding the network
@@ -205,7 +189,7 @@ namespace VRemoteClient.Services
 
                     if (!SendAndWaitAck(CommandType.None, packet, packetSize))
                     {
-                        Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
+                        //Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
                         return;
                     }
                     Thread.Sleep(1); // Small delay to avoid flooding the network

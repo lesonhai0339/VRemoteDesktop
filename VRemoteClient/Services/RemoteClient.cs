@@ -233,6 +233,9 @@ namespace VRemoteClient.Services
                 case CommandType.Chunks:
                     ProcessChunks(data);
                     break;
+                case CommandType.Keyboard:
+                    Console.WriteLine("Key receive");
+                    break;
                 case CommandType.Error:
                     break;
                 case CommandType.LoginFailed:
