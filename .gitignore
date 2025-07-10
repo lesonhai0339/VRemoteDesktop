@@ -146,3 +146,7 @@ _NCrunch*
 /Vinhhy_Remote_Desktop_Server/
 /Vinhhy-Remote-Desktop/
 /VRemoteDesktopServer/
+/Client/app.config
+/Server/app.config
+VRemoteClient/app.config
+VRemoteServer/app.config
