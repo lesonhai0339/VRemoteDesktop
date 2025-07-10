@@ -28,17 +28,17 @@ namespace VRemoteClient
             Client = remoteClient;
             _info = info;
 
-            Text = _info.Receiver.Id.Trim();
-            //Icon = new Icon("Resources/logo.ico");
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.ClientSize = new Size(_info.Receiver.Width, _info.Receiver.Height);
+            //Text = _info.Receiver.Id.Trim();
+            ////Icon = new Icon("Resources/logo.ico");
+            //this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            //this.MaximizeBox = false;
+            //this.StartPosition = FormStartPosition.CenterScreen;
+            //this.ClientSize = new Size(_info.Receiver.Width, _info.Receiver.Height);
 
-            // Create and configure PictureBox
-            vPictureBox.Size = new Size(_info.Receiver.Width, _info.Receiver.Height);
-            vPictureBox.Location = new Point(0, 0);
-            vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
+            //// Create and configure PictureBox
+            //vPictureBox.Size = new Size(_info.Receiver.Width, _info.Receiver.Height);
+            //vPictureBox.Location = new Point(0, 0);
+            //vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
 
             KeyDown += KeyDownEventHandler;
             KeyUp += KeyUpEventHandler;
@@ -190,14 +190,14 @@ namespace VRemoteClient
         private void KeyUpEventHandler(object sender, KeyEventArgs e)
         {
             string command =  string.Format("KeyUp:{0}", e.KeyCode.ToString());
-            Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
+            //Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
             Console.WriteLine("Key Up Event Triggered: " + e.KeyCode.ToString());
         }
 
         private void KeyDownEventHandler(object sender, KeyEventArgs e)
         {
             string command = string.Format("KeyDown:{0}", e.KeyCode.ToString());
-            Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
+            //Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
             Console.WriteLine("Key Down Event Triggered: " + e.KeyCode.ToString());
         }
         #endregion
