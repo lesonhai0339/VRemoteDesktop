@@ -113,7 +113,9 @@ namespace VRemoteClient.Services
             {
                 if (blocks.Count != 1)
                 {
-                    throw new Exception("Error when send screen");
+                    Log.ForContext("Screen", "RemoteDesktopClient")
+                                      .Error($"Blocks number more than expected");
+                    return;
                 }
 
                 int dataLength = blocks[0].TotalSize;
@@ -244,25 +246,16 @@ namespace VRemoteClient.Services
         //}
         private bool SendAndWaitAck(CommandType cmdType, byte[] data, int sendLength)
         {
-            try
-            {
-               // _resetEvent.Reset(); // Reset the event before sending
-                RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
-                //bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
+            // _resetEvent.Reset(); // Reset the event before sending
+            RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
+            //bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
 
-                //if (!ackReceived)
-                //{
-                //    Console.WriteLine("Timeout waiting for ACK from server. Command: " + cmdType);
-                //}
-
-                //return ackReceived;
-                return true;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error sending data: {ex.Message}");
-                return false;
-            }
+            //if (!ackReceived)
+            //{
+            //    Console.WriteLine("Timeout waiting for ACK from server. Command: " + cmdType);
+            //}
+            //return ackReceived;
+            return true;
         }
         [Obsolete("")]
         private void Send(CommandType cmdType, byte[] data)

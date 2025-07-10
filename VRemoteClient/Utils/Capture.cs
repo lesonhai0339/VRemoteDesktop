@@ -32,85 +32,78 @@ namespace VRemoteClient.Utils
         {
             encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
             List<ScreenBlock> cells = new List<ScreenBlock>();
-            try
+            lock (_lockObject)
             {
-                lock (_lockObject)
+                using (Bitmap currentScreen = CaptureWindowsScreen1())
                 {
-                    using (Bitmap currentScreen = CaptureWindowsScreen1())
+                    if (_previousFrame == null)
                     {
-                        if (_previousFrame == null)
+                        // First capture - send full screen
+                        byte[] compressedData = null;
+                        using (var stream = new MemoryStream())
                         {
-                            // First capture - send full screen
-                            byte[] compressedData = null;
-                            using (var stream = new MemoryStream())
-                            {
-                                currentScreen.Save(stream, encoder, encoderParams);
-                                compressedData = Utils.Extensions.Compress(stream.ToArray());
-                            }
-                            ScreenBlock cell = new ScreenBlock
-                            {
-                                IsFullScreen = true,
-                                Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                                Bytes = compressedData
-                            };
-                            cells.Add(cell);
+                            currentScreen.Save(stream, encoder, encoderParams);
+                            compressedData = Utils.Extensions.Compress(stream.ToArray());
+                        }
+                        ScreenBlock cell = new ScreenBlock
+                        {
+                            IsFullScreen = true,
+                            Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                            Bytes = compressedData
+                        };
+                        cells.Add(cell);
 
-                            // Store current frame as previous
+                        // Store current frame as previous
+                        _previousFrame = currentScreen.Clone(
+                            new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                            PixelFormat.Format24bppRgb
+                        );
+                    }
+                    else
+                    {
+                        List<Rectangle> dirtyRegions = new List<Rectangle>();
+                        using (Bitmap cur = currentScreen.Clone() as Bitmap)
+                        using (Bitmap pre = _previousFrame.Clone() as Bitmap)
+                        {
+                            // Detect changes and create cells, 
+                            dirtyRegions = DetectDirtyRegions(cur, pre);
+                        }
+
+                        if (dirtyRegions.Count > 0)
+                        {
+                            // Merge adjacent regions for efficiency
+                            List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
+                            for (int i = 0; i < mergedRegions.Count; i++)
+                            {
+                                using (Bitmap regionBitmap = CropBitmap(currentScreen, mergedRegions[i]))
+                                {
+                                    byte[] compressedData;
+                                    using (var stream = new MemoryStream())
+                                    {
+                                        regionBitmap.Save(stream, encoder, encoderParams);
+                                        compressedData = Utils.Extensions.Compress(stream.ToArray());
+                                    }
+                                    ScreenBlock cell = new ScreenBlock
+                                    {
+                                        IsFullScreen = false,
+                                        Rectangle = mergedRegions[i],
+                                        Bytes = compressedData
+                                    };
+                                    cells.Add(cell);
+                                }
+                            }
+                            // Update previous frame
+                            _previousFrame?.Dispose();
                             _previousFrame = currentScreen.Clone(
                                 new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
                                 PixelFormat.Format24bppRgb
                             );
                         }
-                        else
-                        {
-                            List<Rectangle> dirtyRegions = new List<Rectangle>();
-                            using (Bitmap cur = currentScreen.Clone() as Bitmap)
-                            using (Bitmap pre = _previousFrame.Clone() as Bitmap)
-                            {
-                                // Detect changes and create cells, 
-                                dirtyRegions = DetectDirtyRegions(cur, pre);
-                            }
-
-                            if (dirtyRegions.Count > 0)
-                            {
-                                // Merge adjacent regions for efficiency
-                                List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
-                                for (int i = 0; i < mergedRegions.Count; i++)
-                                {
-                                    using (Bitmap regionBitmap = CropBitmap(currentScreen, mergedRegions[i]))
-                                    {
-                                        byte[] compressedData;
-                                        using (var stream = new MemoryStream())
-                                        {
-                                            regionBitmap.Save(stream, encoder, encoderParams);
-                                            compressedData = Utils.Extensions.Compress(stream.ToArray());
-                                        }
-                                        ScreenBlock cell = new ScreenBlock
-                                        {
-                                            IsFullScreen = false,
-                                            Rectangle = mergedRegions[i],
-                                            Bytes = compressedData
-                                        };
-                                        cells.Add(cell);
-                                    }
-                                }
-                                // Update previous frame
-                                _previousFrame?.Dispose();
-                                _previousFrame = currentScreen.Clone(
-                                    new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                                    PixelFormat.Format24bppRgb
-                                );
-                            }
-                            // If no changes, return empty list
-                        }
+                        // If no changes, return empty list
                     }
                 }
-                return cells;
             }
-            finally
-            {
-                cells.Clear();
-            }
+            return cells;
         }
 
         internal static Bitmap CropBitmap(Bitmap source, Rectangle region)
