@@ -120,7 +120,7 @@ namespace VRemoteClient.Services
                 }
                 stopwatch.Stop();
                 Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
-                Thread.Sleep(1000/3);
+                Thread.Sleep(1000/5);
             }
         }
         private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)
@@ -155,11 +155,11 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
 
-                    if (!SendAndWaitAck(CommandType.None, packet, packetSize))
-                    {
-                        Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
-                        return;
-                    }
+                    //if (!SendAndWaitAck(CommandType.None, packet, packetSize))
+                    //{
+                    //    Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
+                    //    return;
+                    //}
                     Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
             }
@@ -203,11 +203,11 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
 
-                    if (!SendAndWaitAck(CommandType.None, packet, packetSize))
-                    {
-                        Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
-                        return;
-                    }
+                    //if (!SendAndWaitAck(CommandType.None, packet, packetSize))
+                    //{
+                    //    Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
+                    //    return;
+                    //}
                     Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
             }

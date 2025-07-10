@@ -41,9 +41,13 @@ namespace VRemoteClient.Utils
                         byte[] compressedData = null;
                         using (var stream = new MemoryStream())
                         {
-                            currentScreen.Save(stream, ImageFormat.Jpeg);
-                            byte[] data = stream.ToArray();
-                            compressedData = Utils.Extensions.Compress(data);
+                            var encoder = ImageCodecInfo.GetImageEncoders()
+                                                        .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
+                            var encoderParams = new EncoderParameters(1);
+                            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
+
+                            currentScreen.Save(stream, encoder, encoderParams);
+                            compressedData = Utils.Extensions.Compress(stream.ToArray());
                         }
                         ScreenBlock cell = new ScreenBlock
                         {
@@ -81,9 +85,13 @@ namespace VRemoteClient.Utils
                                     byte[] compressedData = null;
                                     using (var stream = new MemoryStream())
                                     {
-                                        regionBitmap.Save(stream, ImageFormat.Jpeg);
-                                        byte[] data = stream.ToArray();
-                                        compressedData = Utils.Extensions.Compress(data);
+                                        var encoder = ImageCodecInfo.GetImageEncoders()
+                                                        .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
+                                        var encoderParams = new EncoderParameters(1);
+                                        encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
+
+                                        regionBitmap.Save(stream, encoder, encoderParams);
+                                        compressedData = Utils.Extensions.Compress(stream.ToArray());
                                     }
                                     ScreenBlock cell = new ScreenBlock
                                     {
@@ -105,8 +113,6 @@ namespace VRemoteClient.Utils
                     }
                 }
             }
-            stopwatch.Stop();
-            //Console.WriteLine("Total time to assign all regions changed: " + stopwatch.Elapsed.TotalMilliseconds);
             return cells;
         }
 
@@ -116,17 +122,7 @@ namespace VRemoteClient.Utils
             region = Rectangle.Intersect(region, new Rectangle(0, 0, source.Width, source.Height));
             if (region.IsEmpty) return null;
 
-            Bitmap croppedBitmap = new Bitmap(region.Width, region.Height, source.PixelFormat);
-
-            using (Graphics g = Graphics.FromImage(croppedBitmap))
-            {
-                g.DrawImage(source,
-                    new Rectangle(0, 0, region.Width, region.Height),
-                    region,
-                    GraphicsUnit.Pixel);
-            }
-
-            return croppedBitmap;
+            return source.Clone(region, source.PixelFormat);
         }
         internal static Bitmap CaptureWindowsScreen1()
         {
@@ -161,7 +157,7 @@ namespace VRemoteClient.Utils
         internal static List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
         {
             var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 16;
+            const int blockSize = 32;
 
             // Parallel processing for better performance
             var regions = new List<Rectangle>();
@@ -170,9 +166,12 @@ namespace VRemoteClient.Utils
             {
                 for (int x = 0; x < current.Width; x += blockSize)
                 {
+                    int width = (current.Width - x) > blockSize ? blockSize : current.Width - x;
+                    int height = (current.Height - y) > blockSize ? blockSize : current.Height - y;
+
                     Rectangle block = new Rectangle(x, y,
-                        Math.Min(blockSize, current.Width - x),
-                        Math.Min(blockSize, current.Height - y));
+                        width,
+                        height);
                     regions.Add(block);
                 }
             }
@@ -245,50 +244,73 @@ namespace VRemoteClient.Utils
             double efficiency = (double)combinedArea / unionArea;
             return efficiency > 0.75; // 75% efficiency threshold
         }
-
         private unsafe static bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
         {
+            byte* currentPtr = (byte*)currentData.Scan0;
+            byte* previousPtr = (byte*)previousData.Scan0;
+            int stride = currentData.Stride;
+            const int threshold = 10;
 
-            try
+            // Di chuyển pointer đến vị trí bắt đầu của block
+            currentPtr += block.Y * stride + block.X * 3;
+            previousPtr += block.Y * stride + block.X * 3;
+
+            for (int y = 0; y < block.Height; y++)
             {
-                byte* currentPtr = (byte*)currentData.Scan0;
-                byte* previousPtr = (byte*)previousData.Scan0;
+                byte* currentRow = currentPtr + y * stride;
+                byte* previousRow = previousPtr + y * stride;
 
-                int stride = currentData.Stride;
-                const int threshold = 10; // Noise threshold
-
-                for (int y = 0; y < block.Height; y++)
+                for (int x = 0; x < block.Width; x++)
                 {
-                    int rowOffset = (block.Y + y) * stride + block.X * 3;
+                    int bDiff = currentRow[x * 3] - previousRow[x * 3];
+                    int gDiff = currentRow[x * 3 + 1] - previousRow[x * 3 + 1];
+                    int rDiff = currentRow[x * 3 + 2] - previousRow[x * 3 + 2];
 
-                    for (int x = 0; x < block.Width; x++)
+                    if (((bDiff + (bDiff >> 31)) ^ (bDiff >> 31)) > threshold ||
+                        ((gDiff + (gDiff >> 31)) ^ (gDiff >> 31)) > threshold ||
+                        ((rDiff + (rDiff >> 31)) ^ (rDiff >> 31)) > threshold)
                     {
-                        // CRITICAL FIX: Add block's position to get actual pixel coordinates
-                        int actualY = block.Y + y;
-                        int actualX = block.X + x;
-                        int offset = actualY * stride + actualX * 3;
-
-                        int bDiff = currentPtr[offset] - previousPtr[offset]; //B in RGB
-                        int gDiff = currentPtr[offset + 1] - previousPtr[offset + 1]; //G in RGB
-                        int rDiff = currentPtr[offset + 2] - previousPtr[offset + 2]; //R in RGB
-
-                        // Check with threshold to avoid false positives from noise
-                        if (Math.Abs(bDiff) > threshold ||
-                            Math.Abs(gDiff) > threshold ||
-                            Math.Abs(rDiff) > threshold)
-                        {
-                            return true;
-                        }
+                        return true;
                     }
                 }
-
-                return false;
             }
-            catch
-            {
-                return false;
-            }
+            return false;
         }
+        //private unsafe static bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
+        //{
+        //    byte* currentPtr = (byte*)currentData.Scan0;
+        //    byte* previousPtr = (byte*)previousData.Scan0;
+
+        //    int stride = currentData.Stride;
+        //    const int threshold = 10; // Noise threshold
+
+        //    for (int y = 0; y < block.Height; y++)
+        //    {
+        //        int rowOffset = (block.Y + y) * stride + block.X * 3;
+
+        //        for (int x = 0; x < block.Width; x++)
+        //        {
+        //            // CRITICAL FIX: Add block's position to get actual pixel coordinates
+        //            int actualY = block.Y + y;
+        //            int actualX = block.X + x;
+        //            int offset = actualY * stride + actualX * 3;
+
+        //            int bDiff = currentPtr[offset] - previousPtr[offset]; //B in RGB
+        //            int gDiff = currentPtr[offset + 1] - previousPtr[offset + 1]; //G in RGB
+        //            int rDiff = currentPtr[offset + 2] - previousPtr[offset + 2]; //R in RGB
+
+        //            // Check with threshold to avoid false positives from noise
+        //            if (((bDiff + (bDiff >> 31)) ^ (bDiff >> 31)) > threshold ||
+        //                ((gDiff + (gDiff >> 31)) ^ (gDiff >> 31)) > threshold ||
+        //                ((rDiff + (rDiff >> 31)) ^ (rDiff >> 31)) > threshold)
+        //            {
+        //                return true;
+        //            }
+        //        }
+        //    }
+
+        //    return false;
+        //}
 
         // Cleanup method
         internal static void Dispose()
