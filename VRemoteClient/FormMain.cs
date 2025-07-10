@@ -151,7 +151,6 @@ namespace VRemoteClient
             string data = Utils.Extensions.DataStringBuilder(new string[] { Me.ToString() });
             byte[] dataBytes = Encoding.ASCII.GetBytes(data);
             RemoteClient.Send(Models.Enums.CommandType.Login, dataBytes);
-            VScreen a= new VScreen(RemoteClient);
         }
         #endregion
 
