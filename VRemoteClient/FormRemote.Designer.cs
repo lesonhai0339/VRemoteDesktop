@@ -1,4 +1,6 @@
-﻿namespace VRemoteClient
+﻿using System;
+
+namespace VRemoteClient
 {
     partial class FormRemote
     {
@@ -49,6 +51,7 @@
             this.Name = "FormRemote";
             this.Text = "FormRemote";
             this.Load += new System.EventHandler(this.FormRemote_Load);
+            this.Shown += new System.EventHandler(this.FormRemote_Shown);
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox)).EndInit();
             this.ResumeLayout(false);
 

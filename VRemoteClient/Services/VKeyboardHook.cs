@@ -11,16 +11,74 @@ namespace VRemoteClient.Services
 {
     public class KeyMessageEventArgs : EventArgs
     {
-        public Keys KeyCode { get; private set; }
-        public KeyState KeyType { get; private set; }
-        public KeyMessageEventArgs(Keys keyCode, KeyState keyType)
+        public KeyMessageEventArgs()
         {
+        }
+        public KeyMessageEventArgs(IntPtr command, Keys keyCode, KeyState keyType)
+        {
+            Command = command;
             KeyCode = keyCode;
             KeyType = keyType;
         }
+        public KeyMessageEventArgs(IntPtr command ,Keys keyModifier, Keys keyCode)
+        {
+            Command = command;
+            KeyModifier = keyModifier;
+            KeyCode = keyCode;
+        }
+        public KeyMessageEventArgs(IntPtr command, Keys keyModifier, Keys keyCode, KeyState keyType)
+        {
+            Command = command;
+            KeyModifier = keyModifier;
+            KeyCode = keyCode;
+            KeyType = keyType;
+        }
+        public IntPtr Command { get;set; }
+        public Keys KeyModifier { get; set; }
+        public Keys KeyCode { get; set; }
+        public KeyState KeyType { get; set; }   
     }
     public class VKeyboardHook
     {
+
+        private const int WH_KEYBOARD_LL = 13;
+        private const int WM_KEYDOWN = 0x0100;
+        private const int WM_KEYUP = 0x0101;
+        private const int VK_LCONTROL = 0xA2;  // Left Control
+        private const int VK_RCONTROL = 0xA3;  // Right Control
+        private const int VK_SHIFT = 0x10;
+        private const int VK_MENU = 0x12; // Alt
+        [DllImport("user32.dll")]
+        static extern short GetAsyncKeyState(int vKey);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr SetWindowsHookEx(int idHook,
+            LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode,
+            IntPtr wParam, IntPtr lParam);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+        private static extern IntPtr GetModuleHandle(string lpModuleName);
+        [DllImport("user32.dll")]
+        private static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
+        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
+        [StructLayout(LayoutKind.Sequential)]
+        public struct KBDLLHOOKSTRUCT
+        {
+            public int vkCode;
+            public int scanCode;
+            public int flags;
+            public int time;
+            public IntPtr dwExtraInfo;
+        }
         public VKeyboardHook() { }
         private uint _targetProcessId;
         private IntPtr hookID = IntPtr.Zero;
@@ -55,38 +113,34 @@ namespace VRemoteClient.Services
         {
             if (nCode >= 0 && IsTargetAppFocused())
             {
-                if (wParam == (IntPtr)WM_KEYDOWN)
+                // Only process key down and key up messages
+                if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
                 {
-                    int vkCode = Marshal.ReadInt32(lParam);
+                    // Correct way to read the virtual key code
+                    KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
+                    int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
-                    //Console.WriteLine(key.ToString() + " pressed");
 
-                    //if (key == Keys.A && IsControlPressed())
-                    //{
-                    //    Console.WriteLine("Ctrl + A detected!");
-                    //}
-                    //if (wParam == (IntPtr)WM_KEYDOWN)
-                    //{
-                    //    KeyPressed?.Invoke(this, new KeyMessageEventArgs(key, KeyState.KeyDown));
-                    //}
-                    //else if (wParam == (IntPtr)WM_KEYUP)
-                    //{
-                    //    KeyPressed?.Invoke(this, new KeyMessageEventArgs(key, KeyState.KeyUp));
-                    //}
-                    KeyPressed?.Invoke(this, new KeyMessageEventArgs(key, KeyState.KeyDown));
-                }
-                else if (wParam == (IntPtr)WM_KEYUP)
-                {
-                    int vkCode = Marshal.ReadInt32(lParam);
-                    Keys key = (Keys)vkCode;
-                    KeyPressed?.Invoke(this, new KeyMessageEventArgs(key, KeyState.KeyUp));
+                    // Determine if it's key down or up
+                    KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
+
+                    KeyMessageEventArgs keyEventArgs = null;
+                    Keys modifier = IsControlPressed() ? Keys.Control :
+                                    IsAltPressed() ? Keys.Alt:
+                                    IsShiftPressed() ? Keys.Shift:
+                                    isLeftWindowKeyPressed() ? Keys.LWin : Keys.None;
+                    keyEventArgs = new KeyMessageEventArgs(wParam,modifier, key, keyState);
+                    if (keyEventArgs != null)
+                    {
+                        KeyPressed?.Invoke(this, keyEventArgs);
+                    }
                 }
             }
             return CallNextHookEx(hookID, nCode, wParam, lParam);
         }
         private bool IsControlPressed()
         {
-            return (GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
+            return (GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0 || (GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0;
         }
 
         private bool IsShiftPressed()
@@ -98,41 +152,16 @@ namespace VRemoteClient.Services
         {
             return (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
         }
+        private bool isLeftWindowKeyPressed()
+        {
+            return (GetAsyncKeyState((int)Keys.LWin) & 0x8000) != 0;
+        }
         private bool IsTargetAppFocused()
         {
             IntPtr hwnd = GetForegroundWindow();
             GetWindowThreadProcessId(hwnd, out uint foregroundPid);
             return foregroundPid == _targetProcessId;
         }
-        private const int WH_KEYBOARD_LL = 13;
-        private const int WM_KEYDOWN = 0x0100;
-        private const int WM_KEYUP = 0x0101;
-        private const int VK_CONTROL = 0x11;
-        private const int VK_SHIFT = 0x10;
-        private const int VK_MENU = 0x12; // Alt
-        [DllImport("user32.dll")]
-        static extern short GetAsyncKeyState(int vKey);
-
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr SetWindowsHookEx(int idHook,
-            LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode,
-            IntPtr wParam, IntPtr lParam);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
         public class KeyboardSendEventHandler
         {
             public byte[] KeyBuilder(KeyMessageEventArgs e)

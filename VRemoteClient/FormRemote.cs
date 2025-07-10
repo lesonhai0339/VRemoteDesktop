@@ -22,11 +22,13 @@ namespace VRemoteClient
         private readonly object _screenLock = new object();
         private RemoteClient _remoteClient;
         private ConnectionInfo _info;
+        private VKeyboardHook _keyboardHook;
         public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
         {
             InitializeComponent();
             Client = remoteClient;
             _info = info;
+            KeyboardHook = new VKeyboardHook();
 
             //Text = _info.Receiver.Id.Trim();
             ////Icon = new Icon("Resources/logo.ico");
@@ -40,8 +42,8 @@ namespace VRemoteClient
             //vPictureBox.Location = new Point(0, 0);
             //vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
 
-            KeyDown += KeyDownEventHandler;
-            KeyUp += KeyUpEventHandler;
+            //KeyDown += KeyDownEventHandler;
+            //KeyUp += KeyUpEventHandler;
             MouseMove += MouseMoveEventHandler;
             MouseClick += MouseClickEventHandler;
             MouseWheel += MouseWheelEventHandler;
@@ -67,13 +69,39 @@ namespace VRemoteClient
                 }
             }
         }
+        public VKeyboardHook KeyboardHook
+        {
+                       get => _keyboardHook;
+            set
+            {
+                if (_keyboardHook != null)
+                {
+                    _keyboardHook.KeyPressed -= KeyPressedEventHandler;
+                }
+                _keyboardHook = value;
+                if (_keyboardHook != null)
+                {
+                    _keyboardHook.KeyPressed += KeyPressedEventHandler;
+                }
+            }
+        }
 
+        private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
+        {
+            Console.WriteLine($"Command: {e.Command},Key Modifier: {e.KeyModifier}, Key Pressed: {e.KeyCode}, Type: {e.KeyType}");
+        }
         #endregion
         #region Methods
         private void FormRemote_Load(object sender, EventArgs e)
         {
 
         }
+        private void FormRemote_Shown(object sender, EventArgs e)
+        {
+            uint pId = (uint)Process.GetCurrentProcess().Id;
+            KeyboardHook.Start(pId);
+        }
+
         private void InitializeGraphicsSettings()
         {
             //config graphics
@@ -174,31 +202,31 @@ namespace VRemoteClient
         #region Event Handlers
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            Console.WriteLine("Mouse Wheel Event Triggered");
+            //Console.WriteLine("Mouse Wheel Event Triggered");
         }
 
         private void MouseClickEventHandler(object sender, MouseEventArgs e)
         {
-            Console.WriteLine("Mouse Click Event Triggered");
+            //Console.WriteLine("Mouse Click Event Triggered");
         }
 
         private void MouseMoveEventHandler(object sender, MouseEventArgs e)
         {
-            Console.WriteLine("Mouse Move Event Triggered");
+            //Console.WriteLine("Mouse Move Event Triggered");
         }
 
         private void KeyUpEventHandler(object sender, KeyEventArgs e)
         {
-            string command =  string.Format("KeyUp:{0}", e.KeyCode.ToString());
+            //string command =  string.Format("KeyUp:{0}", e.KeyCode.ToString());
             //Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
-            Console.WriteLine("Key Up Event Triggered: " + e.KeyCode.ToString());
+            //Console.WriteLine("Key Up Event Triggered: " + e.KeyCode.ToString());
         }
 
         private void KeyDownEventHandler(object sender, KeyEventArgs e)
         {
-            string command = string.Format("KeyDown:{0}", e.KeyCode.ToString());
+            //string command = string.Format("KeyDown:{0}", e.KeyCode.ToString());
             //Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
-            Console.WriteLine("Key Down Event Triggered: " + e.KeyCode.ToString());
+            //Console.WriteLine("Key Down Event Triggered: " + e.KeyCode.ToString());
         }
         #endregion
     }
