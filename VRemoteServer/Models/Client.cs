@@ -250,7 +250,7 @@ namespace VRemoteServer.Models
                             await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
                             if (_dataReceived >= _dataExpected)
                             {
-                                Console.WriteLine($"Complete {_dataExpected} - {_dataReceived}");
+                                Console.WriteLine($"Complete {_dataExpected} - {_dataReceived} - {(Socket.RemoteEndPoint as IPEndPoint).Address.ToString()}");
                                 Console.WriteLine("-------------------------------\n");
                                 _dataExpected = 0;
                                 _dataReceived = 0;
