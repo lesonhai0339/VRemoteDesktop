@@ -61,16 +61,12 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.Error:
                             break;
                         case Enums.CommandType.Screen:
-                            await ProcessScreenSend(task.Client, task.Data);
-                            break;
                         case Enums.CommandType.Chunks:
-                            await ProcessChunkSend(task.Client, task.Data);
+                            await P2PDataSend(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Keyboard:
-                            await KeyBoardEvent(task.Client, task.Data);
-                            break;
-                        case Enums.CommandType.Header:
-                            await SendHeader(task.Client, task.Data);
+                        case Enums.CommandType.Mouse:
+                            await P2PCommand(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Ack:
                             await SendAck(task.Client, task.Data);
@@ -85,8 +81,7 @@ namespace VRemoteServer.Services
                 }
             }
         }
-
-        private async Task KeyBoardEvent(Client client, byte[] data)
+        private async Task P2PCommand(Client client, byte[] data)
         {
             var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
             if (partner == null)
@@ -100,43 +95,18 @@ namespace VRemoteServer.Services
                 await SendDataAsync(partner.Receiver.Client, data);
             }
         }
-
+        private async Task P2PDataSend(Client client, byte[] data)
+        {
+            var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
+            await SendDataAsync(partner.Sender.Client, data);
+            //await SendAck(client, new byte[0]);
+            partner.Sender.Client._lastSendTime = DateTime.Now;
+            partner.Receiver.Client._lastSendTime = DateTime.Now;
+        }
         private async Task SendAck(Client client, byte[] data)
         {
             await SendCommandAsync(client, Enums.CommandType.Ack, data);
         }
-        private async Task SendHeader(Client client, byte[] header)
-        {
-            var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
-            if(partner == null)
-            {
-                Log.ForContext("FileName", "RemoteDesktopServer")
-                    .Error($"No partner found for client: {client.IP}");
-                return;
-            }
-            else
-            {
-                await SendDataAsync(partner.Sender.Client, header);
-            }
-        }
-        private async Task ProcessChunkSend(Client client, byte[] data)
-        {
-            var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
-            await SendDataAsync(partner.Sender.Client, data);
-            //await SendAck(client, new byte[0]);
-            partner.Sender.Client._lastSendTime = DateTime.Now;
-            partner.Receiver.Client._lastSendTime = DateTime.Now;
-        }
-
-        private async Task ProcessScreenSend(Client client, byte[] data)
-        {
-            var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
-            await SendDataAsync(partner.Sender.Client, data);
-            //await SendAck(client, new byte[0]);
-            partner.Sender.Client._lastSendTime = DateTime.Now;
-            partner.Receiver.Client._lastSendTime = DateTime.Now;
-        }
-
         public async Task<bool> ProcessDataCallback(Enums.CommandType commandType ,Client client, byte[] buffer)
         {
             await Enqueue(new RemoteTask

@@ -28,12 +28,12 @@ namespace VRemoteServer.Utils
             Screen = 0x08,
             Chunks = 0x09,
             Keyboard = 0x0A,
+            Mouse = 0x10,
 
 
             LoginFailed = 0x90,
             PartnerDisconnected = 0x91,
             P2PConnectFailed = 0x92,   
-            Header = 0x93, // Header for chunked data
             Ack = 0x94, // Acknowledgment for received data
         }
     }
