@@ -24,12 +24,14 @@ namespace VRemoteClient
         private RemoteClient _remoteClient;
         private ConnectionInfo _info;
         private KeyboardHook _keyboardHook;
+        private GlobalMouseHook _mouseHook;
         public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
         {
             InitializeComponent();
             Client = remoteClient;
             _info = info;
             KeyboardHook = new KeyboardHook();
+            MouseHook = new GlobalMouseHook();
 
             Text = _info.Receiver.Id.Trim();
             //Icon = new Icon("Resources/logo.ico");
@@ -72,22 +74,53 @@ namespace VRemoteClient
         }
         public KeyboardHook KeyboardHook
         {
-                       get => _keyboardHook;
+            get => _keyboardHook;
             set
             {
-                if (_keyboardHook != null)
+                KeyboardHook keyboardHook = _keyboardHook;
+                if (keyboardHook != null)
                 {
-                    _keyboardHook.KeyPressed -= KeyPressedEventHandler;
+                    keyboardHook.KeyPressed -= KeyPressedEventHandler;
                 }
                 _keyboardHook = value;
-                if (_keyboardHook != null)
+                keyboardHook = _keyboardHook;
+                if (keyboardHook != null)
                 {
-                    _keyboardHook.KeyPressed += KeyPressedEventHandler;
+                    keyboardHook.KeyPressed += KeyPressedEventHandler;
                 }
             }
         }
+        public GlobalMouseHook MouseHook
+        {
+            get => _mouseHook;
+            set
+            {
+                GlobalMouseHook mouseHook = _mouseHook;
+                if (mouseHook != null)
+                {
+                    mouseHook.MouseClick -= MouseClickEvent;
+                    mouseHook.MouseMove -= MouseMoveEvent;
+                }
+                _mouseHook = value;
+                mouseHook = _mouseHook;
+                if (mouseHook != null)
+                {
+                    mouseHook.MouseClick += MouseClickEvent;
+                    mouseHook.MouseMove += MouseMoveEvent;
+                }
+            }
+        }
+
         #endregion
         #region Methods
+        private void MouseMoveEvent(object sender, GlobalMouseHook.MouseEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+        private void MouseClickEvent(object sender, GlobalMouseHook.MouseEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
             string keyCommandString = new StringBuilder()
@@ -109,10 +142,12 @@ namespace VRemoteClient
         {
             uint pId = (uint)Process.GetCurrentProcess().Id;
             KeyboardHook.Start(pId);
+            MouseHook.StartHook(pId);
         }
         private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
         {
             KeyboardHook.Stop();
+            MouseHook.StopHook();
         }
         private void InitializeGraphicsSettings()
         {
