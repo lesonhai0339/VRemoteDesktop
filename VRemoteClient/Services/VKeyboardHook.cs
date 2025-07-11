@@ -291,9 +291,31 @@ namespace VRemoteClient.Services
             uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
             return status;
         }
+        private static bool IsExtendedKey(ushort vk)
+        {
+            return vk == (ushort)Keys.RControlKey ||
+                   vk == (ushort)Keys.RMenu ||
+                   vk == (ushort)Keys.LWin ||
+                   vk == (ushort)Keys.RWin ||
+                   vk == (ushort)Keys.ControlKey ||
+                   vk == (ushort)Keys.Menu ||
+                   vk == (ushort)Keys.Insert ||
+                   vk == (ushort)Keys.Delete ||
+                   vk == (ushort)Keys.Home ||
+                   vk == (ushort)Keys.End ||
+                   vk == (ushort)Keys.PageUp ||
+                   vk == (ushort)Keys.PageDown ||
+                   vk == (ushort)Keys.Up ||
+                   vk == (ushort)Keys.Down ||
+                   vk == (ushort)Keys.Left ||
+                   vk == (ushort)Keys.Right;
+        }
 
         private static INPUT CreateKeyInput(ushort key, uint flags)
         {
+            if (IsExtendedKey(key))
+                flags |= KEYEVENTF_EXTENDEDKEY;
+
             return new INPUT
             {
                 type = INPUT_KEYBOARD,
@@ -310,5 +332,6 @@ namespace VRemoteClient.Services
                 }
             };
         }
+
     }
 }
