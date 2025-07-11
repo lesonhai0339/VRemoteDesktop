@@ -280,19 +280,61 @@ namespace VRemoteClient.Services
             INPUT[] inputs = new INPUT[4];
 
             uint modFlags = KEYEVENTF_EXTENDEDKEY;
-
+            ushort modifierVK = GetModifierVirtualKey(modifier);
+            uint modifierFlags = GetModifierFlags(modifier);
 
             // Modifier down
-            inputs[0] = CreateKeyInput((ushort)modifier, modFlags);
+            inputs[0] = CreateKeyInput((ushort)modifier, modifierFlags);
             // Key down
             inputs[1] = CreateKeyInput((ushort)key, 0);
             // Key up
             inputs[2] = CreateKeyInput((ushort)key, KEYEVENTF_KEYUP);
             // Modifier up
-            inputs[3] = CreateKeyInput((ushort)modifier, KEYEVENTF_KEYUP | modFlags);
+            inputs[3] = CreateKeyInput((ushort)modifier, KEYEVENTF_KEYUP | modifierFlags);
 
             uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
             return status;
+        }
+        private static ushort GetModifierVirtualKey(Keys modifier)
+        {
+            switch (modifier)
+            {
+                case Keys.Control:
+                case Keys.LControlKey:
+                    return 0x11; // VK_CONTROL
+                case Keys.RControlKey:
+                    return 0x11; // VK_CONTROL
+                case Keys.Alt:
+                case Keys.LMenu:
+                    return 0x12; // VK_MENU
+                case Keys.RMenu:
+                    return 0x12; // VK_MENU
+                case Keys.Shift:
+                case Keys.LShiftKey:
+                    return 0x10; // VK_SHIFT
+                case Keys.RShiftKey:
+                    return 0x10; // VK_SHIFT
+                case Keys.LWin:
+                    return 0x5B; // VK_LWIN
+                case Keys.RWin:
+                    return 0x5C; // VK_RWIN
+                default:
+                    return (ushort)modifier;
+            }
+        }
+
+        private static uint GetModifierFlags(Keys modifier)
+        {
+            switch (modifier)
+            {
+                case Keys.RControlKey:
+                case Keys.RMenu:
+                case Keys.RShiftKey:
+                case Keys.RWin:
+                    return KEYEVENTF_EXTENDEDKEY;
+                default:
+                    return 0;
+            }
         }
 
         private static INPUT CreateKeyInput(ushort key, uint flags)
