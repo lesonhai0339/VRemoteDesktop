@@ -314,7 +314,7 @@ namespace VRemoteClient.Services
         private static INPUT CreateKeyInput(ushort key, uint flags)
         {
             if (IsExtendedKey(key))
-                flags |= KEYEVENTF_EXTENDEDKEY;
+                flags |= KEYEVENTF_EXTENDEDKEY; // equivalent with flags = flags | KEYEVENTF_EXTENDEDKEY;
 
             return new INPUT
             {
