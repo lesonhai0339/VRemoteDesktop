@@ -274,48 +274,44 @@ namespace VRemoteClient.Services
             uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
             return status;
         }
-
+        private static ushort GetCorrectVirtualKey(Keys key)
+        {
+            return key switch
+            {
+                // Control keys
+                Keys.Control or Keys.LControlKey or Keys.RControlKey => 0x11,
+                // Alt keys  
+                Keys.Alt or Keys.LMenu or Keys.RMenu => 0x12,
+                // Shift keys
+                Keys.Shift or Keys.LShiftKey or Keys.RShiftKey => 0x10,
+                // Windows keys
+                Keys.LWin => 0x5B,
+                Keys.RWin => 0x5C,
+                // All other keys
+                _ => (ushort)key
+            };
+        }
         public static uint SendKeyCombo(Keys modifier, Keys key)
         {
             INPUT[] inputs = new INPUT[4];
+            ushort modifierVK = GetCorrectVirtualKey(modifier);
+            ushort keyVK = GetCorrectVirtualKey(key);
 
             // Modifier down
-            inputs[0] = CreateKeyInput((ushort)modifier, 0);
+            inputs[0] = CreateKeyInput(modifierVK, 0);
             // Key down
-            inputs[1] = CreateKeyInput((ushort)key, 0);
+            inputs[1] = CreateKeyInput(keyVK, 0);
             // Key up
-            inputs[2] = CreateKeyInput((ushort)key, KEYEVENTF_KEYUP);
+            inputs[2] = CreateKeyInput(keyVK, KEYEVENTF_KEYUP);
             // Modifier up
-            inputs[3] = CreateKeyInput((ushort)modifier, KEYEVENTF_KEYUP);
+            inputs[3] = CreateKeyInput(modifierVK, KEYEVENTF_KEYUP);
 
             uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
             return status;
         }
-        private static bool IsExtendedKey(ushort vk)
-        {
-            return vk == (ushort)Keys.RControlKey ||
-                   vk == (ushort)Keys.RMenu ||
-                   vk == (ushort)Keys.LWin ||
-                   vk == (ushort)Keys.RWin ||
-                   vk == (ushort)Keys.ControlKey ||
-                   vk == (ushort)Keys.Menu ||
-                   vk == (ushort)Keys.Insert ||
-                   vk == (ushort)Keys.Delete ||
-                   vk == (ushort)Keys.Home ||
-                   vk == (ushort)Keys.End ||
-                   vk == (ushort)Keys.PageUp ||
-                   vk == (ushort)Keys.PageDown ||
-                   vk == (ushort)Keys.Up ||
-                   vk == (ushort)Keys.Down ||
-                   vk == (ushort)Keys.Left ||
-                   vk == (ushort)Keys.Right;
-        }
 
         private static INPUT CreateKeyInput(ushort key, uint flags)
         {
-            if (IsExtendedKey(key))
-                flags |= KEYEVENTF_EXTENDEDKEY; // equivalent with flags = flags | KEYEVENTF_EXTENDEDKEY;
-
             return new INPUT
             {
                 type = INPUT_KEYBOARD,
@@ -332,6 +328,5 @@ namespace VRemoteClient.Services
                 }
             };
         }
-
     }
 }
