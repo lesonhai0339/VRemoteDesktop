@@ -187,7 +187,7 @@ namespace VRemoteClient.Services
             return key;
         }
     }
-    public class KeyboardSimulator
+    public static class KeyboardSimulator
     {
 
         [DllImport("user32.dll", SetLastError = true)]
@@ -233,7 +233,7 @@ namespace VRemoteClient.Services
         private const int INPUT_KEYBOARD = 1;
         private const uint KEYEVENTF_KEYUP = 0x0002;
 
-        public uint SendKey(Keys key)
+        public static uint SendKey(Keys key)
         {
             INPUT[] inputs = new INPUT[2];
 
@@ -275,7 +275,7 @@ namespace VRemoteClient.Services
             return status;
         }
 
-        public uint SendKeyCombo(Keys modifier, Keys key)
+        public static uint SendKeyCombo(Keys modifier, Keys key)
         {
             INPUT[] inputs = new INPUT[4];
 
@@ -292,7 +292,7 @@ namespace VRemoteClient.Services
             return status;
         }
 
-        private INPUT CreateKeyInput(ushort key, uint flags)
+        private static INPUT CreateKeyInput(ushort key, uint flags)
         {
             return new INPUT
             {

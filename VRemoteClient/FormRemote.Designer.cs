@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows.Forms;
 
 namespace VRemoteClient
 {
@@ -52,10 +53,13 @@ namespace VRemoteClient
             this.Text = "FormRemote";
             this.Load += new System.EventHandler(this.FormRemote_Load);
             this.Shown += new System.EventHandler(this.FormRemote_Shown);
+            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FormRemote_FormClosed);
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox)).EndInit();
             this.ResumeLayout(false);
 
         }
+
+
 
         #endregion
 

@@ -7,6 +7,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -109,7 +110,10 @@ namespace VRemoteClient
             uint pId = (uint)Process.GetCurrentProcess().Id;
             KeyboardHook.Start(pId);
         }
-
+        private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
+        {
+            KeyboardHook.Stop();
+        }
         private void InitializeGraphicsSettings()
         {
             //config graphics

@@ -273,6 +273,14 @@ namespace VRemoteClient.Services
                 Keys keyCode = (Keys)int.Parse(keyboards[2]);
                 KeyState keyType = (KeyState)int.Parse(keyboards[3]);
                 Console.WriteLine($"Keyboard received, Key: {keyCode} - Modifier: {keyModifier} - Type: {keyType}");
+                if(keyModifier != Keys.None)
+                {
+                    KeyboardSimulator.SendKeyCombo(keyModifier, keyCode);
+                }
+                else
+                {
+                    KeyboardSimulator.SendKey(keyCode);
+                }
             }
             catch(Exception ex)
             {
