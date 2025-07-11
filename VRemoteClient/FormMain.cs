@@ -25,6 +25,8 @@ namespace VRemoteClient
         private ClientInfo _clientInfo;
         private RemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
+        private KeyboardHook _keyboardHook;
+        private GlobalMouseHook _mouseHook;
         public FormMain()
         {
             InitializeComponent();
@@ -40,6 +42,31 @@ namespace VRemoteClient
             this.Icon = new Icon(@"Resources\logo.ico");
             this.txtOwnerId.Text = Me.Id;
             this.txtOwnerPassword.Text = Me.Password;
+
+
+
+            _keyboardHook = new KeyboardHook();
+            _keyboardHook.KeyPressed += KeyboardEvent;
+            _keyboardHook.Start((uint)Process.GetCurrentProcess().Id);
+            _mouseHook = new GlobalMouseHook();
+            _mouseHook.MouseMove += MouseMoveEvent;
+            _mouseHook.MouseClick += MouseClickEvent;
+            _mouseHook.StartHook((uint)Process.GetCurrentProcess().Id);
+        }
+
+        private void MouseClickEvent(object sender, GlobalMouseHook.MouseEventArgs e)
+        {
+            Console.WriteLine($"Click detected: {e.Button} {e.Action} at ({e.X}, {e.Y})");
+        }
+
+        private void MouseMoveEvent(object sender, GlobalMouseHook.MouseEventArgs e)
+        {
+            Console.WriteLine($"Move detected: {e.Button} {e.Action} at ({e.X}, {e.Y})");
+        }
+
+        private void KeyboardEvent(object sender, KeyMessageEventArgs e)
+        {
+            Console.WriteLine($"Key Pressed: {e.KeyModifier} - {e.KeyCode} {e.KeyType}");
         }
 
         #region Properties
@@ -82,9 +109,6 @@ namespace VRemoteClient
         private void FormMain_Shown(object sender, EventArgs e)
         {
             ConnectToServer();
-            IntPtr myFormHandle = this.Handle;
-            uint myFormProcessId = (uint)Process.GetCurrentProcess().Id;
-
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
         {

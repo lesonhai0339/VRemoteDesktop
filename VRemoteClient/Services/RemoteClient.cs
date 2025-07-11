@@ -27,7 +27,7 @@ namespace VRemoteClient.Services
         private Socket _socket;
         private System.Threading.Timer _timer;
         private ClientInfo _me;
-        private VScreen _vscreen;
+        private ScreenHook _vscreen;
 
         public delegate void ConnectSckEvent();
         public delegate void LoginEvent(bool flag);
@@ -392,7 +392,7 @@ namespace VRemoteClient.Services
                         connectionInfo.Receiver = _me;
                         if(_vscreen == null)
                         {
-                            _vscreen = new VScreen(this);
+                            _vscreen = new ScreenHook(this);
                         }
                     }
                     else if(partnerInfo[0].ToLower() == "1")

@@ -23,13 +23,13 @@ namespace VRemoteClient
         private readonly object _screenLock = new object();
         private RemoteClient _remoteClient;
         private ConnectionInfo _info;
-        private VKeyboardHook _keyboardHook;
+        private KeyboardHook _keyboardHook;
         public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
         {
             InitializeComponent();
             Client = remoteClient;
             _info = info;
-            KeyboardHook = new VKeyboardHook();
+            KeyboardHook = new KeyboardHook();
 
             Text = _info.Receiver.Id.Trim();
             //Icon = new Icon("Resources/logo.ico");
@@ -70,7 +70,7 @@ namespace VRemoteClient
                 }
             }
         }
-        public VKeyboardHook KeyboardHook
+        public KeyboardHook KeyboardHook
         {
                        get => _keyboardHook;
             set

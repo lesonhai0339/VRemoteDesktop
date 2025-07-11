@@ -14,7 +14,7 @@ using VRemoteClient.Models.Enums;
 
 namespace VRemoteClient.Services
 {
-    public class VScreen
+    public class ScreenHook
     {
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
@@ -24,7 +24,7 @@ namespace VRemoteClient.Services
 
         private ManualResetEvent _resetEvent;
         private readonly object _lock = new object(); // For thread safety
-        public VScreen(RemoteClient client) 
+        public ScreenHook(RemoteClient client) 
         {
             RemoteClient = client;
             _resetEvent = new ManualResetEvent(false);

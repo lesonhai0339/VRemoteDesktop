@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
+using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services
 {
@@ -38,7 +39,7 @@ namespace VRemoteClient.Services
         public Keys KeyCode { get; set; }
         public KeyState KeyType { get; set; }   
     }
-    public class VKeyboardHook
+    public class KeyboardHook
     {
 
         private const int WH_KEYBOARD_LL = 13;
@@ -48,38 +49,8 @@ namespace VRemoteClient.Services
         private const int VK_RCONTROL = 0xA3;  // Right Control
         private const int VK_SHIFT = 0x10;
         private const int VK_MENU = 0x12; // Alt
-        [DllImport("user32.dll")]
-        static extern short GetAsyncKeyState(int vKey);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr SetWindowsHookEx(int idHook,
-            LowLevelKeyboardProc lpfn, IntPtr hMod, uint dwThreadId);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        private static extern bool UnhookWindowsHookEx(IntPtr hhk);
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode,
-            IntPtr wParam, IntPtr lParam);
-
-        [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-        private static extern IntPtr GetModuleHandle(string lpModuleName);
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetForegroundWindow();
-
-        [DllImport("user32.dll")]
-        private static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-        [StructLayout(LayoutKind.Sequential)]
-        public struct KBDLLHOOKSTRUCT
-        {
-            public int vkCode;
-            public int scanCode;
-            public int flags;
-            public int time;
-            public IntPtr dwExtraInfo;
-        }
-        public VKeyboardHook() { }
+      
+        public KeyboardHook() { }
         private uint _targetProcessId;
         private IntPtr hookID = IntPtr.Zero;
         private LowLevelKeyboardProc proc;
@@ -96,7 +67,6 @@ namespace VRemoteClient.Services
         {
             UnhookWindowsHookEx(hookID);
         }
-
         private IntPtr SetHook(LowLevelKeyboardProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
@@ -106,9 +76,6 @@ namespace VRemoteClient.Services
                     GetModuleHandle(curModule.ModuleName), 0);
             }
         }
-
-        private delegate IntPtr LowLevelKeyboardProc(int nCode, IntPtr wParam, IntPtr lParam);
-
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0 && IsTargetAppFocused())
@@ -192,47 +159,6 @@ namespace VRemoteClient.Services
         private const int KEYEVENTF_EXTENDEDKEY = 0x0001; // Extended key flag
         private const int INPUT_KEYBOARD = 1;
         private const uint KEYEVENTF_KEYUP = 0x0002;
-
-
-        [DllImport("user32.dll", SetLastError = true)]
-        private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
-
-        [DllImport("user32.dll")]
-        private static extern IntPtr GetMessageExtraInfo();
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct INPUT
-        {
-            public int type;
-            public InputUnion u;
-        }
-
-        [StructLayout(LayoutKind.Explicit)]
-        public struct InputUnion
-        {
-            [FieldOffset(0)] public MOUSEINPUT mi;
-            [FieldOffset(0)] public KEYBDINPUT ki;
-        }
-
-        [StructLayout(LayoutKind.Sequential)]
-        public struct KEYBDINPUT
-        {
-            public ushort wVk;
-            public ushort wScan;
-            public uint dwFlags;
-            public uint time;
-            public IntPtr dwExtraInfo;
-        }
-        [StructLayout(LayoutKind.Sequential)]
-        public struct MOUSEINPUT
-        {
-            public int dx;
-            public int dy;
-            public uint mouseData;
-            public uint dwFlags;
-            public uint time;
-            public IntPtr dwExtraInfo;
-        }
         public static uint SendKey(Keys key)
         {
             INPUT[] inputs = new INPUT[2];
