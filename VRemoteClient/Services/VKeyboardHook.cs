@@ -189,6 +189,10 @@ namespace VRemoteClient.Services
     }
     public static class KeyboardSimulator
     {
+        private const int KEYEVENTF_EXTENDEDKEY = 0x0001; // Extended key flag
+        private const int INPUT_KEYBOARD = 1;
+        private const uint KEYEVENTF_KEYUP = 0x0002;
+
 
         [DllImport("user32.dll", SetLastError = true)]
         private static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
@@ -229,10 +233,6 @@ namespace VRemoteClient.Services
             public uint time;
             public IntPtr dwExtraInfo;
         }
-
-        private const int INPUT_KEYBOARD = 1;
-        private const uint KEYEVENTF_KEYUP = 0x0002;
-
         public static uint SendKey(Keys key)
         {
             INPUT[] inputs = new INPUT[2];
@@ -279,14 +279,17 @@ namespace VRemoteClient.Services
         {
             INPUT[] inputs = new INPUT[4];
 
+            uint modFlags = KEYEVENTF_EXTENDEDKEY;
+
+
             // Modifier down
-            inputs[0] = CreateKeyInput((ushort)modifier, 0);
+            inputs[0] = CreateKeyInput((ushort)modifier, modFlags);
             // Key down
             inputs[1] = CreateKeyInput((ushort)key, 0);
             // Key up
             inputs[2] = CreateKeyInput((ushort)key, KEYEVENTF_KEYUP);
             // Modifier up
-            inputs[3] = CreateKeyInput((ushort)modifier, KEYEVENTF_KEYUP);
+            inputs[3] = CreateKeyInput((ushort)modifier, KEYEVENTF_KEYUP | modFlags);
 
             uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
             return status;

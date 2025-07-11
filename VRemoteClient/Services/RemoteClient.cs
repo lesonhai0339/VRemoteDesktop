@@ -311,7 +311,6 @@ namespace VRemoteClient.Services
                 int offset = 0;
                 while(offset < chunks.Length)
                 {
-                    Console.WriteLine($"Cur offset: {offset} - data: {chunks.Length}");
                     int length = BitConverter.ToInt32(chunks, offset + 0);
                     int x = BitConverter.ToInt32(chunks, offset + 4);
                     int y = BitConverter.ToInt32(chunks, offset + 8);
@@ -319,7 +318,6 @@ namespace VRemoteClient.Services
                     int height = BitConverter.ToInt32(chunks, offset + 16);
                     byte[] chunk = new byte[length];
                     Buffer.BlockCopy(chunks, offset + 20, chunk, 0, length);
-                    //Console.WriteLine($"Received screen data: Length={length}, X={x}, Y={y}, Width={width}, Height={height}");
 
                     offset += length + 20 ;
                     blocks.Add(new ScreenBlock
@@ -329,7 +327,6 @@ namespace VRemoteClient.Services
                         Bytes = chunk
                     });
                 }
-                //Console.WriteLine("------------------------------------------------------------\n");
                 P2PChunksEvent p2pChunks = P2PChunksEventHandler;
                 if(p2pChunks != null)
                 {

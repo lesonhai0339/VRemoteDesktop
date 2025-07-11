@@ -177,8 +177,6 @@ namespace VRemoteClient
             if (blocks == null || blocks.Count == 0)
                 return;
 
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
             Rectangle dirtyRegion = blocks[0].Rectangle;
             lock (_screenLock)
             {
@@ -206,9 +204,6 @@ namespace VRemoteClient
                 this.BeginInvoke(new Action(() => vPictureBox.Invalidate(dirtyRegion)));
             else
                 vPictureBox.Invalidate(dirtyRegion);
-
-            stopwatch.Stop();
-            Console.WriteLine($"ChunksEvent processed {blocks.Count} blocks in {stopwatch.ElapsedMilliseconds} ms");
         }
         #endregion
         #region Event Handlers
