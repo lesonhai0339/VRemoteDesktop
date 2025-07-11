@@ -30,20 +30,20 @@ namespace VRemoteClient
             _info = info;
             KeyboardHook = new VKeyboardHook();
 
-            //Text = _info.Receiver.Id.Trim();
-            ////Icon = new Icon("Resources/logo.ico");
-            //this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            //this.MaximizeBox = false;
-            //this.StartPosition = FormStartPosition.CenterScreen;
-            //this.ClientSize = new Size(_info.Receiver.Width, _info.Receiver.Height);
+            Text = _info.Receiver.Id.Trim();
+            //Icon = new Icon("Resources/logo.ico");
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.StartPosition = FormStartPosition.CenterScreen;
+            this.ClientSize = new Size(_info.Receiver.Width, _info.Receiver.Height);
 
-            //// Create and configure PictureBox
-            //vPictureBox.Size = new Size(_info.Receiver.Width, _info.Receiver.Height);
-            //vPictureBox.Location = new Point(0, 0);
-            //vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
+            // Create and configure PictureBox
+            vPictureBox.Size = new Size(_info.Receiver.Width, _info.Receiver.Height);
+            vPictureBox.Location = new Point(0, 0);
+            vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
 
-            //KeyDown += KeyDownEventHandler;
-            //KeyUp += KeyUpEventHandler;
+            KeyDown += KeyDownEventHandler;
+            KeyUp += KeyUpEventHandler;
             MouseMove += MouseMoveEventHandler;
             MouseClick += MouseClickEventHandler;
             MouseWheel += MouseWheelEventHandler;

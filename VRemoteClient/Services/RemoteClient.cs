@@ -25,7 +25,7 @@ namespace VRemoteClient.Services
         private bool _isDisposed; 
 
         private Socket _socket;
-        private Timer _timer;
+        private System.Threading.Timer _timer;
         private ClientInfo _me;
         private VScreen _vscreen;
 
