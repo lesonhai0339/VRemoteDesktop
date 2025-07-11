@@ -274,7 +274,7 @@ namespace VRemoteClient.Services
             uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
             return status;
         }
-        private static ushort GetCorrectVirtualKey(Keys key)
+        private static ushort GetKeyValue(Keys key)
         {
             switch (key)
             {
@@ -310,8 +310,9 @@ namespace VRemoteClient.Services
         public static uint SendKeyCombo(Keys modifier, Keys key)
         {
             INPUT[] inputs = new INPUT[4];
-            ushort modifierVK = GetCorrectVirtualKey(modifier);
-            ushort keyVK = GetCorrectVirtualKey(key);
+
+            ushort keyVK = GetKeyValue(key);
+            ushort modifierVK = GetKeyValue(modifier);
 
             // Modifier down
             inputs[0] = CreateKeyInput(modifierVK, 0);
