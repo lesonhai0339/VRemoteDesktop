@@ -85,13 +85,21 @@ namespace VRemoteClient
                 }
             }
         }
-
-        private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
-        {
-            Console.WriteLine($"Command: {e.Command},Key Modifier: {e.KeyModifier}, Key Pressed: {e.KeyCode}, Type: {e.KeyType}");
-        }
         #endregion
         #region Methods
+        private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
+        {
+            string keyCommandString = new StringBuilder()
+                .Append((int)e.Command)
+                .Append("|")
+                .Append((int)e.KeyModifier)
+                .Append("|")
+                .Append((int)e.KeyCode)
+                .Append("|")
+                .Append((int)e.KeyType).ToString();
+            Console.WriteLine(keyCommandString);
+            Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(keyCommandString));
+        }
         private void FormRemote_Load(object sender, EventArgs e)
         {
 

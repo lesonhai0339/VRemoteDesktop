@@ -7,8 +7,10 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using static VRemoteClient.Models.Enums.KeyboardEnums;
 
 namespace VRemoteClient.Services
 {
@@ -234,7 +236,7 @@ namespace VRemoteClient.Services
                     ProcessChunks(data);
                     break;
                 case CommandType.Keyboard:
-                    Console.WriteLine("Key receive");
+                    ProcessKeyboard(data);
                     break;
                 case CommandType.Error:
                     break;
@@ -259,7 +261,23 @@ namespace VRemoteClient.Services
         }
         private void ProcessKeyboard(byte[] data)
         {
+            string[] keyboards = Encoding.ASCII.GetString(data, 1, data.Length - 1).Trim().Split('|');
+            if(keyboards.Length != 4)
+            {
+                Log.ForContext("FileName", "KeyboardHook").Error("Number of elements not exaclly");
+            }
+            try
+            {
+                IntPtr ptr = (IntPtr)int.Parse(keyboards[0]);
+                Keys keyModifier = (Keys)int.Parse(keyboards[1]);
+                Keys keyCode = (Keys)int.Parse(keyboards[2]);
+                KeyState keyType = (KeyState)int.Parse(keyboards[3]);
+                Console.WriteLine($"Keyboard received, Key: {keyCode} - Modifier: {keyModifier} - Type: {keyType}");
+            }
+            catch(Exception ex)
+            {
 
+            }
         }
         private void ProcessScreen(byte[] data)
         {
