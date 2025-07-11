@@ -11,8 +11,16 @@ using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services
 {
+    public class CustomMouseEventArgs : EventArgs
+    {
+        public int X { get; set; }
+        public int Y { get; set; }
+        public string Button { get; set; }
+        public string Action { get; set; }
+    }
     public class GlobalMouseHook
     {
+        //for mouse hook
         private const int WH_MOUSE_LL = 14;
         private const int WM_LBUTTONDOWN = 0x0201;
         private const int WM_LBUTTONUP = 0x0202;
@@ -20,19 +28,26 @@ namespace VRemoteClient.Services
         private const int WM_RBUTTONUP = 0x0205;
         private const int WM_MOUSEMOVE = 0x0200;
         private const int WM_MOUSEWHEEL = 0x020A;
+
+        //for windows api
+        private const int INPUT_MOUSE = 0;
+        const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
+        const uint MOUSEEVENTF_LEFTUP = 0x0004;
+        const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
+        const uint MOUSEEVENTF_RIGHTUP = 0x0010;
+        const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
+        const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
+        const uint MOUSEEVENTF_WHEEL = 0x0800;
+        private const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
+
+
         private LowLevelMouseProc _proc;
         private IntPtr _hookID = IntPtr.Zero;
         private uint _targetProcessId;
 
-        public class MouseEventArgs : EventArgs
-        {
-            public int X { get; set; }
-            public int Y { get; set; }
-            public string Button { get; set; }
-            public string Action { get; set; }
-        }
-        public event EventHandler<MouseEventArgs> MouseClick;
-        public event EventHandler<MouseEventArgs> MouseMove;
+      
+        public event EventHandler<CustomMouseEventArgs> MouseClick;
+        public event EventHandler<CustomMouseEventArgs> MouseMove;
         public GlobalMouseHook()
         {
             _proc = HookCallback;
@@ -115,7 +130,7 @@ namespace VRemoteClient.Services
                 }
 
                 // Tạo event args
-                var eventArgs = new MouseEventArgs
+                var eventArgs = new CustomMouseEventArgs
                 {
                     X = hookStruct.pt.x,
                     Y = hookStruct.pt.y,
@@ -131,11 +146,79 @@ namespace VRemoteClient.Services
                 else if (action == "Down" || action == "Up")
                 {
                     MouseClick?.Invoke(this, eventArgs);
-                    Console.WriteLine($"Mouse {button} {action} at ({hookStruct.pt.x}, {hookStruct.pt.y})");
                 }
             }
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
+        }
+        public static string MouseToString(string button, string action, int x, int y)
+        {
+            return new StringBuilder().Append(button).Append("|").Append(action).Append("|").Append(x).Append("|").Append(y).ToString();
+        }
+        public bool MouseEvent(string button, string action, int x, int y)
+        {
+            bool flag = false;
+            switch (button)
+            {
+                case "Left":
+                    flag = MousePress(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
+                    break;
+                //case "Right":
+                //    flag = MousePress(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
+                //    if (flag)
+                //    {
+                //        flag = MousePress(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
+                //    }
+                //    break;
+                case "Right":
+                    flag = MousePress(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //middle mouse click
+                    break;
+                //case "None":
+                //    //for mouse move(chưa làm)
+                //    if(action == "Move")
+                //        flag = MousePress(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //right mouse click
+                //    break;
+                case "Wheel":
+                    flag = MousePress(MOUSEEVENTF_WHEEL, MOUSEEVENTF_WHEEL, x, y); //mouse wheel event
+                    break;
+                default:
+                    break;
+            }
+            return flag;
+        }
+        private bool MousePress(uint mouseDown, uint mouseUp, int x, int y)
+        {
+            bool cusorFlag = SetCursorPos(x, y); // Set the cursor position to the specified coordinates
+            if (!cusorFlag) return false;
+
+            ////or you do not want use SetcursorPos, you can use this code
+            //int normalizedX = x * 65535 / Screen.PrimaryScreen.Bounds.Width;
+            //int normalizedY = y * 65535 / Screen.PrimaryScreen.Bounds.Height;
+            ////and set 
+            //inputs[0].u.mi.dx = normalizedX;
+            //inputs[0].u.mi.dy = normalizedY;
+
+            INPUT[] inputs = new INPUT[2];
+
+            inputs[0].type = INPUT_MOUSE;
+            inputs[0].u.mi.dwFlags = mouseDown | MOUSEEVENTF_ABSOLUTE;
+            inputs[0].u.mi.dx = 0;
+            inputs[0].u.mi.dy = 0;
+
+            inputs[1].type = INPUT_MOUSE;
+            inputs[1].u.mi.dwFlags = mouseUp | MOUSEEVENTF_ABSOLUTE;
+            inputs[1].u.mi.dx = 0;
+            inputs[1].u.mi.dy = 0;
+
+            uint flag = SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+            if (flag > 0)
+            {
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
     /*    public static class MouseHook

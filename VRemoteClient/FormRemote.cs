@@ -33,23 +33,17 @@ namespace VRemoteClient
             KeyboardHook = new KeyboardHook();
             MouseHook = new GlobalMouseHook();
 
-            Text = _info.Receiver.Id.Trim();
-            //Icon = new Icon("Resources/logo.ico");
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.ClientSize = new Size(_info.Receiver.Width, _info.Receiver.Height);
+            //Text = _info.Receiver.Id.Trim();
+            ////Icon = new Icon("Resources/logo.ico");
+            //this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            //this.MaximizeBox = false;
+            //this.StartPosition = FormStartPosition.CenterScreen;
+            //this.ClientSize = new Size(_info.Receiver.Width, _info.Receiver.Height);
 
-            // Create and configure PictureBox
-            vPictureBox.Size = new Size(_info.Receiver.Width, _info.Receiver.Height);
-            vPictureBox.Location = new Point(0, 0);
-            vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
-
-            KeyDown += KeyDownEventHandler;
-            KeyUp += KeyUpEventHandler;
-            MouseMove += MouseMoveEventHandler;
-            MouseClick += MouseClickEventHandler;
-            MouseWheel += MouseWheelEventHandler;
+            //// Create and configure PictureBox
+            //vPictureBox.Size = new Size(_info.Receiver.Width, _info.Receiver.Height);
+            //vPictureBox.Location = new Point(0, 0);
+            //vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
         }
         #region Properties
         public RemoteClient Client
@@ -113,13 +107,13 @@ namespace VRemoteClient
 
         #endregion
         #region Methods
-        private void MouseMoveEvent(object sender, GlobalMouseHook.MouseEventArgs e)
+        private void MouseMoveEvent(object sender, CustomMouseEventArgs e)
         {
-            throw new NotImplementedException();
+            Console.WriteLine($"Mouse Moved: {e.Button} at ({e.X}, {e.Y})");
         }
-        private void MouseClickEvent(object sender, GlobalMouseHook.MouseEventArgs e)
+        private void MouseClickEvent(object sender, CustomMouseEventArgs e)
         {
-            throw new NotImplementedException();
+            Console.WriteLine($"Mouse Clicked: {e.Button} at ({e.X}, {e.Y})");
         }
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
@@ -132,7 +126,7 @@ namespace VRemoteClient
                 .Append("|")
                 .Append((int)e.KeyType).ToString();
             Console.WriteLine(keyCommandString);
-            Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(keyCommandString));
+            //Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(keyCommandString));
         }
         private void FormRemote_Load(object sender, EventArgs e)
         {

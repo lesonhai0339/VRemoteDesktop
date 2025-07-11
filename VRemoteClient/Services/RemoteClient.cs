@@ -28,6 +28,7 @@ namespace VRemoteClient.Services
         private System.Threading.Timer _timer;
         private ClientInfo _me;
         private ScreenHook _vscreen;
+        private GlobalMouseHook _mouseHook;
 
         public delegate void ConnectSckEvent();
         public delegate void LoginEvent(bool flag);
@@ -53,6 +54,7 @@ namespace VRemoteClient.Services
             _isP2PConnected = false;
             _isDisposed = false;
             _cancellationToken = new CancellationTokenSource();
+            _mouseHook = new GlobalMouseHook();
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
             _me = me;
         }
@@ -238,6 +240,9 @@ namespace VRemoteClient.Services
                 case CommandType.Keyboard:
                     ProcessKeyboard(data);
                     break;
+                case CommandType.Mouse:
+                    ProcessMouse(data);
+                    break;
                 case CommandType.Error:
                     break;
                 case CommandType.LoginFailed:
@@ -259,15 +264,43 @@ namespace VRemoteClient.Services
                     break;
             }
         }
-        private void ProcessKeyboard(byte[] data)
+
+        private void ProcessMouse(byte[] data)
         {
-            string[] keyboards = Encoding.ASCII.GetString(data, 1, data.Length - 1).Trim().Split('|');
-            if(keyboards.Length != 4)
-            {
-                Log.ForContext("FileName", "KeyboardHook").Error("Number of elements not exaclly");
-            }
             try
             {
+                string[] mouseData = Encoding.ASCII.GetString(data, 1, data.Length - 1).Trim().Split('|');
+                if (mouseData.Length != 4)
+                {
+                    Log.ForContext("FileName", "MouseHook").Error("Number of elements not exaclly");
+                    return;
+                }
+                string mouseButton = mouseData[0];
+                string mouseAction = mouseData[1];
+                int x = int.Parse(mouseData[2]);
+                int y = int.Parse(mouseData[3]);
+                bool flag = _mouseHook.MouseEvent(mouseButton, mouseAction, x, y);
+                if (!flag)
+                {
+                    Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing mouse data");
+            }
+        }
+
+        private void ProcessKeyboard(byte[] data)
+        {
+            try
+            {
+                string[] keyboards = Encoding.ASCII.GetString(data, 1, data.Length - 1).Trim().Split('|');
+                if (keyboards.Length != 4)
+                {
+                    Log.ForContext("FileName", "KeyboardHook").Error("Number of elements not exaclly");
+                }
                 IntPtr ptr = (IntPtr)int.Parse(keyboards[0]);
                 Keys keyModifier = (Keys)int.Parse(keyboards[1]);
                 Keys keyCode = (Keys)int.Parse(keyboards[2]);
@@ -287,17 +320,24 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing keyboard data");
             }
         }
         private void ProcessScreen(byte[] data)
         {
-            byte[] screenData = new byte[data.Length - 1];
-            Buffer.BlockCopy(data, 1, screenData, 0, data.Length - 1);
-            P2PScreenEvent p2pScreen = P2PScreenEventHandler;
-            if (p2pScreen != null)
+            try
             {
-                p2pScreen(screenData);
+                byte[] screenData = new byte[data.Length - 1];
+                Buffer.BlockCopy(data, 1, screenData, 0, data.Length - 1);
+                P2PScreenEvent p2pScreen = P2PScreenEventHandler;
+                if (p2pScreen != null)
+                {
+                    p2pScreen(screenData);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing screen data");
             }
         }
         private void ProcessChunks(byte[] data)
@@ -338,7 +378,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Console.WriteLine(ex.Message);
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing chunks data");
             }
         }
         private void ProcessLogin(bool flag)
@@ -411,7 +451,7 @@ namespace VRemoteClient.Services
                     }
                     else
                     {
-                        Log.Error("P2PConnect error");
+                        Log.ForContext("FileName", "RemoteClient").Error("Invalid P2P connection data format: {Data}", Encoding.ASCII.GetString(data, 1, data.Length - 1));
                         p2pConnect(false, null);
                         return;
                     }
@@ -420,7 +460,7 @@ namespace VRemoteClient.Services
                 }
                 catch (Exception ex)
                 {
-                    Log.Error(ex, "P2PConnect error");
+                    Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing P2P connection data");
                     p2pConnect(false, null);
                 }
             }
@@ -439,7 +479,7 @@ namespace VRemoteClient.Services
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error when sending data to remote server");
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server with specific length");
             }
         }
         /// <summary>
@@ -469,7 +509,7 @@ namespace VRemoteClient.Services
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Error when sending data to remote server");
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
             }
         }
         public void Dispose()

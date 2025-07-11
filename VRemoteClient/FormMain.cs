@@ -43,30 +43,6 @@ namespace VRemoteClient
             this.txtOwnerId.Text = Me.Id;
             this.txtOwnerPassword.Text = Me.Password;
 
-
-
-            _keyboardHook = new KeyboardHook();
-            _keyboardHook.KeyPressed += KeyboardEvent;
-            _keyboardHook.Start((uint)Process.GetCurrentProcess().Id);
-            _mouseHook = new GlobalMouseHook();
-            _mouseHook.MouseMove += MouseMoveEvent;
-            _mouseHook.MouseClick += MouseClickEvent;
-            _mouseHook.StartHook((uint)Process.GetCurrentProcess().Id);
-        }
-
-        private void MouseClickEvent(object sender, GlobalMouseHook.MouseEventArgs e)
-        {
-            Console.WriteLine($"Click detected: {e.Button} {e.Action} at ({e.X}, {e.Y})");
-        }
-
-        private void MouseMoveEvent(object sender, GlobalMouseHook.MouseEventArgs e)
-        {
-            Console.WriteLine($"Move detected: {e.Button} {e.Action} at ({e.X}, {e.Y})");
-        }
-
-        private void KeyboardEvent(object sender, KeyMessageEventArgs e)
-        {
-            Console.WriteLine($"Key Pressed: {e.KeyModifier} - {e.KeyCode} {e.KeyType}");
         }
 
         #region Properties
