@@ -276,20 +276,36 @@ namespace VRemoteClient.Services
         }
         private static ushort GetCorrectVirtualKey(Keys key)
         {
-            return key switch
+            switch (key)
             {
                 // Control keys
-                Keys.Control or Keys.LControlKey or Keys.RControlKey => 0x11,
+                case Keys.Control:
+                case Keys.LControlKey:
+                case Keys.RControlKey:
+                    return 0x11;
+
                 // Alt keys  
-                Keys.Alt or Keys.LMenu or Keys.RMenu => 0x12,
+                case Keys.Alt:
+                case Keys.LMenu:
+                case Keys.RMenu:
+                    return 0x12;
+
                 // Shift keys
-                Keys.Shift or Keys.LShiftKey or Keys.RShiftKey => 0x10,
+                case Keys.Shift:
+                case Keys.LShiftKey:
+                case Keys.RShiftKey:
+                    return 0x10;
+
                 // Windows keys
-                Keys.LWin => 0x5B,
-                Keys.RWin => 0x5C,
+                case Keys.LWin:
+                    return 0x5B;
+                case Keys.RWin:
+                    return 0x5C;
+
                 // All other keys
-                _ => (ushort)key
-            };
+                default:
+                    return (ushort)key;
+            }
         }
         public static uint SendKeyCombo(Keys modifier, Keys key)
         {
