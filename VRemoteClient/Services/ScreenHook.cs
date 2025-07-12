@@ -104,7 +104,7 @@ namespace VRemoteClient.Services
                 }
                 //stopwatch.Stop();
                 //Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
-                Thread.Sleep(1000/4);
+                Thread.Sleep(1000/5);
             }
         }
         private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)
