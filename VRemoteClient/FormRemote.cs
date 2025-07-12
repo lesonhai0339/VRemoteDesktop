@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
+using VRemoteClient.Models.Enums;
 using VRemoteClient.Services;
 
 namespace VRemoteClient
@@ -48,6 +49,8 @@ namespace VRemoteClient
             //In form constructor or designer
             vPictureBox.Dock = DockStyle.Fill;
             vPictureBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            vPictureBox.MouseClick += MouseClickEventHandler;
+            vPictureBox.MouseWheel += MouseWheelEventHandler;
         }
         #region Properties
         public RemoteClient Client
@@ -96,47 +99,27 @@ namespace VRemoteClient
                 GlobalMouseHook mouseHook = _mouseHook;
                 if (mouseHook != null)
                 {
-                    mouseHook.MouseClick -= MouseClickEvent;
-                    mouseHook.MouseMove -= MouseMoveEvent;
+                    //mouseHook.MouseClick -= MouseClickEvent;
+                    //mouseHook.MouseMove -= MouseMoveEvent;
                 }
                 _mouseHook = value;
                 mouseHook = _mouseHook;
                 if (mouseHook != null)
                 {
-                    mouseHook.MouseClick += MouseClickEvent;
-                    mouseHook.MouseMove += MouseMoveEvent;
+                    //mouseHook.MouseClick += MouseClickEvent;
+                    //mouseHook.MouseMove += MouseMoveEvent;
                 }
             }
         }
 
         #endregion
         #region Methods
-        private void MouseMoveEvent(object sender, CustomMouseEventArgs e)
+/*        private void MouseMoveEvent(object sender, CustomMouseEventArgs e)
         {
-            //int pictureboxWidth = vPictureBox.ClientSize.Width;
-            //int pictureboxHeight = vPictureBox.ClientSize.Height;
-            //string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e.Button, e.Action, e.X, e.Y);
-            //Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
         private void MouseClickEvent(object sender, CustomMouseEventArgs e)
         {
-            // Convert tọa độ form sang tọa độ PictureBox
-            Point formPoint = new Point(e.X, e.Y);
-            Point pictureBoxPoint = vPictureBox.PointToClient(this.PointToScreen(formPoint));
-
-            // Kiểm tra có click trong PictureBox không
-            Rectangle pictureBoxBounds = new Rectangle(0, 0, vPictureBox.Width, vPictureBox.Height);
-            if (!pictureBoxBounds.Contains(pictureBoxPoint))
-            {
-                return; // Bỏ qua click ngoài PictureBox
-            }
-
-            int pictureboxWidth = vPictureBox.ClientSize.Width;
-            int pictureboxHeight = vPictureBox.ClientSize.Height;
-
-            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e.Button, e.Action, e.X, e.Y);
-            Client.Send(commandType: Models.Enums.CommandType.MouseClick, Encoding.ASCII.GetBytes(mouseCommandString));
-        }
+        }*/
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
             string keyCommandString = KeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
@@ -150,7 +133,8 @@ namespace VRemoteClient
         {
             uint pId = (uint)Process.GetCurrentProcess().Id;
             KeyboardHook.Start(pId);
-            MouseHook.StartHook(pId);
+            //MouseHook.StartHook(pId);
+
         }
         private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
         {
@@ -259,32 +243,40 @@ namespace VRemoteClient
         #region Event Handlers
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            //Console.WriteLine("Mouse Wheel Event Triggered");
+            int pictureboxWidth = vPictureBox.ClientSize.Width;
+            int pictureboxHeight = vPictureBox.ClientSize.Height;
+            MouseMessage button = MouseMessage.WM_MOUSEHWHEEL;
+            MouseType action = MouseType.None;
+            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, button, action, e.X, e.Y);
+            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 
         private void MouseClickEventHandler(object sender, MouseEventArgs e)
         {
-            //Console.WriteLine("Mouse Click Event Triggered");
+            int pictureboxWidth = vPictureBox.ClientSize.Width;
+            int pictureboxHeight = vPictureBox.ClientSize.Height;
+            MouseMessage button= MouseMessage.None;
+            MouseType action = MouseType.None;
+            if (e.Button == MouseButtons.Left)
+            {
+                button = MouseMessage.WM_LBUTTONDOWN;
+                action = MouseType.Down;
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                button = MouseMessage.WM_RBUTTONDOWN;
+                action = MouseType.Down;
+            }
+            else if (e.Button == MouseButtons.Middle)
+            {
+                button = MouseMessage.WM_MBUTTONDOWN;
+                action = MouseType.Down;
+            }
+            if (button == MouseMessage.None || action == MouseType.None) return;
+            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, button, action, e.X, e.Y);
+            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 
-        private void MouseMoveEventHandler(object sender, MouseEventArgs e)
-        {
-            //Console.WriteLine("Mouse Move Event Triggered");
-        }
-
-        private void KeyUpEventHandler(object sender, KeyEventArgs e)
-        {
-            //string command =  string.Format("KeyUp:{0}", e.KeyCode.ToString());
-            //Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
-            //Console.WriteLine("Key Up Event Triggered: " + e.KeyCode.ToString());
-        }
-
-        private void KeyDownEventHandler(object sender, KeyEventArgs e)
-        {
-            //string command = string.Format("KeyDown:{0}", e.KeyCode.ToString());
-            //Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(command));
-            //Console.WriteLine("Key Down Event Triggered: " + e.KeyCode.ToString());
-        }
         #endregion
     }
 }

@@ -185,7 +185,7 @@ namespace VRemoteClient.Services
                     break;
                 // mouse wheel event
                 case MouseMessage.WM_MOUSEWHEEL:
-                    flag = MouseWheel(scales.Item1, scales.Item2, x, y, MOUSEEVENTF_WHEEL);
+                    flag = MouseWheel(scales.Item1,scales.Item2, x, y, MOUSEEVENTF_WHEEL);
                     break;
                 default:
                     break;
