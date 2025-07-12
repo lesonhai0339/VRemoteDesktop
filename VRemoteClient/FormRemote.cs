@@ -113,10 +113,10 @@ namespace VRemoteClient
         #region Methods
         private void MouseMoveEvent(object sender, CustomMouseEventArgs e)
         {
-            int pictureboxWidth = vPictureBox.ClientSize.Width;
-            int pictureboxHeight = vPictureBox.ClientSize.Height;
-            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e.Button, e.Action, e.X, e.Y);
-            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
+            //int pictureboxWidth = vPictureBox.ClientSize.Width;
+            //int pictureboxHeight = vPictureBox.ClientSize.Height;
+            //string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e.Button, e.Action, e.X, e.Y);
+            //Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
         private void MouseClickEvent(object sender, CustomMouseEventArgs e)
         {

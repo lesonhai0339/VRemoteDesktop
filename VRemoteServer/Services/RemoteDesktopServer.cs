@@ -65,7 +65,8 @@ namespace VRemoteServer.Services
                             await P2PDataSend(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Keyboard:
-                        case Enums.CommandType.Mouse:
+                        case Enums.CommandType.MouseClick:
+                        case Enums.CommandType.MouseMove:
                             await P2PCommand(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Ack:
