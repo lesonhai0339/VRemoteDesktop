@@ -1,4 +1,4 @@
-﻿using Serilog;
+﻿ using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -241,10 +241,10 @@ namespace VRemoteClient.Services
                     ProcessKeyboard(data);
                     break;
                 case CommandType.MouseClick:
-                    ProcessMouse(0, data);
+                    ProcessMouse(data);
                     break;
                 case CommandType.MouseMove:
-                    ProcessMouse(1, data);
+                    ProcessMouse(data);
                     break;
                 case CommandType.Error:
                     break;
@@ -272,7 +272,7 @@ namespace VRemoteClient.Services
         /// </summary>
         /// <param name="type"></param>
         /// <param name="data"></param>
-        private void ProcessMouse(int type ,byte[] data)
+        private void ProcessMouse(byte[] data)
         {
             try
             {
