@@ -146,8 +146,11 @@ namespace VRemoteClient.Services
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
-        public string MouseEventToString(int width, int height, System.Windows.Forms.MouseEventArgs e)
+        public string MouseEventToString(string mouseType ,int width, int height, System.Windows.Forms.MouseEventArgs e)
         {
+            if(mouseType == "wheel")
+                return MouseEventToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.None, e.X, e.Y);
+
             MouseMessage button = MouseMessage.None;
             MouseType action = MouseType.None;
             if (e.Button == MouseButtons.Left)

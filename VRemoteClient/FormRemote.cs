@@ -246,9 +246,7 @@ namespace VRemoteClient
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
-            MouseMessage button = MouseMessage.WM_MOUSEWHEEL;
-            MouseType action = MouseType.None;
-            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e);
+            string mouseCommandString = MouseHook.MouseEventToString("wheel", pictureboxWidth, pictureboxHeight, e);
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 
@@ -256,14 +254,14 @@ namespace VRemoteClient
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
-            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e);
+            string mouseCommandString = MouseHook.MouseEventToString("", pictureboxWidth, pictureboxHeight, e);
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
         private void MouseClickEventHandler(object sender, MouseEventArgs e)
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
-            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e);
+            string mouseCommandString = MouseHook.MouseEventToString("", pictureboxWidth, pictureboxHeight, e);
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 
