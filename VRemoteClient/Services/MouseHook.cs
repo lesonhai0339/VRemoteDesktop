@@ -158,40 +158,43 @@ namespace VRemoteClient.Services
                 .Append(x).Append("|")
                 .Append(y).ToString();
         }
-        public bool MouseEvent(string button, string action, int x, int y)
+        private Tuple<float, float> CaculateMouseCorrdinate(int senderWidth, int senderHeight, int meWidth, int meHeight)
         {
+            float scaleX = (float)meWidth / senderWidth;
+            float scaleY = (float)meHeight / senderHeight;
+            return new Tuple<float, float>(item1: scaleX, item2: scaleY);
+        }
+        public bool MouseEvent(int senderWidth, int senderHeight, int meWidth, int meHeight, MouseMessage button, MouseType action, int x, int y)
+        {
+            Tuple<float, float> scales = CaculateMouseCorrdinate(senderWidth, senderHeight, meWidth, meHeight);
             bool flag = false;
             switch (button)
             {
-                case "Left":
-                    flag = MousePress(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
+                case MouseMessage.WM_LBUTTONDOWN:
+                    flag = MousePress(scales.Item1, scales.Item2 ,MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
-                //case "Right":
-                //    flag = MousePress(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
-                //    if (flag)
-                //    {
-                //        flag = MousePress(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
-                //    }
-                //    break;
-                case "Right":
-                    flag = MousePress(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //middle mouse click
+                // middle mouse click
+                case MouseMessage.WM_MBUTTONDOWN:
+                    flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, x, y); //left mouse click
                     break;
-                //case "None":
-                //    //for mouse move(chưa làm)
-                //    if(action == "Move")
-                //        flag = MousePress(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //right mouse click
-                //    break;
-                case "Wheel":
-                    flag = MousePress(MOUSEEVENTF_WHEEL, MOUSEEVENTF_WHEEL, x, y); //mouse wheel event
+                // right mouse click
+                case MouseMessage.WM_RBUTTONDOWN:
+                    flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //left mouse click
+                    break;
+                // mouse wheel event
+                case MouseMessage.WM_MOUSEWHEEL:
+                    flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_WHEEL, MOUSEEVENTF_WHEEL, x, y); //left mouse click
                     break;
                 default:
                     break;
             }
             return flag;
         }
-        private bool MousePress(uint mouseDown, uint mouseUp, int x, int y)
+        private bool MousePress(float scaleX, float scaleY,uint mouseDown, uint mouseUp, int x, int y)
         {
-            bool cusorFlag = SetCursorPos(x, y); // Set the cursor position to the specified coordinates
+            int pointX = (int)Math.Round(scaleX * x);
+            int pointY =  (int)Math.Round(scaleY * y);
+            bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
             if (!cusorFlag) return false;
 
             ////or you do not want use SetcursorPos, you can use this code

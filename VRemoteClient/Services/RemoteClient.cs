@@ -284,11 +284,13 @@ namespace VRemoteClient.Services
                 }
                 int senderSceenWidth = int.Parse(mouseData[0]);
                 int senderScreenHeight = int.Parse(mouseData[1]);
-                MouseMessage x = (MouseMessage)int.Parse(mouseData[2]);
-                MouseType y = (MouseType)int.Parse(mouseData[3]);
+                int receiverScreenWidth = _me.Width;
+                int receiverScreenHeight = _me.Height;
+                MouseMessage button = (MouseMessage)int.Parse(mouseData[2]);
+                MouseType action = (MouseType)int.Parse(mouseData[3]);
                 int mouseX = int.Parse(mouseData[4]);
                 int mouseY = int.Parse(mouseData[5]);
-                bool flag = _mouseHook.MouseEvent(mouseButton, mouseAction, x, y);
+                bool flag = _mouseHook.MouseEvent(senderSceenWidth, senderScreenHeight, receiverScreenWidth, receiverScreenHeight, button, action, mouseX, mouseY);
                 if (!flag)
                 {
                     Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
