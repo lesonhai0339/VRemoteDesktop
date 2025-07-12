@@ -185,12 +185,29 @@ namespace VRemoteClient.Services
                     break;
                 // mouse wheel event
                 case MouseMessage.WM_MOUSEWHEEL:
-                    flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_WHEEL, MOUSEEVENTF_WHEEL, x, y); //left mouse click
+                    flag = MouseWheel(scales.Item1, scales.Item2, x, y, MOUSEEVENTF_WHEEL);
                     break;
                 default:
                     break;
             }
             return flag;
+        }
+        public static bool MouseWheel(float scaleX, float scaleY, int x, int y, uint wheelDelta)
+        {
+            int pointX = (int)Math.Round(scaleX * x);
+            int pointY = (int)Math.Round(scaleY * y);
+            bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
+            if (!cusorFlag) return false; 
+
+            INPUT[] inputs = new INPUT[1]; // Only need ONE input for wheel
+            inputs[0].type = INPUT_MOUSE;
+            inputs[0].u.mi.dwFlags = MOUSEEVENTF_WHEEL | MOUSEEVENTF_ABSOLUTE;
+            inputs[0].u.mi.dx = 0;
+            inputs[0].u.mi.dy = 0;
+            inputs[0].u.mi.mouseData = wheelDelta; // This is crucial!
+
+            uint flag = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+            return flag > 0;
         }
         private bool MousePress(float scaleX, float scaleY,uint mouseDown, uint mouseUp, int x, int y)
         {
