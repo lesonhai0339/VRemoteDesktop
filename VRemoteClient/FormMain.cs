@@ -25,8 +25,6 @@ namespace VRemoteClient
         private ClientInfo _clientInfo;
         private RemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
-        private KeyboardHook _keyboardHook;
-        private GlobalMouseHook _mouseHook;
         public FormMain()
         {
             InitializeComponent();
