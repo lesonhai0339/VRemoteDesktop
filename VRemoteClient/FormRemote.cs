@@ -246,7 +246,16 @@ namespace VRemoteClient
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
-            string mouseCommandString = MouseHook.MouseEventToString("wheel", pictureboxWidth, pictureboxHeight, e);
+            string mouseCommandString = "";
+            if (e.Delta > 0)
+            {
+                mouseCommandString = MouseHook.MouseEventToString("wheel_up", pictureboxWidth, pictureboxHeight, e);
+            }
+            else if (e.Delta < 0) 
+            {
+                mouseCommandString = MouseHook.MouseEventToString("wheel_down", pictureboxWidth, pictureboxHeight, e);
+            }
+
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 

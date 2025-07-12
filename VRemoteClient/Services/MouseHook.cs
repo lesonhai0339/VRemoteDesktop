@@ -148,27 +148,36 @@ namespace VRemoteClient.Services
         }
         public string MouseEventToString(string mouseType ,int width, int height, System.Windows.Forms.MouseEventArgs e)
         {
-            if(mouseType == "wheel")
-                return MouseEventToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.None, e.X, e.Y);
-
-            MouseMessage button = MouseMessage.None;
-            MouseType action = MouseType.None;
-            if (e.Button == MouseButtons.Left)
+            if(mouseType == "wheel_up")
             {
-                button = (e.Clicks == 2) ? MouseMessage.WM_LBUTTONDBLCLK: MouseMessage.WM_LBUTTONDOWN;
-                action = MouseType.Down;
+                return MouseEventToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Up, e.X, e.Y);
             }
-            else if (e.Button == MouseButtons.Right)
+            else if (mouseType == "wheel_down")
             {
-                button = (e.Clicks == 2) ? MouseMessage.WM_RBUTTONDBLCLK :  MouseMessage.WM_RBUTTONDOWN ;
-                action = MouseType.Down;
+                return MouseEventToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Down, e.X, e.Y);
             }
-            else if (e.Button == MouseButtons.Middle)
+            //mouse click
+            else
             {
-                button = (e.Clicks == 2) ? MouseMessage.WM_MBUTTONDBLCLK: MouseMessage.WM_MBUTTONDOWN ;
-                action = MouseType.Down;
+                MouseMessage button = MouseMessage.None;
+                MouseType action = MouseType.None;
+                if (e.Button == MouseButtons.Left)
+                {
+                    button = (e.Clicks == 2) ? MouseMessage.WM_LBUTTONDBLCLK : MouseMessage.WM_LBUTTONDOWN;
+                    action = MouseType.Down;
+                }
+                else if (e.Button == MouseButtons.Right)
+                {
+                    button = (e.Clicks == 2) ? MouseMessage.WM_RBUTTONDBLCLK : MouseMessage.WM_RBUTTONDOWN;
+                    action = MouseType.Down;
+                }
+                else if (e.Button == MouseButtons.Middle)
+                {
+                    button = (e.Clicks == 2) ? MouseMessage.WM_MBUTTONDBLCLK : MouseMessage.WM_MBUTTONDOWN;
+                    action = MouseType.Down;
+                }
+                return MouseEventToString(width, height, button, action, e.X, e.Y);
             }
-            return MouseEventToString(width, height, button, action, e.X, e.Y);
         }
         private string MouseEventToString(int width, int height, MouseMessage button, MouseType action, int x, int y)
         {
@@ -220,14 +229,21 @@ namespace VRemoteClient.Services
                     break;
                 // mouse wheel event
                 case MouseMessage.WM_MOUSEWHEEL:
-                    flag = MouseWheel(scales.Item1,scales.Item2, x, y, MOUSEEVENTF_WHEEL);
+                    if(action == MouseType.Up)
+                    {
+                        flag = MouseWheel(scales.Item1, scales.Item2, x, y, +120);
+                    }
+                    else
+                    {
+                        flag = MouseWheel(scales.Item1, scales.Item2, x, y, -120);
+                    }
                     break;
                 default:
                     break;
             }
             return flag;
         }
-        public static bool MouseWheel(float scaleX, float scaleY, int x, int y, uint wheelDelta)
+        public static bool MouseWheel(float scaleX, float scaleY, int x, int y, int wheelDelta)
         {
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);
@@ -239,7 +255,7 @@ namespace VRemoteClient.Services
             inputs[0].u.mi.dwFlags = MOUSEEVENTF_WHEEL;
             inputs[0].u.mi.dx = 0;
             inputs[0].u.mi.dy = 0;
-            inputs[0].u.mi.mouseData = wheelDelta;
+            inputs[0].u.mi.mouseData = unchecked((uint)wheelDelta);
 
             uint flag = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
             return flag > 0;
