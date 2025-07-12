@@ -71,8 +71,6 @@ namespace VRemoteClient.Services
             {
                 throw new Exception("Failed to install mouse hook");
             }
-
-            Console.WriteLine("Mouse hook installed successfully");
         }
 
         public void StopHook()
@@ -166,9 +164,7 @@ namespace VRemoteClient.Services
         }
         public bool MouseEvent(int senderWidth, int senderHeight, int meWidth, int meHeight, MouseMessage button, MouseType action, int x, int y)
         {
-            Console.WriteLine($"MouseEvent: senderWidth={senderWidth}, senderHeight={senderHeight}, meWidth={meWidth}, meHeight={meHeight}, button={button}, action={action}, x={x}, y={y}");
             Tuple<float, float> scales = CaculateMouseCorrdinate(senderWidth, senderHeight, meWidth, meHeight);
-            Console.WriteLine($"MouseEvent: scales.Item1={scales.Item1}, scales.Item2={scales.Item2}");
             bool flag = false;
             switch (button)
             {
