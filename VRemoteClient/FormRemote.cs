@@ -245,7 +245,7 @@ namespace VRemoteClient
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
-            MouseMessage button = MouseMessage.WM_MOUSEHWHEEL;
+            MouseMessage button = MouseMessage.WM_MOUSEWHEEL;
             MouseType action = MouseType.None;
             string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, button, action, e.X, e.Y);
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
