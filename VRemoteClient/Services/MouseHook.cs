@@ -201,6 +201,7 @@ namespace VRemoteClient.Services
             bool flag = false;
             switch (button)
             {
+                //left mouse click
                 case MouseMessage.WM_LBUTTONDOWN:
                     flag = MousePress(scales.Item1, scales.Item2 ,MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
@@ -212,27 +213,29 @@ namespace VRemoteClient.Services
                 case MouseMessage.WM_RBUTTONDOWN:
                     flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //left mouse click
                     break;
-
+                //left mouse dbclick
                 case MouseMessage.WM_LBUTTONDBLCLK:
                     MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
-                // middle mouse click
+                // middle mouse dbclick
                 case MouseMessage.WM_MBUTTONDBLCLK:
                     MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, x, y); //left mouse click
                     flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
-                // right mouse click
+                // right mouse dbclick
                 case MouseMessage.WM_RBUTTONDBLCLK:
                     MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //left mouse click
                     flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
                 // mouse wheel event
                 case MouseMessage.WM_MOUSEWHEEL:
+                    //wheel up
                     if(action == MouseType.Up)
                     {
                         flag = MouseWheel(scales.Item1, scales.Item2, x, y, +120);
                     }
+                    //wheel down
                     else
                     {
                         flag = MouseWheel(scales.Item1, scales.Item2, x, y, -120);
