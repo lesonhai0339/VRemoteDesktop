@@ -120,8 +120,20 @@ namespace VRemoteClient
         }
         private void MouseClickEvent(object sender, CustomMouseEventArgs e)
         {
+            // Convert tọa độ form sang tọa độ PictureBox
+            Point formPoint = new Point(e.X, e.Y);
+            Point pictureBoxPoint = vPictureBox.PointToClient(this.PointToScreen(formPoint));
+
+            // Kiểm tra có click trong PictureBox không
+            Rectangle pictureBoxBounds = new Rectangle(0, 0, vPictureBox.Width, vPictureBox.Height);
+            if (!pictureBoxBounds.Contains(pictureBoxPoint))
+            {
+                return; // Bỏ qua click ngoài PictureBox
+            }
+
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
+
             string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e.Button, e.Action, e.X, e.Y);
             Client.Send(commandType: Models.Enums.CommandType.MouseClick, Encoding.ASCII.GetBytes(mouseCommandString));
         }
