@@ -240,8 +240,11 @@ namespace VRemoteClient.Services
                 case CommandType.Keyboard:
                     ProcessKeyboard(data);
                     break;
-                case CommandType.Mouse:
-                    ProcessMouse(data);
+                case CommandType.MouseClick:
+                    ProcessMouse(0, data);
+                    break;
+                case CommandType.MouseMove:
+                    ProcessMouse(1, data);
                     break;
                 case CommandType.Error:
                     break;
@@ -264,21 +267,27 @@ namespace VRemoteClient.Services
                     break;
             }
         }
-
-        private void ProcessMouse(byte[] data)
+        /// <summary>
+        /// typ:0 = mouse click, type:1 = mouse move
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="data"></param>
+        private void ProcessMouse(int type ,byte[] data)
         {
             try
             {
                 string[] mouseData = Encoding.ASCII.GetString(data, 1, data.Length - 1).Trim().Split('|');
-                if (mouseData.Length != 4)
+                if (mouseData.Length != 6)
                 {
                     Log.ForContext("FileName", "MouseHook").Error("Number of elements not exaclly");
                     return;
                 }
-                string mouseButton = mouseData[0];
-                string mouseAction = mouseData[1];
-                int x = int.Parse(mouseData[2]);
-                int y = int.Parse(mouseData[3]);
+                int senderSceenWidth = int.Parse(mouseData[0]);
+                int senderScreenHeight = int.Parse(mouseData[1]);
+                MouseMessage x = (MouseMessage)int.Parse(mouseData[2]);
+                MouseType y = (MouseType)int.Parse(mouseData[3]);
+                int mouseX = int.Parse(mouseData[4]);
+                int mouseY = int.Parse(mouseData[5]);
                 bool flag = _mouseHook.MouseEvent(mouseButton, mouseAction, x, y);
                 if (!flag)
                 {

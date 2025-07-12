@@ -44,6 +44,9 @@ namespace VRemoteClient
             //vPictureBox.Size = new Size(_info.Receiver.Width, _info.Receiver.Height);
             //vPictureBox.Location = new Point(0, 0);
             //vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
+            // In form constructor or designer
+            vPictureBox.Dock = DockStyle.Fill;
+            vPictureBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
         }
         #region Properties
         public RemoteClient Client
@@ -109,24 +112,22 @@ namespace VRemoteClient
         #region Methods
         private void MouseMoveEvent(object sender, CustomMouseEventArgs e)
         {
-            Console.WriteLine($"Mouse Moved: {e.Button} at ({e.X}, {e.Y})");
+            int pictureboxWidth = vPictureBox.ClientSize.Width;
+            int pictureboxHeight = vPictureBox.ClientSize.Height;
+            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e.Button, e.Action, e.X, e.Y);
+            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
         private void MouseClickEvent(object sender, CustomMouseEventArgs e)
         {
-            Console.WriteLine($"Mouse Clicked: {e.Button} at ({e.X}, {e.Y})");
+            int pictureboxWidth = vPictureBox.ClientSize.Width;
+            int pictureboxHeight = vPictureBox.ClientSize.Height;
+            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e.Button, e.Action, e.X, e.Y);
+            Client.Send(commandType: Models.Enums.CommandType.MouseClick, Encoding.ASCII.GetBytes(mouseCommandString));
         }
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
-            string keyCommandString = new StringBuilder()
-                .Append((int)e.Command)
-                .Append("|")
-                .Append((int)e.KeyModifier)
-                .Append("|")
-                .Append((int)e.KeyCode)
-                .Append("|")
-                .Append((int)e.KeyType).ToString();
-            Console.WriteLine(keyCommandString);
-            //Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(keyCommandString));
+            string keyCommandString = KeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
+            Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(keyCommandString));
         }
         private void FormRemote_Load(object sender, EventArgs e)
         {

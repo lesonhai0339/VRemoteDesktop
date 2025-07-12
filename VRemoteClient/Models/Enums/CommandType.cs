@@ -18,7 +18,8 @@ namespace VRemoteClient.Models.Enums
         Screen = 0x08,
         Chunks = 0x09,
         Keyboard = 0x0A,
-        Mouse = 0x0B,
+        MouseClick = 0x0B,
+        MouseMove = 0x0C,
 
 
         LoginFailed = 0x90,

@@ -7,28 +7,21 @@ using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteClient.Models.Entities;
+using VRemoteClient.Models.Enums;
 using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services
 {
-    public class CustomMouseEventArgs : EventArgs
-    {
-        public int X { get; set; }
-        public int Y { get; set; }
-        public string Button { get; set; }
-        public string Action { get; set; }
-    }
     public class GlobalMouseHook
     {
         //for mouse hook
-        private const int WH_MOUSE_LL = 14;
-        private const int WM_LBUTTONDOWN = 0x0201;
-        private const int WM_LBUTTONUP = 0x0202;
-        private const int WM_RBUTTONDOWN = 0x0204;
-        private const int WM_RBUTTONUP = 0x0205;
-        private const int WM_MOUSEMOVE = 0x0200;
-        private const int WM_MOUSEWHEEL = 0x020A;
+        /// <summary>
+        /// this for windows Message
+        /// </summary>
+        /// 
 
+        private const int WH_MOUSE_LL = 14;
         //for windows api
         private const int INPUT_MOUSE = 0;
         const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
@@ -90,46 +83,50 @@ namespace VRemoteClient.Services
                 Console.WriteLine("Mouse hook removed");
             }
         }
-
+        /// <summary>
+        /// Tracking mouse event and coordinate, currently catch four event( left click, right click, middle click and wheel). Can add more event in this list <see href="https://learn.microsoft.com/en-us/windows/win32/inputdev/mouse-input-notifications"/>
+        /// </summary>
+        /// <param name="nCode"></param>
+        /// <param name="wParam"></param>
+        /// <param name="lParam"></param>
+        /// <returns></returns>
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0 && IsMouseHoveringOverTargetApp())
             {
-                // Lấy thông tin mouse
+                // get mouse info
                 MSLLHOOKSTRUCT hookStruct = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(MSLLHOOKSTRUCT));
 
-                string button = "";
-                string action = "";
+                MouseMessage button = MouseMessage.None;
+                MouseType action = MouseType.None;
 
-                switch ((int)wParam)
+                switch ((MouseMessage)(int)wParam)
                 {
-                    case WM_LBUTTONDOWN:
-                        button = "Left";
-                        action = "Down";
+
+                    // left mouse click
+                    case MouseMessage.WM_LBUTTONDOWN:
+                        button = MouseMessage.WM_LBUTTONDOWN;
+                        action = MouseType.Down;
                         break;
-                    case WM_LBUTTONUP:
-                        button = "Left";
-                        action = "Up";
+                    // middle mouse click
+                    case MouseMessage.WM_MBUTTONDOWN:
+                        button = MouseMessage.WM_MBUTTONDOWN;
+                        action = MouseType.Down;
                         break;
-                    case WM_RBUTTONDOWN:
-                        button = "Right";
-                        action = "Down";
+                    // right mouse click
+                    case MouseMessage.WM_RBUTTONDOWN:
+                        button = MouseMessage.WM_RBUTTONDOWN;
+                        action = MouseType.Down;
                         break;
-                    case WM_RBUTTONUP:
-                        button = "Right";
-                        action = "Up";
+                    // mouse wheel event
+                    case MouseMessage.WM_MOUSEWHEEL:
+                        button = MouseMessage.WM_MOUSEWHEEL;
+                        action = MouseType.Down;
                         break;
-                    case WM_MOUSEMOVE:
-                        button = "None";
-                        action = "Move";
-                        break;
-                    case WM_MOUSEWHEEL:
-                        button = "Wheel";
-                        action = "Scroll";
+                    default:
                         break;
                 }
 
-                // Tạo event args
                 var eventArgs = new CustomMouseEventArgs
                 {
                     X = hookStruct.pt.x,
@@ -139,11 +136,11 @@ namespace VRemoteClient.Services
                 };
 
                 // Trigger events
-                if (action == "Move")
+                if (action == MouseType.Move)
                 {
                     MouseMove?.Invoke(this, eventArgs);
                 }
-                else if (action == "Down" || action == "Up")
+                else if (action == MouseType.Down || action == MouseType.Up)
                 {
                     MouseClick?.Invoke(this, eventArgs);
                 }
@@ -151,9 +148,15 @@ namespace VRemoteClient.Services
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
-        public static string MouseToString(string button, string action, int x, int y)
+        public string MouseEventToString(int width, int height, MouseMessage button, MouseType action, int x, int y)
         {
-            return new StringBuilder().Append(button).Append("|").Append(action).Append("|").Append(x).Append("|").Append(y).ToString();
+            return new StringBuilder()
+                .Append(width).Append("|")
+                .Append(height).Append("|")
+                .Append((int)button).Append("|")
+                .Append((int)action).Append("|")
+                .Append(x).Append("|")
+                .Append(y).ToString();
         }
         public bool MouseEvent(string button, string action, int x, int y)
         {

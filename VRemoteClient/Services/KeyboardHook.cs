@@ -5,6 +5,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteClient.Models.Enums;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Libraries;
 
@@ -128,6 +129,17 @@ namespace VRemoteClient.Services
             IntPtr hwnd = GetForegroundWindow();
             GetWindowThreadProcessId(hwnd, out uint foregroundPid);
             return foregroundPid == _targetProcessId;
+        }
+        public string KeyboardEventTostring(IntPtr command, Keys modifier, Keys code, KeyState type)
+        {
+            return new StringBuilder()
+                    .Append((int)command)
+                    .Append("|")
+                    .Append((int)modifier)
+                    .Append("|")
+                    .Append((int)code)
+                    .Append("|")
+                    .Append((int)type).ToString();
         }
         public class KeyboardSendEventHandler
         {
