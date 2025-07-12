@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Serilog;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -141,8 +142,15 @@ namespace VRemoteClient
         }
         private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
         {
-            KeyboardHook.Stop();
-            MouseHook.StopHook();
+            try
+            {
+                KeyboardHook?.Dispose();
+                MouseHook?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.Fatal(ex, "Error disposing hooks in FormRemote_FormClosed: {Message}", ex.Message);
+            }
         }
         private void InitializeGraphicsSettings()
         {

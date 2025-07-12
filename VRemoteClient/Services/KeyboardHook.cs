@@ -40,7 +40,7 @@ namespace VRemoteClient.Services
         public Keys KeyCode { get; set; }
         public KeyState KeyType { get; set; }   
     }
-    public class KeyboardHook
+    public class KeyboardHook: IDisposable
     {
 
         private const int WH_KEYBOARD_LL = 13;
@@ -50,13 +50,12 @@ namespace VRemoteClient.Services
         private const int VK_RCONTROL = 0xA3;  // Right Control
         private const int VK_SHIFT = 0x10;
         private const int VK_MENU = 0x12; // Alt
-      
-        public KeyboardHook() { }
         private uint _targetProcessId;
         private IntPtr hookID = IntPtr.Zero;
         private LowLevelKeyboardProc proc;
         public event EventHandler<KeyMessageEventArgs> KeyPressed;
-
+        private bool _disposed = false;
+        public KeyboardHook() { }
         public void Start(uint pId)
         {
             _targetProcessId = pId;
@@ -67,6 +66,7 @@ namespace VRemoteClient.Services
         public void Stop()
         {
             UnhookWindowsHookEx(hookID);
+            hookID = IntPtr.Zero;
         }
         private IntPtr SetHook(LowLevelKeyboardProc proc)
         {
@@ -141,6 +141,29 @@ namespace VRemoteClient.Services
                     .Append("|")
                     .Append((int)type).ToString();
         }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    // Clear event handlers to prevent memory leaks
+                    KeyPressed = null;
+                }
+
+                // Dispose unmanaged resources
+                Stop(); // This will unhook the Windows hook
+
+                _disposed = true;
+            }
+        }
+
         public class KeyboardSendEventHandler
         {
             public byte[] KeyBuilder(KeyMessageEventArgs e)

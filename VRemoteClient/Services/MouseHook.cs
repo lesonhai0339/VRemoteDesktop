@@ -13,7 +13,7 @@ using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services
 {
-    public class GlobalMouseHook
+    public class GlobalMouseHook: IDisposable
     {
         //for mouse hook
         /// <summary>
@@ -37,8 +37,9 @@ namespace VRemoteClient.Services
         private LowLevelMouseProc _proc;
         private IntPtr _hookID = IntPtr.Zero;
         private uint _targetProcessId;
+        private bool _disposed = false;
 
-      
+
         public event EventHandler<CustomMouseEventArgs> MouseClick;
         public event EventHandler<CustomMouseEventArgs> MouseMove;
         public GlobalMouseHook()
@@ -80,7 +81,6 @@ namespace VRemoteClient.Services
             {
                 UnhookWindowsHookEx(_hookID);
                 _hookID = IntPtr.Zero;
-                Console.WriteLine("Mouse hook removed");
             }
         }
         /// <summary>
@@ -224,6 +224,29 @@ namespace VRemoteClient.Services
             else
             {
                 return false;
+            }
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    // Clear event handlers to prevent memory leaks
+                    MouseClick = null;
+                    MouseMove = null;
+                }
+
+                // Dispose unmanaged resources
+                StopHook(); // This will unhook the Windows hook
+
+                _disposed = true;
             }
         }
     }
