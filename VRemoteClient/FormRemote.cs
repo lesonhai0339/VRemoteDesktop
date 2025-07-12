@@ -244,20 +244,12 @@ namespace VRemoteClient
         #region Event Handlers
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            if (e.Delta > 0)
-            {
-                Console.WriteLine("Mouse wheel up");
-            }
-            else if (e.Delta < 0)
-            {
-                Console.WriteLine("Mouse wheel down");
-            }
-            //int pictureboxWidth = vPictureBox.ClientSize.Width;
-            //int pictureboxHeight = vPictureBox.ClientSize.Height;
-            //MouseMessage button = MouseMessage.WM_MOUSEWHEEL;
-            //MouseType action = MouseType.None;
-            //string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e);
-            //Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
+            int pictureboxWidth = vPictureBox.ClientSize.Width;
+            int pictureboxHeight = vPictureBox.ClientSize.Height;
+            MouseMessage button = MouseMessage.WM_MOUSEWHEEL;
+            MouseType action = MouseType.None;
+            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e);
+            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 
         private void MouseDbClickEventHandler(object sender, MouseEventArgs e)

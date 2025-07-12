@@ -228,15 +228,15 @@ namespace VRemoteClient.Services
         {
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);
-            bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
+            bool cusorFlag = SetCursorPos(pointX, pointY);
             if (!cusorFlag) return false; 
 
-            INPUT[] inputs = new INPUT[1]; // Only need ONE input for wheel
+            INPUT[] inputs = new INPUT[1];
             inputs[0].type = INPUT_MOUSE;
-            inputs[0].u.mi.dwFlags = MOUSEEVENTF_WHEEL | MOUSEEVENTF_ABSOLUTE;
+            inputs[0].u.mi.dwFlags = MOUSEEVENTF_WHEEL;
             inputs[0].u.mi.dx = 0;
             inputs[0].u.mi.dy = 0;
-            inputs[0].u.mi.mouseData = wheelDelta; // This is crucial!
+            inputs[0].u.mi.mouseData = wheelDelta;
 
             uint flag = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
             return flag > 0;
