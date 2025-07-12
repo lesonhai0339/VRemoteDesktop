@@ -146,7 +146,28 @@ namespace VRemoteClient.Services
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
-        public string MouseEventToString(int width, int height, MouseMessage button, MouseType action, int x, int y)
+        public string MouseEventToString(int width, int height, System.Windows.Forms.MouseEventArgs e)
+        {
+            MouseMessage button = MouseMessage.None;
+            MouseType action = MouseType.None;
+            if (e.Button == MouseButtons.Left)
+            {
+                button = (e.Clicks == 2) ? MouseMessage.WM_LBUTTONDBLCLK: MouseMessage.WM_LBUTTONDOWN;
+                action = MouseType.Down;
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                button = (e.Clicks == 2) ? MouseMessage.WM_RBUTTONDBLCLK :  MouseMessage.WM_RBUTTONDOWN ;
+                action = MouseType.Down;
+            }
+            else if (e.Button == MouseButtons.Middle)
+            {
+                button = (e.Clicks == 2) ? MouseMessage.WM_MBUTTONDBLCLK: MouseMessage.WM_MBUTTONDOWN ;
+                action = MouseType.Down;
+            }
+            return MouseEventToString(width, height, button, action, e.X, e.Y);
+        }
+        private string MouseEventToString(int width, int height, MouseMessage button, MouseType action, int x, int y)
         {
             return new StringBuilder()
                 .Append(width).Append("|")
@@ -178,6 +199,21 @@ namespace VRemoteClient.Services
                 // right mouse click
                 case MouseMessage.WM_RBUTTONDOWN:
                     flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //left mouse click
+                    break;
+
+                case MouseMessage.WM_LBUTTONDBLCLK:
+                    MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
+                    flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
+                    break;
+                // middle mouse click
+                case MouseMessage.WM_MBUTTONDBLCLK:
+                    MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, x, y); //left mouse click
+                    flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
+                    break;
+                // right mouse click
+                case MouseMessage.WM_RBUTTONDBLCLK:
+                    MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //left mouse click
+                    flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
                 // mouse wheel event
                 case MouseMessage.WM_MOUSEWHEEL:

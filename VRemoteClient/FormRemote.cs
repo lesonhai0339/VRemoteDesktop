@@ -50,6 +50,7 @@ namespace VRemoteClient
             vPictureBox.Dock = DockStyle.Fill;
             vPictureBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             vPictureBox.MouseClick += MouseClickEventHandler;
+            vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
             vPictureBox.MouseWheel += MouseWheelEventHandler;
         }
         #region Properties
@@ -243,37 +244,34 @@ namespace VRemoteClient
         #region Event Handlers
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            int pictureboxWidth = vPictureBox.ClientSize.Width;
-            int pictureboxHeight = vPictureBox.ClientSize.Height;
-            MouseMessage button = MouseMessage.WM_MOUSEWHEEL;
-            MouseType action = MouseType.None;
-            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, button, action, e.X, e.Y);
-            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
+            if (e.Delta > 0)
+            {
+                Console.WriteLine("Mouse wheel up");
+            }
+            else if (e.Delta < 0)
+            {
+                Console.WriteLine("Mouse wheel down");
+            }
+            //int pictureboxWidth = vPictureBox.ClientSize.Width;
+            //int pictureboxHeight = vPictureBox.ClientSize.Height;
+            //MouseMessage button = MouseMessage.WM_MOUSEWHEEL;
+            //MouseType action = MouseType.None;
+            //string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e);
+            //Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 
+        private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
+        {
+            int pictureboxWidth = vPictureBox.ClientSize.Width;
+            int pictureboxHeight = vPictureBox.ClientSize.Height;
+            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e);
+            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
+        }
         private void MouseClickEventHandler(object sender, MouseEventArgs e)
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
-            MouseMessage button= MouseMessage.None;
-            MouseType action = MouseType.None;
-            if (e.Button == MouseButtons.Left)
-            {
-                button = MouseMessage.WM_LBUTTONDOWN;
-                action = MouseType.Down;
-            }
-            else if (e.Button == MouseButtons.Right)
-            {
-                button = MouseMessage.WM_RBUTTONDOWN;
-                action = MouseType.Down;
-            }
-            else if (e.Button == MouseButtons.Middle)
-            {
-                button = MouseMessage.WM_MBUTTONDOWN;
-                action = MouseType.Down;
-            }
-            if (button == MouseMessage.None || action == MouseType.None) return;
-            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, button, action, e.X, e.Y);
+            string mouseCommandString = MouseHook.MouseEventToString(pictureboxWidth, pictureboxHeight, e);
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 
