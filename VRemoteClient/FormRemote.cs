@@ -132,10 +132,11 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
+            // Lấy app process id và form windows handler để khởi tạo keyboard hook
             uint pId = (uint)Process.GetCurrentProcess().Id;
-            KeyboardHook.Start(pId);
+            IntPtr windowHandle = this.Handle; // Get the handle of formRemote
+            KeyboardHook.Start(pId, windowHandle);
             //MouseHook.StartHook(pId);
-
         }
         private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
         {

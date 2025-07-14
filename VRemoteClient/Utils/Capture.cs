@@ -241,7 +241,7 @@ namespace VRemoteClient.Utils
             int stride = currentData.Stride;
             const int threshold = 10;
 
-            // Di chuyển pointer đến vị trí bắt đầu của block
+            // move pointer to start of the block
             currentPtr += block.Y * stride + block.X * 3;
             previousPtr += block.Y * stride + block.X * 3;
 
@@ -252,6 +252,7 @@ namespace VRemoteClient.Utils
 
                 for (int x = 0; x < block.Width; x++)
                 {
+                    // compare the RGB values of the current and previous frames
                     int bDiff = currentRow[x * 3] - previousRow[x * 3];
                     int gDiff = currentRow[x * 3 + 1] - previousRow[x * 3 + 1];
                     int rDiff = currentRow[x * 3 + 2] - previousRow[x * 3 + 2];

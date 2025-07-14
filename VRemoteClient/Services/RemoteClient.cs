@@ -95,6 +95,11 @@ namespace VRemoteClient.Services
         {
             _cancellationToken.Cancel();
         }
+        /// <summary>
+        /// Connect to remote server with default IP and port
+        /// </summary>
+        /// <param name="ip"></param>
+        /// <param name="port"></param>
         public void Connect(string ip = REMOTE_SERVER_IP, int port = REMOTE_SERVER_PORT)
         {
             try
@@ -130,7 +135,10 @@ namespace VRemoteClient.Services
 
             }
         }
-
+        /// <summary>
+        /// Callback method when the socket is connected to the remote server
+        /// </summary>
+        /// <param name="ar"></param>
         private void ConnectCallback(IAsyncResult ar)
         {
             try
@@ -161,6 +169,10 @@ namespace VRemoteClient.Services
                 Log.Error(ex, "Unexpected error when connecting to remote server");
             }
         }
+        /// <summary>
+        /// callback method when data is received from the remote server
+        /// </summary>
+        /// <param name="ar"></param>
 
         private void DataCallback(IAsyncResult ar)
         {

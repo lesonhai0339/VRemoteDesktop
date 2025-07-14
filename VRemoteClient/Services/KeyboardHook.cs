@@ -53,12 +53,14 @@ namespace VRemoteClient.Services
         private uint _targetProcessId;
         private IntPtr hookID = IntPtr.Zero;
         private LowLevelKeyboardProc proc;
+        private IntPtr _targetWindowHandle = IntPtr.Zero; // Optional: If you want to target a specific window
         public event EventHandler<KeyMessageEventArgs> KeyPressed;
         private bool _disposed = false;
         public KeyboardHook() { }
-        public void Start(uint pId)
+        public void Start(uint pId, IntPtr handler)
         {
             _targetProcessId = pId;
+            _targetWindowHandle = handler; // Set the target window handle if provided
             proc = HookCallback;
             hookID = SetHook(proc);
         }
@@ -67,6 +69,7 @@ namespace VRemoteClient.Services
         {
             UnhookWindowsHookEx(hookID);
             hookID = IntPtr.Zero;
+            _targetWindowHandle = IntPtr.Zero; // Reset the target window handle
         }
         private IntPtr SetHook(LowLevelKeyboardProc proc)
         {
@@ -77,9 +80,18 @@ namespace VRemoteClient.Services
                     GetModuleHandle(curModule.ModuleName), 0);
             }
         }
+        /// <summary>
+        /// Sẽ được gọi khi có sự kiện bàn phím xảy ra. hiện tại đang kiểm tra xem FormRemote có được focus hay không.
+        /// Nếu có thì sẽ gọi invoke action và gửi keyboard đến receiver, máy hiện tại sẽ không thực hiện bất kỳ thao tác bản phím nào.
+        /// Nếu FormRemote không được focus thì sẽ gọi CallNextHookEx thực hiện phím trên chính máy này.
+        /// </summary>
+        /// <param name="nCode"></param>
+        /// <param name="wParam"></param>
+        /// <param name="lParam"></param>
+        /// <returns></returns>
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode >= 0 && IsTargetAppFocused())
+            if (nCode >= 0 && IsTargetWindowFocused())
             {
                 // Only process key down and key up messages
                 if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
@@ -103,8 +115,16 @@ namespace VRemoteClient.Services
                         KeyPressed?.Invoke(this, keyEventArgs);
                     }
                 }
+                // do nothing if the target window is focused
+                return (IntPtr)1;
             }
-            return CallNextHookEx(hookID, nCode, wParam, lParam);
+            else
+            {
+                // If the target window is not focused, pass the message to the next hook
+                return CallNextHookEx(hookID, nCode, wParam, lParam);
+
+            }
+            //return CallNextHookEx(hookID, nCode, wParam, lParam);
         }
         private bool IsControlPressed()
         {
@@ -129,6 +149,11 @@ namespace VRemoteClient.Services
             IntPtr hwnd = GetForegroundWindow();
             GetWindowThreadProcessId(hwnd, out uint foregroundPid);
             return foregroundPid == _targetProcessId;
+        }
+        private bool IsTargetWindowFocused()
+        {
+            IntPtr hwnd = GetForegroundWindow();
+            return hwnd == _targetWindowHandle;
         }
         public string KeyboardEventTostring(IntPtr command, Keys modifier, Keys code, KeyState type)
         {

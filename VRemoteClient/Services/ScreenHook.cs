@@ -104,9 +104,11 @@ namespace VRemoteClient.Services
                 }
                 //stopwatch.Stop();
                 //Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
+                // FPS of windows screen, currently set to 5 FPS, need to improve screen capture to increase FPS
                 Thread.Sleep(1000/5);
             }
         }
+        // Send full screen to sender when first connect
         private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)
         {
             lock (_lock)
@@ -151,12 +153,14 @@ namespace VRemoteClient.Services
             }
             flag = true;
         }
+        //Capture and send region change to sender
         private void SendChunk(List<ScreenBlock> blocks, int totalChunksSize, ref bool flag)
         {
             lock (_lock)
             {
                 byte[] chunks = MergeAllChunk(blocks);
 
+                //headers always 5 bytes, 4 bytes for data length and 1 byte for command type
                 int numberOfChunk = (chunks.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5);
                 int totalLength = chunks.Length;
 
@@ -178,6 +182,8 @@ namespace VRemoteClient.Services
                 //data
                 Buffer.BlockCopy(chunks, 0, dataSend, 5, totalLength);    //chunk data
 
+
+                //cut data to chunk(8192 bytes)  and send
                 byte[] packet = new byte[CHUNK_SIZE];
                 for (int i = 0; i < numberOfChunk; i++)
                 {
@@ -199,6 +205,7 @@ namespace VRemoteClient.Services
             }
             flag = true;
         }
+        // Merge all chunks into a single byte array
         private unsafe byte[] MergeAllChunk(List<ScreenBlock> blocks)
         {
             using (var ms = new MemoryStream())
