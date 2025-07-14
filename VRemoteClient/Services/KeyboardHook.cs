@@ -133,6 +133,7 @@ namespace VRemoteClient.Services
                     //    return (IntPtr)1;
                     //}
                     KeyPressed?.Invoke(this, keyEventArgs);
+                    return (IntPtr)1;
                 }
             }
             return CallNextHookEx(hookID, nCode, wParam, lParam);
@@ -287,7 +288,7 @@ namespace VRemoteClient.Services
     public static class KeyboardSimulator
     {
         private static object _lock = new object(); 
-        private static Keys _modifier = Keys.None;
+        private static List<Keys> _modifiers = new List<Keys>();
         private static Keys _key = Keys.None;
         private const int KEYEVENTF_EXTENDEDKEY = 0x0001; // Extended key flag
         private const int INPUT_KEYBOARD = 1;
@@ -388,7 +389,7 @@ namespace VRemoteClient.Services
                     case Keys.RWin:
                         lock (_lock)
                         {
-                            _modifier = key;
+                            _modifiers.Add(key);
                         }
                         break;
                     default:
@@ -402,26 +403,58 @@ namespace VRemoteClient.Services
             }
             else
             {
-                Console.WriteLine(_modifier + " - " + _key + " - " + state);
-
                 lock (_lock)
                 {
-                    if (_modifier != Keys.None && _key != Keys.None)
+                    if (_modifiers.Count > 1 && _key != Keys.None)
                     {
-                        SendKeyCombo(_modifier, _key);
+                        SendMultiCombo(_modifiers, _key);
                     }
-                    else if (_key != Keys.None)
+                    else if (_modifiers.Count == 1  && _key != Keys.None)
+                    {
+                        SendKeyCombo(_modifiers[0], _key);
+                    }
+                    else if (_modifiers.Count == 1)
+                    {
+                        SendKey(_modifiers[0]);
+                    }
+                    else
                     {
                         SendKey(_key);
                     }
-                    else if (_modifier != Keys.None)
-                    {
-                        SendKey(_modifier);
-                    }
+                    _modifiers = new List<Keys>();
+                    _key = Keys.None;
                 }
-                _modifier = Keys.None;
-                _key = Keys.None;
             }
+        }
+        public static uint SendMultiCombo(List<Keys> modifiers, Keys key)
+        {
+            int inputCount = modifiers.Count * 2 + 2; // down/up for each modifier + down/up for main key
+            INPUT[] inputs = new INPUT[inputCount];
+            int index = 0;
+
+            // 1. Modifier key down
+            foreach (var mod in modifiers)
+            {
+                ushort modVK = GetKeyValue(mod);
+                inputs[index++] = CreateKeyInput(modVK, 0); // key down
+            }
+
+            // 2. Main key down
+            ushort keyVK = GetKeyValue(key);
+            inputs[index++] = CreateKeyInput(keyVK, 0); // key down
+
+            // 3. Main key up
+            inputs[index++] = CreateKeyInput(keyVK, KEYEVENTF_KEYUP); // key up
+
+            // 4. Modifier key up (in reverse order)
+            for (int i = modifiers.Count - 1; i >= 0; i--)
+            {
+                ushort modVK = GetKeyValue(modifiers[i]);
+                inputs[index++] = CreateKeyInput(modVK, KEYEVENTF_KEYUP); // key up
+            }
+
+            // 5. Send inputs
+            return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
         }
         public static uint SendKeyCombo(Keys modifier, Keys key)
         {
