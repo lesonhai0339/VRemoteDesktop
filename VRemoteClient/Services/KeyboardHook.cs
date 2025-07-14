@@ -354,6 +354,7 @@ namespace VRemoteClient.Services
             {
                 lock (_lock)
                 {
+                    // key press event
                     string a = string.Join(" - ", _modifiers);
                     Console.WriteLine(a + " - " + _key);
                     if (_modifiers.Count > 1 && _key != Keys.None)
@@ -374,7 +375,7 @@ namespace VRemoteClient.Services
                     }
 
 
-
+                    // remove
                     if (_key == key)
                     {
                         _key = Keys.None;
