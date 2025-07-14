@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.Enums;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Libraries;
 
@@ -42,11 +43,11 @@ namespace VRemoteClient.Services
     }
     public class KeyboardHook: IDisposable
     {
-        private bool ctrlPressed = false;
-        private bool altPressed = false;
-        private bool shiftPressed = false;
-        private bool winPressed = false;
-        private Keys previousState = Keys.None;
+
+        private bool _isControlPressed = false;
+        private bool _isShiftPressed = false;
+        private bool _isAltPressed = false;
+        private bool _isLeftWindowKeyPressed = false;
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_KEYUP = 0x0101;
@@ -84,6 +85,15 @@ namespace VRemoteClient.Services
                     GetModuleHandle(curModule.ModuleName), 0);
             }
         }
+        /// <summary>
+        /// Sẽ được gọi khi có sự kiện bàn phím xảy ra. hiện tại đang kiểm tra xem FormRemote có được focus hay không.
+        /// Nếu có thì sẽ gọi invoke action và gửi keyboard đến receiver, máy hiện tại sẽ không thực hiện bất kỳ thao tác bản phím nào.
+        /// Nếu FormRemote không được focus thì sẽ gọi CallNextHookEx thực hiện phím trên chính máy này.
+        /// </summary>
+        /// <param name="nCode"></param>
+        /// <param name="wParam"></param>
+        /// <param name="lParam"></param>
+        /// <returns></returns>
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0 && IsTargetWindowFocused())
@@ -91,83 +101,94 @@ namespace VRemoteClient.Services
                 // Only process key down and key up messages
                 if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
                 {
+
+                    // Correct way to read the virtual key code
                     KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
 
                     // Determine if it's key down or up
                     KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
+                    method_1(keyState, key);
 
-                    // Update modifier state BEFORE getting current modifier
-                    UpdateModifierState(vkCode, keyState);
+                    KeyMessageEventArgs keyEventArgs = null;
+                    Keys modifier = _isControlPressed ? Keys.Control :
+                                   _isAltPressed ? Keys.Alt :
+                                   _isShiftPressed ? Keys.Shift :
+                                   _isLeftWindowKeyPressed ? Keys.LWin : Keys.None;
+                    //Keys modifier = IsControlPressed() ? Keys.Control :
+                    //                IsAltPressed() ? Keys.Alt:
+                    //                IsShiftPressed() ? Keys.Shift:
+                    //                isLeftWindowKeyPressed() ? Keys.LWin : Keys.None;
+                    keyEventArgs = new KeyMessageEventArgs(wParam,modifier, key, keyState);
 
-                    // Get current modifier based on tracked state
-                    Keys modifier = GetCurrentModifier();
+                    Console.WriteLine(wParam+ " - "+ modifier + " - " + key + " - " + keyState);
+                    //bool isModifierKey = IsModifierKey(vkCode);
+                    //bool hasModifier = (modifier != Keys.None);
 
-                    KeyMessageEventArgs keyEventArgs = new KeyMessageEventArgs(wParam, modifier, key, keyState);
+                    //if (!isModifierKey || hasModifier)
+                    //{
+                    //    KeyPressed?.Invoke(this, keyEventArgs);
 
-                    bool isModifierKey = IsModifierKey(vkCode);
-                    bool hasModifier = (modifier != Keys.None);
-
-                    if (!isModifierKey)
-                    {
-                        KeyPressed?.Invoke(this, keyEventArgs);
-                        return (IntPtr)1;
-                    }
-                    else if (hasModifier && modifier != key)
-                    {
-                        KeyPressed?.Invoke(this, keyEventArgs);
-                        return (IntPtr)1;
-                    }
-                    else if (!hasModifier)
-                    {
-                        KeyPressed?.Invoke(this, keyEventArgs);
-                    }
+                    //    return (IntPtr)1;
+                    //}
+                    //KeyPressed?.Invoke(this, keyEventArgs);
                 }
             }
             return CallNextHookEx(hookID, nCode, wParam, lParam);
         }
-
-        private void UpdateModifierState(int vkCode, KeyState keyState)
+        private void method_1(KeyState e, Keys key)
         {
-            bool isPressed = (keyState == KeyState.KeyDown);
-
-            switch (vkCode)
+            switch ((int)e)
             {
-                case 0x11: // VK_CONTROL
-                case 0xA2: // VK_LCONTROL
-                case 0xA3: // VK_RCONTROL
-                    ctrlPressed = isPressed;
+                case 256:
+                    if(key == Keys.Control)
+                    {
+                        _isControlPressed = true;
+                        return;
+                    }
+                    else if(key == Keys.Alt)
+                    {
+                        _isAltPressed = true;
+                        return;
+                    }
+                    else if(key == Keys.Shift)
+                    {
+                        _isShiftPressed = true;
+                        return;
+                    }
+                    else if (key == Keys.LWin)
+                    {
+                        _isLeftWindowKeyPressed = true;
+                        return;
+                    }
                     break;
-
-                case 0x12: // VK_MENU (Alt)
-                case 0xA4: // VK_LMENU
-                case 0xA5: // VK_RMENU
-                    altPressed = isPressed;
+                case 257:
+                    if (key == Keys.Control)
+                    {
+                        _isControlPressed = true;
+                        return;
+                    }
+                    else if (key == Keys.Alt)
+                    {
+                        _isAltPressed = true;
+                        return;
+                    }
+                    else if (key == Keys.Shift)
+                    {
+                        _isShiftPressed = true;
+                        return;
+                    }
+                    else if (key == Keys.LWin)
+                    {
+                        _isLeftWindowKeyPressed = true;
+                        return;
+                    }
                     break;
-
-                case 0x10: // VK_SHIFT
-                case 0xA0: // VK_LSHIFT
-                case 0xA1: // VK_RSHIFT
-                    shiftPressed = isPressed;
-                    break;
-
-                case 0x5B: // VK_LWIN
-                case 0x5C: // VK_RWIN
-                    winPressed = isPressed;
+                default:
                     break;
             }
         }
-
-        private Keys GetCurrentModifier()
-        {
-            if (ctrlPressed) return Keys.Control;
-            if (altPressed) return Keys.Alt;
-            if (shiftPressed) return Keys.Shift;
-            if (winPressed) return Keys.LWin;
-            return Keys.None;
-        }
-
         private bool IsModifierKey(int vkCode)
         {
             return vkCode == 0x10 || vkCode == 0xA0 || vkCode == 0xA1 || // Shift
@@ -175,25 +196,23 @@ namespace VRemoteClient.Services
                    vkCode == 0x12 || vkCode == 0xA4 || vkCode == 0xA5 || // Alt
                    vkCode == 0x5B || vkCode == 0x5C;                     // Windows
         }
-
         private bool IsControlPressed()
         {
-            return ctrlPressed;
+            return (GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0 || (GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0;
         }
 
         private bool IsShiftPressed()
         {
-            return shiftPressed;
+            return (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
         }
 
         private bool IsAltPressed()
         {
-            return altPressed;
+            return (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
         }
-
         private bool isLeftWindowKeyPressed()
         {
-            return winPressed;
+            return (GetAsyncKeyState((int)Keys.LWin) & 0x8000) != 0;
         }
         private bool IsTargetAppFocused()
         {
@@ -267,6 +286,9 @@ namespace VRemoteClient.Services
     }
     public static class KeyboardSimulator
     {
+        private static object _lock = new object(); 
+        private static Keys _modifier = Keys.None;
+        private static Keys _key = Keys.None;
         private const int KEYEVENTF_EXTENDEDKEY = 0x0001; // Extended key flag
         private const int INPUT_KEYBOARD = 1;
         private const uint KEYEVENTF_KEYUP = 0x0002;
@@ -342,6 +364,53 @@ namespace VRemoteClient.Services
                 // All other keys
                 default:
                     return (ushort)key;
+            }
+        }
+        public static void Method_1(Keys key, KeyState state)
+        {
+            if(state == KeyState.KeyDown)
+            {
+                switch (key)
+                {
+                    case Keys.Control:
+                    case Keys.Alt:
+                    case Keys.Shift:
+                    case Keys.LWin:
+                        lock (_lock)
+                        {
+                            _modifier = key;
+                        }
+                        break;
+                    default:
+                        lock (_lock)
+                        {
+                            _key = key;
+                        }
+                        break;
+                }
+                return;
+            }
+            else
+            {
+                Console.WriteLine(_modifier + " - " + _key + " - " + state);
+
+                lock (_lock)
+                {
+                    if (_modifier != Keys.None && _key != Keys.None)
+                    {
+                        SendKeyCombo(_modifier, _key);
+                    }
+                    else if (_key != Keys.None)
+                    {
+                        SendKey(_key);
+                    }
+                    else if (_modifier != Keys.None)
+                    {
+                        SendKey(_modifier);
+                    }
+                }
+                _modifier = Keys.None;
+                _key = Keys.None;
             }
         }
         public static uint SendKeyCombo(Keys modifier, Keys key)
