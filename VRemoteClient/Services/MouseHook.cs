@@ -148,6 +148,7 @@ namespace VRemoteClient.Services
         }
         public string MouseEventToString(string mouseType ,int width, int height, System.Windows.Forms.MouseEventArgs e)
         {
+            Console.WriteLine(string.Format("{0} - {1} - {2} - {3}", width, height, e.X, e.Y));
             if(mouseType == "wheel_up")
             {
                 return MouseEventToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Up, e.X, e.Y);
@@ -191,12 +192,14 @@ namespace VRemoteClient.Services
         }
         private Tuple<float, float> CaculateMouseCorrdinate(int senderWidth, int senderHeight, int meWidth, int meHeight)
         {
+
             float scaleX = (float)meWidth / senderWidth;
             float scaleY = (float)meHeight / senderHeight;
             return new Tuple<float, float>(item1: scaleX, item2: scaleY);
         }
         public bool MouseEvent(int senderWidth, int senderHeight, int meWidth, int meHeight, MouseMessage button, MouseType action, int x, int y)
         {
+            Console.WriteLine(string.Format("Me: {0} - {1} - {2} - {3} - {4} - {5}", senderWidth, senderHeight, meWidth, meHeight, x, y));
             Tuple<float, float> scales = CaculateMouseCorrdinate(senderWidth, senderHeight, meWidth, meHeight);
             bool flag = false;
             switch (button)
@@ -265,29 +268,32 @@ namespace VRemoteClient.Services
         }
         private bool MousePress(float scaleX, float scaleY,uint mouseDown, uint mouseUp, int x, int y)
         {
-            int pointX = (int)Math.Round(scaleX * x);
-            int pointY =  (int)Math.Round(scaleY * y);
-            bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
-            if (!cusorFlag) return false;
+            //int pointX = (int)Math.Round(scaleX * x);
+            //int pointY =  (int)Math.Round(scaleY * y);
+            //bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
+            //if (!cusorFlag) return false;
 
-            ////or you do not want use SetcursorPos, you can use this code
-            //int normalizedX = x * 65535 / Screen.PrimaryScreen.Bounds.Width;
-            //int normalizedY = y * 65535 / Screen.PrimaryScreen.Bounds.Height;
-            ////and set 
-            //inputs[0].u.mi.dx = normalizedX;
-            //inputs[0].u.mi.dy = normalizedY;
+            //or you do not want use SetcursorPos, you can use this code
+            int normalizedX = x * 65535 / Screen.PrimaryScreen.Bounds.Width;
+            int normalizedY = y * 65535 / Screen.PrimaryScreen.Bounds.Height;
+
 
             INPUT[] inputs = new INPUT[2];
 
+            //and set 
+            inputs[0].u.mi.dx = normalizedX;
+            inputs[0].u.mi.dy = normalizedY;
+
+
             inputs[0].type = INPUT_MOUSE;
             inputs[0].u.mi.dwFlags = mouseDown | MOUSEEVENTF_ABSOLUTE;
-            inputs[0].u.mi.dx = 0;
-            inputs[0].u.mi.dy = 0;
+            inputs[0].u.mi.dx = normalizedX;
+            inputs[0].u.mi.dy = normalizedY;
 
             inputs[1].type = INPUT_MOUSE;
             inputs[1].u.mi.dwFlags = mouseUp | MOUSEEVENTF_ABSOLUTE;
-            inputs[1].u.mi.dx = 0;
-            inputs[1].u.mi.dy = 0;
+            inputs[1].u.mi.dx = normalizedX;
+            inputs[1].u.mi.dy = normalizedY;
 
             uint flag = SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
             if (flag > 0)
