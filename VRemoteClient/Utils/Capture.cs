@@ -232,14 +232,14 @@ namespace VRemoteClient.Utils
 
             // Only merge if efficiency is above threshold (avoid creating large empty areas)
             double efficiency = (double)combinedArea / unionArea;
-            return efficiency > 0.50; // 75% efficiency threshold
+            return efficiency > 0.9; // 75% efficiency threshold
         }
         private unsafe static bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
         {
             byte* currentPtr = (byte*)currentData.Scan0;
             byte* previousPtr = (byte*)previousData.Scan0;
             int stride = currentData.Stride;
-            const int threshold = 0;
+            const int threshold = 10;
 
             // move pointer to start of the block
             currentPtr += block.Y * stride + block.X * 3;

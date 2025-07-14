@@ -329,6 +329,7 @@ namespace VRemoteClient.Services
                     case Keys.RWin:
                         lock (_lock)
                         {
+                            if(!_modifiers.Any(x=> x == key))
                             _modifiers.Add(key);
                         }
                         break;
@@ -371,8 +372,17 @@ namespace VRemoteClient.Services
                     {
                         SendKey(_key);
                     }
-                    _modifiers = new List<Keys>();
-                    _key = Keys.None;
+
+
+
+                    if (_key == key)
+                    {
+                        _key = Keys.None;
+                    }
+                    if (_modifiers.Contains(key))
+                    {
+                        _modifiers.RemoveAll(k => k == key);
+                    }
                 }
             }
         }
