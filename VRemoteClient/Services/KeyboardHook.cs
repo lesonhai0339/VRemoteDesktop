@@ -407,18 +407,23 @@ namespace VRemoteClient.Services
                 {
                     if (_modifiers.Count > 1 && _key != Keys.None)
                     {
+                        string a = string.Join(" - ", _modifiers);
+                        Console.WriteLine("Send key and mulpti modifiers: " + a + " - " + _key);
                         SendMultiCombo(_modifiers, _key);
                     }
                     else if (_modifiers.Count == 1  && _key != Keys.None)
                     {
+                        Console.WriteLine("Send key and simple modifier: " + _modifiers[0] + " - " + _key);
                         SendKeyCombo(_modifiers[0], _key);
                     }
                     else if (_modifiers.Count == 1)
                     {
+                        Console.WriteLine("Send modifier: " + _modifiers[0]);
                         SendKey(_modifiers[0]);
                     }
                     else
                     {
+                        Console.WriteLine("Send key: " + _key);
                         SendKey(_key);
                     }
                     _modifiers = new List<Keys>();
