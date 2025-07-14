@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -352,6 +353,8 @@ namespace VRemoteClient.Services
             {
                 lock (_lock)
                 {
+                    string a = string.Join(" - ", _modifiers);
+                    Console.WriteLine(a + " - " + _key);
                     if (_modifiers.Count > 1 && _key != Keys.None)
                     {
                         SendMultiCombo(_modifiers, _key);
