@@ -269,7 +269,8 @@ namespace VRemoteClient.Services
         private bool MousePress(float scaleX, float scaleY,uint mouseDown, uint mouseUp, int x, int y)
         {
             int pointX = (int)Math.Round(scaleX * x);
-            int pointY =  (int)Math.Round(scaleY * y);
+            int pointY =  (int)Math.Round(scaleY * y);            
+
             bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
             if (!cusorFlag) return false;
 

@@ -20,6 +20,8 @@ namespace VRemoteClient
 {
     public partial class FormRemote : Form
     {
+        private int _clientWidth;
+        private int _clientHeight;
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
         private readonly object _screenLock = new object();
@@ -32,6 +34,8 @@ namespace VRemoteClient
             InitializeComponent();
             Client = remoteClient;
             _info = info;
+            _clientHeight = info.Receiver.Height;
+            _clientWidth = info.Receiver.Width;
             KeyboardHook = new KeyboardHook();
             MouseHook = new GlobalMouseHook();
 
@@ -40,7 +44,7 @@ namespace VRemoteClient
             this.FormBorderStyle = FormBorderStyle.FixedSingle;
             this.MaximizeBox = false;
             this.StartPosition = FormStartPosition.CenterScreen;
-            this.ClientSize = new Size(_info.Receiver.Width, _info.Receiver.Height);
+            this.ClientSize = new Size(_clientWidth * (2/3), _clientHeight * (2/3));
 
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
@@ -247,11 +251,11 @@ namespace VRemoteClient
             string mouseCommandString = "";
             if (e.Delta > 0)
             {
-                mouseCommandString = MouseHook.MouseEventToString("wheel_up", pictureboxWidth, pictureboxHeight, e);
+                mouseCommandString = MouseHook.MouseEventToString("wheel_up", pictureboxWidth * (2/3), pictureboxHeight * (2 / 3), e);
             }
             else if (e.Delta < 0) 
             {
-                mouseCommandString = MouseHook.MouseEventToString("wheel_down", pictureboxWidth, pictureboxHeight, e);
+                mouseCommandString = MouseHook.MouseEventToString("wheel_down", pictureboxWidth * (2 / 3), pictureboxHeight * (2 / 3), e);
             }
 
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
@@ -261,14 +265,14 @@ namespace VRemoteClient
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
-            string mouseCommandString = MouseHook.MouseEventToString("", pictureboxWidth, pictureboxHeight, e);
+            string mouseCommandString = MouseHook.MouseEventToString("", pictureboxWidth * (2 / 3), pictureboxHeight * (2 / 3), e);
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
         private void MouseClickEventHandler(object sender, MouseEventArgs e)
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
-            string mouseCommandString = MouseHook.MouseEventToString("", pictureboxWidth, pictureboxHeight, e);
+            string mouseCommandString = MouseHook.MouseEventToString("", pictureboxWidth * (2 / 3), pictureboxHeight * (2 / 3), e);
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
 
