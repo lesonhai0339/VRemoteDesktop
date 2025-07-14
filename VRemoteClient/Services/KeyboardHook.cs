@@ -42,7 +42,10 @@ namespace VRemoteClient.Services
     }
     public class KeyboardHook: IDisposable
     {
-
+        private bool ctrlPressed = false;
+        private bool altPressed = false;
+        private bool shiftPressed = false;
+        private bool winPressed = false;
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_KEYUP = 0x0101;
@@ -80,15 +83,6 @@ namespace VRemoteClient.Services
                     GetModuleHandle(curModule.ModuleName), 0);
             }
         }
-        /// <summary>
-        /// Sẽ được gọi khi có sự kiện bàn phím xảy ra. hiện tại đang kiểm tra xem FormRemote có được focus hay không.
-        /// Nếu có thì sẽ gọi invoke action và gửi keyboard đến receiver, máy hiện tại sẽ không thực hiện bất kỳ thao tác bản phím nào.
-        /// Nếu FormRemote không được focus thì sẽ gọi CallNextHookEx thực hiện phím trên chính máy này.
-        /// </summary>
-        /// <param name="nCode"></param>
-        /// <param name="wParam"></param>
-        /// <param name="lParam"></param>
-        /// <returns></returns>
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             if (nCode >= 0 && IsTargetWindowFocused())
@@ -96,7 +90,6 @@ namespace VRemoteClient.Services
                 // Only process key down and key up messages
                 if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
                 {
-                    // Correct way to read the virtual key code
                     KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
@@ -104,45 +97,102 @@ namespace VRemoteClient.Services
                     // Determine if it's key down or up
                     KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
 
-                    KeyMessageEventArgs keyEventArgs = null;
-                    Keys modifier = IsControlPressed() ? Keys.Control :
-                                    IsAltPressed() ? Keys.Alt:
-                                    IsShiftPressed() ? Keys.Shift:
-                                    isLeftWindowKeyPressed() ? Keys.LWin : Keys.None;
-                    keyEventArgs = new KeyMessageEventArgs(wParam,modifier, key, keyState);
-                    if (keyEventArgs != null)
+                    // Update modifier state BEFORE getting current modifier
+                    UpdateModifierState(vkCode, keyState);
+
+                    // Get current modifier based on tracked state
+                    Keys modifier = GetCurrentModifier();
+
+                    KeyMessageEventArgs keyEventArgs = new KeyMessageEventArgs(wParam, modifier, key, keyState);
+
+                    bool isModifierKey = IsModifierKey(vkCode);
+                    bool hasModifier = (modifier != Keys.None);
+
+                    if (!isModifierKey)
+                    {
+                        KeyPressed?.Invoke(this, keyEventArgs);
+                        return (IntPtr)1;
+                    }
+                    else if (hasModifier && modifier != key)
+                    {
+                        KeyPressed?.Invoke(this, keyEventArgs);
+                        return (IntPtr)1;
+                    }
+                    else if (!hasModifier)
                     {
                         KeyPressed?.Invoke(this, keyEventArgs);
                     }
                 }
-                // do nothing if the target window is focused
-                return (IntPtr)1;
             }
-            else
-            {
-                // If the target window is not focused, pass the message to the next hook
-                return CallNextHookEx(hookID, nCode, wParam, lParam);
-
-            }
-            //return CallNextHookEx(hookID, nCode, wParam, lParam);
+            return CallNextHookEx(hookID, nCode, wParam, lParam);
         }
+
+        private void UpdateModifierState(int vkCode, KeyState keyState)
+        {
+            bool isPressed = (keyState == KeyState.KeyDown);
+
+            switch (vkCode)
+            {
+                case 0x11: // VK_CONTROL
+                case 0xA2: // VK_LCONTROL
+                case 0xA3: // VK_RCONTROL
+                    ctrlPressed = isPressed;
+                    break;
+
+                case 0x12: // VK_MENU (Alt)
+                case 0xA4: // VK_LMENU
+                case 0xA5: // VK_RMENU
+                    altPressed = isPressed;
+                    break;
+
+                case 0x10: // VK_SHIFT
+                case 0xA0: // VK_LSHIFT
+                case 0xA1: // VK_RSHIFT
+                    shiftPressed = isPressed;
+                    break;
+
+                case 0x5B: // VK_LWIN
+                case 0x5C: // VK_RWIN
+                    winPressed = isPressed;
+                    break;
+            }
+        }
+
+        private Keys GetCurrentModifier()
+        {
+            if (ctrlPressed) return Keys.Control;
+            if (altPressed) return Keys.Alt;
+            if (shiftPressed) return Keys.Shift;
+            if (winPressed) return Keys.LWin;
+            return Keys.None;
+        }
+
+        private bool IsModifierKey(int vkCode)
+        {
+            return vkCode == 0x10 || vkCode == 0xA0 || vkCode == 0xA1 || // Shift
+                   vkCode == 0x11 || vkCode == 0xA2 || vkCode == 0xA3 || // Control
+                   vkCode == 0x12 || vkCode == 0xA4 || vkCode == 0xA5 || // Alt
+                   vkCode == 0x5B || vkCode == 0x5C;                     // Windows
+        }
+
         private bool IsControlPressed()
         {
-            return (GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0 || (GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0;
+            return ctrlPressed;
         }
 
         private bool IsShiftPressed()
         {
-            return (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+            return shiftPressed;
         }
 
         private bool IsAltPressed()
         {
-            return (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+            return altPressed;
         }
+
         private bool isLeftWindowKeyPressed()
         {
-            return (GetAsyncKeyState((int)Keys.LWin) & 0x8000) != 0;
+            return winPressed;
         }
         private bool IsTargetAppFocused()
         {
