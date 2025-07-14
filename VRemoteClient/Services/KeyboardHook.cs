@@ -132,7 +132,7 @@ namespace VRemoteClient.Services
 
                     //    return (IntPtr)1;
                     //}
-                    //KeyPressed?.Invoke(this, keyEventArgs);
+                    KeyPressed?.Invoke(this, keyEventArgs);
                 }
             }
             return CallNextHookEx(hookID, nCode, wParam, lParam);
@@ -373,9 +373,19 @@ namespace VRemoteClient.Services
                 switch (key)
                 {
                     case Keys.Control:
-                    case Keys.Alt:
+                    case Keys.ControlKey:
+                    case Keys.LControlKey:
+                    case Keys.RControlKey:
                     case Keys.Shift:
+                    case Keys.ShiftKey:
+                    case Keys.LShiftKey:
+                    case Keys.RShiftKey:
+                    case Keys.Alt:
+                    case Keys.Menu:
+                    case Keys.LMenu:
+                    case Keys.RMenu:
                     case Keys.LWin:
+                    case Keys.RWin:
                         lock (_lock)
                         {
                             _modifier = key;
