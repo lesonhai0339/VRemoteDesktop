@@ -46,6 +46,7 @@ namespace VRemoteClient.Services
         private bool altPressed = false;
         private bool shiftPressed = false;
         private bool winPressed = false;
+        private Keys previousState = Keys.None;
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_KEYUP = 0x0101;
@@ -108,22 +109,19 @@ namespace VRemoteClient.Services
                     bool isModifierKey = IsModifierKey(vkCode);
                     bool hasModifier = (modifier != Keys.None);
 
-                    if(keyState == KeyState.KeyDown)
+                    if (!isModifierKey)
                     {
-                        if (!isModifierKey)
-                        {
-                            KeyPressed?.Invoke(this, keyEventArgs);
-                            return (IntPtr)1;
-                        }
-                        else if (hasModifier && modifier != key)
-                        {
-                            KeyPressed?.Invoke(this, keyEventArgs);
-                            return (IntPtr)1;
-                        }
-                        else if (!hasModifier)
-                        {
-                            KeyPressed?.Invoke(this, keyEventArgs);
-                        }
+                        KeyPressed?.Invoke(this, keyEventArgs);
+                        return (IntPtr)1;
+                    }
+                    else if (hasModifier && modifier != key)
+                    {
+                        KeyPressed?.Invoke(this, keyEventArgs);
+                        return (IntPtr)1;
+                    }
+                    else if (!hasModifier)
+                    {
+                        KeyPressed?.Invoke(this, keyEventArgs);
                     }
                 }
             }
