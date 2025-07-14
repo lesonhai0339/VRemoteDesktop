@@ -48,7 +48,7 @@ namespace VRemoteClient
 
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
-            vPictureBox.SizeMode = PictureBoxSizeMode.Zoom; // Giữ tỷ lệ, có thể có viền đen
+            vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
 
             vPictureBox.MouseClick += MouseClickEventHandler;
             vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;

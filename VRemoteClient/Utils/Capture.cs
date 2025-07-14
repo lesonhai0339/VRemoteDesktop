@@ -147,7 +147,7 @@ namespace VRemoteClient.Utils
         internal static List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
         {
             var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 4;
+            const int blockSize = 16;
 
             // Parallel processing for better performance
             var regions = new List<Rectangle>();
@@ -232,7 +232,7 @@ namespace VRemoteClient.Utils
 
             // Only merge if efficiency is above threshold (avoid creating large empty areas)
             double efficiency = (double)combinedArea / unionArea;
-            return efficiency > 0.9; // 75% efficiency threshold
+            return efficiency > 0.75; // 75% efficiency threshold
         }
         private unsafe static bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
         {
