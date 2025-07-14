@@ -42,13 +42,10 @@ namespace VRemoteClient
             this.StartPosition = FormStartPosition.CenterScreen;
             this.ClientSize = new Size(_info.Receiver.Width, _info.Receiver.Height);
 
-            // Create and configure PictureBox
-            vPictureBox.Size = new Size(_info.Receiver.Width, _info.Receiver.Height);
-            vPictureBox.Location = new Point(0, 0);
-            vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
-            //In form constructor or designer
+            // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
-            vPictureBox.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            vPictureBox.SizeMode = PictureBoxSizeMode.StretchImage;
+
             vPictureBox.MouseClick += MouseClickEventHandler;
             vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
             vPictureBox.MouseWheel += MouseWheelEventHandler;
