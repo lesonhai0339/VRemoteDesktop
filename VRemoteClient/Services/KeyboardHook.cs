@@ -43,11 +43,6 @@ namespace VRemoteClient.Services
     }
     public class KeyboardHook: IDisposable
     {
-
-        private bool _isControlPressed = false;
-        private bool _isShiftPressed = false;
-        private bool _isAltPressed = false;
-        private bool _isLeftWindowKeyPressed = false;
         private const int WH_KEYBOARD_LL = 13;
         private const int WM_KEYDOWN = 0x0100;
         private const int WM_KEYUP = 0x0101;
@@ -109,20 +104,16 @@ namespace VRemoteClient.Services
 
                     // Determine if it's key down or up
                     KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
-                    method_1(keyState, key);
 
                     KeyMessageEventArgs keyEventArgs = null;
-                    Keys modifier = _isControlPressed ? Keys.Control :
-                                   _isAltPressed ? Keys.Alt :
-                                   _isShiftPressed ? Keys.Shift :
-                                   _isLeftWindowKeyPressed ? Keys.LWin : Keys.None;
                     //Keys modifier = IsControlPressed() ? Keys.Control :
                     //                IsAltPressed() ? Keys.Alt:
                     //                IsShiftPressed() ? Keys.Shift:
                     //                isLeftWindowKeyPressed() ? Keys.LWin : Keys.None;
-                    keyEventArgs = new KeyMessageEventArgs(wParam,modifier, key, keyState);
+                    //keyEventArgs = new KeyMessageEventArgs(wParam,modifier, key, keyState);
 
-                    Console.WriteLine(wParam+ " - "+ modifier + " - " + key + " - " + keyState);
+                    keyEventArgs = new KeyMessageEventArgs(wParam, Keys.None, key, keyState);
+                    Console.WriteLine(keyEventArgs.KeyCode + " - "+ keyEventArgs.KeyType);
                     //bool isModifierKey = IsModifierKey(vkCode);
                     //bool hasModifier = (modifier != Keys.None);
 
@@ -137,58 +128,6 @@ namespace VRemoteClient.Services
                 }
             }
             return CallNextHookEx(hookID, nCode, wParam, lParam);
-        }
-        private void method_1(KeyState e, Keys key)
-        {
-            switch ((int)e)
-            {
-                case 256:
-                    if(key == Keys.Control)
-                    {
-                        _isControlPressed = true;
-                        return;
-                    }
-                    else if(key == Keys.Alt)
-                    {
-                        _isAltPressed = true;
-                        return;
-                    }
-                    else if(key == Keys.Shift)
-                    {
-                        _isShiftPressed = true;
-                        return;
-                    }
-                    else if (key == Keys.LWin)
-                    {
-                        _isLeftWindowKeyPressed = true;
-                        return;
-                    }
-                    break;
-                case 257:
-                    if (key == Keys.Control)
-                    {
-                        _isControlPressed = true;
-                        return;
-                    }
-                    else if (key == Keys.Alt)
-                    {
-                        _isAltPressed = true;
-                        return;
-                    }
-                    else if (key == Keys.Shift)
-                    {
-                        _isShiftPressed = true;
-                        return;
-                    }
-                    else if (key == Keys.LWin)
-                    {
-                        _isLeftWindowKeyPressed = true;
-                        return;
-                    }
-                    break;
-                default:
-                    break;
-            }
         }
         private bool IsModifierKey(int vkCode)
         {
@@ -395,7 +334,15 @@ namespace VRemoteClient.Services
                     default:
                         lock (_lock)
                         {
-                            _key = key;
+                            //case for holding key (example: aaaaaaaaaaaaa)
+                            if(_key == key)
+                            {
+                                SendKey(_key);
+                            }
+                            else
+                            {
+                                _key = key;
+                            }
                         }
                         break;
                 }
@@ -407,23 +354,18 @@ namespace VRemoteClient.Services
                 {
                     if (_modifiers.Count > 1 && _key != Keys.None)
                     {
-                        string a = string.Join(" - ", _modifiers);
-                        Console.WriteLine("Send key and mulpti modifiers: " + a + " - " + _key);
                         SendMultiCombo(_modifiers, _key);
                     }
                     else if (_modifiers.Count == 1  && _key != Keys.None)
                     {
-                        Console.WriteLine("Send key and simple modifier: " + _modifiers[0] + " - " + _key);
                         SendKeyCombo(_modifiers[0], _key);
                     }
                     else if (_modifiers.Count == 1)
                     {
-                        Console.WriteLine("Send modifier: " + _modifiers[0]);
                         SendKey(_modifiers[0]);
                     }
                     else
                     {
-                        Console.WriteLine("Send key: " + _key);
                         SendKey(_key);
                     }
                     _modifiers = new List<Keys>();
