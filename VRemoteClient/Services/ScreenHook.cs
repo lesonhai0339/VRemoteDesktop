@@ -254,7 +254,7 @@ namespace VRemoteClient.Services
         private bool SendAndWaitAck(CommandType cmdType, byte[] data, int sendLength)
         {
             // _resetEvent.Reset(); // Reset the event before sending
-            RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
+            //RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
             //bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
 
             //if (!ackReceived)

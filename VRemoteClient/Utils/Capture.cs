@@ -80,6 +80,9 @@ namespace VRemoteClient.Utils
                                     byte[] compressedData;
                                     using (var stream = new MemoryStream())
                                     {
+                                        string a = Path.Combine(Environment.CurrentDirectory, "images", "image_" + i + ".png");
+                                        Console.WriteLine(a);
+                                        regionBitmap.Save(a, ImageFormat.Png);
                                         regionBitmap.Save(stream, encoder, encoderParams);
                                         compressedData = Utils.Extensions.Compress(stream.ToArray());
                                     }
@@ -147,7 +150,7 @@ namespace VRemoteClient.Utils
         internal static List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
         {
             var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 16;
+            const int blockSize = 2;
 
             // Parallel processing for better performance
             var regions = new List<Rectangle>();
