@@ -111,7 +111,7 @@ namespace VRemoteClient
         {
             if (!flag)
             {
-                MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _resetEvent.Set();
             }
             else
             {
@@ -162,6 +162,7 @@ namespace VRemoteClient
             if (string.IsNullOrEmpty(txtPartnerId.Text) || string.IsNullOrEmpty(txtPartnerPassword.Text))
             {
                 MessageBox.Show("Vui lòng nhập ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
             string receiverInfo = Utils.Extensions.DataStringBuilder(new string[] { Me.Id, txtPartnerId.Text.Trim(), txtPartnerPassword.Text.Trim() });
             byte[] dataBytes = Encoding.ASCII.GetBytes(receiverInfo);
@@ -175,7 +176,7 @@ namespace VRemoteClient
             }
             else
             {
-                MessageBox.Show($"Không thể kết nối đến {txtPartnerId.Text}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
             } 
         }
     }
