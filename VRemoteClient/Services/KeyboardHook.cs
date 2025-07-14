@@ -108,19 +108,22 @@ namespace VRemoteClient.Services
                     bool isModifierKey = IsModifierKey(vkCode);
                     bool hasModifier = (modifier != Keys.None);
 
-                    if (!isModifierKey)
+                    if(keyState == KeyState.KeyDown)
                     {
-                        KeyPressed?.Invoke(this, keyEventArgs);
-                        return (IntPtr)1;
-                    }
-                    else if (hasModifier && modifier != key)
-                    {
-                        KeyPressed?.Invoke(this, keyEventArgs);
-                        return (IntPtr)1;
-                    }
-                    else if (!hasModifier)
-                    {
-                        KeyPressed?.Invoke(this, keyEventArgs);
+                        if (!isModifierKey)
+                        {
+                            KeyPressed?.Invoke(this, keyEventArgs);
+                            return (IntPtr)1;
+                        }
+                        else if (hasModifier && modifier != key)
+                        {
+                            KeyPressed?.Invoke(this, keyEventArgs);
+                            return (IntPtr)1;
+                        }
+                        else if (!hasModifier)
+                        {
+                            KeyPressed?.Invoke(this, keyEventArgs);
+                        }
                     }
                 }
             }

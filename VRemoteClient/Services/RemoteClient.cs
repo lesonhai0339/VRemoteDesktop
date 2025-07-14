@@ -328,7 +328,7 @@ namespace VRemoteClient.Services
                 Keys keyModifier = (Keys)int.Parse(keyboards[1]);
                 Keys keyCode = (Keys)int.Parse(keyboards[2]);
                 KeyState keyType = (KeyState)int.Parse(keyboards[3]);
-                Console.WriteLine(keyModifier + " - " + keyCode);
+                Console.WriteLine(keyModifier + " - " + keyCode + " - "+ keyType);
                 if(keyType == KeyState.KeyDown)
                 {
                     if (keyModifier != Keys.None)
