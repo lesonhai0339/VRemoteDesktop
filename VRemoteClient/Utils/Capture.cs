@@ -150,7 +150,7 @@ namespace VRemoteClient.Utils
         internal static List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
         {
             var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 2;
+            const int blockSize = 8;
 
             // Parallel processing for better performance
             var regions = new List<Rectangle>();

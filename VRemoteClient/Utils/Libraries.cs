@@ -120,12 +120,12 @@ namespace VRemoteClient.Utils
             public uint time;
             public IntPtr dwExtraInfo;
         }
-        public class MouseEventArgs : EventArgs
-        {
-            public int X { get; set; }
-            public int Y { get; set; }
-            public string Button { get; set; }
-            public string Action { get; set; }
-        }
+        //public class CustomMouseEventArgs : EventArgs
+        //{
+        //    public int X { get; set; }
+        //    public int Y { get; set; }
+        //    public string Button { get; set; }
+        //    public string Action { get; set; }
+        //}
     }
 }

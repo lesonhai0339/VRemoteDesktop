@@ -146,9 +146,45 @@ namespace VRemoteClient.Services
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
+        public Point GetImagePointFromMouse(PictureBox pictureBox, int x, int y)
+        {
+            if (pictureBox.SizeMode == PictureBoxSizeMode.Zoom && pictureBox.Image != null)
+            {
+                float scaleX = (float)pictureBox.Width / pictureBox.Image.Width;
+                float scaleY = (float)pictureBox.Height / pictureBox.Image.Height;
+
+                float scale = Math.Min(scaleX, scaleY);
+
+                int scaleWidth = (int)(pictureBox.Image.Width * scale);
+                int scaleHeight = (int)(pictureBox.Image.Height * scale);
+
+                int offsetX = (pictureBox.Width - scaleWidth) / 2;
+                int offsetY = (pictureBox.Height - scaleHeight) / 2;
+
+                if (x < offsetX || x > offsetX + scaleWidth ||
+                   y < offsetY || y > offsetY + scaleHeight)
+                {
+                    return Point.Empty;
+                }
+                return new Point(
+                    (int)Math.Round((x - offsetX) / scale),
+                    (int)Math.Round((y - offsetY) / scale)
+                );
+            }
+            else if(pictureBox.SizeMode == PictureBoxSizeMode.StretchImage && pictureBox.Image != null)
+            {
+                float scaleX = (float)pictureBox.Image.Width / pictureBox.Width;
+                float scaleY = (float)pictureBox.Image.Height / pictureBox.Height;
+
+                int scaleWidth = (int)(x * scaleX);
+                int scaleHeight = (int)(y * scaleY);
+
+                return new Point(scaleWidth, scaleHeight);
+            }
+            return new Point(x, y);
+        }
         public string MouseEventToString(string mouseType ,int width, int height, System.Windows.Forms.MouseEventArgs e)
         {
-            Console.WriteLine(string.Format("{0} - {1} - {2} - {3}", width, height, e.X, e.Y));
             if(mouseType == "wheel_up")
             {
                 return MouseEventToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Up, e.X, e.Y);
@@ -199,7 +235,6 @@ namespace VRemoteClient.Services
         }
         public bool MouseEvent(int senderWidth, int senderHeight, int meWidth, int meHeight, MouseMessage button, MouseType action, int x, int y)
         {
-            Console.WriteLine(string.Format("Me: {0} - {1} - {2} - {3} - {4} - {5}", senderWidth, senderHeight, meWidth, meHeight, x, y));
             Tuple<float, float> scales = CaculateMouseCorrdinate(senderWidth, senderHeight, meWidth, meHeight);
             bool flag = false;
             switch (button)

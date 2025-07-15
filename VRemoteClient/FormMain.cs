@@ -25,7 +25,6 @@ namespace VRemoteClient
         private ClientInfo _clientInfo;
         private RemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
-        private ScreenHook _screenHook;
         public FormMain()
         {
             InitializeComponent();
@@ -33,7 +32,6 @@ namespace VRemoteClient
             _isSocketConnected = false;
             _isP2PConnected = false;
             _resetEvent = new ManualResetEvent(false);
-            _screenHook = new ScreenHook(null);
             Me = Utils.Extensions.InitInfo();
             RemoteClient = new RemoteClient(Me);
 

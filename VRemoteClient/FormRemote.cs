@@ -40,15 +40,14 @@ namespace VRemoteClient
             MouseHook = new GlobalMouseHook();
 
             Text = _info.Receiver.Id.Trim();
-            //Icon = new Icon("Resources/logo.ico");
-            this.FormBorderStyle = FormBorderStyle.FixedSingle;
-            this.MaximizeBox = false;
-            this.StartPosition = FormStartPosition.CenterScreen;
-            this.ClientSize = new Size(_clientWidth, _clientHeight);
+            Icon = new Icon("Resources/logo.ico");
 
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
+            vPictureBox.Size = new Size(150, 150);
+            base.AutoScaleDimensions = new SizeF(6f, 13f); 
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
+            vPictureBox.BackColor = Color.Black;
 
             vPictureBox.MouseClick += MouseClickEventHandler;
             vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
@@ -192,6 +191,8 @@ namespace VRemoteClient
                         _curScreen?.Dispose();
 
                         _curScreen = new Bitmap(image);
+                        var imageSize = image.Size;
+                        Console.WriteLine(string.Format("Screen receive Width: {0}, Height: {1}", imageSize.Width, imageSize.Height));
                         _screenGraphics = Graphics.FromImage(_curScreen);
 
                         InitializeGraphicsSettings();
@@ -251,11 +252,11 @@ namespace VRemoteClient
             string mouseCommandString = "";
             if (e.Delta > 0)
             {
-                mouseCommandString = MouseHook.MouseEventToString("wheel_up", _clientWidth, _clientHeight, e);
+                mouseCommandString = MouseHook.MouseEventToString("wheel_up", vPictureBox.Image.Width, vPictureBox.Image.Height, e);
             }
             else if (e.Delta < 0) 
             {
-                mouseCommandString = MouseHook.MouseEventToString("wheel_down", _clientWidth, _clientHeight, e);
+                mouseCommandString = MouseHook.MouseEventToString("wheel_down", vPictureBox.Image.Width, vPictureBox.Image.Height, e);
             }
 
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
@@ -263,19 +264,27 @@ namespace VRemoteClient
 
         private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
         {
-            int pictureboxWidth = vPictureBox.ClientSize.Width;
-            int pictureboxHeight = vPictureBox.ClientSize.Height;
-            string mouseCommandString = MouseHook.MouseEventToString("", _clientWidth, _clientHeight, e);
+            //get actual mouse coordinate before send
+            Point adjustedPoint = MouseHook.GetImagePointFromMouse(vPictureBox, e.X, e.Y);
+
+            var adjustedMouseEventArgs = new MouseEventArgs(e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
+
+            //convert to string
+            string mouseCommandString = MouseHook.MouseEventToString("", vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs);
             Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
         }
         private void MouseClickEventHandler(object sender, MouseEventArgs e)
         {
-            int pictureboxWidth = vPictureBox.ClientSize.Width;
-            int pictureboxHeight = vPictureBox.ClientSize.Height;
-            string mouseCommandString = MouseHook.MouseEventToString("", _clientWidth, _clientHeight, e);
-            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
-        }
+            //get actual mouse coordinate before send
+            Point adjustedPoint = MouseHook.GetImagePointFromMouse(vPictureBox, e.X, e.Y);
 
+            var adjustedMouseEventArgs = new MouseEventArgs(e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
+
+            //convert to string
+            string mouseCommandString = MouseHook.MouseEventToString("", vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs);
+            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
+
+        }
         #endregion
     }
 }
