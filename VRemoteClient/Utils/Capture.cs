@@ -16,14 +16,6 @@ namespace VRemoteClient.Utils
     {
         private static Bitmap _previousFrame;
         private static readonly object _lockObject = new object();
-        [DllImport("gdi32.dll")]
-        static extern bool BitBlt(IntPtr hdc, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hdcSrc, int nXSrc, int nYSrc, uint dwRop);
-        [DllImport("user32.dll")]
-        static extern IntPtr GetDC(IntPtr hWnd);
-        [DllImport("user32.dll")]
-
-        static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
-
         static ImageCodecInfo encoder = ImageCodecInfo.GetImageEncoders()
                 .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
         static EncoderParameters encoderParams = new EncoderParameters(1);
@@ -124,13 +116,13 @@ namespace VRemoteClient.Utils
             using (Graphics bitmapGraphics = Graphics.FromImage(bitmap))
             {
                 IntPtr bitmapHdc = bitmapGraphics.GetHdc();
-                IntPtr screenHdc = GetDC(IntPtr.Zero);
+                IntPtr screenHdc = Libraries.GetDC(IntPtr.Zero);
 
-                BitBlt(bitmapHdc, 0, 0, bounds.Width, bounds.Height,
+                Libraries.BitBlt(bitmapHdc, 0, 0, bounds.Width, bounds.Height,
                        screenHdc, bounds.X, bounds.Y, 0x00CC0020); // SRCCOPY
 
                 bitmapGraphics.ReleaseHdc(bitmapHdc);
-                ReleaseDC(IntPtr.Zero, screenHdc);
+                Libraries.ReleaseDC(IntPtr.Zero, screenHdc);
             }
             return bitmap;
         }

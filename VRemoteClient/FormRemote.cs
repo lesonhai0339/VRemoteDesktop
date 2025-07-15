@@ -40,14 +40,14 @@ namespace VRemoteClient
             MouseHook = new GlobalMouseHook();
 
             Text = _info.Receiver.Id.Trim();
-            //Icon = new Icon("Resources/logo.ico");
+            Icon = new Icon("Resources/logo.ico");
 
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
             vPictureBox.Size = new Size(150, 150);
             base.AutoScaleDimensions = new SizeF(6f, 13f); 
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
-            //vPictureBox.BackColor = Color.Black;
+            vPictureBox.BackColor = Color.Black;
 
             vPictureBox.MouseClick += MouseClickEventHandler;
             vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
