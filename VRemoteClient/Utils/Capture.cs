@@ -8,6 +8,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -39,20 +40,17 @@ namespace VRemoteClient.Utils
                     if (_previousFrame == null)
                     {
                         // First capture - send full screen
-                        byte[] compressedData = null;
                         using (var stream = new MemoryStream())
                         {
                             currentScreen.Save(stream, encoder, encoderParams);
-                            compressedData = Utils.Extensions.Compress(stream.ToArray());
+                            ScreenBlock cell = new ScreenBlock
+                            {
+                                IsFullScreen = true,
+                                Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                                Bytes = stream.ToArray()
+                            };
+                            cells.Add(cell);
                         }
-                        ScreenBlock cell = new ScreenBlock
-                        {
-                            IsFullScreen = true,
-                            Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                            Bytes = compressedData
-                        };
-                        cells.Add(cell);
-
                         // Store current frame as previous
                         _previousFrame = currentScreen.Clone(
                             new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
@@ -115,22 +113,17 @@ namespace VRemoteClient.Utils
                             {
                                 using (Bitmap regionBitmap = CropBitmap(currentScreen, mergedRegions[i]))
                                 {
-                                    byte[] compressedData;
                                     using (var stream = new MemoryStream())
                                     {
-                                        //string a = Path.Combine(Environment.CurrentDirectory, "images", "image_" + i + ".png");
-                                        //Console.WriteLine(a);
-                                        //regionBitmap.Save(a, ImageFormat.Png);
                                         regionBitmap.Save(stream, encoder, encoderParams);
-                                        compressedData = Utils.Extensions.Compress(stream.ToArray());
+                                        ScreenBlock cell = new ScreenBlock
+                                        {
+                                            IsFullScreen = false,
+                                            Rectangle = mergedRegions[i],
+                                            Bytes = stream.ToArray()
+                                        };
+                                        cells.Add(cell);
                                     }
-                                    ScreenBlock cell = new ScreenBlock
-                                    {
-                                        IsFullScreen = false,
-                                        Rectangle = mergedRegions[i],
-                                        Bytes = compressedData
-                                    };
-                                    cells.Add(cell);
                                 }
                             }
                             // Update previous frame
@@ -218,6 +211,8 @@ namespace VRemoteClient.Utils
 
         internal static List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
         {
+            Random rd = new Random();
+
             var dirtyRegions = new List<Rectangle>();
             const int blockSize = 8;
 
@@ -230,13 +225,13 @@ namespace VRemoteClient.Utils
                 {
                     int width = (current.Width - x) > blockSize ? blockSize : current.Width - x;
                     int height = (current.Height - y) > blockSize ? blockSize : current.Height - y;
-
                     Rectangle block = new Rectangle(x, y,
                         width,
                         height);
                     regions.Add(block);
                 }
             }
+            
             BitmapData currentData = null;
             BitmapData previousData = null;
             var maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
@@ -291,6 +286,7 @@ namespace VRemoteClient.Utils
                     {
                         merged[i] = Rectangle.Union(merged[i], sorted[j]);
                         wasMerged = true;
+                        sorted.Remove(sorted[j]);
                         break;
                     }
                 }
@@ -321,7 +317,7 @@ namespace VRemoteClient.Utils
             byte* currentPtr = (byte*)currentData.Scan0;
             byte* previousPtr = (byte*)previousData.Scan0;
             int stride = currentData.Stride;
-            const int threshold = 10;
+            const int threshold = 5;
 
             // move pointer to start of the block
             currentPtr += block.Y * stride + block.X * 3;

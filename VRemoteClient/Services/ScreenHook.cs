@@ -107,7 +107,7 @@ namespace VRemoteClient.Services
                 stopwatch.Stop();
                 //Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
                 // FPS of windows screen, currently set to 5 FPS, need to improve screen capture to increase FPS
-                Thread.Sleep(1000/5);
+                Thread.Sleep(1000);
             }
         }
         // Send full screen to sender when first connect
@@ -256,7 +256,7 @@ namespace VRemoteClient.Services
         private bool SendAndWaitAck(CommandType cmdType, byte[] data, int sendLength)
         {
             // _resetEvent.Reset(); // Reset the event before sending
-            RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
+            //RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
             //bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
 
             //if (!ackReceived)

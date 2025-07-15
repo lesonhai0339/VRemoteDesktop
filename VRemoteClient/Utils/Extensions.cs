@@ -1,11 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Drawing.Imaging;
 using System.Drawing;
-using System.IO.Compression;
+using System.Drawing.Imaging;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
@@ -28,21 +29,49 @@ namespace VRemoteClient.Utils
         }
         internal static byte[] Compress(byte[] data)
         {
-            MemoryStream output = new MemoryStream();
-            using (DeflateStream dstream = new DeflateStream(output, CompressionMode.Compress))
+            if (data == null || data.Length == 0) return data;
+
+            using (MemoryStream stream = new MemoryStream()) 
             {
-                dstream.Write(data, 0, data.Length);
+                using (DeflateStream dstream = new DeflateStream(stream, CompressionMode.Compress, true))
+                {
+                    dstream.Write(data, 0, data.Length);
+                }
+                return stream.ToArray();
             }
-            return output.ToArray();
         }
 
         internal static byte[] Decompress(byte[] data)
         {
             MemoryStream input = new MemoryStream(data);
             MemoryStream output = new MemoryStream();
-            using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
+            using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress,true))
             {
                 dstream.CopyTo(output);
+            }
+            return output.ToArray();
+        }
+        internal static byte[] CompressGzip(byte[] data)
+        {
+            if (data == null || data.Length == 0) return data;
+
+            using (MemoryStream stream = new MemoryStream())
+            {
+                using (var compressionStream = new GZipStream(stream, CompressionMode.Compress, true))
+                {
+                    compressionStream.Write(data, 0, data.Length);
+                }
+                return stream.ToArray();
+            }
+        }
+
+        internal static byte[] DecompressGzip(byte[] data)
+        {
+            MemoryStream input = new MemoryStream(data);
+            MemoryStream output = new MemoryStream();
+            using (var compressionStream = new GZipStream(input, CompressionMode.Decompress, true))
+            {
+                compressionStream.CopyTo(output);
             }
             return output.ToArray();
         }
