@@ -80,9 +80,9 @@ namespace VRemoteClient.Utils
                                     byte[] compressedData;
                                     using (var stream = new MemoryStream())
                                     {
-                                        string a = Path.Combine(Environment.CurrentDirectory, "images", "image_" + i + ".png");
-                                        Console.WriteLine(a);
-                                        regionBitmap.Save(a, ImageFormat.Png);
+                                        //string a = Path.Combine(Environment.CurrentDirectory, "images", "image_" + i + ".png");
+                                        //Console.WriteLine(a);
+                                        //regionBitmap.Save(a, ImageFormat.Png);
                                         regionBitmap.Save(stream, encoder, encoderParams);
                                         compressedData = Utils.Extensions.Compress(stream.ToArray());
                                     }
