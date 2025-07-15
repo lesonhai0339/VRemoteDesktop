@@ -80,13 +80,13 @@ namespace VRemoteClient.Services
         {
             while (true)
             {
-                //Stopwatch stopwatch = new Stopwatch();
-                //stopwatch.Start();
+                Stopwatch stopwatch = new Stopwatch();
+                stopwatch.Start();
                 var screens = Utils.Capture.GetScreen();
-                //stopwatch.Stop();
-                //Console.WriteLine("Capture screen time: " + stopwatch.Elapsed.TotalMilliseconds);
-                //stopwatch.Restart();
-                //stopwatch.Start();
+                stopwatch.Stop();
+                Console.WriteLine("Capture screen time: " + stopwatch.Elapsed.TotalMilliseconds);
+                stopwatch.Restart();
+                stopwatch.Start();
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
@@ -95,14 +95,16 @@ namespace VRemoteClient.Services
                     switch (screenEnum)
                     {
                         case ScreenEnum.FULLSCREEN:
+                            Console.WriteLine("Full: "+ totalSize);
                             SendScreenData(screens, ref flag);
                             break;
                         case ScreenEnum.REGIONSCREENS:
+                            Console.WriteLine("Chunks: " + totalSize);
                             SendChunk(screens, totalSize, ref flag);
                             break;
                     }
                 }
-                //stopwatch.Stop();
+                stopwatch.Stop();
                 //Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
                 // FPS of windows screen, currently set to 5 FPS, need to improve screen capture to increase FPS
                 Thread.Sleep(1000/5);
@@ -254,7 +256,7 @@ namespace VRemoteClient.Services
         private bool SendAndWaitAck(CommandType cmdType, byte[] data, int sendLength)
         {
             // _resetEvent.Reset(); // Reset the event before sending
-            RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
+            //RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
             //bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
 
             //if (!ackReceived)

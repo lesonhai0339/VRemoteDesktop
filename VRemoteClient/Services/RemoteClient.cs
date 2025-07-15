@@ -330,18 +330,18 @@ namespace VRemoteClient.Services
                 KeyState keyType = (KeyState)int.Parse(keyboards[3]);
                 KeyboardSimulator.Method_1(keyCode, keyType);
                 return;
-                Console.WriteLine(keyModifier + " - " + keyCode + " - "+ keyType);
-                if(keyType == KeyState.KeyDown)
-                {
-                    if (keyModifier != Keys.None)
-                    {
-                        KeyboardSimulator.SendKeyCombo(keyModifier, keyCode);
-                    }
-                    else
-                    {
-                        KeyboardSimulator.SendKey(keyCode);
-                    }
-                }
+                //Console.WriteLine(keyModifier + " - " + keyCode + " - "+ keyType);
+                //if(keyType == KeyState.KeyDown)
+                //{
+                //    if (keyModifier != Keys.None)
+                //    {
+                //        KeyboardSimulator.SendKeyCombo(keyModifier, keyCode);
+                //    }
+                //    else
+                //    {
+                //        KeyboardSimulator.SendKey(keyCode);
+                //    }
+                //}
             }
             catch(Exception ex)
             {
