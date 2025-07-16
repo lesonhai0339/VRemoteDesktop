@@ -317,7 +317,7 @@ namespace VRemoteClient.Utils
             byte* currentPtr = (byte*)currentData.Scan0;
             byte* previousPtr = (byte*)previousData.Scan0;
             int stride = currentData.Stride;
-            const int threshold = 5;
+            const int threshold = 10;
 
             // move pointer to start of the block
             currentPtr += block.Y * stride + block.X * 3;

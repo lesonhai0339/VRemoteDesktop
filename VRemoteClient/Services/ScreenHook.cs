@@ -107,7 +107,7 @@ namespace VRemoteClient.Services
                 stopwatch.Stop();
                 //Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
                 // FPS of windows screen, currently set to 5 FPS, need to improve screen capture to increase FPS
-                Thread.Sleep(1000);
+                Thread.Sleep(1000 /5);
             }
         }
         // Send full screen to sender when first connect
@@ -122,6 +122,7 @@ namespace VRemoteClient.Services
                     return;
                 }
                 byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
+                Console.WriteLine("Full after compress: " + screenCompressed.Length);
                 int dataLength = screenCompressed.Length;
 
                 byte[] dataSend = new byte[dataLength + 5]; //5 bytes for header
@@ -162,6 +163,7 @@ namespace VRemoteClient.Services
             {
                 byte[] sourceChunks = MergeAllChunk(blocks);
                 byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
+                Console.WriteLine("Chunks after compress: " + chunks.Length);
 
                 //headers always 5 bytes, 4 bytes for data length and 1 byte for command type
                 int numberOfChunk = (chunks.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5);
