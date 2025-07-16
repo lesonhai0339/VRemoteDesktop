@@ -20,6 +20,7 @@ namespace VRemoteClient.Services
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
 
+        private bool _isSendSuccessed = false;
         private byte[] _buffer = new byte[20];
         private byte[] _packet = new byte[CHUNK_SIZE];
         private byte[] _dataSend;
@@ -50,22 +51,24 @@ namespace VRemoteClient.Services
                 RemoteClient client = _remoteClient;
                 if (client != null)
                 {
-                    client.AckEventHandler -= ()=>
-                    {
-                        _resetEvent.Set(); // Reset the event when an ack is received
-                    };
+                    client.ChunksSuccessEventHandler -= SentResponse;
+                    client.ScreenSuccessEventHandler -= SentResponse;
                 }
                 _remoteClient = value;
                 client = _remoteClient;
                 if (client != null)
                 {
-                    client.AckEventHandler += ()=>
-                    {
-                        _resetEvent.Set(); // Reset the event when an ack is received
-                    };
+                    client.ChunksSuccessEventHandler += SentResponse;
+                    client.ScreenSuccessEventHandler += SentResponse;
                 }
             }
         }
+
+        private void SentResponse(bool flag)
+        {
+            _isSendSuccessed = flag;
+        }
+
         public BackgroundWorker BackgroundWorker
         {
             get => _backgroundWorker;
@@ -90,7 +93,7 @@ namespace VRemoteClient.Services
         {
             while (true)
             {
-                bool flag = false;
+                _isSendSuccessed = false;
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
                 var screens = Utils.Capture.GetScreen();
@@ -101,18 +104,18 @@ namespace VRemoteClient.Services
                     switch (screenEnum)
                     {
                         case ScreenEnum.FULLSCREEN:
-                            SendScreenData(screens, ref flag);
+                            SendScreenData(screens);
                             break;
                         case ScreenEnum.REGIONSCREENS:
-                            SendChunk(screens, totalSize, ref flag);
+                            SendChunk(screens, totalSize);
                             break;
                     }
                 }
                 else
                 {
-                    flag = true;
+                    _isSendSuccessed = true;
                 }
-                while (!flag)
+                while (!_isSendSuccessed)
                 {
                     Thread.Sleep(10);
                 }
@@ -121,7 +124,7 @@ namespace VRemoteClient.Services
             }
         }
         // Send full screen to sender when first connect
-        private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)
+        private void SendScreenData(List<ScreenBlock> blocks)
         {
             try
             {
@@ -162,7 +165,6 @@ namespace VRemoteClient.Services
                         Thread.Sleep(1); // Small delay to avoid flooding the network
                     }
                 }
-                flag = true;
             }
             catch(Exception ex)
             {
@@ -170,7 +172,7 @@ namespace VRemoteClient.Services
             }
         }
         //Capture and send region change to sender
-        private void SendChunk(List<ScreenBlock> blocks, int totalChunksSize, ref bool flag)
+        private void SendChunk(List<ScreenBlock> blocks, int totalChunksSize)
         {
             try
             {
@@ -220,7 +222,6 @@ namespace VRemoteClient.Services
                         Thread.Sleep(1); // Small delay to avoid flooding the network
                     }
                 }
-                flag = true;
             }
             catch(Exception ex)
             {

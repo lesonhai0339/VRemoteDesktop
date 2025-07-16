@@ -62,11 +62,14 @@ namespace VRemoteServer.Services
                             break;
                         case Enums.CommandType.Screen:
                         case Enums.CommandType.Chunks:
+
                             await P2PDataSend(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Keyboard:
                         case Enums.CommandType.MouseClick:
                         case Enums.CommandType.MouseMove:
+                        case Enums.CommandType.ScreenOk:
+                        case Enums.CommandType.ChunksOk:
                             await P2PCommand(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Ack:

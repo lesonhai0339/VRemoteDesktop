@@ -30,7 +30,8 @@ namespace VRemoteServer.Utils
             Keyboard = 0x0A,
             MouseClick = 0x0B,
             MouseMove = 0x0C,
-
+            ScreenOk = 0x0D,
+            ChunksOk = 0x0E,
 
             LoginFailed = 0x90,
             PartnerDisconnected = 0x91,

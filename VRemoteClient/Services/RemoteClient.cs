@@ -37,6 +37,8 @@ namespace VRemoteClient.Services
         public delegate void P2PScreenEvent(byte[] screen);
         public delegate void P2PChunksEvent(List<ScreenBlock> blocks);
         public delegate void AckEvent();
+        public delegate void ScreenSuccessEvent(bool flag);
+        public delegate void ChunksSuccessEvent(bool flag);
 
         public event ConnectSckEvent ConnectSckEventHandler;
         public event LoginEvent LoginEventHandler;
@@ -45,6 +47,8 @@ namespace VRemoteClient.Services
         public event P2PScreenEvent P2PScreenEventHandler;
         public event P2PChunksEvent P2PChunksEventHandler;
         public event AckEvent AckEventHandler;
+        public event ScreenSuccessEvent ScreenSuccessEventHandler;
+        public event ChunksSuccessEvent ChunksSuccessEventHandler;
 
         CancellationTokenSource _cancellationToken;
 
@@ -250,10 +254,18 @@ namespace VRemoteClient.Services
                     ProcessChunks(data);
                     break;
                 case CommandType.ScreenOk:
-                    Console.WriteLine("Screen ok");
+                    ScreenSuccessEvent screenSuccess = ScreenSuccessEventHandler;
+                    if(screenSuccess != null)
+                    {
+                        screenSuccess(true);
+                    }
                     break;
                 case CommandType.ChunksOk:
-                    Console.WriteLine("Chunks ok");
+                    ChunksSuccessEvent chunksSuccess = ChunksSuccessEventHandler;
+                    if (chunksSuccess != null)
+                    {
+                        chunksSuccess(true);
+                    }
                     break;
                 case CommandType.Keyboard:
                     ProcessKeyboard(data);
@@ -365,7 +377,7 @@ namespace VRemoteClient.Services
                 {
                     p2pScreen(screenDecompressed);
                 }
-                Send(CommandType.ScreenOk, new byte[] {1 });
+                Send(CommandType.ScreenOk, new byte[0]);
             }
             catch (Exception ex)
             {
@@ -407,7 +419,7 @@ namespace VRemoteClient.Services
                         p2pChunks(blocks);
                     }
                 }
-                Send(CommandType.ChunksOk, new byte[] { 1});
+                Send(CommandType.ChunksOk, new byte[0]);
             }
             catch (Exception ex)
             {
