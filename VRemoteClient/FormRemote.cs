@@ -183,13 +183,13 @@ namespace VRemoteClient
         private void InvalidateRegion(Rectangle rectangle)
         {
             vPictureBox.Invalidate(rectangle);
+            vPictureBox.Update();
         }
         public void ScreenEvent(byte[] data)
         {
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<byte[]>(ScreenEvent), data);
-                Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
                 return;
             }
 
@@ -256,20 +256,9 @@ namespace VRemoteClient
 
             // Invalidate last merge region
             if (this.InvokeRequired)
-            {
-                this.Invoke(new Action(() =>
-                {
-                    vPictureBox.Invalidate(dirtyRegion);
-                    vPictureBox.Update();
-                    Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
-                }));
-            }
+                this.BeginInvoke(new Action(() => vPictureBox.Invalidate(dirtyRegion)));
             else
-            {
                 vPictureBox.Invalidate(dirtyRegion);
-                vPictureBox.Update();
-                Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
-            }
         }
         #endregion
         #region Event Handlers

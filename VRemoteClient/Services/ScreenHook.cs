@@ -142,6 +142,7 @@ namespace VRemoteClient.Services
                                           .Error($"Blocks number more than expected");
                         return;
                     }
+                    Console.WriteLine("Screen send length: "+ blocks[0].Bytes.Length);
                     byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
                     int dataLength = screenCompressed.Length + 5;
 
@@ -185,6 +186,7 @@ namespace VRemoteClient.Services
                 lock (_lock)
                 {
                     byte[] sourceChunks = MergeAllChunk(blocks);
+                    Console.WriteLine("Chunks send length: " + sourceChunks.Length);
                     byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
 
                     //headers always 5 bytes, 4 bytes for data length and 1 byte for command type

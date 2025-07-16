@@ -372,11 +372,14 @@ namespace VRemoteClient.Services
                 byte[] screenData = new byte[data.Length - 1];
                 Buffer.BlockCopy(data, 1, screenData, 0, data.Length - 1);
                 byte[] screenDecompressed = Utils.Extensions.DecompressGzip(screenData);
+                Console.WriteLine("Screen received length: " + screenDecompressed.Length);
                 P2PScreenEvent p2pScreen = P2PScreenEventHandler;
                 if (p2pScreen != null)
                 {
                     p2pScreen(screenDecompressed);
                 }
+                Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
+
             }
             catch (Exception ex)
             {
@@ -391,6 +394,7 @@ namespace VRemoteClient.Services
                 byte[] chunks = new byte[data.Length - 1];
                 Buffer.BlockCopy(data, 1, chunks, 0, data.Length - 1);
                 byte[] chunksDecompressed = Utils.Extensions.DecompressGzip(chunks);
+                Console.WriteLine("Chunks received length: " + chunksDecompressed.Length);
                 int offset = 0;
                 while(offset < chunksDecompressed.Length)
                 {
@@ -418,7 +422,8 @@ namespace VRemoteClient.Services
                         p2pChunks(blocks);
                     }
                 }
-                Send(CommandType.ChunksOk, new byte[0]);
+                Send(Models.Enums.CommandType.ChunksOk, new byte[0]);
+
             }
             catch (Exception ex)
             {
