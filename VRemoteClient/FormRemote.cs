@@ -117,12 +117,12 @@ namespace VRemoteClient
 
         #endregion
         #region Methods
-/*        private void MouseMoveEvent(object sender, CustomMouseEventArgs e)
-        {
-        }
-        private void MouseClickEvent(object sender, CustomMouseEventArgs e)
-        {
-        }*/
+        /*        private void MouseMoveEvent(object sender, CustomMouseEventArgs e)
+                {
+                }
+                private void MouseClickEvent(object sender, CustomMouseEventArgs e)
+                {
+                }*/
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
             string keyCommandString = KeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
