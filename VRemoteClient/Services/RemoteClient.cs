@@ -249,6 +249,12 @@ namespace VRemoteClient.Services
                 case CommandType.Chunks:
                     ProcessChunks(data);
                     break;
+                case CommandType.ScreenOk:
+                    Console.WriteLine("Screen ok");
+                    break;
+                case CommandType.ChunksOk:
+                    Console.WriteLine("Chunks ok");
+                    break;
                 case CommandType.Keyboard:
                     ProcessKeyboard(data);
                     break;
@@ -306,7 +312,6 @@ namespace VRemoteClient.Services
                 if (!flag)
                 {
                     Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
-
                 }
             }
             catch (Exception ex)
@@ -360,6 +365,7 @@ namespace VRemoteClient.Services
                 {
                     p2pScreen(screenDecompressed);
                 }
+                Send(CommandType.ScreenOk, new byte[] {1 });
             }
             catch (Exception ex)
             {
@@ -401,8 +407,9 @@ namespace VRemoteClient.Services
                         p2pChunks(blocks);
                     }
                 }
+                Send(CommandType.ChunksOk, new byte[] { 1});
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing chunks data");
             }

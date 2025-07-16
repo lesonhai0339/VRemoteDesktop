@@ -9,6 +9,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 
@@ -19,13 +20,22 @@ namespace VRemoteClient.Services
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
 
+        private byte[] _buffer = new byte[20];
+        private byte[] _packet = new byte[CHUNK_SIZE];
+        private byte[] _dataSend;
+
+
         private BackgroundWorker _backgroundWorker;
         private RemoteClient _remoteClient;
-
         private ManualResetEvent _resetEvent;
         private readonly object _lock = new object(); // For thread safety
         public ScreenHook(RemoteClient client) 
         {
+            var bounds = Screen.PrimaryScreen.Bounds;
+            int pixelCount = bounds.Width * bounds.Height;
+            int bufferSize = pixelCount > 3840000 ? 30 * 1024 * 1024 : 10 * 1024 * 1024;
+            _dataSend = new byte[bufferSize];
+
             RemoteClient = client;
             _resetEvent = new ManualResetEvent(false);
             BackgroundWorker = new BackgroundWorker();
@@ -80,148 +90,154 @@ namespace VRemoteClient.Services
         {
             while (true)
             {
+                bool flag = false;
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
                 var screens = Utils.Capture.GetScreen();
-                stopwatch.Stop();
-                Console.WriteLine("Capture screen time: " + stopwatch.Elapsed.TotalMilliseconds);
-                stopwatch.Restart();
-                stopwatch.Start();
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
                     ScreenEnum screenEnum = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
-                    bool flag = false;
                     switch (screenEnum)
                     {
                         case ScreenEnum.FULLSCREEN:
-                            Console.WriteLine("Full: "+ totalSize);
                             SendScreenData(screens, ref flag);
                             break;
                         case ScreenEnum.REGIONSCREENS:
-                            Console.WriteLine("Chunks: " + totalSize);
                             SendChunk(screens, totalSize, ref flag);
                             break;
                     }
                 }
+                else
+                {
+                    flag = true;
+                }
+                while (!flag)
+                {
+                    Thread.Sleep(10);
+                }
                 stopwatch.Stop();
-                //Console.WriteLine("Time to capture screen: " + stopwatch.Elapsed.TotalMilliseconds);
-                // FPS of windows screen, currently set to 5 FPS, need to improve screen capture to increase FPS
-                Thread.Sleep(1000 /5);
+                Console.WriteLine("Elapsed time: "+ stopwatch.Elapsed.TotalMilliseconds);
             }
         }
         // Send full screen to sender when first connect
         private void SendScreenData(List<ScreenBlock> blocks, ref bool flag)
         {
-            lock (_lock)
+            try
             {
-                if (blocks.Count != 1)
+                lock (_lock)
                 {
-                    Log.ForContext("Screen", "RemoteDesktopClient")
-                                      .Error($"Blocks number more than expected");
-                    return;
-                }
-                byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
-                Console.WriteLine("Full after compress: " + screenCompressed.Length);
-                int dataLength = screenCompressed.Length;
-
-                byte[] dataSend = new byte[dataLength + 5]; //5 bytes for header
-
-                //header
-                Buffer.BlockCopy(BitConverter.GetBytes(dataLength + 5), 0, dataSend, 0, 4); // Add total bytes at the start
-                dataSend[4] = (byte)CommandType.Screen; //data type
-
-
-                //data
-                Buffer.BlockCopy(screenCompressed, 0, dataSend, 5, dataLength);//real data
-
-                int numberOfChunk = (int)Math.Ceiling((double)dataSend.Length / CHUNK_SIZE);
-
-                byte[] packet = new byte[CHUNK_SIZE];
-                for (int i = 0; i < numberOfChunk; i++)
-                {
-                    int offset = i * CHUNK_SIZE;
-                    int packetSize = Math.Min(CHUNK_SIZE, dataSend.Length - i * CHUNK_SIZE);
-
-                    //data
-                    Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
-
-                    if (!SendAndWaitAck(CommandType.None, packet, packetSize))
+                    if (blocks.Count != 1)
                     {
-                        //Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
+                        Log.ForContext("Screen", "RemoteDesktopClient")
+                                          .Error($"Blocks number more than expected");
                         return;
                     }
-                    Thread.Sleep(1); // Small delay to avoid flooding the network
+                    byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
+                    int dataLength = screenCompressed.Length + 5;
+
+                    //header
+                    Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, _dataSend, 0, 4); // Add total bytes at the start
+                    _dataSend[4] = (byte)CommandType.Screen; //data type
+
+
+                    //data
+                    Buffer.BlockCopy(screenCompressed, 0, _dataSend, 5, screenCompressed.Length);//real data
+
+                    int numberOfChunk = (int)Math.Ceiling((double)dataLength / CHUNK_SIZE);
+
+                    for (int i = 0; i < numberOfChunk; i++)
+                    {
+                        int offset = i * CHUNK_SIZE;
+                        int packetSize = Math.Min(CHUNK_SIZE, dataLength - i * CHUNK_SIZE);
+
+                        //data
+                        Buffer.BlockCopy(_dataSend, offset, _packet, 0, packetSize);
+
+                        if (!SendAndWaitAck(CommandType.None, _packet, packetSize))
+                        {
+                            //Console.WriteLine($"Failed to send data packet {i + 1}/{numberOfChunk}");
+                            return;
+                        }
+                        Thread.Sleep(1); // Small delay to avoid flooding the network
+                    }
                 }
+                flag = true;
             }
-            flag = true;
+            catch(Exception ex)
+            {
+                Console.WriteLine("Screen: " + ex.Message);
+            }
         }
         //Capture and send region change to sender
         private void SendChunk(List<ScreenBlock> blocks, int totalChunksSize, ref bool flag)
         {
-            lock (_lock)
+            try
             {
-                byte[] sourceChunks = MergeAllChunk(blocks);
-                byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
-                Console.WriteLine("Chunks after compress: " + chunks.Length);
-
-                //headers always 5 bytes, 4 bytes for data length and 1 byte for command type
-                int numberOfChunk = (chunks.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5);
-                int totalLength = chunks.Length;
-
-                byte[] dataSend = new byte[totalLength + 5];
-                int dataSendLength = dataSend.Length;
-
-                //header
-                //Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Set total bytes at the start
-                //dataSend[4] = (byte)CommandType.Chunks; // Set command type at offset 4
-                unsafe
+                lock (_lock)
                 {
-                    fixed(byte* ptr= dataSend)
+                    byte[] sourceChunks = MergeAllChunk(blocks);
+                    byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
+
+                    //headers always 5 bytes, 4 bytes for data length and 1 byte for command type
+                    int numberOfChunk = (chunks.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5);
+                    int totalLength = chunks.Length;
+
+                    int dataSendLength = totalLength + 5;
+
+                    //header
+                    //Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Set total bytes at the start
+                    //dataSend[4] = (byte)CommandType.Chunks; // Set command type at offset 4
+                    unsafe
                     {
-                        *(int*)ptr = totalLength + 5; // Set total bytes at the start
-                        *(ptr + 4) = (byte)CommandType.Chunks; // Set command type at offset 4
+                        fixed (byte* ptr = _dataSend)
+                        {
+                            *(int*)ptr = dataSendLength; // Set total bytes at the start
+                            *(ptr + 4) = (byte)CommandType.Chunks; // Set command type at offset 4
+                        }
                     }
-                }
 
-                //data
-                Buffer.BlockCopy(chunks, 0, dataSend, 5, totalLength);    //chunk data
-
-
-                //cut data to chunk(8192 bytes)  and send
-                byte[] packet = new byte[CHUNK_SIZE];
-                for (int i = 0; i < numberOfChunk; i++)
-                {
-                    int offset = i * CHUNK_SIZE;
-                    int remain = dataSendLength - offset;
-
-                    int packetSize = Math.Min(CHUNK_SIZE, remain);
-  
                     //data
-                    Buffer.BlockCopy(dataSend, offset, packet, 0, packetSize);
+                    Buffer.BlockCopy(chunks, 0, _dataSend, 5, totalLength);    //chunk data
 
-                    if (!SendAndWaitAck(CommandType.None, packet, packetSize))
+
+                    //cut data to chunk(8192 bytes)  and send
+                    for (int i = 0; i < numberOfChunk; i++)
                     {
-                        //Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
-                        return;
+                        int offset = i * CHUNK_SIZE;
+                        int remain = dataSendLength - offset;
+
+                        int packetSize = Math.Min(CHUNK_SIZE, remain);
+
+                        //data
+                        Buffer.BlockCopy(_dataSend, offset, _packet, 0, packetSize);
+
+                        if (!SendAndWaitAck(CommandType.None, _packet, packetSize))
+                        {
+                            //Console.WriteLine($"Failed to send chunk packet {i + 1}/{numberOfChunk}");
+                            return;
+                        }
+                        Thread.Sleep(1); // Small delay to avoid flooding the network
                     }
-                    Thread.Sleep(1); // Small delay to avoid flooding the network
                 }
+                flag = true;
             }
-            flag = true;
+            catch(Exception ex)
+            {
+                Console.WriteLine("Chunks error: " + ex.Message);
+            }
         }
         // Merge all chunks into a single byte array
         private unsafe byte[] MergeAllChunk(List<ScreenBlock> blocks)
         {
             using (var ms = new MemoryStream())
             {
-                byte[] buffer = new byte[20];
                 int count = blocks.Count;
 
                 for (int i = 0; i< count; i++)
                 {
 
-                    fixed (byte* p = buffer)
+                    fixed (byte* p = _buffer)
                     {
                         int* pInt = (int*)p;
                         pInt[0] = blocks[i].Bytes.Length; // Length of the chunk
@@ -232,7 +248,7 @@ namespace VRemoteClient.Services
 
                         //note: can write like this *(pInt + 1) = blocks[i].Rectangle.X; 
                     }
-                    ms.Write(buffer, 0, buffer.Length); // Write the header
+                    ms.Write(_buffer, 0, _buffer.Length); // Write the header
                     ms.Write(blocks[i].Bytes, 0 , blocks[i].Bytes.Length); // Write the chunk data
                     //ms.Write(BitConverter.GetBytes(blocks[i].Bytes.Length), 0, 4);
                     //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.X), 0, 4);
@@ -244,18 +260,6 @@ namespace VRemoteClient.Services
                 return ms.ToArray();
             }
         }
-        //private int NumberPacketByTotalSIze(int totalData)
-        //{
-        //    //case 1
-        //    //return (int)Math.Ceiling((double)totalData / 8192);
-        //    //case 2
-        //    //int even = totalData / 8192;
-        //    //int odd = totalData % 8192;
-        //    //if (odd != 0) even++;
-        //    //return even;
-        //    //case 3
-        //    return (totalData + 8191) / 8192;
-        //}
         private bool SendAndWaitAck(CommandType cmdType, byte[] data, int sendLength)
         {
             // _resetEvent.Reset(); // Reset the event before sending
