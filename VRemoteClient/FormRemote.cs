@@ -30,6 +30,7 @@ namespace VRemoteClient
         private ConnectionInfo _info;
         private KeyboardHook _keyboardHook;
         private GlobalMouseHook _mouseHook;
+
         public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
         {
             InitializeComponent();

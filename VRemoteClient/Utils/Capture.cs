@@ -30,7 +30,7 @@ namespace VRemoteClient.Utils
         internal static List<ScreenBlock> GetScreen()
         {
             EncoderParameters encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
+            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
 
             List<ScreenBlock> cells = new List<ScreenBlock>();
             lock (_lockObject)
