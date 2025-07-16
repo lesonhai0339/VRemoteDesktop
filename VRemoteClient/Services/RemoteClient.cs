@@ -7,7 +7,6 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
@@ -368,69 +367,63 @@ namespace VRemoteClient.Services
         }
         private void ProcessScreen(byte[] data)
         {
-            Task.Factory.StartNew(() => {
-                try
+            try
+            {
+                byte[] screenData = new byte[data.Length - 1];
+                Buffer.BlockCopy(data, 1, screenData, 0, data.Length - 1);
+                byte[] screenDecompressed = Utils.Extensions.DecompressGzip(screenData);
+                P2PScreenEvent p2pScreen = P2PScreenEventHandler;
+                if (p2pScreen != null)
                 {
-                    byte[] screenData = new byte[data.Length - 1];
-                    Buffer.BlockCopy(data, 1, screenData, 0, data.Length - 1);
-                    byte[] screenDecompressed = Utils.Extensions.DecompressGzip(screenData);
-                    P2PScreenEvent p2pScreen = P2PScreenEventHandler;
-                    if (p2pScreen != null)
-                    {
-                        p2pScreen(screenDecompressed);
-                    }
+                    p2pScreen(screenDecompressed);
                 }
-                catch (Exception ex)
-                {
-                    Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing screen data");
-                }
-            });
-            
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing screen data");
+            }
         }
         private void ProcessChunks(byte[] data)
         {
-            Task.Factory.StartNew(() =>
+            try
             {
-                try
+                List<ScreenBlock> blocks = new List<ScreenBlock>();
+                byte[] chunks = new byte[data.Length - 1];
+                Buffer.BlockCopy(data, 1, chunks, 0, data.Length - 1);
+                byte[] chunksDecompressed = Utils.Extensions.DecompressGzip(chunks);
+                int offset = 0;
+                while(offset < chunksDecompressed.Length)
                 {
-                    List<ScreenBlock> blocks = new List<ScreenBlock>();
-                    byte[] chunks = new byte[data.Length - 1];
-                    Buffer.BlockCopy(data, 1, chunks, 0, data.Length - 1);
-                    byte[] chunksDecompressed = Utils.Extensions.DecompressGzip(chunks);
-                    int offset = 0;
-                    while (offset < chunksDecompressed.Length)
-                    {
-                        int length = BitConverter.ToInt32(chunksDecompressed, offset + 0);
-                        int x = BitConverter.ToInt32(chunksDecompressed, offset + 4);
-                        int y = BitConverter.ToInt32(chunksDecompressed, offset + 8);
-                        int width = BitConverter.ToInt32(chunksDecompressed, offset + 12);
-                        int height = BitConverter.ToInt32(chunksDecompressed, offset + 16);
-                        byte[] chunk = new byte[length];
-                        Buffer.BlockCopy(chunksDecompressed, offset + 20, chunk, 0, length);
+                    int length = BitConverter.ToInt32(chunksDecompressed, offset + 0);
+                    int x = BitConverter.ToInt32(chunksDecompressed, offset + 4);
+                    int y = BitConverter.ToInt32(chunksDecompressed, offset + 8);
+                    int width = BitConverter.ToInt32(chunksDecompressed, offset + 12);
+                    int height = BitConverter.ToInt32(chunksDecompressed, offset + 16);
+                    byte[] chunk = new byte[length];
+                    Buffer.BlockCopy(chunksDecompressed, offset + 20, chunk, 0, length);
 
-                        offset += length + 20;
-                        blocks.Add(new ScreenBlock
-                        {
-                            IsFullScreen = false,
-                            Rectangle = new Rectangle(x, y, width, height),
-                            Bytes = chunk
-                        });
-                    }
-                    P2PChunksEvent p2pChunks = P2PChunksEventHandler;
-                    if (p2pChunks != null)
+                    offset += length + 20 ;
+                    blocks.Add(new ScreenBlock
                     {
-                        if (blocks.Any())
-                        {
-                            p2pChunks(blocks);
-                        }
-                    }
-                    Send(CommandType.ChunksOk, new byte[0]);
+                        IsFullScreen = false,
+                        Rectangle = new Rectangle(x, y, width, height),
+                        Bytes = chunk
+                    });
                 }
-                catch (Exception ex)
+                P2PChunksEvent p2pChunks = P2PChunksEventHandler;
+                if(p2pChunks != null)
                 {
-                    Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing chunks data");
+                    if (blocks.Any())
+                    {
+                        p2pChunks(blocks);
+                    }
                 }
-            });       
+                Send(CommandType.ChunksOk, new byte[0]);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing chunks data");
+            }
         }
         private void ProcessLogin(bool flag)
         {

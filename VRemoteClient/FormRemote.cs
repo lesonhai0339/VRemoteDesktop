@@ -261,9 +261,18 @@ namespace VRemoteClient
 
                 // Invalidate last merge region
                 if (this.InvokeRequired)
-                    this.BeginInvoke(new Action(() => vPictureBox.Invalidate(dirtyRegion)));
+                {
+                    this.Invoke(new Action(() =>
+                    {
+                        vPictureBox.Invalidate(dirtyRegion);
+                        vPictureBox.Update();
+                    }));
+                }
                 else
+                {
                     vPictureBox.Invalidate(dirtyRegion);
+                    vPictureBox.Update();
+                }
             }
             finally
             {
