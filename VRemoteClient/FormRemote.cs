@@ -209,39 +209,50 @@ namespace VRemoteClient
             {
                 Console.WriteLine($"ScreenEvent error: {ex.Message}");
             }
+            finally
+            {
+                Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
+            }
         }
         private void ChunksEvent(List<ScreenBlock> blocks)
         {
-            if (blocks == null || blocks.Count == 0)
-                return;
-            Random rd = new Random();
-            Rectangle dirtyRegion = blocks[0].Rectangle;
-            lock (_screenLock)
+            try
             {
-                foreach (var block in blocks)
+                if (blocks == null || blocks.Count == 0)
+                    return;
+                Random rd = new Random();
+                Rectangle dirtyRegion = blocks[0].Rectangle;
+                lock (_screenLock)
                 {
-                    try
+                    foreach (var block in blocks)
                     {
-                        using MemoryStream ms = new MemoryStream(block.Bytes);
-                        using Bitmap chunkBitmap = new Bitmap(ms);
-                        // draw on _curScreen
-                        _screenGraphics.DrawImage(chunkBitmap, block.Rectangle);
+                        try
+                        {
+                            using MemoryStream ms = new MemoryStream(block.Bytes);
+                            using Bitmap chunkBitmap = new Bitmap(ms);
+                            // draw on _curScreen
+                            _screenGraphics.DrawImage(chunkBitmap, block.Rectangle);
 
-                        // merge dirty region
-                        dirtyRegion = Rectangle.Union(dirtyRegion, block.Rectangle);
-                    }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Draw block error: " + ex.Message);
+                            // merge dirty region
+                            dirtyRegion = Rectangle.Union(dirtyRegion, block.Rectangle);
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Draw block error: " + ex.Message);
+                        }
                     }
                 }
-            }
 
-            // Invalidate last merge region
-            if (this.InvokeRequired)
-                this.BeginInvoke(new Action(() => vPictureBox.Invalidate(dirtyRegion)));
-            else
-                vPictureBox.Invalidate(dirtyRegion);
+                // Invalidate last merge region
+                if (this.InvokeRequired)
+                    this.BeginInvoke(new Action(() => vPictureBox.Invalidate(dirtyRegion)));
+                else
+                    vPictureBox.Invalidate(dirtyRegion);
+            }
+            finally
+            {
+                Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
+            }
         }
         #endregion
         #region Event Handlers

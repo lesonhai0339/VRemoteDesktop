@@ -377,7 +377,6 @@ namespace VRemoteClient.Services
                 {
                     p2pScreen(screenDecompressed);
                 }
-                Send(CommandType.ScreenOk, new byte[0]);
             }
             catch (Exception ex)
             {
