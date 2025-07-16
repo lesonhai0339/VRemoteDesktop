@@ -178,10 +178,9 @@ namespace VRemoteClient
             // UI thread code
             try
             {
-                byte[] dataDecompress = Utils.Extensions.Decompress(data);
                 lock (_screenLock)
                 {
-                    using (MemoryStream stream = new MemoryStream(dataDecompress))
+                    using (MemoryStream stream = new MemoryStream(data))
                     {
                         Bitmap image = (Bitmap)Image.FromStream(stream);
 
@@ -222,7 +221,7 @@ namespace VRemoteClient
                 {
                     try
                     {
-                        using MemoryStream ms = new MemoryStream(Utils.Extensions.Decompress(block.Bytes));
+                        using MemoryStream ms = new MemoryStream(block.Bytes);
                         using Bitmap chunkBitmap = new Bitmap(ms);
                         // draw on _curScreen
                         _screenGraphics.DrawImage(chunkBitmap, block.Rectangle);
