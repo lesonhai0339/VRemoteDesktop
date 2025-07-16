@@ -15,11 +15,12 @@ using VRemoteClient.Models.Enums;
 
 namespace VRemoteClient.Services
 {
-    public class ScreenHook
+    public class ScreenHook: IDisposable
     {
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
 
+        private bool _disposed = false;
         private bool _isSendSuccessed = false;
         private byte[] _buffer = new byte[20];
         private byte[] _packet = new byte[CHUNK_SIZE];
@@ -120,6 +121,8 @@ namespace VRemoteClient.Services
                 _resetEvent.WaitOne(1000 * 10);
                 if (!_isSendSuccessed)
                 {
+                    Console.WriteLine("Break");
+                    Dispose();
                     break;
                 }
                 stopwatch.Stop();
@@ -288,6 +291,41 @@ namespace VRemoteClient.Services
                 Console.WriteLine("Timeout waiting for ACK from server. Command: " + cmdType);
             }
             _resetEvent.Reset(); // Reset the event after receiving ACK
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    // Dispose managed resources
+                    if (_remoteClient != null)
+                    {
+                        _remoteClient.ChunksSuccessEventHandler -= SentResponse;
+                        _remoteClient.ScreenSuccessEventHandler -= SentResponse;
+
+                        // If RemoteClient implements IDisposable, dispose it too
+                        if (_remoteClient is IDisposable disposableClient)
+                        {
+                            disposableClient.Dispose();
+                        }
+
+                        _remoteClient = null;
+                    }
+
+                    // Dispose other resources like _resetEvent if needed
+                    _resetEvent?.Dispose();
+                }
+
+                _disposed = true;
+            }
         }
     }
 }

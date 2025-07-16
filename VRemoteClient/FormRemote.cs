@@ -145,6 +145,23 @@ namespace VRemoteClient
             {
                 KeyboardHook?.Dispose();
                 MouseHook?.Dispose();
+
+                if(Client != null)
+                {
+                    Client.P2PScreenEventHandler -= ScreenEvent;
+                    Client.P2PChunksEventHandler -= ChunksEvent;
+
+                    Client = null;
+                }
+                this.Icon?.Dispose();
+                if (vPictureBox != null)
+                {
+                    vPictureBox.MouseClick -= MouseClickEventHandler;
+                    vPictureBox.MouseDoubleClick -= MouseDbClickEventHandler;
+                    vPictureBox.MouseWheel -= MouseWheelEventHandler;
+
+                    vPictureBox.Image?.Dispose();
+                }
             }
             catch (Exception ex)
             {
