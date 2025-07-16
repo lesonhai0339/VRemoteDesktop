@@ -6,6 +6,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
@@ -213,7 +214,7 @@ namespace VRemoteClient
         {
             if (blocks == null || blocks.Count == 0)
                 return;
-
+            Random rd = new Random();
             Rectangle dirtyRegion = blocks[0].Rectangle;
             lock (_screenLock)
             {

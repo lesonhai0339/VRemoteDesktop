@@ -57,9 +57,10 @@ namespace VRemoteClient.Utils
 
             using (MemoryStream stream = new MemoryStream())
             {
-                using (var compressionStream = new GZipStream(stream, CompressionMode.Compress, true))
+                using (var compressionStream = new GZipStream(stream, CompressionMode.Compress))
                 {
                     compressionStream.Write(data, 0, data.Length);
+                    compressionStream.Flush();
                 }
                 return stream.ToArray();
             }
@@ -67,13 +68,13 @@ namespace VRemoteClient.Utils
 
         internal static byte[] DecompressGzip(byte[] data)
         {
-            MemoryStream input = new MemoryStream(data);
-            MemoryStream output = new MemoryStream();
-            using (var compressionStream = new GZipStream(input, CompressionMode.Decompress, true))
+            using (MemoryStream input = new MemoryStream(data))
+            using (MemoryStream output = new MemoryStream())
+            using (var compressionStream = new GZipStream(input, CompressionMode.Decompress))
             {
                 compressionStream.CopyTo(output);
+                return output.ToArray();
             }
-            return output.ToArray();
         }
         //add padding byte(0x20) to output data = length
         internal static byte[] AddPaddingToBytes(byte[] sourceByte, int length = 1025)
