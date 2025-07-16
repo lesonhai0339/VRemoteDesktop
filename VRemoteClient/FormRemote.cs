@@ -186,7 +186,6 @@ namespace VRemoteClient
         }
         public void ScreenEvent(byte[] data)
         {
-            // do chạy đồng bộ trên một luồng với socket nên bị bottleneck, cần chạy trên new thread
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<byte[]>(ScreenEvent), data);

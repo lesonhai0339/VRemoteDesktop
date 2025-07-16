@@ -178,7 +178,7 @@ namespace VRemoteClient.Utils
             if (region.IsEmpty) return null;
 
             return source.Clone(region, source.PixelFormat);
-        }
+        }// This runs when the application starts.
         internal static Bitmap CaptureWindowsScreen1()
         {
             var bounds = Screen.PrimaryScreen.Bounds;
@@ -316,7 +316,7 @@ namespace VRemoteClient.Utils
             byte* currentPtr = (byte*)currentData.Scan0;
             byte* previousPtr = (byte*)previousData.Scan0;
             int stride = currentData.Stride;
-            const int threshold = 10;
+            const int threshold = 1;
 
             // move pointer to start of the block
             currentPtr += block.Y * stride + block.X * 3;
