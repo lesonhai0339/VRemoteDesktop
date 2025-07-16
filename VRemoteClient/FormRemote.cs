@@ -189,6 +189,7 @@ namespace VRemoteClient
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<byte[]>(ScreenEvent), data);
+                Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
                 return;
             }
 
@@ -224,10 +225,6 @@ namespace VRemoteClient
             catch (Exception ex)
             {
                 Console.WriteLine($"ScreenEvent error: {ex.Message}");
-            }
-            finally
-            {
-                Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
             }
         }
         private void ChunksEvent(List<ScreenBlock> blocks)
@@ -266,17 +263,16 @@ namespace VRemoteClient
                     {
                         vPictureBox.Invalidate(dirtyRegion);
                         vPictureBox.Update();
+                        Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
                     }));
                 }
                 else
                 {
                     vPictureBox.Invalidate(dirtyRegion);
                     vPictureBox.Update();
+                    Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
                 }
-            }
-            finally
-            {
-                Client.Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
+
             }
         }
         #endregion
