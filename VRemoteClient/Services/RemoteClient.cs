@@ -369,17 +369,24 @@ namespace VRemoteClient.Services
         {
             try
             {
-                byte[] screenData = new byte[data.Length - 1];
-                Buffer.BlockCopy(data, 1, screenData, 0, data.Length - 1);
-                byte[] screenDecompressed = Utils.Extensions.DecompressGzip(screenData);
-                Console.WriteLine("Screen received length: " + screenDecompressed.Length);
-                P2PScreenEvent p2pScreen = P2PScreenEventHandler;
-                if (p2pScreen != null)
-                {
-                    p2pScreen(screenDecompressed);
-                }
-                Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
+                string stringHashReceived = Encoding.ASCII.GetString(data, 1, 40);
 
+                var compressedLength = data.Length - 41; // 1 byte header + 40 hash
+                var compressedData = new byte[compressedLength];
+                Buffer.BlockCopy(data, 41, compressedData, 0, compressedLength);
+
+                string screenHash = Utils.Extensions.SHAHash(compressedData);
+
+                if (string.Compare(stringHashReceived, screenHash) == 0)
+                {
+                    byte[] screenDecompressed = Utils.Extensions.DecompressGzip(compressedData);
+                    P2PScreenEvent p2pScreen = P2PScreenEventHandler;
+                    if (p2pScreen != null)
+                    {
+                        p2pScreen(screenDecompressed);
+                    }
+                    Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
+                }
             }
             catch (Exception ex)
             {
@@ -390,40 +397,55 @@ namespace VRemoteClient.Services
         {
             try
             {
-                List<ScreenBlock> blocks = new List<ScreenBlock>();
-                byte[] chunks = new byte[data.Length - 1];
-                Buffer.BlockCopy(data, 1, chunks, 0, data.Length - 1);
-                byte[] chunksDecompressed = Utils.Extensions.DecompressGzip(chunks);
-                Console.WriteLine("Chunks received length: " + chunksDecompressed.Length);
-                int offset = 0;
-                while(offset < chunksDecompressed.Length)
-                {
-                    int length = BitConverter.ToInt32(chunksDecompressed, offset + 0);
-                    int x = BitConverter.ToInt32(chunksDecompressed, offset + 4);
-                    int y = BitConverter.ToInt32(chunksDecompressed, offset + 8);
-                    int width = BitConverter.ToInt32(chunksDecompressed, offset + 12);
-                    int height = BitConverter.ToInt32(chunksDecompressed, offset + 16);
-                    byte[] chunk = new byte[length];
-                    Buffer.BlockCopy(chunksDecompressed, offset + 20, chunk, 0, length);
+                string stringHashReceived = Encoding.ASCII.GetString(data, 1, 40);
 
-                    offset += length + 20 ;
-                    blocks.Add(new ScreenBlock
-                    {
-                        IsFullScreen = false,
-                        Rectangle = new Rectangle(x, y, width, height),
-                        Bytes = chunk
-                    });
-                }
-                P2PChunksEvent p2pChunks = P2PChunksEventHandler;
-                if(p2pChunks != null)
+                var compressedLength = data.Length - 41; // 1 byte header + 40 hash
+                var compressedData = new byte[compressedLength];
+                Buffer.BlockCopy(data, 41, compressedData, 0, compressedLength);
+
+                string screenHash = Utils.Extensions.SHAHash(compressedData);
+
+                if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    if (blocks.Any())
+                    byte[] chunksDecompressed = Utils.Extensions.DecompressGzip(compressedData);
+
+                    List<ScreenBlock> blocks = new List<ScreenBlock>();
+                    int offset = 0;
+                    while (offset < chunksDecompressed.Length)
                     {
-                        p2pChunks(blocks);
+                        if (offset + 20 > chunksDecompressed.Length)
+                            break;
+
+                        int length = BitConverter.ToInt32(chunksDecompressed, offset + 0);
+                        int x = BitConverter.ToInt32(chunksDecompressed, offset + 4);
+                        int y = BitConverter.ToInt32(chunksDecompressed, offset + 8);
+                        int width = BitConverter.ToInt32(chunksDecompressed, offset + 12);
+                        int height = BitConverter.ToInt32(chunksDecompressed, offset + 16);
+
+                        if (offset + 20 + length > chunksDecompressed.Length)
+                            break;
+
+                        byte[] chunk = new byte[length];
+                        Buffer.BlockCopy(chunksDecompressed, offset + 20, chunk, 0, length);
+
+                        offset += length + 20;
+                        blocks.Add(new ScreenBlock
+                        {
+                            IsFullScreen = false,
+                            Rectangle = new Rectangle(x, y, width, height),
+                            Bytes = chunk
+                        });
                     }
+                    P2PChunksEvent p2pChunks = P2PChunksEventHandler;
+                    if (p2pChunks != null)
+                    {
+                        if (blocks.Count > 0)
+                        {
+                            p2pChunks(blocks);
+                        }
+                    }
+                    Send(Models.Enums.CommandType.ChunksOk, new byte[0]);
                 }
-                Send(Models.Enums.CommandType.ChunksOk, new byte[0]);
-
             }
             catch (Exception ex)
             {
