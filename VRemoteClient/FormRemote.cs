@@ -12,6 +12,7 @@ using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
@@ -21,8 +22,6 @@ namespace VRemoteClient
 {
     public partial class FormRemote : Form
     {
-        private int _clientWidth;
-        private int _clientHeight;
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
         private readonly object _screenLock = new object();
@@ -30,18 +29,16 @@ namespace VRemoteClient
         private ConnectionInfo _info;
         private KeyboardHook _keyboardHook;
         private GlobalMouseHook _mouseHook;
-
+        private System.Threading.Timer _timer;
         public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
         {
             InitializeComponent();
             Client = remoteClient;
             _info = info;
-            _clientHeight = info.Receiver.Height;
-            _clientWidth = info.Receiver.Width;
             KeyboardHook = new KeyboardHook();
             MouseHook = new GlobalMouseHook();
 
-            Text = _info.Receiver.Id.Trim();
+            //Text = _info.Receiver.Id.Trim();
             Icon = new Icon("Resources/logo.ico");
 
             // PictureBox
@@ -51,9 +48,9 @@ namespace VRemoteClient
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 
-            vPictureBox.MouseClick += MouseClickEventHandler;
-            vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
-            vPictureBox.MouseWheel += MouseWheelEventHandler;
+            //vPictureBox.MouseClick += MouseClickEventHandler;
+            //vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
+            //vPictureBox.MouseWheel += MouseWheelEventHandler;
         }
         #region Properties
         public RemoteClient Client
@@ -123,6 +120,11 @@ namespace VRemoteClient
                 private void MouseClickEvent(object sender, CustomMouseEventArgs e)
                 {
                 }*/
+        private void test()
+        {
+            var screens = Utils.Capture.GetScreen();
+            ScreenEvent(screens[0].Bytes);
+        }
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
             string keyCommandString = KeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
@@ -135,10 +137,42 @@ namespace VRemoteClient
         private void FormRemote_Shown(object sender, EventArgs e)
         {
             // Lấy app process id và form windows handler để khởi tạo keyboard hook
-            uint pId = (uint)Process.GetCurrentProcess().Id;
-            IntPtr windowHandle = this.Handle; // Get the handle of formRemote
-            KeyboardHook.Start(pId, windowHandle);
+            //uint pId = (uint)Process.GetCurrentProcess().Id;
+            //IntPtr windowHandle = this.Handle; // Get the handle of formRemote
+            //KeyboardHook.Start(pId, windowHandle);
             //MouseHook.StartHook(pId);
+            new Thread(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+                bool flag = false;
+                while (true)
+                {
+                    var screens = Utils.Capture.GetScreen();
+                    if (!flag)
+                    {
+                        Stopwatch stopwatch = new Stopwatch();
+                        stopwatch.Start();
+                        var a = Utils.Extensions.SHAHash(screens[0].Bytes);
+                        stopwatch.Stop();
+                        Console.WriteLine("Screen hash: "+ stopwatch.Elapsed.TotalMilliseconds);
+                        ScreenEvent(screens[0].Bytes);
+
+                        flag = true;
+                    }
+                    else
+                    {
+                        var data= screens.SelectMany(x=> x.Bytes).ToArray();
+                        Stopwatch stopwatch = new Stopwatch();
+                        stopwatch.Start();
+                        var a = Utils.Extensions.SHAHash(data);
+                        Console.WriteLine(a);
+                        stopwatch.Stop();
+                        Console.WriteLine("Chunks hash: " +stopwatch.Elapsed.TotalMilliseconds);
+                        ChunksEvent(screens);
+                    }
+                    Thread.Sleep(100);
+                }
+            }).Start();
         }
         private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
         {
@@ -187,6 +221,7 @@ namespace VRemoteClient
         }
         public void ScreenEvent(byte[] data)
         {
+            Console.WriteLine("Screen call");
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<byte[]>(ScreenEvent), data);
@@ -209,7 +244,6 @@ namespace VRemoteClient
 
                         _curScreen = new Bitmap(image);
                         var imageSize = image.Size;
-                        Console.WriteLine(string.Format("Screen receive Width: {0}, Height: {1}", imageSize.Width, imageSize.Height));
                         _screenGraphics = Graphics.FromImage(_curScreen);
 
                         InitializeGraphicsSettings();
@@ -229,6 +263,7 @@ namespace VRemoteClient
         }
         private void ChunksEvent(List<ScreenBlock> blocks)
         {
+            Console.WriteLine("Chunks call");
             if (blocks == null || blocks.Count == 0)
                 return;
             Random rd = new Random();

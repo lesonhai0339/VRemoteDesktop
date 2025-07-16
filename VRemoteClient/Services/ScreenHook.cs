@@ -143,17 +143,19 @@ namespace VRemoteClient.Services
                                           .Error($"Blocks number more than expected");
                         return;
                     }
-                    Console.WriteLine("Screen send length: "+ blocks[0].Bytes.Length);
                     byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
-                    int dataLength = screenCompressed.Length + 5;
+                    byte[] screenHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(screenCompressed));
+                    int dataLength = screenCompressed.Length + 5 + screenHashed.Length;
 
                     //header
                     Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, _dataSend, 0, 4); // Add total bytes at the start
                     _dataSend[4] = (byte)CommandType.Screen; //data type
 
+                    //hash string
+                    Buffer.BlockCopy(screenHashed, 0, _dataSend, 5, screenHashed.Length);//real data
 
                     //data
-                    Buffer.BlockCopy(screenCompressed, 0, _dataSend, 5, screenCompressed.Length);//real data
+                    Buffer.BlockCopy(screenCompressed, 0, _dataSend, screenHashed.Length + 5, screenCompressed.Length);//real data
 
                     int numberOfChunk = (int)Math.Ceiling((double)dataLength / CHUNK_SIZE);
 
@@ -187,14 +189,14 @@ namespace VRemoteClient.Services
                 lock (_lock)
                 {
                     byte[] sourceChunks = MergeAllChunk(blocks);
-                    Console.WriteLine("Chunks send length: " + sourceChunks.Length);
                     byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
+                    byte[] chunksHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(chunks)); //add hash to ensure data is correct
 
-                    //headers always 5 bytes, 4 bytes for data length and 1 byte for command type
-                    int numberOfChunk = (chunks.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5);
+                    //headers always 5 bytes, 4 bytes for data length and 1 byte for command type, add more 40 bytes for hash string
+                    int numberOfChunk = (chunks.Length + chunksHashed.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5); 
                     int totalLength = chunks.Length;
 
-                    int dataSendLength = totalLength + 5;
+                    int dataSendLength = totalLength + 5 + chunksHashed.Length;
 
                     //header
                     //Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Set total bytes at the start
@@ -208,8 +210,11 @@ namespace VRemoteClient.Services
                         }
                     }
 
+                    //hash string
+                    Buffer.BlockCopy(chunksHashed, 0, _dataSend, 5, chunksHashed.Length);    //chunk data
+
                     //data
-                    Buffer.BlockCopy(chunks, 0, _dataSend, 5, totalLength);    //chunk data
+                    Buffer.BlockCopy(chunks, 0, _dataSend, chunksHashed.Length + 5, totalLength);    //chunk data
 
 
                     //cut data to chunk(8192 bytes)  and send

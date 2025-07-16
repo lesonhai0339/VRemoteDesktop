@@ -7,6 +7,7 @@ using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
+using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
@@ -40,7 +41,19 @@ namespace VRemoteClient.Utils
                 return stream.ToArray();
             }
         }
-
+        internal static string SHAHash(byte[] data)
+        {
+            using (var sha= SHA1.Create())
+            {
+                var hash = sha.ComputeHash(data);
+                var stringBuilder = new StringBuilder(hash.Length * 2);
+                foreach(var item in hash)
+                {
+                    stringBuilder.Append(item.ToString("X2"));
+                }
+                return stringBuilder.ToString();
+            }
+        }
         internal static byte[] Decompress(byte[] data)
         {
             MemoryStream input = new MemoryStream(data);
