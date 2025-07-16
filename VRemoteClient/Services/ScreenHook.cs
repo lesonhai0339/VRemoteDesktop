@@ -67,6 +67,7 @@ namespace VRemoteClient.Services
         private void SentResponse(bool flag)
         {
             _isSendSuccessed = flag;
+            _resetEvent.Set();
         }
 
         public BackgroundWorker BackgroundWorker
@@ -93,6 +94,7 @@ namespace VRemoteClient.Services
         {
             while (true)
             {
+                _resetEvent.Reset();
                 _isSendSuccessed = false;
                 Stopwatch stopwatch = new Stopwatch();
                 stopwatch.Start();
@@ -115,9 +117,10 @@ namespace VRemoteClient.Services
                 {
                     _isSendSuccessed = true;
                 }
-                while (!_isSendSuccessed)
+                _resetEvent.WaitOne(1000 * 10);
+                if (!_isSendSuccessed)
                 {
-                    Thread.Sleep(10);
+                    break;
                 }
                 stopwatch.Stop();
                 Console.WriteLine("Elapsed time: "+ stopwatch.Elapsed.TotalMilliseconds);
