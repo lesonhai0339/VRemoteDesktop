@@ -125,6 +125,7 @@ namespace VRemoteClient.Services
                     Dispose();
                     break;
                 }
+                Thread.Sleep(50);
                 stopwatch.Stop();
                 Console.WriteLine("Elapsed time: "+ stopwatch.Elapsed.TotalMilliseconds);
             }

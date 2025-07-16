@@ -183,7 +183,6 @@ namespace VRemoteClient
         private void InvalidateRegion(Rectangle rectangle)
         {
             vPictureBox.Invalidate(rectangle);
-            vPictureBox.Update();
         }
         public void ScreenEvent(byte[] data)
         {
