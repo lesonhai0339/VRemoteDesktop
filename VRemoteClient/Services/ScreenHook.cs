@@ -121,8 +121,8 @@ namespace VRemoteClient.Services
                                       .Error($"Blocks number more than expected");
                     return;
                 }
-
-                int dataLength = blocks[0].TotalSize;
+                byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
+                int dataLength = screenCompressed.Length;
 
                 byte[] dataSend = new byte[dataLength + 5]; //5 bytes for header
 
@@ -132,7 +132,7 @@ namespace VRemoteClient.Services
 
 
                 //data
-                Buffer.BlockCopy(blocks[0].Bytes, 0, dataSend, 5, dataLength);//real data
+                Buffer.BlockCopy(screenCompressed, 0, dataSend, 5, dataLength);//real data
 
                 int numberOfChunk = (int)Math.Ceiling((double)dataSend.Length / CHUNK_SIZE);
 
@@ -160,7 +160,8 @@ namespace VRemoteClient.Services
         {
             lock (_lock)
             {
-                byte[] chunks = MergeAllChunk(blocks);
+                byte[] sourceChunks = MergeAllChunk(blocks);
+                byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
 
                 //headers always 5 bytes, 4 bytes for data length and 1 byte for command type
                 int numberOfChunk = (chunks.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5);
@@ -256,7 +257,7 @@ namespace VRemoteClient.Services
         private bool SendAndWaitAck(CommandType cmdType, byte[] data, int sendLength)
         {
             // _resetEvent.Reset(); // Reset the event before sending
-            //RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
+            RemoteClient.Send(commandType: cmdType, data: data, sendLength: sendLength);
             //bool ackReceived = _resetEvent.WaitOne(1000 * TIME_OUT);
 
             //if (!ackReceived)

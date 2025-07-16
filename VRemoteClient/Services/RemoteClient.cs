@@ -354,10 +354,11 @@ namespace VRemoteClient.Services
             {
                 byte[] screenData = new byte[data.Length - 1];
                 Buffer.BlockCopy(data, 1, screenData, 0, data.Length - 1);
+                byte[] screenDecompressed = Utils.Extensions.DecompressGzip(screenData);
                 P2PScreenEvent p2pScreen = P2PScreenEventHandler;
                 if (p2pScreen != null)
                 {
-                    p2pScreen(screenData);
+                    p2pScreen(screenDecompressed);
                 }
             }
             catch (Exception ex)
@@ -372,17 +373,17 @@ namespace VRemoteClient.Services
                 List<ScreenBlock> blocks = new List<ScreenBlock>();
                 byte[] chunks = new byte[data.Length - 1];
                 Buffer.BlockCopy(data, 1, chunks, 0, data.Length - 1);
-
+                byte[] chunksDecompressed = Utils.Extensions.DecompressGzip(chunks);
                 int offset = 0;
-                while(offset < chunks.Length)
+                while(offset < chunksDecompressed.Length)
                 {
-                    int length = BitConverter.ToInt32(chunks, offset + 0);
-                    int x = BitConverter.ToInt32(chunks, offset + 4);
-                    int y = BitConverter.ToInt32(chunks, offset + 8);
-                    int width = BitConverter.ToInt32(chunks, offset + 12);
-                    int height = BitConverter.ToInt32(chunks, offset + 16);
+                    int length = BitConverter.ToInt32(chunksDecompressed, offset + 0);
+                    int x = BitConverter.ToInt32(chunksDecompressed, offset + 4);
+                    int y = BitConverter.ToInt32(chunksDecompressed, offset + 8);
+                    int width = BitConverter.ToInt32(chunksDecompressed, offset + 12);
+                    int height = BitConverter.ToInt32(chunksDecompressed, offset + 16);
                     byte[] chunk = new byte[length];
-                    Buffer.BlockCopy(chunks, offset + 20, chunk, 0, length);
+                    Buffer.BlockCopy(chunksDecompressed, offset + 20, chunk, 0, length);
 
                     offset += length + 20 ;
                     blocks.Add(new ScreenBlock

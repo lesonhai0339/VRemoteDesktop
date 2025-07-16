@@ -35,7 +35,7 @@ namespace VRemoteClient
             _resetEvent = new ManualResetEvent(false);
             Me = Utils.Extensions.InitInfo();
             RemoteClient = new RemoteClient(Me);
-            ScreenHook = new ScreenHook(null);
+            //ScreenHook = new ScreenHook(null);
             this.Text = "VRemote - Vinhhy";
             this.Icon = new Icon(@"Resources\logo.ico");
             this.txtOwnerId.Text = Me.Id;
