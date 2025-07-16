@@ -214,7 +214,7 @@ namespace VRemoteClient.Utils
             Random rd = new Random();
 
             var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 16;
+            const int blockSize = 8;
 
             // Parallel processing for better performance
             var regions = new List<Rectangle>();
@@ -286,7 +286,6 @@ namespace VRemoteClient.Utils
                     {
                         merged[i] = Rectangle.Union(merged[i], sorted[j]);
                         wasMerged = true;
-                        sorted.Remove(sorted[j]);
                         break;
                     }
                 }
