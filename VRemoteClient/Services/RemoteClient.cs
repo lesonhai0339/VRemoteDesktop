@@ -148,7 +148,7 @@ namespace VRemoteClient.Services
                         Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
                     }
                 }
-                Thread.Sleep(1);
+                Thread.Yield();
             }
         }
         private void ProcessSingleTask(TaskObject task)
