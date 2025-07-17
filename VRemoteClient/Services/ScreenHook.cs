@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Net.Sockets;
@@ -117,6 +118,7 @@ namespace VRemoteClient.Services
         {
             try
             {
+                List<TaskObject> tasks = new List<TaskObject>();
                 lock (_lock)
                 {
                     if (blocks.Count != 1)
@@ -152,12 +154,18 @@ namespace VRemoteClient.Services
                         byte[] chunkData = new byte[packetSize];
                         //data
                         Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
-
-                        Send(CommandType.None, chunkData, packetSize);
+                        var task = new TaskObject
+                        (
+                            taskType: CommandType.None,
+                            data: chunkData,
+                            length: packetSize
+                        );
+                        tasks.Add(task);
                     }
                 }
+                AddTaskBatch(tasks);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine("Screen: " + ex.Message);
             }
@@ -167,6 +175,7 @@ namespace VRemoteClient.Services
         {
             try
             {
+                List<TaskObject> tasks = new List<TaskObject>();
                 lock (_lock)
                 {
                     byte[] sourceChunks = MergeAllChunk(blocks);
@@ -213,9 +222,16 @@ namespace VRemoteClient.Services
                         //data
                         Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
 
-                        Send(CommandType.None, chunkData, packetSize);
+                        var task = new TaskObject
+                        (
+                            taskType: CommandType.None,
+                            data: chunkData,
+                            length: packetSize
+                        );
+                        tasks.Add(task);
                     }
                 }
+                AddTaskBatch(tasks);
             }
             catch(Exception ex)
             {
@@ -255,15 +271,10 @@ namespace VRemoteClient.Services
                 return ms.ToArray();
             }
         }
-        private void Send(CommandType cmdType, byte[] data, int sendLength)
+        private void AddTaskBatch(List<TaskObject> tasks)
         {
 
-            RemoteClient.AddWork(new TaskObject
-            (
-                taskType: cmdType,
-                data: data,
-                length: sendLength
-            ));
+            RemoteClient.AddWorkGroup(tasks);
         }
         public void Dispose()
         {
