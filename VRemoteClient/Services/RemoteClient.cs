@@ -165,7 +165,7 @@ namespace VRemoteClient.Services
         }
         private object? DequeueTask()
         {
-            return ActionTasks.TryDequeue(out var task) ? task : null;
+            return ActionTasks.TryDequeue(out var tasks) ? tasks : null;
         }
         public void AddWork(TaskObject task)
         {
@@ -175,7 +175,7 @@ namespace VRemoteClient.Services
         {
             ActionTasks.Enqueue(new TaskGroup(tasks));
         }
-        //private void PingToServer(object state)
+        //private void Ping(object state)
         //{
         //    if (_isSocketConnected)
         //    {
