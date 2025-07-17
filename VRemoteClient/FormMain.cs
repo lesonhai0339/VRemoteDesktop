@@ -151,7 +151,11 @@ namespace VRemoteClient
         {
             string data = Utils.Extensions.DataStringBuilder(new string[] { Me.ToString() });
             byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-            RemoteClient.Send(Models.Enums.CommandType.Login, dataBytes);
+            RemoteClient.AddWork(new TaskObject
+            (
+                taskType: Models.Enums.CommandType.Login,
+                data: dataBytes
+            ));
         }
         #endregion
 
@@ -164,8 +168,13 @@ namespace VRemoteClient
             }
             string receiverInfo = Utils.Extensions.DataStringBuilder(new string[] { Me.Id, txtPartnerId.Text.Trim(), txtPartnerPassword.Text.Trim() });
             byte[] dataBytes = Encoding.ASCII.GetBytes(receiverInfo);
-            RemoteClient.Send(Models.Enums.CommandType.P2PConnect, dataBytes);
-            _resetEvent.WaitOne(1000 * 10);
+            RemoteClient.AddWork(new TaskObject
+            (
+                taskType:  Models.Enums.CommandType.P2PConnect, 
+                data: dataBytes
+                
+            ));
+            _resetEvent.WaitOne(1000 * 5);
             _resetEvent.Reset();
             if (_isP2PConnected)
             {

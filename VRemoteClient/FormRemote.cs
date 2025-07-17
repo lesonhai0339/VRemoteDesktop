@@ -27,6 +27,7 @@ namespace VRemoteClient
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
         private readonly object _screenLock = new object();
+        private readonly object _chunksLock = new object();
         private RemoteClient _remoteClient;
         private ConnectionInfo _info;
         private KeyboardHook _keyboardHook;
@@ -50,9 +51,9 @@ namespace VRemoteClient
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 
-            //vPictureBox.MouseClick += MouseClickEventHandler;
-            //vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
-            //vPictureBox.MouseWheel += MouseWheelEventHandler;
+            vPictureBox.MouseClick += MouseClickEventHandler;
+            vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
+            vPictureBox.MouseWheel += MouseWheelEventHandler;
         }
         #region Properties
         public RemoteClient Client
@@ -116,12 +117,6 @@ namespace VRemoteClient
 
         #endregion
         #region Methods
-        /*        private void MouseMoveEvent(object sender, CustomMouseEventArgs e)
-                {
-                }
-                private void MouseClickEvent(object sender, CustomMouseEventArgs e)
-                {
-                }*/
         private void test()
         {
             var screens = Utils.Capture.GetScreen();
@@ -130,7 +125,12 @@ namespace VRemoteClient
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
             string keyCommandString = KeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
-            Client.Send(commandType: Models.Enums.CommandType.Keyboard, Encoding.ASCII.GetBytes(keyCommandString));
+
+            Client.AddWork(new TaskObject
+            (
+                taskType: Models.Enums.CommandType.Keyboard,
+                data: Encoding.ASCII.GetBytes(keyCommandString)
+            ));
         }
         private void FormRemote_Load(object sender, EventArgs e)
         {
@@ -138,110 +138,11 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
-            // Lấy app process id và form windows handler để khởi tạo keyboard hook
             uint pId = (uint)Process.GetCurrentProcess().Id;
             IntPtr windowHandle = this.Handle; // Get the handle of formRemote
             KeyboardHook.Start(pId, windowHandle);
             //MouseHook.StartHook(pId);
-            //new Thread(() =>
-            //{
-            //    Thread.CurrentThread.IsBackground = true;
-            //    bool flag = false;
-            //    while (true)
-            //    {
-            //        var screens = Utils.Capture.GetScreen();
-            //        if (!flag)
-            //        {
-            //            Stopwatch stopwatch = new Stopwatch();
-            //            stopwatch.Start();
-            //            var a = Utils.Extensions.SHAHash(screens[0].Bytes);
-            //            stopwatch.Stop();
-            //            Console.WriteLine("Screen hash: "+ stopwatch.Elapsed.TotalMilliseconds);
-            //            ScreenEvent(screens[0].Bytes);
-
-            //            flag = true;
-            //        }
-            //        else
-            //        {
-            //            //var data= screens.SelectMany(x=> x.Bytes).ToArray();
-            //            //Console.WriteLine("Length before chunks compress: "+ data.Length);
-            //            //byte[] compressed = Utils.Extensions.CompressGzip(data);
-            //            //Console.WriteLine("Length after chunks compress: " + compressed.Length);
-
-            //            var a = MergeAllChunk(screens);
-            //            var b = test1(a);
-            //            ChunksEvent(b);
-
-            //            //ChunksEvent(screens);
-            //        }
-            //        Thread.Sleep(100);
-            //    }
-            //}).Start();
         }
-        //private List<ScreenBlock> test1(byte[] data)
-        //{
-        //    List<ScreenBlock> blocks = new List<ScreenBlock>();
-        //    int offset = 0;
-        //    while (offset < data.Length)
-        //    {
-        //        if (offset + 20 > data.Length)
-        //            break;
-
-        //        int length = BitConverter.ToInt32(data, offset + 0);
-        //        int x = BitConverter.ToInt32(data, offset + 4);
-        //        int y = BitConverter.ToInt32(data, offset + 8);
-        //        int width = BitConverter.ToInt32(data, offset + 12);
-        //        int height = BitConverter.ToInt32(data, offset + 16);
-
-        //        if (offset + 20 + length > data.Length)
-        //            break;
-
-        //        byte[] chunk = new byte[length];
-        //        Buffer.BlockCopy(data, offset + 20, chunk, 0, length);
-
-        //        offset += length + 20;
-        //        blocks.Add(new ScreenBlock
-        //        {
-        //            IsFullScreen = false,
-        //            Rectangle = new Rectangle(x, y, width, height),
-        //            Bytes = chunk
-        //        });
-        //    }
-        //    return blocks;
-        //}
-        //private unsafe byte[] MergeAllChunk(List<ScreenBlock> blocks)
-        //{
-        //    byte[] _buffer = new byte[20];
-        //    using (var ms = new MemoryStream())
-        //    {
-        //        int count = blocks.Count;
-
-        //        for (int i = 0; i < count; i++)
-        //        {
-
-        //            fixed (byte* p = _buffer)
-        //            {
-        //                int* pInt = (int*)p;
-        //                pInt[0] = blocks[i].Bytes.Length; // Length of the chunk
-        //                pInt[1] = blocks[i].Rectangle.X; // X coordinate of the rectangle
-        //                pInt[2] = blocks[i].Rectangle.Y; // Y coordinate of the rectangle
-        //                pInt[3] = blocks[i].Rectangle.Width; // Width of the rectangle
-        //                pInt[4] = blocks[i].Rectangle.Height; // Height of the rectangle
-
-        //                //note: can write like this *(pInt + 1) = blocks[i].Rectangle.X; 
-        //            }
-        //            ms.Write(_buffer, 0, _buffer.Length); // Write the header
-        //            ms.Write(blocks[i].Bytes, 0, blocks[i].Bytes.Length); // Write the chunk data
-        //            //ms.Write(BitConverter.GetBytes(blocks[i].Bytes.Length), 0, 4);
-        //            //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.X), 0, 4);
-        //            //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Y), 0, 4);
-        //            //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Width), 0, 4);
-        //            //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Height), 0, 4);
-        //            //ms.Write(blocks[i].Bytes, 0, blocks[i].Bytes.Length);
-        //        }
-        //        return ms.ToArray();
-        //    }
-        //}
         private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
         {
             try
@@ -291,7 +192,7 @@ namespace VRemoteClient
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action<byte[]>(ScreenEvent), data);
+                this.BeginInvoke(new Action<byte[]>(ScreenEvent), data);
                 return;
             }
 
@@ -324,6 +225,10 @@ namespace VRemoteClient
                         image?.Dispose();
                     }
                 }
+                Client.AddWork(new TaskObject(
+                     taskType: Models.Enums.CommandType.ScreenOk, 
+                     data: new byte[0] 
+                ));
             }
             catch (Exception ex)
             {
@@ -335,7 +240,7 @@ namespace VRemoteClient
             if (blocks == null || blocks.Count == 0)
                 return;
             Rectangle dirtyRegion = new Rectangle(0,0, _width,_height);
-            lock (_screenLock)
+            lock (_chunksLock)
             {
                for(int i=0;i< blocks.Count; i++)
                {
@@ -357,12 +262,16 @@ namespace VRemoteClient
                 }
             }
 
-
             // Invalidate last merge region
             if (this.InvokeRequired)
                 this.BeginInvoke(new Action(() => InvalidateRegion(dirtyRegion)));
             else
                 InvalidateRegion(dirtyRegion);
+
+            Client.AddWork(new TaskObject (
+                taskType: Models.Enums.CommandType.ChunksOk, 
+                data: new byte[0] 
+            ));
         }
         #endregion
         #region Event Handlers
@@ -370,6 +279,7 @@ namespace VRemoteClient
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;
             int pictureboxHeight = vPictureBox.ClientSize.Height;
+
             string mouseCommandString = "";
             if (e.Delta > 0)
             {
@@ -379,8 +289,11 @@ namespace VRemoteClient
             {
                 mouseCommandString = MouseHook.MouseEventToString("wheel_down", vPictureBox.Image.Width, vPictureBox.Image.Height, e);
             }
-
-            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
+            
+            Client.AddWork(new TaskObject (
+                taskType: Models.Enums.CommandType.MouseMove, 
+                data: Encoding.ASCII.GetBytes(mouseCommandString) 
+            ));
         }
 
         private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
@@ -392,7 +305,11 @@ namespace VRemoteClient
 
             //convert to string
             string mouseCommandString = MouseHook.MouseEventToString("", vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs);
-            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
+            
+            Client.AddWork(new TaskObject ( 
+                taskType: Models.Enums.CommandType.MouseMove, 
+                data: Encoding.ASCII.GetBytes(mouseCommandString) 
+            ));
         }
         private void MouseClickEventHandler(object sender, MouseEventArgs e)
         {
@@ -403,8 +320,11 @@ namespace VRemoteClient
 
             //convert to string
             string mouseCommandString = MouseHook.MouseEventToString("", vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs);
-            Client.Send(commandType: Models.Enums.CommandType.MouseMove, Encoding.ASCII.GetBytes(mouseCommandString));
-
+            
+            Client.AddWork(new TaskObject (
+                taskType: Models.Enums.CommandType.MouseMove, 
+                data: Encoding.ASCII.GetBytes(mouseCommandString) 
+            ));
         }
         #endregion
     }

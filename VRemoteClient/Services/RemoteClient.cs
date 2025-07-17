@@ -1,6 +1,8 @@
 ﻿ using Serilog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Net;
@@ -22,13 +24,18 @@ namespace VRemoteClient.Services
 
         private bool _isSocketConnected;
         private bool _isP2PConnected;
-        private bool _isDisposed; 
+        private bool _isDisposed;
+
+        private object _lockObject = new object();
 
         private Socket _socket;
         private System.Threading.Timer _timer;
         private ClientInfo _me;
         private ScreenHook _vscreen;
         private GlobalMouseHook _mouseHook;
+
+        private ConcurrentQueue<TaskObject> _actionTasks;
+        private BackgroundWorker _backgroundWorker;
 
         public delegate void ConnectSckEvent();
         public delegate void LoginEvent(bool flag);
@@ -61,6 +68,8 @@ namespace VRemoteClient.Services
             _mouseHook = new GlobalMouseHook();
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
             _me = me;
+            ActionTasks = new ConcurrentQueue<TaskObject>();
+            Worker = new BackgroundWorker();
         }
         #region Properties
         public Socket Socket
@@ -84,14 +93,90 @@ namespace VRemoteClient.Services
                 _isSocketConnected = value;
             }
         }
+        public BackgroundWorker Worker
+        {
+            get => _backgroundWorker;
+            set
+            {
+                if (_backgroundWorker != null)
+                {
+                    _backgroundWorker.DoWork -= DoWork;
+                }
+
+                _backgroundWorker = value;
+
+                if (_backgroundWorker != null)
+                {
+                    _backgroundWorker.DoWork += DoWork;
+                }
+            }
+        }
+        public ConcurrentQueue<TaskObject> ActionTasks
+        {
+            get => _actionTasks;
+            private set
+            {
+                _actionTasks = value;
+            }
+        }
         #endregion
+        private void DoWork(object sender, DoWorkEventArgs e)
+        {
+            while (true)
+            {
+                TaskObject? task = null;
+
+                if (ActionTasks.Count > 0)
+                {
+                    task = DequeueTask();
+                }
+                if (task != null)
+                {
+                    try
+                    {
+                        switch (task.TaskType)
+                        {
+                            case CommandType.Login:
+                            case CommandType.P2PConnect:
+                            case CommandType.Keyboard:
+                            case CommandType.MouseMove:
+                            case CommandType.MouseClick:
+                                Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
+                                break;
+                            case CommandType.None:
+                                Send(commandType: task.TaskType, data: task.Data,sendLength: task.Length);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
+                    }
+                }
+                Thread.Sleep(1);
+            }
+        }
+        private TaskObject? DequeueTask()
+        {
+            return ActionTasks.TryDequeue(out var task) ? task : null;
+        }
+        public void AddWork(TaskObject task)
+        {
+            ActionTasks.Enqueue(task);
+        }
         private void PingToServer(object state)
         {
             if (_isSocketConnected)
             {
                 if (!_isP2PConnected)
                 {
-                    Send(CommandType.Ping, new byte[0]);
+                    AddWork(new TaskObject
+                    (
+                        taskType : CommandType.Ping,
+                        data: new byte[0]
+                    ));
                 }
             }
         }
@@ -108,6 +193,10 @@ namespace VRemoteClient.Services
         {
             try
             {
+                if (!Worker.IsBusy)
+                {
+                    Worker.RunWorkerAsync();
+                }
                 IPEndPoint remoteEP;
                 if (IPAddress.TryParse(ip, out IPAddress _))
                 {
@@ -385,7 +474,6 @@ namespace VRemoteClient.Services
                     {
                         p2pScreen(screenDecompressed);
                     }
-                    Send(Models.Enums.CommandType.ScreenOk, new byte[0]);
                 }
             }
             catch (Exception ex)
@@ -444,7 +532,6 @@ namespace VRemoteClient.Services
                             p2pChunks(blocks);
                         }
                     }
-                    Send(Models.Enums.CommandType.ChunksOk, new byte[0]);
                 }
             }
             catch (Exception ex)
