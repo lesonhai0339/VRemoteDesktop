@@ -23,7 +23,6 @@ namespace VRemoteClient.Services
         private bool _disposed = false;
         private bool _isSendSuccessed = false;
         private byte[] _buffer = new byte[20];
-        private byte[] _packet = new byte[CHUNK_SIZE];
         private byte[] _dataSend;
 
 
@@ -164,10 +163,14 @@ namespace VRemoteClient.Services
                         int offset = i * CHUNK_SIZE;
                         int packetSize = Math.Min(CHUNK_SIZE, dataLength - i * CHUNK_SIZE);
 
+                        // Note: Cannot use a shared buffer here because Send() adds the task to a queue.
+                        // If a shared buffer is used, the next packet may overwrite the previous data,
+                        // causing all queued packets to contain the same (last) data.
+                        byte[] chunkData = new byte[packetSize];
                         //data
-                        Buffer.BlockCopy(_dataSend, offset, _packet, 0, packetSize);
+                        Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
 
-                        Send(CommandType.None, _packet, packetSize);
+                        Send(CommandType.None, chunkData, packetSize);
                     }
                 }
             }
@@ -220,10 +223,14 @@ namespace VRemoteClient.Services
 
                         int packetSize = Math.Min(CHUNK_SIZE, remain);
 
+                        // Note: Cannot use a shared buffer here because Send() adds the task to a queue.
+                        // If a shared buffer is used, the next packet may overwrite the previous data,
+                        // causing all queued packets to contain the same (last) data.
+                        byte[] chunkData = new byte[packetSize];
                         //data
-                        Buffer.BlockCopy(_dataSend, offset, _packet, 0, packetSize);
+                        Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
 
-                        Send(CommandType.None, _packet, packetSize);
+                        Send(CommandType.None, chunkData, packetSize);
                     }
                 }
             }
@@ -267,6 +274,7 @@ namespace VRemoteClient.Services
         }
         private void Send(CommandType cmdType, byte[] data, int sendLength)
         {
+
             RemoteClient.AddWork(new TaskObject
             (
                 taskType: cmdType,

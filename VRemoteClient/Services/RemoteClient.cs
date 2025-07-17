@@ -136,26 +136,21 @@ namespace VRemoteClient.Services
                     {
                         switch (task.TaskType)
                         {
-                            case CommandType.Login:
-                            case CommandType.P2PConnect:
-                            case CommandType.Keyboard:
-                            case CommandType.MouseMove:
-                            case CommandType.MouseClick:
-                                Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
-                                break;
                             case CommandType.None:
                                 Send(commandType: task.TaskType, data: task.Data,sendLength: task.Length);
                                 break;
                             default:
+                                Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
                                 break;
                         }
                     }
                     catch (Exception ex)
                     {
+                        Console.WriteLine("Dowork error", ex);
                         Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
                     }
                 }
-                Thread.Sleep(1);
+                Thread.Sleep(10);
             }
         }
         private TaskObject? DequeueTask()
@@ -166,20 +161,20 @@ namespace VRemoteClient.Services
         {
             ActionTasks.Enqueue(task);
         }
-        private void PingToServer(object state)
-        {
-            if (_isSocketConnected)
-            {
-                if (!_isP2PConnected)
-                {
-                    AddWork(new TaskObject
-                    (
-                        taskType : CommandType.Ping,
-                        data: new byte[0]
-                    ));
-                }
-            }
-        }
+        //private void PingToServer(object state)
+        //{
+        //    if (_isSocketConnected)
+        //    {
+        //        if (!_isP2PConnected)
+        //        {
+        //            AddWork(new TaskObject
+        //            (
+        //                taskType : CommandType.Ping,
+        //                data: new byte[0]
+        //            ));
+        //        }
+        //    }
+        //}
         public void Cancel()
         {
             _cancellationToken.Cancel();
