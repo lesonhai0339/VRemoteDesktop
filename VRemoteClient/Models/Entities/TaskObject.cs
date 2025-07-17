@@ -6,6 +6,15 @@ using VRemoteClient.Models.Enums;
 
 namespace VRemoteClient.Models.Entities
 {
+    public class TaskGroup
+    {
+        public TaskGroup(List<TaskObject> tasks)
+        {
+            Tasks = tasks;
+        }
+
+        public List<TaskObject> Tasks { get; set; }
+    }
     public class TaskObject
     {
         public TaskObject(CommandType taskType, byte[] data)

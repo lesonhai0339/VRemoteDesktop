@@ -35,7 +35,7 @@ namespace VRemoteClient.Services
         private ScreenHook _vscreen;
         private GlobalMouseHook _mouseHook;
 
-        private ConcurrentQueue<TaskObject> _actionTasks;
+        private ConcurrentQueue<object> _actionTasks;
         private BackgroundWorker _backgroundWorker;
 
         public delegate void ConnectSckEvent();
@@ -69,7 +69,7 @@ namespace VRemoteClient.Services
             _mouseHook = new GlobalMouseHook();
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
             _me = me;
-            ActionTasks = new ConcurrentQueue<TaskObject>();
+            ActionTasks = new ConcurrentQueue<object>();
             Worker = new BackgroundWorker();
         }
         #region Properties
@@ -112,7 +112,7 @@ namespace VRemoteClient.Services
                 }
             }
         }
-        public ConcurrentQueue<TaskObject> ActionTasks
+        public ConcurrentQueue<object> ActionTasks
         {
             get => _actionTasks;
             private set
@@ -125,20 +125,23 @@ namespace VRemoteClient.Services
         {
             while (!_cancellationToken.IsCancellationRequested)
             {
-                var task = DequeueTask();
-                if (task != null)
+                var taskQueue = DequeueTask();
+                if (taskQueue != null)
                 {
                     try
                     {
-                        switch (task.TaskType)
+                        if(taskQueue is TaskObject task)
                         {
-                            case CommandType.None:
-                                Send(commandType: task.TaskType, data: task.Data, sendLength: task.Length);
-                                break;
-                            default:
-                                Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
-                                break;
+                            ProcessSingleTask(task);
                         }
+                        else if(taskQueue is TaskGroup taskGroup)
+                        {
+                            foreach(var t in taskGroup.Tasks)
+                            {
+                                ProcessSingleTask(t);
+                                Thread.Sleep(1);
+                            }
+                        }   
                     }
                     catch (Exception ex)
                     {
@@ -148,13 +151,29 @@ namespace VRemoteClient.Services
                 Thread.Sleep(1);
             }
         }
-        private TaskObject? DequeueTask()
+        private void ProcessSingleTask(TaskObject task)
+        {
+            switch (task.TaskType)
+            {
+                case CommandType.None:
+                    Send(commandType: task.TaskType, data: task.Data, sendLength: task.Length);
+                    break;
+                default:
+                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
+                    break;
+            }
+        }
+        private object? DequeueTask()
         {
             return ActionTasks.TryDequeue(out var task) ? task : null;
         }
         public void AddWork(TaskObject task)
         {
             ActionTasks.Enqueue(task);
+        }
+        public void AddWorkGroup(List<TaskObject> tasks)
+        {
+            ActionTasks.Enqueue(new TaskGroup(tasks));
         }
         //private void PingToServer(object state)
         //{
