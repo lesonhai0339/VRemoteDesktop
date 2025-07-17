@@ -9,6 +9,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
@@ -122,36 +123,35 @@ namespace VRemoteClient.Services
         #endregion
         private void DoWork(object sender, DoWorkEventArgs e)
         {
-            while (true)
+            new Thread(() =>
             {
-                TaskObject? task = null;
-
-                if (ActionTasks.Count > 0)
+                Thread.CurrentThread.IsBackground = true;
+                while (!_cancellationToken.IsCancellationRequested)
                 {
-                    task = DequeueTask();
-                }
-                if (task != null)
-                {
-                    try
+                    var task = DequeueTask();
+                    if (task != null)
                     {
-                        switch (task.TaskType)
+                        try
                         {
-                            case CommandType.None:
-                                Send(commandType: task.TaskType, data: task.Data,sendLength: task.Length);
-                                break;
-                            default:
-                                Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
-                                break;
+                            switch (task.TaskType)
+                            {
+                                case CommandType.None:
+                                    Send(commandType: task.TaskType, data: task.Data, sendLength: task.Length);
+                                    break;
+                                default:
+                                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
+                                    break;
+                            }
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine("Dowork error", ex);
+                            Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine("Dowork error", ex);
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
-                    }
+                    Thread.Sleep(1);
                 }
-                Thread.Sleep(10);
-            }
+            }).Start();
         }
         private TaskObject? DequeueTask()
         {
