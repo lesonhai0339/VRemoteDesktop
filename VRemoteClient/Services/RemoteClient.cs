@@ -123,35 +123,30 @@ namespace VRemoteClient.Services
         #endregion
         private void DoWork(object sender, DoWorkEventArgs e)
         {
-            new Thread(() =>
+            while (!_cancellationToken.IsCancellationRequested)
             {
-                Thread.CurrentThread.IsBackground = true;
-                while (!_cancellationToken.IsCancellationRequested)
+                var task = DequeueTask();
+                if (task != null)
                 {
-                    var task = DequeueTask();
-                    if (task != null)
+                    try
                     {
-                        try
+                        switch (task.TaskType)
                         {
-                            switch (task.TaskType)
-                            {
-                                case CommandType.None:
-                                    Send(commandType: task.TaskType, data: task.Data, sendLength: task.Length);
-                                    break;
-                                default:
-                                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
-                                    break;
-                            }
-                        }
-                        catch (Exception ex)
-                        {
-                            Console.WriteLine("Dowork error", ex);
-                            Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
+                            case CommandType.None:
+                                Send(commandType: task.TaskType, data: task.Data, sendLength: task.Length);
+                                break;
+                            default:
+                                Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
+                                break;
                         }
                     }
-                    Thread.Sleep(1);
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
+                    }
                 }
-            }).Start();
+                Thread.Sleep(1);
+            }
         }
         private TaskObject? DequeueTask()
         {

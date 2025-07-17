@@ -94,10 +94,6 @@ namespace VRemoteClient.Services
         {
             while (true)
             {
-                _resetEvent.Reset();
-                _isSendSuccessed = false;
-                Stopwatch stopwatch = new Stopwatch();
-                stopwatch.Start();
                 var screens = Utils.Capture.GetScreen();
                 if (screens.Any())
                 {
@@ -113,20 +109,7 @@ namespace VRemoteClient.Services
                             break;
                     }
                 }
-                else
-                {
-                    _isSendSuccessed = true;
-                }
-                _resetEvent.WaitOne(1000 * 10);
-                if (!_isSendSuccessed)
-                {
-                    Console.WriteLine("Break");
-                    Dispose();
-                    break;
-                }
-                Thread.Sleep(50);
-                stopwatch.Stop();
-                Console.WriteLine("Elapsed time: "+ stopwatch.Elapsed.TotalMilliseconds);
+                Thread.Sleep(100);
             }
         }
         // Send full screen to sender when first connect
