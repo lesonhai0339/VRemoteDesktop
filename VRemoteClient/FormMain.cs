@@ -175,7 +175,7 @@ namespace VRemoteClient
             else
             {
                 MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            } 
+            }
         }
     }
 }

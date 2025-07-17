@@ -22,6 +22,8 @@ namespace VRemoteClient
 {
     public partial class FormRemote : Form
     {
+        private int _width;
+        private int _height;
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
         private readonly object _screenLock = new object();
@@ -137,43 +139,109 @@ namespace VRemoteClient
         private void FormRemote_Shown(object sender, EventArgs e)
         {
             // Lấy app process id và form windows handler để khởi tạo keyboard hook
-            //uint pId = (uint)Process.GetCurrentProcess().Id;
-            //IntPtr windowHandle = this.Handle; // Get the handle of formRemote
-            //KeyboardHook.Start(pId, windowHandle);
+            uint pId = (uint)Process.GetCurrentProcess().Id;
+            IntPtr windowHandle = this.Handle; // Get the handle of formRemote
+            KeyboardHook.Start(pId, windowHandle);
             //MouseHook.StartHook(pId);
-            new Thread(() =>
-            {
-                Thread.CurrentThread.IsBackground = true;
-                bool flag = false;
-                while (true)
-                {
-                    var screens = Utils.Capture.GetScreen();
-                    if (!flag)
-                    {
-                        Stopwatch stopwatch = new Stopwatch();
-                        stopwatch.Start();
-                        var a = Utils.Extensions.SHAHash(screens[0].Bytes);
-                        stopwatch.Stop();
-                        Console.WriteLine("Screen hash: "+ stopwatch.Elapsed.TotalMilliseconds);
-                        ScreenEvent(screens[0].Bytes);
+            //new Thread(() =>
+            //{
+            //    Thread.CurrentThread.IsBackground = true;
+            //    bool flag = false;
+            //    while (true)
+            //    {
+            //        var screens = Utils.Capture.GetScreen();
+            //        if (!flag)
+            //        {
+            //            Stopwatch stopwatch = new Stopwatch();
+            //            stopwatch.Start();
+            //            var a = Utils.Extensions.SHAHash(screens[0].Bytes);
+            //            stopwatch.Stop();
+            //            Console.WriteLine("Screen hash: "+ stopwatch.Elapsed.TotalMilliseconds);
+            //            ScreenEvent(screens[0].Bytes);
 
-                        flag = true;
-                    }
-                    else
-                    {
-                        var data= screens.SelectMany(x=> x.Bytes).ToArray();
-                        Stopwatch stopwatch = new Stopwatch();
-                        stopwatch.Start();
-                        var a = Utils.Extensions.SHAHash(data);
-                        Console.WriteLine(a);
-                        stopwatch.Stop();
-                        Console.WriteLine("Chunks hash: " +stopwatch.Elapsed.TotalMilliseconds);
-                        ChunksEvent(screens);
-                    }
-                    Thread.Sleep(100);
-                }
-            }).Start();
+            //            flag = true;
+            //        }
+            //        else
+            //        {
+            //            //var data= screens.SelectMany(x=> x.Bytes).ToArray();
+            //            //Console.WriteLine("Length before chunks compress: "+ data.Length);
+            //            //byte[] compressed = Utils.Extensions.CompressGzip(data);
+            //            //Console.WriteLine("Length after chunks compress: " + compressed.Length);
+
+            //            var a = MergeAllChunk(screens);
+            //            var b = test1(a);
+            //            ChunksEvent(b);
+
+            //            //ChunksEvent(screens);
+            //        }
+            //        Thread.Sleep(100);
+            //    }
+            //}).Start();
         }
+        //private List<ScreenBlock> test1(byte[] data)
+        //{
+        //    List<ScreenBlock> blocks = new List<ScreenBlock>();
+        //    int offset = 0;
+        //    while (offset < data.Length)
+        //    {
+        //        if (offset + 20 > data.Length)
+        //            break;
+
+        //        int length = BitConverter.ToInt32(data, offset + 0);
+        //        int x = BitConverter.ToInt32(data, offset + 4);
+        //        int y = BitConverter.ToInt32(data, offset + 8);
+        //        int width = BitConverter.ToInt32(data, offset + 12);
+        //        int height = BitConverter.ToInt32(data, offset + 16);
+
+        //        if (offset + 20 + length > data.Length)
+        //            break;
+
+        //        byte[] chunk = new byte[length];
+        //        Buffer.BlockCopy(data, offset + 20, chunk, 0, length);
+
+        //        offset += length + 20;
+        //        blocks.Add(new ScreenBlock
+        //        {
+        //            IsFullScreen = false,
+        //            Rectangle = new Rectangle(x, y, width, height),
+        //            Bytes = chunk
+        //        });
+        //    }
+        //    return blocks;
+        //}
+        //private unsafe byte[] MergeAllChunk(List<ScreenBlock> blocks)
+        //{
+        //    byte[] _buffer = new byte[20];
+        //    using (var ms = new MemoryStream())
+        //    {
+        //        int count = blocks.Count;
+
+        //        for (int i = 0; i < count; i++)
+        //        {
+
+        //            fixed (byte* p = _buffer)
+        //            {
+        //                int* pInt = (int*)p;
+        //                pInt[0] = blocks[i].Bytes.Length; // Length of the chunk
+        //                pInt[1] = blocks[i].Rectangle.X; // X coordinate of the rectangle
+        //                pInt[2] = blocks[i].Rectangle.Y; // Y coordinate of the rectangle
+        //                pInt[3] = blocks[i].Rectangle.Width; // Width of the rectangle
+        //                pInt[4] = blocks[i].Rectangle.Height; // Height of the rectangle
+
+        //                //note: can write like this *(pInt + 1) = blocks[i].Rectangle.X; 
+        //            }
+        //            ms.Write(_buffer, 0, _buffer.Length); // Write the header
+        //            ms.Write(blocks[i].Bytes, 0, blocks[i].Bytes.Length); // Write the chunk data
+        //            //ms.Write(BitConverter.GetBytes(blocks[i].Bytes.Length), 0, 4);
+        //            //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.X), 0, 4);
+        //            //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Y), 0, 4);
+        //            //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Width), 0, 4);
+        //            //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Height), 0, 4);
+        //            //ms.Write(blocks[i].Bytes, 0, blocks[i].Bytes.Length);
+        //        }
+        //        return ms.ToArray();
+        //    }
+        //}
         private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
         {
             try
@@ -221,7 +289,6 @@ namespace VRemoteClient
         }
         public void ScreenEvent(byte[] data)
         {
-            Console.WriteLine("Screen call");
             if (this.InvokeRequired)
             {
                 this.Invoke(new Action<byte[]>(ScreenEvent), data);
@@ -243,6 +310,8 @@ namespace VRemoteClient
                         _curScreen?.Dispose();
 
                         _curScreen = new Bitmap(image);
+                        _width = _curScreen.Width;
+                        _height = _curScreen.Height;
                         var imageSize = image.Size;
                         _screenGraphics = Graphics.FromImage(_curScreen);
 
@@ -263,24 +332,23 @@ namespace VRemoteClient
         }
         private void ChunksEvent(List<ScreenBlock> blocks)
         {
-            Console.WriteLine("Chunks call");
             if (blocks == null || blocks.Count == 0)
                 return;
-            Random rd = new Random();
-            Rectangle dirtyRegion = blocks[0].Rectangle;
+            Rectangle dirtyRegion = new Rectangle(0,0, _width,_height);
             lock (_screenLock)
             {
-                foreach (var block in blocks)
-                {
+               for(int i=0;i< blocks.Count; i++)
+               {
                     try
                     {
-                        using MemoryStream ms = new MemoryStream(block.Bytes);
+                        using MemoryStream ms = new MemoryStream(blocks[i].Bytes);
                         using Bitmap chunkBitmap = new Bitmap(ms);
                         // draw on _curScreen
-                        _screenGraphics.DrawImage(chunkBitmap, block.Rectangle);
+                        _screenGraphics.DrawImage(chunkBitmap, blocks[i].Rectangle);
+
 
                         // merge dirty region
-                        dirtyRegion = Rectangle.Union(dirtyRegion, block.Rectangle);
+                        dirtyRegion = Rectangle.Union(dirtyRegion, blocks[i].Rectangle);
                     }
                     catch (Exception ex)
                     {
@@ -289,11 +357,12 @@ namespace VRemoteClient
                 }
             }
 
+
             // Invalidate last merge region
             if (this.InvokeRequired)
-                this.BeginInvoke(new Action(() => vPictureBox.Invalidate(dirtyRegion)));
+                this.BeginInvoke(new Action(() => InvalidateRegion(dirtyRegion)));
             else
-                vPictureBox.Invalidate(dirtyRegion);
+                InvalidateRegion(dirtyRegion);
         }
         #endregion
         #region Event Handlers

@@ -30,15 +30,14 @@ namespace VRemoteClient.Utils
         internal static List<ScreenBlock> GetScreen()
         {
             EncoderParameters encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
+            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
 
             List<ScreenBlock> cells = new List<ScreenBlock>();
             lock (_lockObject)
             {
                 using (Bitmap currentScreen = CaptureWindowsScreen1())
                 {
-                    //if (_previousFrame == null)
-                    if(true)
+                    if (_previousFrame == null)
                     {
                         // First capture - send full screen
                         using (var stream = new MemoryStream())
@@ -215,7 +214,7 @@ namespace VRemoteClient.Utils
             Random rd = new Random();
 
             var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 8;
+            const int blockSize = 32;
 
             // Parallel processing for better performance
             var regions = new List<Rectangle>();
