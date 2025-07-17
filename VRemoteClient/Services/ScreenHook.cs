@@ -135,37 +135,40 @@ namespace VRemoteClient.Services
         {
             try
             {
-                if (blocks.Count != 1)
+                lock (_lock)
                 {
-                    Log.ForContext("Screen", "RemoteDesktopClient")
-                                      .Error($"Blocks number more than expected");
-                    return;
-                }
-                byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
-                byte[] screenHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(screenCompressed));
-                int dataLength = screenCompressed.Length + 5 + screenHashed.Length;
+                    if (blocks.Count != 1)
+                    {
+                        Log.ForContext("Screen", "RemoteDesktopClient")
+                                          .Error($"Blocks number more than expected");
+                        return;
+                    }
+                    byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
+                    byte[] screenHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(screenCompressed));
+                    int dataLength = screenCompressed.Length + 5 + screenHashed.Length;
 
-                //header
-                Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, _dataSend, 0, 4); // Add total bytes at the start
-                _dataSend[4] = (byte)CommandType.Screen; //data type
+                    //header
+                    Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, _dataSend, 0, 4); // Add total bytes at the start
+                    _dataSend[4] = (byte)CommandType.Screen; //data type
 
-                //hash string
-                Buffer.BlockCopy(screenHashed, 0, _dataSend, 5, screenHashed.Length);//real data
-
-                //data
-                Buffer.BlockCopy(screenCompressed, 0, _dataSend, screenHashed.Length + 5, screenCompressed.Length);//real data
-
-                int numberOfChunk = (int)Math.Ceiling((double)dataLength / CHUNK_SIZE);
-
-                for (int i = 0; i < numberOfChunk; i++)
-                {
-                    int offset = i * CHUNK_SIZE;
-                    int packetSize = Math.Min(CHUNK_SIZE, dataLength - i * CHUNK_SIZE);
+                    //hash string
+                    Buffer.BlockCopy(screenHashed, 0, _dataSend, 5, screenHashed.Length);//real data
 
                     //data
-                    Buffer.BlockCopy(_dataSend, offset, _packet, 0, packetSize);
+                    Buffer.BlockCopy(screenCompressed, 0, _dataSend, screenHashed.Length + 5, screenCompressed.Length);//real data
 
-                    Send(CommandType.None, _packet, packetSize);
+                    int numberOfChunk = (int)Math.Ceiling((double)dataLength / CHUNK_SIZE);
+
+                    for (int i = 0; i < numberOfChunk; i++)
+                    {
+                        int offset = i * CHUNK_SIZE;
+                        int packetSize = Math.Min(CHUNK_SIZE, dataLength - i * CHUNK_SIZE);
+
+                        //data
+                        Buffer.BlockCopy(_dataSend, offset, _packet, 0, packetSize);
+
+                        Send(CommandType.None, _packet, packetSize);
+                    }
                 }
             }
             catch(Exception ex)
@@ -178,47 +181,50 @@ namespace VRemoteClient.Services
         {
             try
             {
-                byte[] sourceChunks = MergeAllChunk(blocks);
-                byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
-                byte[] chunksHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(chunks)); //add hash to ensure data is correct
-
-                //headers always 5 bytes, 4 bytes for data length and 1 byte for command type, add more 40 bytes for hash string
-                int numberOfChunk = (chunks.Length + chunksHashed.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5); 
-                int totalLength = chunks.Length;
-
-                int dataSendLength = totalLength + 5 + chunksHashed.Length;
-
-                //header
-                //Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Set total bytes at the start
-                //dataSend[4] = (byte)CommandType.Chunks; // Set command type at offset 4
-                unsafe
+                lock (_lock)
                 {
-                    fixed (byte* ptr = _dataSend)
+                    byte[] sourceChunks = MergeAllChunk(blocks);
+                    byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
+                    byte[] chunksHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(chunks)); //add hash to ensure data is correct
+
+                    //headers always 5 bytes, 4 bytes for data length and 1 byte for command type, add more 40 bytes for hash string
+                    int numberOfChunk = (chunks.Length + chunksHashed.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5); 
+                    int totalLength = chunks.Length;
+
+                    int dataSendLength = totalLength + 5 + chunksHashed.Length;
+
+                    //header
+                    //Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Set total bytes at the start
+                    //dataSend[4] = (byte)CommandType.Chunks; // Set command type at offset 4
+                    unsafe
                     {
-                        *(int*)ptr = dataSendLength; // Set total bytes at the start
-                        *(ptr + 4) = (byte)CommandType.Chunks; // Set command type at offset 4
+                        fixed (byte* ptr = _dataSend)
+                        {
+                            *(int*)ptr = dataSendLength; // Set total bytes at the start
+                            *(ptr + 4) = (byte)CommandType.Chunks; // Set command type at offset 4
+                        }
                     }
-                }
 
-                //hash string
-                Buffer.BlockCopy(chunksHashed, 0, _dataSend, 5, chunksHashed.Length);    //chunk data
-
-                //data
-                Buffer.BlockCopy(chunks, 0, _dataSend, chunksHashed.Length + 5, totalLength);    //chunk data
-
-
-                //cut data to chunk(8192 bytes)  and send
-                for (int i = 0; i < numberOfChunk; i++)
-                {
-                    int offset = i * CHUNK_SIZE;
-                    int remain = dataSendLength - offset;
-
-                    int packetSize = Math.Min(CHUNK_SIZE, remain);
+                    //hash string
+                    Buffer.BlockCopy(chunksHashed, 0, _dataSend, 5, chunksHashed.Length);    //chunk data
 
                     //data
-                    Buffer.BlockCopy(_dataSend, offset, _packet, 0, packetSize);
+                    Buffer.BlockCopy(chunks, 0, _dataSend, chunksHashed.Length + 5, totalLength);    //chunk data
 
-                    Send(CommandType.None, _packet, packetSize);
+
+                    //cut data to chunk(8192 bytes)  and send
+                    for (int i = 0; i < numberOfChunk; i++)
+                    {
+                        int offset = i * CHUNK_SIZE;
+                        int remain = dataSendLength - offset;
+
+                        int packetSize = Math.Min(CHUNK_SIZE, remain);
+
+                        //data
+                        Buffer.BlockCopy(_dataSend, offset, _packet, 0, packetSize);
+
+                        Send(CommandType.None, _packet, packetSize);
+                    }
                 }
             }
             catch(Exception ex)
