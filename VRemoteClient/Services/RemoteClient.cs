@@ -280,6 +280,7 @@ namespace VRemoteClient.Services
         {
             try
             {
+                Console.WriteLine("Call");
                 StateObject stateObject = (StateObject)ar.AsyncState;
                 Socket workSocket = stateObject.WorkSocket;
                 int num = Socket.EndReceive(ar);
@@ -642,7 +643,21 @@ namespace VRemoteClient.Services
         {
             try
             {
-                Socket.BeginSend(data, 0, sendLength, SocketFlags.None, null, null);
+                Socket.BeginSend(data, 0, sendLength, SocketFlags.None, (ar) =>
+                {
+                    try
+                    {
+                        Socket.EndSend(ar);
+                    }
+                    catch (SocketException ex)
+                    {
+                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                    }
+                }, null);
             }
             catch (Exception ex)
             {
@@ -666,12 +681,40 @@ namespace VRemoteClient.Services
                     Buffer.BlockCopy(BitConverter.GetBytes(dataWithHeader.Length), 0, dataWithHeader, 0, 4);
                     dataWithHeader[4] = (byte)commandType; //set command type
                     Buffer.BlockCopy(data, 0, dataWithHeader, 5, data.Length);
-                    Socket.BeginSend(dataWithHeader, 0, dataWithHeader.Length, SocketFlags.None, null, null);
+                    Socket.BeginSend(dataWithHeader, 0, dataWithHeader.Length, SocketFlags.None, (ar) =>
+                    {
+                        try
+                        {
+                            Socket.EndSend(ar);
+                        }
+                        catch (SocketException ex)
+                        {
+                            Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                        }
+                    }, null);
                 }
                 else
                 {
                     //send data
-                    Socket.BeginSend(data, 0, data.Length, SocketFlags.None, null, null);
+                    Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
+                    {
+                        try
+                        {
+                            Socket.EndSend(ar);
+                        }
+                        catch (SocketException ex)
+                        {
+                            Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                        }
+                    }, null);
                 }
             }
             catch (Exception ex)
