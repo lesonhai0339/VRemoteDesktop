@@ -30,7 +30,7 @@ namespace VRemoteClient.Services
         private object _lockObject = new object();
 
         private Socket _socket;
-        private System.Threading.Timer _timer;
+        //private System.Threading.Timer _timer;
         private ClientInfo _me;
         private ScreenHook _vscreen;
         private GlobalMouseHook _mouseHook;
@@ -311,14 +311,11 @@ namespace VRemoteClient.Services
                 {
                     Socket.BeginReceive(stateObject.Buffer, 0, stateObject.Buffer.Length, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);  
                 }
-                catch
+                catch(SocketException ex)
                 {
+                    Log.ForContext("FileName", "RemoteClient").Error(ex, "Begin receive error");
                     //Socket.Close();
                 }
-            }
-            catch(SocketException ex)
-            {
-                Log.Error(ex, "SocketException when receiving data from remote server");    
             }
             catch(Exception ex)
             {
@@ -430,7 +427,6 @@ namespace VRemoteClient.Services
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing mouse data");
             }
         }
-
         private void ProcessKeyboard(byte[] data)
         {
             try
@@ -724,12 +720,97 @@ namespace VRemoteClient.Services
         }
         public void Dispose()
         {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
             if (!_isDisposed)
             {
-                _cancellationToken.Cancel();
-                _cancellationToken.Dispose();
-                _socket?.Close();
-                _isDisposed = true;
+                if (disposing)
+                {
+                    //background worker
+                    if (Worker.IsBusy)
+                    {
+                        Worker.CancelAsync();
+                        int timeout = 5000;
+                        while (Worker.IsBusy && timeout > 0)
+                        {
+                            Thread.Sleep(100);
+                            timeout -= 100;
+                        }
+                    }
+                    Worker.DoWork -= DoWork;
+                    _backgroundWorker.Dispose();
+                    _backgroundWorker = null;
+
+
+                    //queue
+                    if (_actionTasks != null)
+                    {
+                        while (_actionTasks.TryDequeue(out var item))
+                        {
+                            if (item is IDisposable disposableItem)
+                            {
+                                disposableItem.Dispose();
+                            }
+                        }
+                        _actionTasks = null;
+                    }
+
+                    // Mouse hook
+                    _mouseHook?.Dispose();
+                    _mouseHook = null;
+
+                    // Screen hook  
+                    _vscreen?.Dispose();
+                    _vscreen = null;
+
+
+                    if (_cancellationToken != null)
+                    {
+                        try
+                        {
+                            _cancellationToken.Cancel();
+                            _cancellationToken.Dispose();
+                            _cancellationToken = null;
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                        }
+                    }
+
+                    try
+                    {
+                        _socket?.Shutdown(SocketShutdown.Both);
+                        _socket?.Close();
+                        _socket?.Dispose();
+                        _socket = null;
+                    }
+                    catch (Exception)
+                    {
+                    }
+
+                    ConnectSckEventHandler = null;
+                    LoginEventHandler = null;
+                    P2PConnectEventHandler = null;
+                    P2PDataSendSuccessEventHandler = null;
+                    P2PScreenEventHandler = null;
+                    P2PChunksEventHandler = null;
+                    AckEventHandler = null;
+                    ScreenSuccessEventHandler = null;
+                    ChunksSuccessEventHandler = null;
+
+                    // Clear other objects
+                    _me = null;
+                    _lockObject = null;
+
+                    // Set flags
+                    _isSocketConnected = false;
+                    _isP2PConnected = false;
+                    _isDisposed = true;
+                }
             }
         }
     }
