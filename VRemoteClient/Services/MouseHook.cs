@@ -188,11 +188,11 @@ namespace VRemoteClient.Services
         {
             if(mouseType == "wheel_up")
             {
-                return MouseEventToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Up, e.X, e.Y);
+                return ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Up, e.X, e.Y);
             }
             else if (mouseType == "wheel_down")
             {
-                return MouseEventToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Down, e.X, e.Y);
+                return ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Down, e.X, e.Y);
             }
             //mouse click
             else
