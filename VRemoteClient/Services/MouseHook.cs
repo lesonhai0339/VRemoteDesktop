@@ -24,6 +24,7 @@ namespace VRemoteClient.Services
         private const int WH_MOUSE_LL = 14;
         //for windows api
         private const int INPUT_MOUSE = 0;
+        const uint MOUSEEVENTF_MOVE = 0x0001;
         const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         const uint MOUSEEVENTF_LEFTUP = 0x0004;
         const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
@@ -213,10 +214,10 @@ namespace VRemoteClient.Services
                     button = (e.Clicks == 2) ? MouseMessage.WM_MBUTTONDBLCLK : MouseMessage.WM_MBUTTONDOWN;
                     action = MouseType.Down;
                 }
-                return MouseEventToString(width, height, button, action, e.X, e.Y);
+                return ToString(width, height, button, action, e.X, e.Y);
             }
         }
-        private string MouseEventToString(int width, int height, MouseMessage button, MouseType action, int x, int y)
+        public string ToString(int width, int height, MouseMessage button, MouseType action, int x, int y)
         {
             return new StringBuilder()
                 .Append(width).Append("|")
@@ -279,10 +280,35 @@ namespace VRemoteClient.Services
                         flag = MouseWheel(scales.Item1, scales.Item2, x, y, -120);
                     }
                     break;
+                case MouseMessage.DRAGDROP_MOUSEDOWN:
+                    SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, x, y);
+                    break;
+                case MouseMessage.DRAGDROP_MOUSEMOVE:
+                    SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_MOVE, x, y);
+                    break;
+                case MouseMessage.DRAGDROP_MOUSEUP:
+                    SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTUP, x, y);
+                    break;
                 default:
                     break;
             }
             return flag;
+        }
+        public static bool SingleMouseEvent(float scaleX, float scaleY, uint mouseEvent, int x, int y)
+        {
+            int pointX = (int)Math.Round(scaleX * x);
+            int pointY = (int)Math.Round(scaleY * y);
+            bool cusorFlag = SetCursorPos(pointX, pointY);
+            if (!cusorFlag) return false;
+
+            INPUT[] inputs = new INPUT[1];
+            inputs[0].type = INPUT_MOUSE;
+            inputs[0].u.mi.dwFlags = mouseEvent;
+            inputs[0].u.mi.dx = 0;
+            inputs[0].u.mi.dy = 0;
+
+            uint flag = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+            return flag > 0;
         }
         public static bool MouseWheel(float scaleX, float scaleY, int x, int y, int wheelDelta)
         {

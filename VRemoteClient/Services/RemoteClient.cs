@@ -464,6 +464,7 @@ namespace VRemoteClient.Services
         {
             try
             {
+                Console.WriteLine("Screen: " + DateTime.Now.ToString("hh:mm:ss.fff tt"));
                 string stringHashReceived = Encoding.ASCII.GetString(data, 1, 40);
 
                 var compressedLength = data.Length - 41; // 1 byte header + 40 hash
@@ -491,6 +492,7 @@ namespace VRemoteClient.Services
         {
             try
             {
+                Console.WriteLine("Chunks: " + DateTime.Now.ToString("hh:mm:ss.fff tt"));
                 string stringHashReceived = Encoding.ASCII.GetString(data, 1, 40);
 
                 var compressedLength = data.Length - 41; // 1 byte header + 40 hash

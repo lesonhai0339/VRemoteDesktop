@@ -22,6 +22,7 @@ namespace VRemoteClient
 {
     public partial class FormRemote : Form
     {
+        private bool isMouseDragAndDrop = false;
         private int _width;
         private int _height;
         private Bitmap _curScreen;
@@ -54,6 +55,9 @@ namespace VRemoteClient
             vPictureBox.MouseClick += MouseClickEventHandler;
             vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
             vPictureBox.MouseWheel += MouseWheelEventHandler;
+            vPictureBox.MouseDown += MouseDownEvent;
+            vPictureBox.MouseUp += MouseUpEvent;
+            vPictureBox.MouseMove += MouseMoveEvent;
         }
         #region Properties
         public RemoteClient Client
@@ -192,7 +196,7 @@ namespace VRemoteClient
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<byte[]>(ScreenEvent), data);
+                this.Invoke(new Action<byte[]>(ScreenEvent), data);
                 return;
             }
 
@@ -275,6 +279,67 @@ namespace VRemoteClient
         }
         #endregion
         #region Event Handlers
+
+        private void MouseDownEvent(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left)
+            {
+                isMouseDragAndDrop = true;
+
+                //get actual mouse coordinate before send
+                Point adjustedPoint = MouseHook.GetImagePointFromMouse(vPictureBox, e.X, e.Y);
+
+                var adjustedMouseEventArgs = new MouseEventArgs(e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
+
+                //convert to string
+                string mouseCommandString = MouseHook.ToString(vPictureBox.Image.Width, vPictureBox.Image.Height, MouseMessage.DRAGDROP_MOUSEDOWN, MouseType.Down, adjustedMouseEventArgs.X, adjustedMouseEventArgs.Y);
+
+                Client.AddWork(new TaskObject(
+                    taskType: Models.Enums.CommandType.MouseMove,
+                    data: Encoding.ASCII.GetBytes(mouseCommandString)
+                ));
+            }
+        }
+
+        private void MouseUpEvent(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && isMouseDragAndDrop)
+            {
+                isMouseDragAndDrop = false;
+                //get actual mouse coordinate before send
+                Point adjustedPoint = MouseHook.GetImagePointFromMouse(vPictureBox, e.X, e.Y);
+
+                var adjustedMouseEventArgs = new MouseEventArgs(e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
+
+                //convert to string
+                string mouseCommandString = MouseHook.ToString(vPictureBox.Image.Width, vPictureBox.Image.Height, MouseMessage.DRAGDROP_MOUSEUP, MouseType.Down , adjustedMouseEventArgs.X, adjustedMouseEventArgs.Y);
+
+                Client.AddWork(new TaskObject(
+                    taskType: Models.Enums.CommandType.MouseMove,
+                    data: Encoding.ASCII.GetBytes(mouseCommandString)
+                ));
+            }
+        }
+
+        private void MouseMoveEvent(object sender, MouseEventArgs e)
+        {
+            //mouse drag and drop
+            if (isMouseDragAndDrop && e.Button == MouseButtons.Left)
+            {
+                //get actual mouse coordinate before send
+                Point adjustedPoint = MouseHook.GetImagePointFromMouse(vPictureBox, e.X, e.Y);
+
+                var adjustedMouseEventArgs = new MouseEventArgs(e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
+
+                //convert to string
+                string mouseCommandString = MouseHook.ToString(vPictureBox.Image.Width, vPictureBox.Image.Height, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down, adjustedMouseEventArgs.X, adjustedMouseEventArgs.Y);
+
+                Client.AddWork(new TaskObject(
+                    taskType: Models.Enums.CommandType.MouseMove,
+                    data: Encoding.ASCII.GetBytes(mouseCommandString)
+                ));
+            }        
+        }
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
             int pictureboxWidth = vPictureBox.ClientSize.Width;

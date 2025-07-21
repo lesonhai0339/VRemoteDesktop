@@ -57,6 +57,12 @@ namespace VRemoteClient.Models.Enums
         WM_XBUTTONUP = 0x020C, // X mouse released
         WM_NCXBUTTONDBLCLK = 0x00AB, // Non-client X mouse double click
         WM_NCXBUTTONDOWN = 0x00A9, // Non-client X mouse pressed down
-        WM_NCXBUTTONUP = 0x00AA  // Non-client X mouse released
+        WM_NCXBUTTONUP = 0x00AA,  // Non-client X mouse released
+
+        //custom for mouse drag and drop
+        DRAGDROP_MOUSEDOWN= 0x997,
+        DRAGDROP_MOUSEMOVE = 0x998,
+        DRAGDROP_MOUSEUP = 0x999,
+
     }
 }
