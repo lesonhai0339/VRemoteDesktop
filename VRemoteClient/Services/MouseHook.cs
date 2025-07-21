@@ -201,6 +201,7 @@ namespace VRemoteClient.Services
                 MouseType action = MouseType.None;
                 if (e.Button == MouseButtons.Left)
                 {
+                    //note: hiện đang xảy ra lỗi click chuột ra double click
                     button = (e.Clicks == 2) ? MouseMessage.WM_LBUTTONDBLCLK : MouseMessage.WM_LBUTTONDOWN;
                     action = MouseType.Down;
                 }
@@ -227,9 +228,16 @@ namespace VRemoteClient.Services
                 .Append(x).Append("|")
                 .Append(y).ToString();
         }
+        /// <summary>
+        /// caculate scales between current physical screen dimesion and remote physical screen dimesion
+        /// </summary>
+        /// <param name="senderWidth">remote width</param>
+        /// <param name="senderHeight">remote height</param>
+        /// <param name="meWidth">current width</param>
+        /// <param name="meHeight">current height</param>
+        /// <returns><b>scaleX</b> and <b>scaleY</b></returns>
         private Tuple<float, float> CaculateMouseCorrdinate(int senderWidth, int senderHeight, int meWidth, int meHeight)
         {
-
             float scaleX = (float)meWidth / senderWidth;
             float scaleY = (float)meHeight / senderHeight;
             return new Tuple<float, float>(item1: scaleX, item2: scaleY);
@@ -280,6 +288,7 @@ namespace VRemoteClient.Services
                         flag = MouseWheel(scales.Item1, scales.Item2, x, y, -120);
                     }
                     break;
+                //mouse drag and drop
                 case MouseMessage.DRAGDROP_MOUSEDOWN:
                     flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, x, y);
                     break;
@@ -294,6 +303,17 @@ namespace VRemoteClient.Services
             }
             return flag;
         }
+        /// <summary>
+        /// Moves the mouse cursor to the scaled position and sends a single mouse event.
+        /// Typically used in virtual drag or drawing operations where only one mouse event
+        /// is needed (e.g., just Down, just Move, or just Up).
+        /// </summary>
+        /// <param name="scaleX">Scaling factor on the X-axis (relative to the original size).</param>
+        /// <param name="scaleY">Scaling factor on the Y-axis (relative to the original size).</param>
+        /// <param name="mouseEvent">Mouse event flag (e.g., MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_MOVE, etc.).</param>
+        /// <param name="x">Original X coordinate (before scaling).</param>
+        /// <param name="y">Original Y coordinate (before scaling).</param>
+        /// <returns>True if the event was sent successfully; otherwise, false.</returns>
         public static bool SingleMouseEvent(float scaleX, float scaleY, uint mouseEvent, int x, int y)
         {
             int pointX = (int)Math.Round(scaleX * x);
@@ -310,6 +330,20 @@ namespace VRemoteClient.Services
             uint flag = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
             return flag > 0;
         }
+        /// <summary>
+        /// Simulates a mouse wheel scroll event at a specified screen position.
+        /// </summary>
+        /// <remarks>This method adjusts the target position based on the provided scaling factors and
+        /// moves the cursor to the calculated position before simulating the mouse wheel event. If the cursor cannot be
+        /// moved to the specified position, the method returns <see langword="false"/>.</remarks>
+        /// <param name="scaleX">The horizontal scaling factor to adjust the x-coordinate.</param>
+        /// <param name="scaleY">The vertical scaling factor to adjust the y-coordinate.</param>
+        /// <param name="x">The x-coordinate of the target position, in unscaled screen coordinates.</param>
+        /// <param name="y">The y-coordinate of the target position, in unscaled screen coordinates.</param>
+        /// <param name="wheelDelta">The amount of wheel movement. Positive values indicate scrolling up, and negative values indicate scrolling
+        /// down.</param>
+        /// <returns><see langword="true"/> if the mouse wheel event was successfully simulated; otherwise, <see
+        /// langword="false"/>.</returns>
         public static bool MouseWheel(float scaleX, float scaleY, int x, int y, int wheelDelta)
         {
             int pointX = (int)Math.Round(scaleX * x);
@@ -327,6 +361,19 @@ namespace VRemoteClient.Services
             uint flag = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
             return flag > 0;
         }
+        /// <summary>
+        /// Simulates a mouse press at the specified screen coordinates.
+        /// </summary>
+        /// <remarks>This method adjusts the provided coordinates using the specified scaling factors to
+        /// account for screen resolution differences, moves the cursor to the calculated position, and simulates a
+        /// mouse button press and release.</remarks>
+        /// <param name="scaleX">The horizontal scaling factor to adjust the x-coordinate to the screen resolution.</param>
+        /// <param name="scaleY">The vertical scaling factor to adjust the y-coordinate to the screen resolution.</param>
+        /// <param name="mouseDown">The mouse event flag representing the mouse button press (e.g., <see langword="MOUSEEVENTF_LEFTDOWN"/>).</param>
+        /// <param name="mouseUp">The mouse event flag representing the mouse button release (e.g., <see langword="MOUSEEVENTF_LEFTUP"/>).</param>
+        /// <param name="x">The x-coordinate of the target position, relative to the original resolution.</param>
+        /// <param name="y">The y-coordinate of the target position, relative to the original resolution.</param>
+        /// <returns><see langword="true"/> if the mouse press was successfully simulated; otherwise, <see langword="false"/>.</returns>
         private bool MousePress(float scaleX, float scaleY,uint mouseDown, uint mouseUp, int x, int y)
         {
             int pointX = (int)Math.Round(scaleX * x);
@@ -388,187 +435,4 @@ namespace VRemoteClient.Services
             }
         }
     }
-    /*    public static class MouseHook
-        {
-            /// <summary>
-            /// this for windows api
-            /// </summary>
-            /// <param name="x"></param>
-            /// <param name="y"></param>
-            /// <returns></returns>
-            const int INPUT_MOUSE = 0;
-            const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
-            const uint MOUSEEVENTF_LEFTUP = 0x0004;
-            const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
-            const uint MOUSEEVENTF_RIGHTUP = 0x0010;
-            const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
-            const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
-            const uint MOUSEEVENTF_WHEEL = 0x0800;
-            const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
-
-            public static bool MouseEvent(int messageMouseType, int x, int y)
-            {
-                bool flag = false;
-                switch (messageMouseType)
-                {
-                    case WM_LBUTTONDOWN:
-                        flag = MouseClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
-                        break;
-                    case WM_LBUTTONDBLCLK:
-                        flag = MouseClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
-                        if (flag)
-                        {
-                            flag = MouseClick(MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y);
-                        }
-                        break;
-                    case WM_MBUTTONDOWN:
-                        flag = MouseClick(MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, x, y); //middle mouse click
-                        break;
-                    case WM_RBUTTONDOWN:
-                        flag = MouseClick(MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //right mouse click
-                        break;
-                    case WM_MOUSEWHEEL:
-                        flag = MouseClick(MOUSEEVENTF_WHEEL, MOUSEEVENTF_WHEEL, x, y); //mouse wheel event
-                        break;
-                    default:
-                        break;
-                }
-                return flag;
-            }
-            private static bool MouseClick(uint mouseDown, uint mouseUp, int x, int y)
-            {
-                bool cusorFlag = SetCursorPos(x, y); // Set the cursor position to the specified coordinates
-                if (!cusorFlag) return false;
-
-                //or you do not want use SetcursorPos, you can use this code
-                int normalizedX = x * 65535 / Screen.PrimaryScreen.Bounds.Width;
-                int normalizedY = y * 65535 / Screen.PrimaryScreen.Bounds.Height;
-                //and set 
-                inputs[0].u.mi.dx = normalizedX;
-                inputs[0].u.mi.dy = normalizedY;
-
-                INPUT[] inputs = new INPUT[2];
-
-                inputs[0].type = INPUT_MOUSE;
-                inputs[0].u.mi.dwFlags = mouseDown | MOUSEEVENTF_ABSOLUTE;
-                inputs[0].u.mi.dx = 0;
-                inputs[0].u.mi.dy = 0;
-
-                inputs[1].type = INPUT_MOUSE;
-                inputs[1].u.mi.dwFlags = mouseUp | MOUSEEVENTF_ABSOLUTE;
-                inputs[1].u.mi.dx = 0;
-                inputs[1].u.mi.dy = 0;
-
-                uint flag = SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
-                if (flag > 0)
-                {
-                    return true;
-                }
-                else
-                {
-                    return false;
-                }
-            }
-
-
-            /// <summary>
-            /// this for windows Message
-            /// </summary>
-            //Left mouse
-            const int WM_LBUTTONDBLCLK = 0x0203; //Lefr mouse double click
-            const int WM_LBUTTONDOWN = 0x0201; //Left mouse pressed down
-            const int WM_LBUTTONUP = 0x0202; // Left mouse released
-            const int WM_NCLBUTTONDBLCLK = 0x00A3; //Non-client left mouse double click
-            const int WM_NCLBUTTONDOWN = 0x00A1; //Non-client left mouse pressed down
-            const int WM_NCLBUTTONUP = 0x00A2; //Non-client left mouse released
-            //Middle
-            const int WM_MBUTTONDBLCLK = 0x0209; //Middle mouse double click
-            const int WM_MBUTTONDOWN = 0x0207; //Middle mouse pressed down
-            const int WM_MBUTTONUP = 0x0208; //Middle mouse released
-            const int WM_NCMBUTTONDBLCLK = 0x00A9; //Non-client middle mouse double click
-            const int WM_NCMBUTTONDOWN = 0x00A7; //Non-client middle mouse pressed down
-            const int WM_NCMBUTTONUP = 0x00A8; //Non-client middle mouse released
-            const int WM_NCMOUSEHOVER = 0x02A1; //Non-client mouse hover
-            const int WM_NCMOUSELEAVE = 0x02A3; //Non-client mouse leave
-            const int WM_NCMOUSEMOVE = 0x00A0; //Non-client mouse move
-            //Right mouse
-            const int WM_RBUTTONDBLCLK = 0x0206; //Right mouse double click
-            const int WM_RBUTTONDOWN = 0x0204; //Right mouse pressed down
-            const int WM_RBUTTONUP = 0x0205; //Right mouse released
-            const int WM_NCRBUTTONDBLCLK = 0x00A6; //Non-client right mouse double click
-            const int WM_NCRBUTTONDOWN = 0x00A4; //Non-client right mouse pressed down
-            const int WM_NCRBUTTONUP = 0x00A5; //Non-client right mouse released
-            //All
-            const int WM_MOUSEACTIVATE = 0x0021;
-            const int WM_MOUSEHOVER = 0x02A1;
-            const int WM_MOUSEHWHEEL = 0x020E;
-            const int WM_MOUSELEAVE = 0x02A3;
-            const int WM_MOUSEMOVE = 0x0200;
-            const int WM_MOUSEWHEEL = 0x020A;
-            const int WM_NCHITTEST = 0x0084;
-            //mouse event on nonclient(title bar, zoom in, zoom out,...)
-            const int WM_NCXBUTTONDBLCLK = 0x00AB; //Non-client X mouse double click
-            const int WM_NCXBUTTONDOWN = 0x00A9; //Non-client X mouse pressed down
-            const int WM_NCXBUTTONUP = 0x00AA; //Non-client X mouse released
-
-            //X mouse(extra mouse buttons)
-            const int WM_XBUTTONDBLCLK = 0x020D; //X mouse double click
-            const int WM_XBUTTONDOWN = 0x020B; //X mouse pressed down
-            const int WM_XBUTTONUP = 0x020C; //X mouse released
-
-            public static string MouseCoordinate(Message e)
-            {
-                string result = "";
-                int x = e.LParam.ToInt32() & 0xFFFF;
-                int y = (e.LParam.ToInt32() >> 16) & 0xFFFF;
-
-                switch (e.Msg)
-                {
-                    case WM_LBUTTONDOWN:
-                        Console.WriteLine($"Mouse left click: x:{x} - y:{y}");
-                        result = MouseToString(WM_LBUTTONDOWN, x, y);
-                        break;
-                    case WM_LBUTTONDBLCLK:
-                        result = MouseToString(WM_LBUTTONDBLCLK, x, y);
-                        Console.WriteLine($"Mouse left dbclick: x:{x} - y:{y}");
-                        break;
-                    case WM_MBUTTONDOWN:
-                        result = MouseToString(WM_MBUTTONDOWN, x, y);
-                        Console.WriteLine($"Mouse middle click: x:{x} - y:{y}");
-                        break;
-                    case WM_RBUTTONDOWN:
-                        result = MouseToString(WM_RBUTTONDOWN, x, y);
-                        Console.WriteLine($"Mouse right click: x:{x} - y:{y}");
-                        break;
-                    case WM_MOUSEWHEEL:
-                        result = MouseToString(WM_MOUSEWHEEL, x, y);
-                        Console.WriteLine($"Mouse wheel: x:{x} - y:{y}");
-                        break;
-                    // Non-client area messages (title bar, borders, etc.)
-                    case WM_NCLBUTTONDOWN:
-                        Console.WriteLine($"NC Mouse left click: x:{x} - y:{y}");
-                        result = MouseToString(WM_NCLBUTTONDOWN, x, y);
-                        break;
-                    case WM_NCLBUTTONDBLCLK:
-                        result = MouseToString(WM_NCLBUTTONDBLCLK, x, y);
-                        Console.WriteLine($"NC Mouse left dbclick: x:{x} - y:{y}");
-                        break;
-                    case WM_NCRBUTTONDOWN:
-                        result = MouseToString(WM_NCRBUTTONDOWN, x, y);
-                        Console.WriteLine($"NC Mouse right click: x:{x} - y:{y}");
-                        break;
-                    case WM_NCMBUTTONDOWN:
-                        result = MouseToString(WM_NCMBUTTONDOWN, x, y);
-                        Console.WriteLine($"NC Mouse middle click: x:{x} - y:{y}");
-                        break;
-                    default:
-                        break;
-                }
-                return result;
-            }
-            public static string MouseToString(int mouseType, int x, int y)
-            {
-                return new StringBuilder().Append(mouseType).Append("|").Append(x).Append("|").Append(y).ToString();
-            }
-        }*/
 }

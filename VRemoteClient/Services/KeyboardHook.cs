@@ -339,6 +339,7 @@ namespace VRemoteClient.Services
                             //case for holding key (example: aaaaaaaaaaaaa)
                             if(_key == key)
                             {
+                                //note: chưa xử lý key như control+a khi thả a thì nó sẽ press a
                                 SendKey(_key);
                             }
                             else
