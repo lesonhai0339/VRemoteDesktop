@@ -18,7 +18,6 @@ namespace VRemoteClient
             // normally windows will get scaled logical dimensions(incorrect). need to turn on DPI-Aware to get physical screen dimensions
             // declare DPI aware to access the screen resolution. have been set in app.manifest. see https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setprocessdpiaware
             //Libraries.SetProcessDPIAware();
-            Logger.Config();
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new FormMain());

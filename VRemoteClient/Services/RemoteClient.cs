@@ -1,5 +1,4 @@
-﻿ using Serilog;
-using System;
+﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -13,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 
 namespace VRemoteClient.Services
@@ -259,16 +259,16 @@ namespace VRemoteClient.Services
                 }
                 else
                 {
-                    Log.Error("Invalid IP address: {Ip}", ip);
+                    Log.ForContext("FileName", "RemoteClient").Error("Invalid IP address: {Ip}", ip);
                 }
             }
             catch (SocketException ex)
             {
-                Log.Error(ex, "Error when connect to relay server");
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when connect to relay server");
             }
             catch (Exception ex)
             {
-                Log.Error(ex, "Unexpected error when connect to relay server");
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when connect to relay server");
             }
             finally
             {
@@ -302,11 +302,11 @@ namespace VRemoteClient.Services
             }
             catch(SocketException ex)
             {
-                Log.Error(ex, "SocketException when connecting to remote server");
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "SocketException when connecting to remote server");
             }
             catch(Exception ex)
             {
-                Log.Error(ex, "Unexpected error when connecting to remote server");
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when connecting to remote server");
             }
         }
         /// <summary>
@@ -356,7 +356,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.Error(ex, "Unexpected error when receiving data from remote server");
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when receiving data from remote server");
             }
         }
 

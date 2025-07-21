@@ -1,5 +1,4 @@
-﻿using Serilog;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -18,6 +17,7 @@ using System.Windows.Forms.VisualStyles;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services;
+using VRemoteClient.Utils;
 
 namespace VRemoteClient
 {
@@ -131,8 +131,8 @@ namespace VRemoteClient
         {
             try
             {
-                try { KeyboardHook?.Dispose(); } catch (Exception ex) { Log.Fatal(ex, "Error disposing KeyboardHook: {Message}", ex.Message); }
-                try { MouseHook?.Dispose(); } catch (Exception ex) { Log.Fatal(ex, "Error disposing MouseHook: {Message}", ex.Message); }
+                try { KeyboardHook?.Dispose(); } catch (Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
+                try { MouseHook?.Dispose(); } catch (Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
 
                 try
                 {
@@ -143,8 +143,8 @@ namespace VRemoteClient
                         Client = null;
                     }
                 }
-                catch(Exception ex) { Log.Fatal(ex, "Error disposing Client: {Message}", ex.Message); }
-                try { Icon?.Dispose(); } catch (Exception ex) { Log.Fatal(ex, "Error disposing MouseHook: {Message}", ex.Message); }
+                catch(Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
+                try { Icon?.Dispose(); } catch (Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
 
                 try
                 {
@@ -156,12 +156,12 @@ namespace VRemoteClient
                         vPictureBox.Image?.Dispose();
                     }
                 }
-                catch (Exception ex) { Log.Fatal(ex, "Error disposing vPictureBox: {Message}", ex.Message); }
+                catch (Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
                
             }
             catch (Exception ex)
             {
-                Log.Fatal(ex, "Error disposing hooks in FormRemote_FormClosed: {Message}", ex.Message);
+                Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message));
             }
         }
         #endregion

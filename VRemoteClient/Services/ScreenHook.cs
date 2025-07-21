@@ -1,5 +1,4 @@
-﻿using Serilog;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -13,6 +12,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Utils;
 
 namespace VRemoteClient.Services
 {
