@@ -214,7 +214,7 @@ namespace VRemoteClient.Utils
             Random rd = new Random();
 
             var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 32;
+            const int blockSize = 64;
 
             // Parallel processing for better performance
             var regions = new List<Rectangle>();

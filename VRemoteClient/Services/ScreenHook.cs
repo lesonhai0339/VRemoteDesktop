@@ -110,7 +110,7 @@ namespace VRemoteClient.Services
                             break;
                     }
                 }
-                Thread.Sleep(10);
+                Thread.Sleep(1);
             }
         }
         // Send full screen to sender when first connect

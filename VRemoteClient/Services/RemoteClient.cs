@@ -139,7 +139,6 @@ namespace VRemoteClient.Services
                             foreach(var t in taskGroup.Tasks)
                             {
                                 ProcessSingleTask(t);
-                                Thread.Sleep(1);
                             }
                         }   
                     }
@@ -280,7 +279,6 @@ namespace VRemoteClient.Services
         {
             try
             {
-                Console.WriteLine("Call");
                 StateObject stateObject = (StateObject)ar.AsyncState;
                 Socket workSocket = stateObject.WorkSocket;
                 int num = Socket.EndReceive(ar);
@@ -366,10 +364,7 @@ namespace VRemoteClient.Services
                 case CommandType.Keyboard:
                     ProcessKeyboard(data);
                     break;
-                case CommandType.MouseClick:
-                    ProcessMouse(data);
-                    break;
-                case CommandType.MouseMove:
+                case CommandType.Mouse:
                     ProcessMouse(data);
                     break;
                 case CommandType.Error:
@@ -464,7 +459,6 @@ namespace VRemoteClient.Services
         {
             try
             {
-                Console.WriteLine("Screen: " + DateTime.Now.ToString("hh:mm:ss.fff tt"));
                 string stringHashReceived = Encoding.ASCII.GetString(data, 1, 40);
 
                 var compressedLength = data.Length - 41; // 1 byte header + 40 hash
@@ -492,7 +486,6 @@ namespace VRemoteClient.Services
         {
             try
             {
-                Console.WriteLine("Chunks: " + DateTime.Now.ToString("hh:mm:ss.fff tt"));
                 string stringHashReceived = Encoding.ASCII.GetString(data, 1, 40);
 
                 var compressedLength = data.Length - 41; // 1 byte header + 40 hash
