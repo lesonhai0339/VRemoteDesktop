@@ -274,7 +274,7 @@ namespace VRemoteClient.Services
         private void AddTaskBatch(List<TaskObject> tasks)
         {
 
-            RemoteClient.AddWorkGroup(tasks);
+            RemoteClient.AddWorkGroup(tasks, QueueTask.Screen);
         }
         public void Dispose()
         {

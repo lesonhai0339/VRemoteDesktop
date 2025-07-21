@@ -35,7 +35,8 @@ namespace VRemoteClient.Services
         private ScreenHook _vscreen;
         private GlobalMouseHook _mouseHook;
 
-        private ConcurrentQueue<object> _actionTasks;
+        private ConcurrentQueue<object> _screenTasks;
+        private ConcurrentQueue<object> _commandTasks;
         private BackgroundWorker _backgroundWorker;
 
         public delegate void ConnectSckEvent();
@@ -69,7 +70,8 @@ namespace VRemoteClient.Services
             _mouseHook = new GlobalMouseHook();
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
             _me = me;
-            ActionTasks = new ConcurrentQueue<object>();
+            ScreenTasks = new ConcurrentQueue<object>();
+            CommandTasks = new ConcurrentQueue<object>();
             Worker = new BackgroundWorker();
         }
         #region Properties
@@ -112,12 +114,20 @@ namespace VRemoteClient.Services
                 }
             }
         }
-        public ConcurrentQueue<object> ActionTasks
+        public ConcurrentQueue<object> ScreenTasks
         {
-            get => _actionTasks;
+            get => _screenTasks;
             private set
             {
-                _actionTasks = value;
+                _screenTasks = value;
+            }
+        }
+        public ConcurrentQueue<object> CommandTasks
+        {
+            get => _commandTasks;
+            private set
+            {
+                _commandTasks = value;
             }
         }
         #endregion
@@ -138,6 +148,10 @@ namespace VRemoteClient.Services
                         {
                             foreach(var t in taskGroup.Tasks)
                             {
+                                if (CommandTasks.TryPeek(out _))
+                                {
+                                    break;
+                                }
                                 ProcessSingleTask(t);
                             }
                         }   
@@ -147,7 +161,7 @@ namespace VRemoteClient.Services
                         Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
                     }
                 }
-                Thread.Yield();
+                Thread.Sleep(1);
             }
         }
         private void ProcessSingleTask(TaskObject task)
@@ -164,15 +178,40 @@ namespace VRemoteClient.Services
         }
         private object? DequeueTask()
         {
-            return ActionTasks.TryDequeue(out var tasks) ? tasks : null;
+            if(CommandTasks.TryDequeue(out var cmdTask))
+            {
+                return cmdTask;
+            }
+            else
+            {
+                return ScreenTasks.TryDequeue(out var tasks) ? tasks : null;
+            }
         }
-        public void AddWork(TaskObject task)
+        public void AddWork(TaskObject task, QueueTask type = QueueTask.Command)
         {
-            ActionTasks.Enqueue(task);
+            if(type == QueueTask.Screen)
+            {
+                if (ScreenTasks.Count > 1)
+                {
+                    while (ScreenTasks.TryDequeue(out _)) { }
+                }
+                ScreenTasks.Enqueue(task);
+            }
+            else
+            {
+                CommandTasks.Enqueue(task);
+            }
         }
-        public void AddWorkGroup(List<TaskObject> tasks)
+        public void AddWorkGroup(List<TaskObject> tasks, QueueTask type = QueueTask.Command)
         {
-            ActionTasks.Enqueue(new TaskGroup(tasks));
+            if (type == QueueTask.Screen)
+            {
+                ScreenTasks.Enqueue(new TaskGroup(tasks));
+            }
+            else
+            {
+                CommandTasks.Enqueue(new TaskGroup(tasks));
+            }
         }
         //private void Ping(object state)
         //{
@@ -742,16 +781,27 @@ namespace VRemoteClient.Services
 
 
                     //queue
-                    if (_actionTasks != null)
+                    if (_screenTasks != null)
                     {
-                        while (_actionTasks.TryDequeue(out var item))
+                        while (_screenTasks.TryDequeue(out var item))
                         {
                             if (item is IDisposable disposableItem)
                             {
                                 disposableItem.Dispose();
                             }
                         }
-                        _actionTasks = null;
+                        _screenTasks = null;
+                    }
+                    if (_commandTasks != null)
+                    {
+                        while (_commandTasks.TryDequeue(out var item))
+                        {
+                            if (item is IDisposable disposableItem)
+                            {
+                                disposableItem.Dispose();
+                            }
+                        }
+                        _commandTasks = null;
                     }
 
                     // Mouse hook
