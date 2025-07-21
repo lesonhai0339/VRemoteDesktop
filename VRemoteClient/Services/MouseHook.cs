@@ -281,13 +281,13 @@ namespace VRemoteClient.Services
                     }
                     break;
                 case MouseMessage.DRAGDROP_MOUSEDOWN:
-                    SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, x, y);
+                    flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, x, y);
                     break;
                 case MouseMessage.DRAGDROP_MOUSEMOVE:
-                    SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_MOVE, x, y);
+                    flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_MOVE, x, y);
                     break;
                 case MouseMessage.DRAGDROP_MOUSEUP:
-                    SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTUP, x, y);
+                    flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTUP, x, y);
                     break;
                 default:
                     break;

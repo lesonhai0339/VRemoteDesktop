@@ -34,6 +34,8 @@ namespace VRemoteClient
         private KeyboardHook _keyboardHook;
         private GlobalMouseHook _mouseHook;
         private System.Threading.Timer _timer;
+        private DateTime lastMouseMoveTime = DateTime.MinValue;
+        private const int MOUSE_MOVE_THROTTLE_MS = 5;
         public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
         {
             InitializeComponent();
@@ -326,6 +328,12 @@ namespace VRemoteClient
             //mouse drag and drop
             if (isMouseDragAndDrop && e.Button == MouseButtons.Left)
             {
+                DateTime now = DateTime.Now;
+                if ((now - lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
+                    return; // Skip this event
+
+                lastMouseMoveTime = now;
+
                 //get actual mouse coordinate before send
                 Point adjustedPoint = MouseHook.GetImagePointFromMouse(vPictureBox, e.X, e.Y);
 
