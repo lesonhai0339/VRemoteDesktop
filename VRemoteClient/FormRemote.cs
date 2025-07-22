@@ -231,7 +231,7 @@ namespace VRemoteClient
             //mouse move
             else
             {
-                AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
+                AddMouseEventToTask(MouseEventType.Move, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
             }
         }
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
@@ -281,6 +281,10 @@ namespace VRemoteClient
                     {
                         m = MouseHook.MouseEventToString("wheel_down", vPictureBox.Image.Width, vPictureBox.Image.Height, e);
                     }
+                }
+                else if(mouseEvent == MouseEventType.Move)
+                {
+                    m = MouseHook.MouseEventToString("move", vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs);
                 }
                 else
                 {

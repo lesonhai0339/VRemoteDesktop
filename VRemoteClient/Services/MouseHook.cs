@@ -194,6 +194,10 @@ namespace VRemoteClient.Services
             {
                 return ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Down, e.X, e.Y);
             }
+            else if(mouseType == "move")
+            {
+                return ToString(width, height, MouseMessage.WM_MOUSEMOVE, MouseType.Down, e.X, e.Y);
+            }
             //mouse click
             else
             {

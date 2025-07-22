@@ -9,6 +9,7 @@ namespace VRemoteClient.Models.Enums
     {
         ClickOrDoubleClick = 1,
         Wheel = 2,
-        DragAndDrop = 3
+        DragAndDrop = 3,
+        Move = 4
     }
 }
