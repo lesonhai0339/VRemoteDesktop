@@ -24,7 +24,7 @@ namespace VRemoteClient
     public partial class FormRemote : Form
     {
         private readonly object _screenLock = new object();
-        private const int MOUSE_MOVE_THROTTLE_MS = 50;
+        private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
         private bool isMouseDragAndDrop;
         private int _width;
@@ -261,6 +261,10 @@ namespace VRemoteClient
         {
             try
             {
+
+                //check image nullable
+                if (vPictureBox.Image == null) return;
+
                 //get actual mouse coordinate before send
                 Point adjustedPoint = MouseHook.GetImagePointFromMouse(p, e.X, e.Y);
 

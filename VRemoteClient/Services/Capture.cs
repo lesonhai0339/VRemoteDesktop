@@ -14,23 +14,30 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 
-namespace VRemoteClient.Utils
+namespace VRemoteClient.Services
 {
-    internal static class Capture
+    internal class Capture
     {
-        private static ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
-        //private static ConcurrentBag<ScreenBlock> blocks = new ConcurrentBag<ScreenBlock>();
+        private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
+        //private ConcurrentBag<ScreenBlock> blocks = new ConcurrentBag<ScreenBlock>();
 
-        private static Bitmap? _previousFrame = null;
-        private static readonly object _lockObject = new object();
-        private static readonly object _lockObject2 = new object();
-        static ImageCodecInfo encoder = ImageCodecInfo.GetImageEncoders()
-                .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
-
-        internal static List<ScreenBlock> GetScreen()
+        private Bitmap? _previousFrame;
+        private object _lockObject;
+        private object _lockObject2;
+        private ImageCodecInfo encoder;
+        private EncoderParameters encoderParams;
+        public Capture()
         {
-            EncoderParameters encoderParams = new EncoderParameters(1);
+            _previousFrame = null;
+            _lockObject = new object();
+            _lockObject2 = new object();
+            encoder = ImageCodecInfo.GetImageEncoders()
+                .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
+            encoderParams = new EncoderParameters(1);
             encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
+        }
+        internal List<ScreenBlock> GetScreen()
+        {
 
             List<ScreenBlock> cells = new List<ScreenBlock>();
             lock (_lockObject)
@@ -139,7 +146,7 @@ namespace VRemoteClient.Utils
             }
             return cells;
         }
-        //private static Bitmap CropFromBytes(byte[] screenBytes, int screenWidth, int screenHeight, int stride, Rectangle region)
+        //private Bitmap CropFromBytes(byte[] screenBytes, int screenWidth, int screenHeight, int stride, Rectangle region)
         //{
         //    Bitmap cropped = new Bitmap(region.Width, region.Height, PixelFormat.Format24bppRgb);
 
@@ -171,7 +178,7 @@ namespace VRemoteClient.Utils
         //    cropped.UnlockBits(targetData);
         //    return cropped;
         //}
-        internal static Bitmap CropBitmap(Bitmap source, Rectangle region)
+        internal Bitmap CropBitmap(Bitmap source, Rectangle region)
         {
             // Validate region bounds
             region = Rectangle.Intersect(region, new Rectangle(0, 0, source.Width, source.Height));
@@ -179,24 +186,24 @@ namespace VRemoteClient.Utils
 
             return source.Clone(region, source.PixelFormat);
         }// This runs when the application starts.
-        internal static Bitmap CaptureWindowsScreen1()
+        internal Bitmap CaptureWindowsScreen1()
         {
             var bounds = Screen.PrimaryScreen.Bounds;
             Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
             using (Graphics bitmapGraphics = Graphics.FromImage(bitmap))
             {
                 IntPtr bitmapHdc = bitmapGraphics.GetHdc();
-                IntPtr screenHdc = Libraries.GetDC(IntPtr.Zero);
+                IntPtr screenHdc = Utils.Libraries.GetDC(IntPtr.Zero);
 
-                Libraries.BitBlt(bitmapHdc, 0, 0, bounds.Width, bounds.Height,
+                Utils.Libraries.BitBlt(bitmapHdc, 0, 0, bounds.Width, bounds.Height,
                        screenHdc, bounds.X, bounds.Y, 0x00CC0020); // SRCCOPY
 
                 bitmapGraphics.ReleaseHdc(bitmapHdc);
-                Libraries.ReleaseDC(IntPtr.Zero, screenHdc);
+                Utils.Libraries.ReleaseDC(IntPtr.Zero, screenHdc);
             }
             return bitmap;
         }
-        internal static Bitmap CaptureWindowsScreen()
+        internal Bitmap CaptureWindowsScreen()
         {
             Rectangle bounds = Screen.PrimaryScreen.Bounds;
             Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
@@ -209,7 +216,7 @@ namespace VRemoteClient.Utils
             return bitmap;
         }
 
-        internal static List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
+        internal List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
         {
             Random rd = new Random();
 
@@ -269,7 +276,7 @@ namespace VRemoteClient.Utils
             }
         }
 
-        private static List<Rectangle> MergeAdjacentRectangles(List<Rectangle> rectangles)
+        private List<Rectangle> MergeAdjacentRectangles(List<Rectangle> rectangles)
         {
             if (rectangles.Count <= 1) return rectangles;
 
@@ -298,7 +305,7 @@ namespace VRemoteClient.Utils
             return merged;
         }
 
-        private static bool CanMerge(Rectangle rect1, Rectangle rect2)
+        private bool CanMerge(Rectangle rect1, Rectangle rect2)
         {
             // Check if rectangles are adjacent or overlapping
             Rectangle union = Rectangle.Union(rect1, rect2);
@@ -309,9 +316,9 @@ namespace VRemoteClient.Utils
             double efficiency = (double)combinedArea / unionArea;
             return efficiency > 0.75; // 75% efficiency threshold
         }
-        private static int AbsBitwise(int x) => (x + (x >> 31)) ^ (x >> 31);
+        private int AbsBitwise(int x) => (x + (x >> 31)) ^ (x >> 31);
 
-        private unsafe static bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
+        private unsafe bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
         {
             byte* currentPtr = (byte*)currentData.Scan0;
             byte* previousPtr = (byte*)previousData.Scan0;
@@ -351,7 +358,7 @@ namespace VRemoteClient.Utils
         }
 
         // Cleanup method
-        internal static void Dispose()
+        internal void Dispose()
         {
             lock (_lockObject)
             {

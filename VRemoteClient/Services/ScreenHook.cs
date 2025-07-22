@@ -20,17 +20,19 @@ namespace VRemoteClient.Services
     {
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
+        private readonly object _lock = new object(); // For thread safety. Can use ReadWriteLockSlim instead
+        private readonly object _lockProperty = new object(); //Can use ReadWriteLockSlim instead
 
         private bool _disposed = false;
         private bool _isSendSuccessed = false;
         private byte[] _buffer = new byte[20];
         private byte[] _dataSend;
 
+        private Capture _capture;
 
         private BackgroundWorker _backgroundWorker;
         private RemoteClient _remoteClient;
         private ManualResetEvent _resetEvent;
-        private readonly object _lock = new object(); // For thread safety
         public ScreenHook(RemoteClient client) 
         {
             var bounds = Screen.PrimaryScreen.Bounds;
@@ -39,6 +41,8 @@ namespace VRemoteClient.Services
             _dataSend = new byte[bufferSize];
 
             RemoteClient = client;
+            _capture = new Capture();
+
             _resetEvent = new ManualResetEvent(false);
             BackgroundWorker = new BackgroundWorker();
             BackgroundWorker.RunWorkerAsync();
@@ -46,21 +50,29 @@ namespace VRemoteClient.Services
         #region Properties
         public RemoteClient RemoteClient
         {
-            get => _remoteClient;
+            get
+            {
+                lock (_lockProperty)
+                {
+                    return _remoteClient;
+                }
+            }
             set
             {
-                RemoteClient client = _remoteClient;
-                if (client != null)
+                lock (_lockProperty)
                 {
-                    client.ChunksSuccessEventHandler -= SentResponse;
-                    client.ScreenSuccessEventHandler -= SentResponse;
-                }
-                _remoteClient = value;
-                client = _remoteClient;
-                if (client != null)
-                {
-                    client.ChunksSuccessEventHandler += SentResponse;
-                    client.ScreenSuccessEventHandler += SentResponse;
+                    if (_remoteClient != null)
+                    {
+                        //callback when sent chunks screen or full screen successed
+                        _remoteClient.ChunksSuccessEventHandler -= SentResponse;
+                        _remoteClient.ScreenSuccessEventHandler -= SentResponse;
+                    }
+                    _remoteClient = value;
+                    if (_remoteClient != null)
+                    {
+                        _remoteClient.ChunksSuccessEventHandler += SentResponse;
+                        _remoteClient.ScreenSuccessEventHandler += SentResponse;
+                    }
                 }
             }
         }
@@ -95,7 +107,7 @@ namespace VRemoteClient.Services
         {
             while (true)
             {
-                var screens = Utils.Capture.GetScreen();
+                var screens = _capture.GetScreen();
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
@@ -113,7 +125,7 @@ namespace VRemoteClient.Services
                 Thread.Sleep(1);
             }
         }
-        // Send full screen to sender when first connect
+        // Send full screen to sender at first connect
         private void SendScreenData(List<ScreenBlock> blocks)
         {
             try
@@ -167,10 +179,10 @@ namespace VRemoteClient.Services
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Screen: " + ex.Message);
+                Log.ForContext("FileName", "ScreenHook").Error(ex, "Screen event error");
             }
         }
-        //Capture and send region change to sender
+        //Capture and send screen region change to sender
         private void SendChunk(List<ScreenBlock> blocks, int totalChunksSize)
         {
             try
@@ -206,7 +218,6 @@ namespace VRemoteClient.Services
                     //data
                     Buffer.BlockCopy(chunks, 0, _dataSend, chunksHashed.Length + 5, totalLength);    //chunk data
 
-
                     //cut data to chunk(8192 bytes)  and send
                     for (int i = 0; i < numberOfChunk; i++)
                     {
@@ -235,7 +246,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Console.WriteLine("Chunks error: " + ex.Message);
+                Log.ForContext("FileName", "ScreenHook").Error(ex, "Chunks event error");
             }
         }
         // Merge all chunks into a single byte array
@@ -273,7 +284,7 @@ namespace VRemoteClient.Services
         }
         private void AddTaskBatch(List<TaskObject> tasks)
         {
-
+            //add tasks to queue
             RemoteClient.AddWorkGroup(tasks, QueueTask.Screen);
         }
         public void Dispose()
@@ -301,6 +312,11 @@ namespace VRemoteClient.Services
                         }
 
                         _remoteClient = null;
+                    }
+                    if(_capture != null)
+                    {
+                        _capture.Dispose();
+                        _capture = null;
                     }
 
                     // Dispose other resources like _resetEvent if needed
