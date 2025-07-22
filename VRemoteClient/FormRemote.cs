@@ -153,7 +153,14 @@ namespace VRemoteClient
         {
             uint pId = (uint)Process.GetCurrentProcess().Id;
             IntPtr windowHandle = this.Handle; // Get the handle of formRemote
-            KeyboardHook.Start(pId, windowHandle);
+            new Thread(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+                KeyboardHook = new KeyboardHook();
+                KeyboardHook.Start(pId, windowHandle);
+                Application.Run();
+            }).Start();
+            //KeyboardHook.Start(pId, windowHandle);
             //MouseHook.StartHook(pId);
         }
         private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
