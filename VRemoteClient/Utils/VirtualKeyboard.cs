@@ -1,9 +1,11 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteClient.Models.Entities;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Libraries;
 
@@ -12,6 +14,8 @@ namespace VRemoteClient.Utils
     public static class VirtualKeyboard
     {
         private static object _lock = new object();
+        private static ConcurrentBag<KeyboardObject> keyboardObjects = new ConcurrentBag<KeyboardObject>();
+        private static KeyboardObject _keyObject = null;
         private static List<Keys> _modifiers = new List<Keys>();
         private static Keys _key = Keys.None;
         private const int KEYEVENTF_EXTENDEDKEY = 0x0001; // Extended key flag
@@ -89,6 +93,120 @@ namespace VRemoteClient.Utils
                 // All other keys
                 default:
                     return (ushort)key;
+            }
+        }
+        public static void Method_1x(Keys key, KeyState state)
+        {
+            try
+            {
+                if (state == KeyState.KeyDown)
+                {
+                    switch (key)
+                    {
+                        case Keys.Control:
+                        case Keys.ControlKey:
+                        case Keys.LControlKey:
+                        case Keys.RControlKey:
+                        case Keys.Shift:
+                        case Keys.ShiftKey:
+                        case Keys.LShiftKey:
+                        case Keys.RShiftKey:
+                        case Keys.Alt:
+                        case Keys.Menu:
+                        case Keys.LMenu:
+                        case Keys.RMenu:
+                        case Keys.LWin:
+                        case Keys.RWin:
+                            lock (_lock)
+                            {
+                                if (_keyObject == null)
+                                {
+                                    _keyObject = new KeyboardObject
+                                    {
+                                        Key = Keys.None,
+                                        Modifiers = new List<Keys>() { key }
+                                    };
+                                }
+                                else
+                                {
+                                    _keyObject.Modifiers.Add(key);
+                                }
+                            }
+                            break;
+                        default:
+                            lock (_lock)
+                            {
+                                //case for holding key (example: aaaaaaaaaaaaa)
+                                if (_key == key)
+                                {
+                                    if(_keyObject != null)
+                                    {
+                                        return;
+                                    }
+                                    keyboardObjects.Add(new KeyboardObject
+                                    {
+                                        Key = key,
+                                        Modifiers = new List<Keys>()
+                                    });
+                                }
+                                else
+                                {
+                                    if (_keyObject == null)
+                                    {
+                                        _keyObject = new KeyboardObject
+                                        {
+                                            Key = key,
+                                            Modifiers = new List<Keys>()
+                                        };
+                                    }
+                                    else
+                                    {
+                                        _keyObject.Key = key;
+                                    }
+                                }
+                                _key = key;
+                            }
+                            break;
+                    }
+                    return;
+                }
+                else
+                {
+                    lock (_lock)
+                    {
+                        if (key == _keyObject.Key)
+                        {
+                            _keyObject.IsKeyUp = true;
+                        }
+                        else
+                        {
+                            if(_keyObject != null)
+                            {
+                                int count = _keyObject.Modifiers.Count(x => x == key);
+                                if (count > 0)
+                                {
+                                    _keyObject.ModifiersUp += count;
+                                }
+                            }
+                        }
+                        if (_keyObject.IsKeyUp && _keyObject.ModifiersUp == _keyObject.Modifiers.Count)
+                        {
+                            keyboardObjects.Add(_keyObject);
+                            _keyObject = null;
+                        }
+                    }
+                }
+            }
+            finally
+            {
+                KeyboardEventHandler();
+            }
+        }
+        private static void KeyboardEventHandler()
+        {
+            while (keyboardObjects.TryTake(out var keyEvent))
+            {
+                // TODO: Handle the keyEvent (e.g., send to UI, log, etc.)
             }
         }
         public static void Method_1(Keys key, KeyState state)
