@@ -216,15 +216,22 @@ namespace VRemoteClient
         }
         private void MouseMoveEvent(object sender, MouseEventArgs e)
         {
+            //set delay
+            DateTime now = DateTime.Now;
+            if ((now - lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
+                return; // Skip this event
+
+            lastMouseMoveTime = now;
+
             //mouse drag and drop
             if (isMouseDragAndDrop && e.Button == MouseButtons.Left)
             {
-                DateTime now = DateTime.Now;
-                if ((now - lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
-                    return; // Skip this event
-
-                lastMouseMoveTime = now;
                 AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down);
+            }
+            //mouse move
+            else
+            {
+                AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
             }
         }
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)

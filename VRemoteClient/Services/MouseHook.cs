@@ -292,6 +292,7 @@ namespace VRemoteClient.Services
                 case MouseMessage.DRAGDROP_MOUSEDOWN:
                     flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, x, y);
                     break;
+                case MouseMessage.WM_MOUSEMOVE:
                 case MouseMessage.DRAGDROP_MOUSEMOVE:
                     flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_MOVE, x, y);
                     break;
