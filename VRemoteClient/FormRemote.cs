@@ -14,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using System.Windows.Forms.VisualStyles;
+using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services;
@@ -26,10 +27,9 @@ namespace VRemoteClient
         private readonly object _screenLock = new object();
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
-        private bool isMouseDragAndDrop;
+        private bool _isDrag;
         private int _width;
         private int _height;
-
 
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
@@ -39,6 +39,11 @@ namespace VRemoteClient
         private GlobalMouseHook _mouseHook;
 
         private DateTime lastMouseMoveTime = DateTime.MinValue;
+
+
+        private System.Windows.Forms.Timer clickTimer;
+        private MouseEventArgs pendingClickArgs;
+        private Control pendingSender;
         public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
         {
             InitializeComponent();
@@ -48,7 +53,7 @@ namespace VRemoteClient
             _height = this.Height;
 
             Client = remoteClient;
-            isMouseDragAndDrop = false;
+            _isDrag = false;
             KeyboardHook = new KeyboardHook();
             MouseHook = new GlobalMouseHook();
 
@@ -66,9 +71,33 @@ namespace VRemoteClient
             vPictureBox.MouseClick += MouseClickEventHandler;
             vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
             vPictureBox.MouseWheel += MouseWheelEventHandler;
-            vPictureBox.MouseDown += MouseDownEvent;
-            vPictureBox.MouseUp += MouseUpEvent;
             vPictureBox.MouseMove += MouseMoveEvent;
+
+            clickTimer = new System.Windows.Forms.Timer();
+            clickTimer.Interval = Math.Max(50, SystemInformation.DoubleClickTime / 10);
+            clickTimer.Tick += ClickTimer_Tick;
+        }
+        private void MouseClickEventHandler(object sender, MouseEventArgs e)
+        {
+            //waiting for double click called or timeout
+            pendingClickArgs = e;
+            pendingSender = sender as Control;
+            clickTimer.Stop();
+            clickTimer.Start();
+        }
+        private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
+        {
+            clickTimer.Stop(); // Cancel pending click
+            AddMouseEventToTask(MouseEventType.DoubleClick, vPictureBox, e);
+        }
+
+        private void ClickTimer_Tick(object sender, EventArgs e)
+        {
+            clickTimer.Stop();
+            AddMouseEventToTask(MouseEventType.Click, vPictureBox, pendingClickArgs);
+
+            pendingClickArgs = null;
+            pendingSender = null;
         }
         #region Properties
         public RemoteClient Client
@@ -198,54 +227,49 @@ namespace VRemoteClient
         }
         #endregion
         #region Mouse
-        private void MouseDownEvent(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                isMouseDragAndDrop = true;
-                AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEDOWN, MouseType.Down);
-            }
-        }
-        private void MouseUpEvent(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left && isMouseDragAndDrop)
-            {
-                isMouseDragAndDrop = false;
-                AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEUP, MouseType.Down);
-            }
-        }
         private void MouseMoveEvent(object sender, MouseEventArgs e)
         {
-            //set delay
-            DateTime now = DateTime.Now;
-            if ((now - lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
-                return; // Skip this event
-
-            lastMouseMoveTime = now;
-
-            //mouse drag and drop
-            if (isMouseDragAndDrop && e.Button == MouseButtons.Left)
+            try
             {
-                AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down);
+                //set delay
+                DateTime now = DateTime.Now;
+                if ((now - lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
+                    return; // Skip this event
+                lastMouseMoveTime = now;
+
+                bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;
+
+                if (isLeftButtonDown)
+                {
+                    if (!_isDrag)
+                    {
+                        AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEDOWN, MouseType.Down);
+                        _isDrag = true;
+                    }
+                    AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down);
+                }
+                else
+                {
+                    if (_isDrag)
+                    {
+                        AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEUP, MouseType.Down);
+                        _isDrag = false;
+                        return;
+                    }
+                    if (!_isDrag)
+                    {
+                        AddMouseEventToTask(MouseEventType.Move, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
+                    }
+                }
             }
-            //mouse move
-            else
+            catch(Exception ex)
             {
-                AddMouseEventToTask(MouseEventType.Move, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
+                Log.ForContext("FileName", "FormRemote").Error(ex, "MouseMove event error");
             }
         }
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
             AddMouseEventToTask(MouseEventType.Wheel, vPictureBox, e);
-        }
-
-        private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
-        {
-            AddMouseEventToTask(MouseEventType.ClickOrDoubleClick, vPictureBox, e);
-        }
-        private void MouseClickEventHandler(object sender, MouseEventArgs e)
-        {
-            AddMouseEventToTask(MouseEventType.ClickOrDoubleClick, vPictureBox, e);
         }
         /// <summary>
         /// mouseEvent = 1(mouse click, db click)
@@ -270,37 +294,14 @@ namespace VRemoteClient
 
                 var adjustedMouseEventArgs = new MouseEventArgs(e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
 
-                string m = "";
-                if (mouseEvent == MouseEventType.DragAndDrop)
-                {
-                    m = MouseHook.ToString(p.Image.Width, vPictureBox.Image.Height, mouseMsg, mouseType, adjustedMouseEventArgs.X, adjustedMouseEventArgs.Y);
-                }
-                else if (mouseEvent == MouseEventType.Wheel)
-                {
-                    if (e.Delta > 0)
-                    {
-                        m = MouseHook.MouseEventToString("wheel_up", vPictureBox.Image.Width, vPictureBox.Image.Height, e);
-                    }
-                    if (e.Delta < 0)
-                    {
-                        m = MouseHook.MouseEventToString("wheel_down", vPictureBox.Image.Width, vPictureBox.Image.Height, e);
-                    }
-                }
-                else if(mouseEvent == MouseEventType.Move)
-                {
-                    m = MouseHook.MouseEventToString("move", vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs);
-                }
-                else
-                {
-                    m = MouseHook.MouseEventToString("", vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs);
-                }
+                string mouseEventString = MouseHook.MouseEventToString(mouseEvent, vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs, mouseMsg, mouseType);
 
-                if (string.IsNullOrEmpty(m))
+                if (string.IsNullOrEmpty(mouseEventString))
                     return;
 
                 TryAddWork(new TaskObject(
                     taskType: Models.Enums.CommandType.Mouse,
-                    data: Encoding.ASCII.GetBytes(m)
+                    data: Encoding.ASCII.GetBytes(mouseEventString)
                 ));
             }
             catch(Exception ex)
@@ -324,9 +325,16 @@ namespace VRemoteClient
         }
         private void InvalidateRegion(Rectangle rectangle)
         {
-            RectangleF displayRect = TransformImageToDisplay(rectangle);
-            Rectangle rect = Rectangle.Round(displayRect);
-            vPictureBox.Invalidate(rect);
+            try
+            {
+                RectangleF displayRect = TransformImageToDisplay(rectangle);
+                Rectangle rect = Rectangle.Round(displayRect);
+                vPictureBox.Invalidate(rect);
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "InvalidateRegion error");
+            }
         }
         /// <summary>
         /// Calculates the scaled rectangle coordinates for display in PictureBox,

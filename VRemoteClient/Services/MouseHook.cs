@@ -6,7 +6,6 @@ using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Threading;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
@@ -16,38 +15,18 @@ namespace VRemoteClient.Services
 {
     public class GlobalMouseHook: IDisposable
     {
-        //for mouse hook
-        /// <summary>
-        /// this for windows Message
-        /// </summary>
-        /// 
-
-        private const int WH_MOUSE_LL = 14;
-        //for windows api
-        private const int INPUT_MOUSE = 0;
-        const uint MOUSEEVENTF_MOVE = 0x0001;
-        const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
-        const uint MOUSEEVENTF_LEFTUP = 0x0004;
-        const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
-        const uint MOUSEEVENTF_RIGHTUP = 0x0010;
-        const uint MOUSEEVENTF_MIDDLEDOWN = 0x0020;
-        const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
-        const uint MOUSEEVENTF_WHEEL = 0x0800;
-        private const uint MOUSEEVENTF_ABSOLUTE = 0x8000;
-
-
         private LowLevelMouseProc _proc;
         private IntPtr _hookID = IntPtr.Zero;
         private uint _targetProcessId;
         private bool _disposed = false;
 
-
         public event EventHandler<CustomMouseEventArgs> MouseClick;
         public event EventHandler<CustomMouseEventArgs> MouseMove;
         public GlobalMouseHook()
         {
-            _proc = HookCallback;
+            //_proc = HookCallback;
         }
+        #region Global MouseHook
         private bool IsMouseHoveringOverTargetApp()
         {
             // Get the current mouse position
@@ -62,7 +41,6 @@ namespace VRemoteClient.Services
             // Compare with your target process ID
             return pid == _targetProcessId;
         }
-
         public void StartHook(uint pId)
         {
             _targetProcessId = pId;
@@ -74,7 +52,6 @@ namespace VRemoteClient.Services
                 throw new Exception("Failed to install mouse hook");
             }
         }
-
         public void StopHook()
         {
             if (_hookID != IntPtr.Zero)
@@ -148,6 +125,8 @@ namespace VRemoteClient.Services
 
             return CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
+        #endregion
+        #region Methods
         public Point GetImagePointFromMouse(PictureBox pictureBox, int x, int y)
         {
             if (pictureBox.SizeMode == PictureBoxSizeMode.Zoom && pictureBox.Image != null)
@@ -173,7 +152,7 @@ namespace VRemoteClient.Services
                     (int)Math.Round((y - offsetY) / scale)
                 );
             }
-            else if(pictureBox.SizeMode == PictureBoxSizeMode.StretchImage && pictureBox.Image != null)
+            else if (pictureBox.SizeMode == PictureBoxSizeMode.StretchImage && pictureBox.Image != null)
             {
                 float scaleX = (float)pictureBox.Image.Width / pictureBox.Width;
                 float scaleY = (float)pictureBox.Image.Height / pictureBox.Height;
@@ -185,43 +164,51 @@ namespace VRemoteClient.Services
             }
             return new Point(x, y);
         }
-        public string MouseEventToString(string mouseType ,int width, int height, System.Windows.Forms.MouseEventArgs e)
+        public string MouseEventToString(MouseEventType mouseEvent, int width, int height, System.Windows.Forms.MouseEventArgs e, MouseMessage mouseMsg = MouseMessage.None, MouseType mouseType = MouseType.None)
         {
-            if(mouseType == "wheel_up")
+            string result = "";
+            switch (mouseEvent)
             {
-                return ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Up, e.X, e.Y);
+                case MouseEventType.Click:
+                    MouseMessage button = (e.Button == MouseButtons.Left) ? MouseMessage.WM_LBUTTONDOWN :
+                                          (e.Button == MouseButtons.Middle) ? MouseMessage.WM_MBUTTONDOWN :
+                                          (e.Button == MouseButtons.Right) ? MouseMessage.WM_RBUTTONDOWN :
+                                          MouseMessage.None;
+                    result =  ToString(width, height, button, MouseType.Down, e.X, e.Y);
+                    break;
+
+                case MouseEventType.DoubleClick:
+                    MouseMessage dbButton = (e.Button == MouseButtons.Left) ? MouseMessage.WM_LBUTTONDBLCLK :
+                                         (e.Button == MouseButtons.Middle) ? MouseMessage.WM_MBUTTONDBLCLK :
+                                         (e.Button == MouseButtons.Right) ? MouseMessage.WM_RBUTTONDBLCLK :
+                                         MouseMessage.None;
+                    result = ToString(width, height, dbButton, MouseType.Down, e.X, e.Y);
+                    break;
+
+                case MouseEventType.Wheel:
+                    if (e.Delta > 0)
+                    {
+                        result = ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Up, e.X, e.Y);
+                    }
+                    if (e.Delta < 0)
+                    {
+                        result = ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Down, e.X, e.Y);
+                    }
+                    break;
+
+                case MouseEventType.Move:
+                    result = ToString(width, height, MouseMessage.WM_MOUSEMOVE, MouseType.Down, e.X, e.Y);
+                    break;
+
+                case MouseEventType.DragAndDrop:
+                    result = ToString(width, height, mouseMsg, mouseType, e.X, e.Y);
+                    break;
+
+                default:
+                    break;
+
             }
-            else if (mouseType == "wheel_down")
-            {
-                return ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Down, e.X, e.Y);
-            }
-            else if(mouseType == "move")
-            {
-                return ToString(width, height, MouseMessage.WM_MOUSEMOVE, MouseType.Down, e.X, e.Y);
-            }
-            //mouse click
-            else
-            {
-                MouseMessage button = MouseMessage.None;
-                MouseType action = MouseType.None;
-                if (e.Button == MouseButtons.Left)
-                {
-                    //note: hiện đang xảy ra lỗi click chuột ra double click
-                    button = (e.Clicks == 2) ? MouseMessage.WM_LBUTTONDBLCLK : MouseMessage.WM_LBUTTONDOWN;
-                    action = MouseType.Down;
-                }
-                else if (e.Button == MouseButtons.Right)
-                {
-                    button = (e.Clicks == 2) ? MouseMessage.WM_RBUTTONDBLCLK : MouseMessage.WM_RBUTTONDOWN;
-                    action = MouseType.Down;
-                }
-                else if (e.Button == MouseButtons.Middle)
-                {
-                    button = (e.Clicks == 2) ? MouseMessage.WM_MBUTTONDBLCLK : MouseMessage.WM_MBUTTONDOWN;
-                    action = MouseType.Down;
-                }
-                return ToString(width, height, button, action, e.X, e.Y);
-            }
+            return result;
         }
         public string ToString(int width, int height, MouseMessage button, MouseType action, int x, int y)
         {
@@ -255,7 +242,7 @@ namespace VRemoteClient.Services
             {
                 //left mouse click
                 case MouseMessage.WM_LBUTTONDOWN:
-                    flag = MousePress(scales.Item1, scales.Item2 ,MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
+                    flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
                 // middle mouse click
                 case MouseMessage.WM_MBUTTONDOWN:
@@ -283,7 +270,7 @@ namespace VRemoteClient.Services
                 // mouse wheel event
                 case MouseMessage.WM_MOUSEWHEEL:
                     //wheel up
-                    if(action == MouseType.Up)
+                    if (action == MouseType.Up)
                     {
                         flag = MouseWheel(scales.Item1, scales.Item2, x, y, +120);
                     }
@@ -327,8 +314,6 @@ namespace VRemoteClient.Services
             bool cusorFlag = SetCursorPos(pointX, pointY);
             if (!cusorFlag) return false;
 
-            Thread.Sleep(10);
-
             INPUT[] inputs = new INPUT[1];
             inputs[0].type = INPUT_MOUSE;
             inputs[0].u.mi.dwFlags = mouseEvent;
@@ -359,8 +344,6 @@ namespace VRemoteClient.Services
             bool cusorFlag = SetCursorPos(pointX, pointY);
             if (!cusorFlag) return false;
 
-            Thread.Sleep(10);
-
             INPUT[] inputs = new INPUT[1];
             inputs[0].type = INPUT_MOUSE;
             inputs[0].u.mi.dwFlags = MOUSEEVENTF_WHEEL;
@@ -384,15 +367,13 @@ namespace VRemoteClient.Services
         /// <param name="x">The x-coordinate of the target position, relative to the original resolution.</param>
         /// <param name="y">The y-coordinate of the target position, relative to the original resolution.</param>
         /// <returns><see langword="true"/> if the mouse press was successfully simulated; otherwise, <see langword="false"/>.</returns>
-        private bool MousePress(float scaleX, float scaleY,uint mouseDown, uint mouseUp, int x, int y)
+        private bool MousePress(float scaleX, float scaleY, uint mouseDown, uint mouseUp, int x, int y)
         {
             int pointX = (int)Math.Round(scaleX * x);
-            int pointY =  (int)Math.Round(scaleY * y);            
+            int pointY = (int)Math.Round(scaleY * y);
 
             bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
             if (!cusorFlag) return false;
-
-            Thread.Sleep(10);
 
             ////or you do not want use SetcursorPos, you can use this code
             //int normalizedX = x * 65535 / Screen.PrimaryScreen.Bounds.Width;
@@ -407,8 +388,6 @@ namespace VRemoteClient.Services
             inputs[0].u.mi.dwFlags = mouseDown;
             inputs[0].u.mi.dx = 0;
             inputs[0].u.mi.dy = 0;
-
-            Thread.Sleep(10);
 
             inputs[1].type = INPUT_MOUSE;
             inputs[1].u.mi.dwFlags = mouseUp;
@@ -448,5 +427,6 @@ namespace VRemoteClient.Services
                 _disposed = true;
             }
         }
+        #endregion
     }
 }
