@@ -33,6 +33,7 @@ namespace VRemoteClient.Services
         private BackgroundWorker _backgroundWorker;
         private RemoteClient _remoteClient;
         private ManualResetEvent _resetEvent;
+        private CancellationTokenSource _cancel = new CancellationTokenSource();
         public ScreenHook(RemoteClient client) 
         {
             var bounds = Screen.PrimaryScreen.Bounds;
@@ -48,6 +49,10 @@ namespace VRemoteClient.Services
             BackgroundWorker.RunWorkerAsync();
         }
         #region Properties
+        public bool IsDisposed
+        {
+            get=> _disposed;
+        }
         public RemoteClient RemoteClient
         {
             get
@@ -105,21 +110,25 @@ namespace VRemoteClient.Services
         #endregion
         private void DoWork(object sender, DoWorkEventArgs e)
         {
-            while (true)
+            while (!_cancel.IsCancellationRequested)
             {
-                var screens = _capture.GetScreen();
-                if (screens.Any())
+                if (RemoteClient.IsP2PConnected)
                 {
-                    int totalSize = checked(screens.Sum(x => x.TotalSize));
-                    ScreenEnum screenEnum = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
-                    switch (screenEnum)
+                    Console.WriteLine("ScreenHook call");
+                    var screens = _capture.GetScreen();
+                    if (screens.Any())
                     {
-                        case ScreenEnum.FULLSCREEN:
-                            SendScreenData(screens);
-                            break;
-                        case ScreenEnum.REGIONSCREENS:
-                            SendChunk(screens, totalSize);
-                            break;
+                        int totalSize = checked(screens.Sum(x => x.TotalSize));
+                        ScreenEnum screenEnum = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
+                        switch (screenEnum)
+                        {
+                            case ScreenEnum.FULLSCREEN:
+                                SendScreenData(screens);
+                                break;
+                            case ScreenEnum.REGIONSCREENS:
+                                SendChunk(screens, totalSize);
+                                break;
+                        }
                     }
                 }
                 Thread.Sleep(1);
@@ -319,6 +328,16 @@ namespace VRemoteClient.Services
                         _capture = null;
                     }
 
+                    _cancel.Cancel();
+                    int count = 0;
+                    while (_backgroundWorker.IsBusy && count++ < 20)
+                        Thread.Sleep(100);
+
+                    if (!_backgroundWorker.IsBusy)
+                    {
+                        _backgroundWorker.DoWork -= DoWork;
+                        _backgroundWorker.Dispose();
+                    }
                     // Dispose other resources like _resetEvent if needed
                     _resetEvent?.Dispose();
                 }

@@ -30,6 +30,7 @@ namespace VRemoteClient.Services
         private object _lockObject = new object();
 
         private Socket _socket;
+        private Thread _screenThread;
         //private System.Threading.Timer _timer;
         private ClientInfo _me;
         private ScreenHook _vscreen;
@@ -73,8 +74,32 @@ namespace VRemoteClient.Services
             ScreenTasks = new ConcurrentQueue<object>();
             CommandTasks = new ConcurrentQueue<object>();
             Worker = new BackgroundWorker();
+
+            _screenThread = new Thread(() =>
+            {
+                Thread.CurrentThread.IsBackground = true;
+                _vscreen = new ScreenHook(this);
+            });
+            _screenThread.Start();
         }
         #region Properties
+        public bool IsP2PConnected
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                   return _isP2PConnected;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _isP2PConnected = value;
+                }
+            }
+        }
         public Socket Socket
         {
             get => _socket;
@@ -191,9 +216,18 @@ namespace VRemoteClient.Services
         {
             if(type == QueueTask.Screen)
             {
-                if (ScreenTasks.Count > 1)
+                if (ScreenTasks.Count >= 2)
                 {
-                    while (ScreenTasks.TryDequeue(out _)) { }
+                    // keep last frame and remove all previous frames
+                    var temp = new List<object>();
+                    while (ScreenTasks.TryDequeue(out var item) && temp.Count == 0)
+                    {
+                        temp.Add(item);
+                    }
+                    foreach (var item in temp.Take(1))
+                    {
+                        ScreenTasks.Enqueue(item);
+                    }
                 }
                 ScreenTasks.Enqueue(task);
             }
@@ -410,6 +444,7 @@ namespace VRemoteClient.Services
                     ProcessLogin(false);
                     break;
                 case CommandType.PartnerDisconnected:
+                    IsP2PConnected = false;
                     break;
                 case CommandType.P2PConnectFailed:
                     ProcessP2PConnect(false, data);
@@ -627,8 +662,12 @@ namespace VRemoteClient.Services
                         connectionInfo.Receiver = _me;
                         if(_vscreen == null)
                         {
-                            _vscreen = new ScreenHook(this);
-                        }
+                            new Thread(() =>
+                            {
+                                Thread.CurrentThread.IsBackground = true;
+                                _vscreen = new ScreenHook(this);
+                            }).Start();
+                        }    
                     }
                     else if(partnerInfo[0].ToLower() == "1")
                     {
@@ -651,7 +690,7 @@ namespace VRemoteClient.Services
                         return;
                     }
                     p2pConnect(true, connectionInfo);
-                    _isP2PConnected = true;
+                    IsP2PConnected = true;
                 }
                 catch (Exception ex)
                 {
@@ -805,6 +844,12 @@ namespace VRemoteClient.Services
                     _mouseHook?.Dispose();
                     _mouseHook = null;
 
+
+                    if (_screenThread != null && _screenThread.IsAlive)
+                    {
+                        _screenThread.Join(2000);
+                    }
+                    _screenThread = null;
                     // Screen hook  
                     _vscreen?.Dispose();
                     _vscreen = null;
