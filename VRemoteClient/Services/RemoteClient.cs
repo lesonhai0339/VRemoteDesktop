@@ -25,6 +25,7 @@ namespace VRemoteClient.Services
 
         private bool _isSocketConnected;
         private bool _isP2PConnected;
+        private bool _isSender;
         private bool _isDisposed;
 
         private object _lockObject = new object();
@@ -83,6 +84,23 @@ namespace VRemoteClient.Services
             _screenThread.Start();
         }
         #region Properties
+        public bool IsSender
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _isSender;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _isSender = value;
+                }
+            }
+        }
         public bool IsP2PConnected
         {
             get
@@ -660,14 +678,15 @@ namespace VRemoteClient.Services
                             MinorVersion = partnerInfo[8],
                         };
                         connectionInfo.Receiver = _me;
-                        if(_vscreen == null)
-                        {
-                            new Thread(() =>
-                            {
-                                Thread.CurrentThread.IsBackground = true;
-                                _vscreen = new ScreenHook(this);
-                            }).Start();
-                        }    
+                        IsSender = true;
+                        //if(_vscreen == null)
+                        //{
+                        //    new Thread(() =>
+                        //    {
+                        //        Thread.CurrentThread.IsBackground = true;
+                        //        _vscreen = new ScreenHook(this);
+                        //    }).Start();
+                        //}    
                     }
                     else if(partnerInfo[0].ToLower() == "1")
                     {
@@ -682,6 +701,7 @@ namespace VRemoteClient.Services
                             MinorVersion = partnerInfo[8],
                         };
                         connectionInfo.Sender = _me;
+                        IsSender = false;
                     }
                     else
                     {
@@ -694,6 +714,8 @@ namespace VRemoteClient.Services
                 }
                 catch (Exception ex)
                 {
+                    IsP2PConnected= false;
+                    IsSender  = false;
                     Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing P2P connection data");
                     p2pConnect(false, null);
                 }

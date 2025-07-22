@@ -112,7 +112,7 @@ namespace VRemoteClient.Services
         {
             while (!_cancel.IsCancellationRequested)
             {
-                if (RemoteClient.IsP2PConnected)
+                if (RemoteClient.IsP2PConnected && !RemoteClient.IsSender)
                 {
                     Console.WriteLine("ScreenHook call");
                     var screens = _capture.GetScreen();
