@@ -79,43 +79,43 @@ namespace VRemoteClient.Services
                             // Merge adjacent regions for efficiency
                             List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
 
-                            //BitmapData bitmapData = currentScreen.LockBits(
-                            //    new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                            //    ImageLockMode.ReadOnly,
-                            //    PixelFormat.Format24bppRgb
-                            //);
+                           /* BitmapData bitmapData = currentScreen.LockBits(
+                                new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                                ImageLockMode.ReadOnly,
+                                PixelFormat.Format24bppRgb
+                            );
 
-                            //int stride = bitmapData.Stride;
-                            //int bytes = Math.Abs(stride) * bitmapData.Height;
-                            //byte[] screenBytes = new byte[bytes];
+                            int stride = bitmapData.Stride;
+                            int bytes = Math.Abs(stride) * bitmapData.Height;
+                            byte[] screenBytes = new byte[bytes];
 
-                            //Marshal.Copy(bitmapData.Scan0, screenBytes, 0, bytes);
-                            //currentScreen.UnlockBits(bitmapData);
+                            Marshal.Copy(bitmapData.Scan0, screenBytes, 0, bytes);
+                            currentScreen.UnlockBits(bitmapData);
 
 
-                            //Parallel.ForEach(mergedRegions, region =>
-                            //{
-                            //    using (Bitmap regionBitmap = CropFromBytes(screenBytes,bitmapData.Width, bitmapData.Height, stride, region))
-                            //    {
-                            //        byte[] compressedData;
-                            //        using (var stream = new MemoryStream())
-                            //        {
-                            //            regionBitmap.Save(stream, encoder, encoderParams);
-                            //            compressedData = Utils.Extensions.Compress(stream.ToArray());
-                            //        }
-                            //        blocks.Add(new ScreenBlock
-                            //        {
-                            //            IsFullScreen = false,
-                            //            Rectangle = region,
-                            //            Bytes = compressedData
-                            //        });
-                            //    }
-                            //});
-                            //cells.AddRange(blocks);
-                            //lock (_lockObject)
-                            //{
-                            //    blocks = new ConcurrentBag<ScreenBlock>();
-                            //}
+                            Parallel.ForEach(mergedRegions, region =>
+                            {
+                                using (Bitmap regionBitmap = CropFromBytes(screenBytes, bitmapData.Width, bitmapData.Height, stride, region))
+                                {
+                                    byte[] compressedData;
+                                    using (var stream = new MemoryStream())
+                                    {
+                                        regionBitmap.Save(stream, encoder, encoderParams);
+                                        compressedData = Utils.Extensions.Compress(stream.ToArray());
+                                    }
+                                    blocks.Add(new ScreenBlock
+                                    {
+                                        IsFullScreen = false,
+                                        Rectangle = region,
+                                        Bytes = compressedData
+                                    });
+                                }
+                            });
+                            cells.AddRange(blocks);
+                            lock (_lockObject)
+                            {
+                                blocks = new ConcurrentBag<ScreenBlock>();
+                            }*/
                             for (int i = 0; i < mergedRegions.Count; i++)
                             {
                                 using (Bitmap regionBitmap = CropBitmap(currentScreen, mergedRegions[i]))
@@ -146,38 +146,38 @@ namespace VRemoteClient.Services
             }
             return cells;
         }
-        //private Bitmap CropFromBytes(byte[] screenBytes, int screenWidth, int screenHeight, int stride, Rectangle region)
-        //{
-        //    Bitmap cropped = new Bitmap(region.Width, region.Height, PixelFormat.Format24bppRgb);
+       /* private Bitmap CropFromBytes(byte[] screenBytes, int screenWidth, int screenHeight, int stride, Rectangle region)
+        {
+            Bitmap cropped = new Bitmap(region.Width, region.Height, PixelFormat.Format24bppRgb);
 
-        //    BitmapData targetData = cropped.LockBits(
-        //        new Rectangle(0, 0, region.Width, region.Height),
-        //        ImageLockMode.WriteOnly,
-        //        PixelFormat.Format24bppRgb
-        //    );
+            BitmapData targetData = cropped.LockBits(
+                new Rectangle(0, 0, region.Width, region.Height),
+                ImageLockMode.WriteOnly,
+                PixelFormat.Format24bppRgb
+            );
 
-        //    int bytesPerPixel = 3;
+            int bytesPerPixel = 3;
 
-        //    unsafe
-        //    {
-        //        fixed (byte* srcBase = screenBytes)
-        //        {
-        //            for (int y = 0; y < region.Height; y++)
-        //            {
-        //                byte* src = srcBase + ((region.Y + y) * stride) + (region.X * bytesPerPixel);
-        //                byte* dst = (byte*)targetData.Scan0 + y * targetData.Stride;
+            unsafe
+            {
+                fixed (byte* srcBase = screenBytes)
+                {
+                    for (int y = 0; y < region.Height; y++)
+                    {
+                        byte* src = srcBase + ((region.Y + y) * stride) + (region.X * bytesPerPixel);
+                        byte* dst = (byte*)targetData.Scan0 + y * targetData.Stride;
 
-        //                for (int x = 0; x < region.Width * bytesPerPixel; x++)
-        //                {
-        //                    dst[x] = src[x];
-        //                }
-        //            }
-        //        }
-        //    }
+                        for (int x = 0; x < region.Width * bytesPerPixel; x++)
+                        {
+                            dst[x] = src[x];
+                        }
+                    }
+                }
+            }
 
-        //    cropped.UnlockBits(targetData);
-        //    return cropped;
-        //}
+            cropped.UnlockBits(targetData);
+            return cropped;
+        }*/
         internal Bitmap CropBitmap(Bitmap source, Rectangle region)
         {
             // Validate region bounds
@@ -316,14 +316,17 @@ namespace VRemoteClient.Services
             double efficiency = (double)combinedArea / unionArea;
             return efficiency > 0.75; // 75% efficiency threshold
         }
+
+        //this method same with Math.abs()
         private int AbsBitwise(int x) => (x + (x >> 31)) ^ (x >> 31);
+
 
         private unsafe bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
         {
             byte* currentPtr = (byte*)currentData.Scan0;
             byte* previousPtr = (byte*)previousData.Scan0;
             int stride = currentData.Stride;
-            const int threshold = 1;
+            const int threshold = 10;
 
             // move pointer to start of the block
             currentPtr += block.Y * stride + block.X * 3;
@@ -345,6 +348,7 @@ namespace VRemoteClient.Services
                     int bDiff = currentRow[index] - previousRow[index];
                     int gDiff = currentRow[index + 1] - previousRow[index + 1];
                     int rDiff = currentRow[index + 2] - previousRow[index + 2];
+
 
                     if (AbsBitwise(bDiff) > threshold ||
                         AbsBitwise(gDiff) > threshold ||

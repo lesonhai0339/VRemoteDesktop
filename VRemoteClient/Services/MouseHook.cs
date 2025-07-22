@@ -6,6 +6,7 @@ using System.Linq;
 using System.Net;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
@@ -326,6 +327,8 @@ namespace VRemoteClient.Services
             bool cusorFlag = SetCursorPos(pointX, pointY);
             if (!cusorFlag) return false;
 
+            Thread.Sleep(10);
+
             INPUT[] inputs = new INPUT[1];
             inputs[0].type = INPUT_MOUSE;
             inputs[0].u.mi.dwFlags = mouseEvent;
@@ -354,7 +357,9 @@ namespace VRemoteClient.Services
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);
             bool cusorFlag = SetCursorPos(pointX, pointY);
-            if (!cusorFlag) return false; 
+            if (!cusorFlag) return false;
+
+            Thread.Sleep(10);
 
             INPUT[] inputs = new INPUT[1];
             inputs[0].type = INPUT_MOUSE;
@@ -387,6 +392,8 @@ namespace VRemoteClient.Services
             bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
             if (!cusorFlag) return false;
 
+            Thread.Sleep(10);
+
             ////or you do not want use SetcursorPos, you can use this code
             //int normalizedX = x * 65535 / Screen.PrimaryScreen.Bounds.Width;
             //int normalizedY = y * 65535 / Screen.PrimaryScreen.Bounds.Height;
@@ -400,6 +407,8 @@ namespace VRemoteClient.Services
             inputs[0].u.mi.dwFlags = mouseDown;
             inputs[0].u.mi.dx = 0;
             inputs[0].u.mi.dy = 0;
+
+            Thread.Sleep(10);
 
             inputs[1].type = INPUT_MOUSE;
             inputs[1].u.mi.dwFlags = mouseUp;

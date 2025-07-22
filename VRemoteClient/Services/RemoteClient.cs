@@ -313,7 +313,6 @@ namespace VRemoteClient.Services
         /// callback method when data is received from the remote server
         /// </summary>
         /// <param name="ar"></param>
-
         private void DataCallback(IAsyncResult ar)
         {
             try
@@ -359,7 +358,6 @@ namespace VRemoteClient.Services
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when receiving data from remote server");
             }
         }
-
         private void ProcessReceiveData(byte[] data)
         {
             CommandType commandType = (CommandType)data[0];
@@ -475,7 +473,6 @@ namespace VRemoteClient.Services
                 Keys keyCode = (Keys)int.Parse(keyboards[2]);
                 KeyState keyType = (KeyState)int.Parse(keyboards[3]);
                 KeyboardSimulator.Method_1(keyCode, keyType);
-                return;
                 //Console.WriteLine(keyModifier + " - " + keyCode + " - "+ keyType);
                 //if(keyType == KeyState.KeyDown)
                 //{

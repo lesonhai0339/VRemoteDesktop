@@ -65,7 +65,6 @@ namespace VRemoteClient.Services
             proc = HookCallback;
             hookID = SetHook(proc);
         }
-
         public void Stop()
         {
             UnhookWindowsHookEx(hookID);
@@ -82,9 +81,7 @@ namespace VRemoteClient.Services
             }
         }
         /// <summary>
-        /// Sẽ được gọi khi có sự kiện bàn phím xảy ra. hiện tại đang kiểm tra xem FormRemote có được focus hay không.
-        /// Nếu có thì sẽ gọi invoke action và gửi keyboard đến receiver, máy hiện tại sẽ không thực hiện bất kỳ thao tác bản phím nào.
-        /// Nếu FormRemote không được focus thì sẽ gọi CallNextHookEx thực hiện phím trên chính máy này.
+        /// Listen keyboard pressed
         /// </summary>
         /// <param name="nCode"></param>
         /// <param name="wParam"></param>
@@ -141,7 +138,6 @@ namespace VRemoteClient.Services
         {
             return (GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0 || (GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0;
         }
-
         private bool IsShiftPressed()
         {
             return (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
