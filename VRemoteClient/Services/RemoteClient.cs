@@ -678,7 +678,7 @@ namespace VRemoteClient.Services
                             MinorVersion = partnerInfo[8],
                         };
                         connectionInfo.Receiver = _me;
-                        IsSender = true;
+                        IsSender = false;
                         //if(_vscreen == null)
                         //{
                         //    new Thread(() =>
@@ -701,7 +701,7 @@ namespace VRemoteClient.Services
                             MinorVersion = partnerInfo[8],
                         };
                         connectionInfo.Sender = _me;
-                        IsSender = false;
+                        IsSender = true;
                     }
                     else
                     {
@@ -715,7 +715,7 @@ namespace VRemoteClient.Services
                 catch (Exception ex)
                 {
                     IsP2PConnected= false;
-                    IsSender  = false;
+                    IsSender  = true;
                     Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing P2P connection data");
                     p2pConnect(false, null);
                 }
