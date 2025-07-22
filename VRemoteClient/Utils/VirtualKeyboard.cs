@@ -123,7 +123,6 @@ namespace VRemoteClient.Utils
                             //case for holding key (example: aaaaaaaaaaaaa)
                             if (_key == key)
                             {
-                                //note: chưa xử lý key như control+a khi thả a thì nó sẽ press a
                                 SendKey(_key);
                             }
                             else
@@ -159,8 +158,10 @@ namespace VRemoteClient.Utils
                         SendKey(_key);
                     }
 
-
                     // remove
+                    //_key = Keys.None;
+                    //_modifiers.RemoveAll(k => k == key);
+
                     if (_key == key)
                     {
                         _key = Keys.None;
