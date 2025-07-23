@@ -34,7 +34,6 @@ namespace VRemoteClient.Services
         //private System.Threading.Timer _timer;
         private ClientInfo _me;
         private ScreenHook _vscreen;
-        private GlobalMouseHook _mouseHook;
 
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
@@ -68,7 +67,6 @@ namespace VRemoteClient.Services
             _isP2PConnected = false;
             _isDisposed = false;
             _cancellationToken = new CancellationTokenSource();
-            _mouseHook = new GlobalMouseHook();
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
             _me = me;
             ScreenTasks = new ConcurrentQueue<object>();
@@ -156,6 +154,7 @@ namespace VRemoteClient.Services
             }
         }
         #endregion
+        #region Methods
         private void DoWork(object sender, DoWorkEventArgs e)
         {
             while (!_cancellationToken.IsCancellationRequested)
@@ -165,13 +164,13 @@ namespace VRemoteClient.Services
                 {
                     try
                     {
-                        if(taskQueue is TaskObject task)
+                        if (taskQueue is TaskObject task)
                         {
                             ProcessSingleTask(task);
                         }
-                        else if(taskQueue is TaskGroup taskGroup)
+                        else if (taskQueue is TaskGroup taskGroup)
                         {
-                            foreach(var t in taskGroup.Tasks)
+                            foreach (var t in taskGroup.Tasks)
                             {
                                 if (CommandTasks.TryPeek(out _))
                                 {
@@ -179,7 +178,7 @@ namespace VRemoteClient.Services
                                 }
                                 ProcessSingleTask(t);
                             }
-                        }   
+                        }
                     }
                     catch (Exception ex)
                     {
@@ -203,7 +202,7 @@ namespace VRemoteClient.Services
         }
         private object? DequeueTask()
         {
-            if(CommandTasks.TryDequeue(out var cmdTask))
+            if (CommandTasks.TryDequeue(out var cmdTask))
             {
                 return cmdTask;
             }
@@ -214,7 +213,7 @@ namespace VRemoteClient.Services
         }
         public void AddWork(TaskObject task, QueueTask type = QueueTask.Command)
         {
-            if(type == QueueTask.Screen)
+            if (type == QueueTask.Screen)
             {
                 if (ScreenTasks.Count >= 2)
                 {
@@ -283,7 +282,7 @@ namespace VRemoteClient.Services
                 {
                     remoteEP = new IPEndPoint(IPAddress.Parse(ip), port);
 
-                    if(Socket == null)
+                    if (Socket == null)
                     {
                         Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                         Socket.NoDelay = true;
@@ -334,11 +333,11 @@ namespace VRemoteClient.Services
                 Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
 
             }
-            catch(SocketException ex)
+            catch (SocketException ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "SocketException when connecting to remote server");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when connecting to remote server");
             }
@@ -354,18 +353,18 @@ namespace VRemoteClient.Services
                 StateObject stateObject = (StateObject)ar.AsyncState;
                 Socket workSocket = stateObject.WorkSocket;
                 int num = Socket.EndReceive(ar);
-                if(num > 0)
+                if (num > 0)
                 {
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
                     while (!_cancellationToken.Token.IsCancellationRequested)
                     {
-                        if(!(stateObject.ByteArrayBuilder.Length >= 4))
+                        if (!(stateObject.ByteArrayBuilder.Length >= 4))
                         {
                             break;
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
 
-                        if(!(stateObject.ByteArrayBuilder.Length >= length))
+                        if (!(stateObject.ByteArrayBuilder.Length >= length))
                         {
                             //Console.WriteLine("Waitting "+ length + " - receive "+ num);
                             break;
@@ -379,15 +378,15 @@ namespace VRemoteClient.Services
                 }
                 try
                 {
-                    Socket.BeginReceive(stateObject.Buffer, 0, stateObject.Buffer.Length, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);  
+                    Socket.BeginReceive(stateObject.Buffer, 0, stateObject.Buffer.Length, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
                 }
-                catch(SocketException ex)
+                catch (SocketException ex)
                 {
                     Log.ForContext("FileName", "RemoteClient").Error(ex, "Begin receive error");
                     //Socket.Close();
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when receiving data from remote server");
             }
@@ -420,7 +419,7 @@ namespace VRemoteClient.Services
                     break;
                 case CommandType.ScreenOk:
                     ScreenSuccessEvent screenSuccess = ScreenSuccessEventHandler;
-                    if(screenSuccess != null)
+                    if (screenSuccess != null)
                     {
                         screenSuccess(true);
                     }
@@ -483,7 +482,8 @@ namespace VRemoteClient.Services
                 MouseType action = (MouseType)int.Parse(mouseData[3]);
                 int mouseX = int.Parse(mouseData[4]);
                 int mouseY = int.Parse(mouseData[5]);
-                bool flag = _mouseHook.MouseEvent(senderSceenWidth, senderScreenHeight, receiverScreenWidth, receiverScreenHeight, button, action, mouseX, mouseY);
+
+                bool flag = VirtualMouse.MouseEvent(senderSceenWidth, senderScreenHeight, receiverScreenWidth, receiverScreenHeight, button, action, mouseX, mouseY);
                 if (!flag)
                 {
                     Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
@@ -507,21 +507,10 @@ namespace VRemoteClient.Services
                 Keys keyModifier = (Keys)int.Parse(keyboards[1]);
                 Keys keyCode = (Keys)int.Parse(keyboards[2]);
                 KeyState keyType = (KeyState)int.Parse(keyboards[3]);
+
                 VirtualKeyboard.Method_1(keyCode, keyType);
-                //Console.WriteLine(keyModifier + " - " + keyCode + " - "+ keyType);
-                //if(keyType == KeyState.KeyDown)
-                //{
-                //    if (keyModifier != Keys.None)
-                //    {
-                //        KeyboardSimulator.SendKeyCombo(keyModifier, keyCode);
-                //    }
-                //    else
-                //    {
-                //        KeyboardSimulator.SendKey(keyCode);
-                //    }
-                //}
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing keyboard data");
             }
@@ -670,7 +659,7 @@ namespace VRemoteClient.Services
                         //    }).Start();
                         //}    
                     }
-                    else if(partnerInfo[0].ToLower() == "1")
+                    else if (partnerInfo[0].ToLower() == "1")
                     {
                         connectionInfo.Receiver = new ClientInfo
                         {
@@ -794,7 +783,6 @@ namespace VRemoteClient.Services
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-
         protected virtual void Dispose(bool disposing)
         {
             if (!_isDisposed)
@@ -840,11 +828,6 @@ namespace VRemoteClient.Services
                         }
                         _commandTasks = null;
                     }
-
-                    // Mouse hook
-                    _mouseHook?.Dispose();
-                    _mouseHook = null;
-
 
                     if (_screenThread != null && _screenThread.IsAlive)
                     {
@@ -912,5 +895,6 @@ namespace VRemoteClient.Services
                 }
             }
         }
+        #endregion
     }
 }
