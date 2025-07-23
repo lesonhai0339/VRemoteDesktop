@@ -192,6 +192,33 @@ namespace VRemoteClient.Utils
                 _keyObject = null;
             }
         }
+        private static void Method2()
+        {
+            while(KeyStorage.TryDequeue(out var key))
+            {
+                if (key.Key != Keys.None)
+                {
+                    // Có key chính
+                    if (key.Modifiers.Count > 1)
+                    {
+                        SendMultiCombo(key.Modifiers, key.Key);
+                    }
+                    else if (key.Modifiers.Count == 1)
+                    {
+                        SendKeyCombo(key.Modifiers[0], key.Key);
+                    }
+                    else
+                    {
+                        SendKey(key.Key);
+                    }
+                }
+                else if (key.Modifiers.Count == 1)
+                {
+                    // Edge case: chỉ có modifier
+                    SendKey(key.Modifiers[0]);
+                }
+            }
+        }
         public static void Method_1(Keys key, KeyState state)
         {
             if (state == KeyState.KeyDown)

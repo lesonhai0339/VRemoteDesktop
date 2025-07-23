@@ -508,7 +508,7 @@ namespace VRemoteClient.Services
                 Keys keyCode = (Keys)int.Parse(keyboards[2]);
                 KeyState keyType = (KeyState)int.Parse(keyboards[3]);
 
-                VirtualKeyboard.Method_1(keyCode, keyType);
+                VirtualKeyboard.ProcessKeyboardReceived(keyCode, keyType);
             }
             catch (Exception ex)
             {
