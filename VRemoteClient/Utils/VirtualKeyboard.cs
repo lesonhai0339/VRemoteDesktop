@@ -42,7 +42,7 @@ namespace VRemoteClient.Utils
         }
         private static void Initialize()
         {
-            processingTimer = new System.Threading.Timer(ProcessQueue, null, 0, 10);
+            processingTimer = new System.Threading.Timer(ProcessQueue, null, 0, 50);
 
             AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
             AppDomain.CurrentDomain.DomainUnload += OnDomainUnload;
