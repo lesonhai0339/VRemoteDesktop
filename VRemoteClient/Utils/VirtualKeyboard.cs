@@ -14,22 +14,74 @@ namespace VRemoteClient.Utils
     public static class VirtualKeyboard
     {
         private static ConcurrentQueue<KeyboardObject> KeyStorage = new ConcurrentQueue<KeyboardObject>();
-        private static List<Keys> ModifierKeys = new List<Keys>()
+        private static readonly HashSet<Keys> ModifierKeys = new HashSet<Keys>()
         {
-            Keys.Control, Keys.ControlKey, Keys.LControlKey, Keys.RControlKey, Keys.Shift, Keys.ShiftKey, Keys.LShiftKey,
-            Keys.RShiftKey, Keys.Alt, Keys.Menu, Keys.LMenu, Keys.RMenu, Keys.LWin, Keys.RWin, Keys.Apps
+            Keys.Control, Keys.ControlKey, Keys.LControlKey, Keys.RControlKey,
+            Keys.Shift, Keys.ShiftKey, Keys.LShiftKey, Keys.RShiftKey,
+            Keys.Alt, Keys.Menu, Keys.LMenu, Keys.RMenu, Keys.LWin, Keys.RWin, Keys.Apps
         };
+        private static System.Threading.Timer processingTimer;
+
+        //read directly from memory without cache
+        private static volatile bool isDisposed = false;
+        private static volatile bool isProcessing = false;
 
         private static object _lock = new object();
-        private static ConcurrentBag<KeyboardObject> keyboardObjects = new ConcurrentBag<KeyboardObject>();
         private static KeyboardObject _keyObject = null;
-        private static List<Keys> _modifiers = new List<Keys>();
-        private static Keys _key = Keys.None;
-        private const int KEYEVENTF_EXTENDEDKEY = 0x0001; // Extended key flag
         private const int INPUT_KEYBOARD = 1;
         private const uint KEYEVENTF_KEYUP = 0x0002;
+
+
+        private static List<Keys> _modifiers = new List<Keys>();
+        private static Keys _key = Keys.None;
+
+
+        static VirtualKeyboard()
+        {
+            Initialize();
+        }
+        private static void Initialize()
+        {
+            processingTimer = new System.Threading.Timer(ProcessQueue, null, 0, 10);
+
+            AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
+            AppDomain.CurrentDomain.DomainUnload += OnDomainUnload;
+        }
+        private static void OnProcessExit(object sender, EventArgs e) => Dispose();
+        private static void OnDomainUnload(object sender, EventArgs e) => Dispose();
+
+        public static void Dispose()
+        {
+            if (isDisposed) return;
+
+            isDisposed = true;
+            processingTimer?.Dispose();
+
+            while (KeyStorage.TryDequeue(out _)) { } ;
+            lock (_lock)
+            {
+                _keyObject = null;
+            }
+        }
+
+        private static void ProcessQueue(object state)
+        {
+            if (isProcessing) return;
+            isProcessing = true;
+
+            try
+            {
+                KeyEventHandler(); // Process queue
+            }
+            finally
+            {
+                isProcessing = false;
+            }
+        }
         public static uint SendKey(Keys key)
         {
+            if (isDisposed) return 0;
+
             INPUT[] inputs = new INPUT[2];
 
             // Key down
@@ -102,10 +154,11 @@ namespace VRemoteClient.Utils
                     return (ushort)key;
             }
         }
-
         public static void ProcessKeyboardReceived(Keys key, KeyState keyState)
         {
-            if(keyState == KeyState.KeyDown)
+            if (isDisposed) return;
+
+            if (keyState == KeyState.KeyDown)
             {
                 KeyDownEvent(key);
             }
@@ -118,94 +171,98 @@ namespace VRemoteClient.Utils
         private static void KeyDownEvent(Keys key)
         {
             bool isModifier = ModifierKeys.Contains(key);
-            if (_keyObject == null)
+            lock (_lock) 
             {
-                _keyObject = new KeyboardObject();
-                if (isModifier)
+                if (_keyObject == null)
                 {
-                    _keyObject.Modifiers.Add(key);
-                }
-                else
-                {
-                    _keyObject.Key = key;
-                }
-            }
-            else
-            {
-                if (isModifier)
-                {
-                    if (!_keyObject.Modifiers.Contains(key))
+                    _keyObject = new KeyboardObject();
+                    if (isModifier)
                     {
                         _keyObject.Modifiers.Add(key);
                     }
-                }
-                else
-                {
-                    if(_keyObject.Key == Keys.None)
+                    else
                     {
                         _keyObject.Key = key;
                     }
-                    else if(_keyObject.Key == key)
+                }
+                else
+                {
+                    if (isModifier)
                     {
-                        KeyStorage.Enqueue(new KeyboardObject { Key = key, IsKeyUp = false });
+                        if (!_keyObject.Modifiers.Contains(key))
+                        {
+                            _keyObject.Modifiers.Add(key);
+                        }
                     }
                     else
                     {
-                        KeyStorage.Enqueue(new KeyboardObject
+                        if (_keyObject.Key == Keys.None)
                         {
-                            Key = _keyObject.Key,
-                            Modifiers = new List<Keys>(_keyObject.Modifiers),
-                            IsKeyUp = false
-                        });
+                            _keyObject.Key = key;
+                        }
+                        else if (_keyObject.Key == key)
+                        {
+                            KeyStorage.Enqueue(new KeyboardObject { Key = key, IsKeyUp = false });
+                        }
+                        else
+                        {
+                            KeyStorage.Enqueue(new KeyboardObject
+                            {
+                                Key = _keyObject.Key,
+                                Modifiers = new List<Keys>(_keyObject.Modifiers),
+                                IsKeyUp = false
+                            });
 
-                        _keyObject = new KeyboardObject
-                        {
-                            Key = key,
-                            Modifiers = new List<Keys>(_keyObject.Modifiers)
-                        };
+                            _keyObject = new KeyboardObject
+                            {
+                                Key = key,
+                                Modifiers = new List<Keys>(_keyObject.Modifiers)
+                            };
+                        }
                     }
                 }
-            }
-            
+            }      
         }
         private static void KeyUpEvent(Keys key)
         {
-            if (_keyObject == null) return;
-
-            bool isModifier = ModifierKeys.Contains(key);
-
-            if (isModifier)
+            lock (_lock)
             {
-                if (_keyObject.Modifiers.Contains(key))
+                if (_keyObject == null) return;
+
+                bool isModifier = ModifierKeys.Contains(key);
+
+                if (isModifier)
                 {
-                    _keyObject.ModifiersReleased += 1;
+                    if (_keyObject.Modifiers.Contains(key))
+                    {
+                        _keyObject.ModifiersReleased += 1;
+                    }
+                }
+                else if (_keyObject.Key == key)
+                {
+                    _keyObject.IsKeyUp = true;
+                }
+
+                if (_keyObject.IsKeyUp && (_keyObject.ModifiersReleased == _keyObject.Modifiers.Count))
+                {
+                    KeyStorage.Enqueue(_keyObject);
+                    _keyObject = null;
                 }
             }
-            else if(_keyObject.Key == key)
-            {
-                _keyObject.IsKeyUp = true;
-            }
-
-            if(_keyObject.IsKeyUp && (_keyObject.ModifiersReleased == _keyObject.Modifiers.Count))
-            {
-                KeyStorage.Enqueue(_keyObject);
-                _keyObject = null;
-            }
         }
-        private static void Method2()
+        private static void KeyEventHandler()
         {
             while(KeyStorage.TryDequeue(out var key))
             {
                 if (key.Key != Keys.None)
                 {
-                    // Có key chính
                     if (key.Modifiers.Count > 1)
                     {
-                        SendMultiCombo(key.Modifiers, key.Key);
+                        SendKeyWithModifiers(key.Modifiers, key.Key);
                     }
                     else if (key.Modifiers.Count == 1)
                     {
-                        SendKeyCombo(key.Modifiers[0], key.Key);
+                        SendKeyWithModifier(key.Modifiers[0], key.Key);
                     }
                     else
                     {
@@ -214,95 +271,97 @@ namespace VRemoteClient.Utils
                 }
                 else if (key.Modifiers.Count == 1)
                 {
-                    // Edge case: chỉ có modifier
                     SendKey(key.Modifiers[0]);
                 }
             }
         }
-        public static void Method_1(Keys key, KeyState state)
-        {
-            if (state == KeyState.KeyDown)
-            {
-                switch (key)
-                {
-                    case Keys.Control:
-                    case Keys.ControlKey:
-                    case Keys.LControlKey:
-                    case Keys.RControlKey:
-                    case Keys.Shift:
-                    case Keys.ShiftKey:
-                    case Keys.LShiftKey:
-                    case Keys.RShiftKey:
-                    case Keys.Alt:
-                    case Keys.Menu:
-                    case Keys.LMenu:
-                    case Keys.RMenu:
-                    case Keys.LWin:
-                    case Keys.RWin:
-                        lock (_lock)
-                        {
-                            if (!_modifiers.Any(x => x == key))
-                                _modifiers.Add(key);
-                        }
-                        break;
-                    default:
-                        lock (_lock)
-                        {
-                            //case for holding key (example: aaaaaaaaaaaaa)
-                            if (_key == key)
-                            {
-                                SendKey(_key);
-                            }
-                            else
-                            {
-                                _key = key;
-                            }
-                        }
-                        break;
-                }
-                return;
-            }
-            else
-            {
-                lock (_lock)
-                {
-                    // key press event
-                    string a = string.Join(" - ", _modifiers);
-                    Console.WriteLine(a + " - " + _key);
-                    if (_modifiers.Count > 1 && _key != Keys.None)
-                    {
-                        SendMultiCombo(_modifiers, _key);
-                    }
-                    else if (_modifiers.Count == 1 && _key != Keys.None)
-                    {
-                        SendKeyCombo(_modifiers[0], _key);
-                    }
-                    else if (_modifiers.Count == 1)
-                    {
-                        SendKey(_modifiers[0]);
-                    }
-                    else
-                    {
-                        SendKey(_key);
-                    }
+        //public static void Method_1(Keys key, KeyState state)
+        //{
+        //    if (state == KeyState.KeyDown)
+        //    {
+        //        switch (key)
+        //        {
+        //            case Keys.Control:
+        //            case Keys.ControlKey:
+        //            case Keys.LControlKey:
+        //            case Keys.RControlKey:
+        //            case Keys.Shift:
+        //            case Keys.ShiftKey:
+        //            case Keys.LShiftKey:
+        //            case Keys.RShiftKey:
+        //            case Keys.Alt:
+        //            case Keys.Menu:
+        //            case Keys.LMenu:
+        //            case Keys.RMenu:
+        //            case Keys.LWin:
+        //            case Keys.RWin:
+        //                lock (_lock)
+        //                {
+        //                    if (!_modifiers.Any(x => x == key))
+        //                        _modifiers.Add(key);
+        //                }
+        //                break;
+        //            default:
+        //                lock (_lock)
+        //                {
+        //                    //case for holding key (example: aaaaaaaaaaaaa)
+        //                    if (_key == key)
+        //                    {
+        //                        SendKey(_key);
+        //                    }
+        //                    else
+        //                    {
+        //                        _key = key;
+        //                    }
+        //                }
+        //                break;
+        //        }
+        //        return;
+        //    }
+        //    else
+        //    {
+        //        lock (_lock)
+        //        {
+        //            // key press event
+        //            string a = string.Join(" - ", _modifiers);
+        //            Console.WriteLine(a + " - " + _key);
+        //            if (_modifiers.Count > 1 && _key != Keys.None)
+        //            {
+        //                SendKeyWithModifiers(_modifiers, _key);
+        //            }
+        //            else if (_modifiers.Count == 1 && _key != Keys.None)
+        //            {
+        //                SendKeyWithModifier(_modifiers[0], _key);
+        //            }
+        //            else if (_modifiers.Count == 1)
+        //            {
+        //                SendKey(_modifiers[0]);
+        //            }
+        //            else
+        //            {
+        //                SendKey(_key);
+        //            }
 
-                    // remove
-                    //_key = Keys.None;
-                    //_modifiers.RemoveAll(k => k == key);
+        //            // remove
+        //            //_key = Keys.None;
+        //            //_modifiers.RemoveAll(k => k == key);
 
-                    if (_key == key)
-                    {
-                        _key = Keys.None;
-                    }
-                    if (_modifiers.Contains(key))
-                    {
-                        _modifiers.RemoveAll(k => k == key);
-                    }
-                }
-            }
-        }
-        public static uint SendMultiCombo(List<Keys> modifiers, Keys key)
+        //            if (_key == key)
+        //            {
+        //                _key = Keys.None;
+        //            }
+        //            if (_modifiers.Contains(key))
+        //            {
+        //                _modifiers.RemoveAll(k => k == key);
+        //            }
+        //        }
+        //    }
+        //}
+        public static uint SendKeyWithModifiers(List<Keys> modifiers, Keys key)
         {
+            if (isDisposed || modifiers == null || !modifiers.Any())
+                return SendKey(key);
+
             int inputCount = modifiers.Count * 2 + 2; // down/up for each modifier + down/up for main key
             INPUT[] inputs = new INPUT[inputCount];
             int index = 0;
@@ -331,8 +390,10 @@ namespace VRemoteClient.Utils
             // 5. Send inputs
             return SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
         }
-        public static uint SendKeyCombo(Keys modifier, Keys key)
+        public static uint SendKeyWithModifier(Keys modifier, Keys key)
         {
+            if (isDisposed) return 0;
+
             INPUT[] inputs = new INPUT[4];
 
             ushort keyVK = GetKeyValue(key);
