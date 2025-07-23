@@ -40,7 +40,6 @@ namespace VRemoteClient
         private GlobalMouseHook _mouseHook;
 
         private DateTime lastMouseMoveTime = DateTime.MinValue;
-        private Thread _keyboardThread;
         private Thread _mouseThread;
 
         private System.Windows.Forms.Timer clickTimer;
@@ -55,6 +54,7 @@ namespace VRemoteClient
             _height = this.Height;
 
             Client = remoteClient;
+            KeyboardHook = new KeyboardHook();
             _isDrag = false;
 
             this.Text = _info.Receiver.Id.Trim();
@@ -77,38 +77,6 @@ namespace VRemoteClient
             clickTimer.Interval = Math.Max(50, SystemInformation.DoubleClickTime / 10);
             clickTimer.Tick += ClickTimer_Tick;
 
-            _keyboardThread = new Thread(() =>
-            {
-                try
-                {
-                    KeyboardHook = new KeyboardHook();
-
-                    // Wait for the form to be shown and handle to be available
-                    while (this.Handle == IntPtr.Zero || !this.IsHandleCreated)
-                    {
-                        Thread.Sleep(10);
-                    }
-
-                    uint pId = (uint)Process.GetCurrentProcess().Id;
-                    IntPtr windowHandle = IntPtr.Zero;
-
-                    // Get handle safely from UI thread
-                    this.Invoke(new Action(() => { windowHandle = this.Handle; }));
-
-                    KeyboardHook.Start(pId, windowHandle);
-
-                    // Keep thread alive for hook processing
-                    Application.Run();
-                }
-                catch (Exception ex)
-                {
-                    Log.ForContext("FileName", "FormRemote").Error(ex, "Cannot init keyboard hook");
-                }
-            })
-            {
-                IsBackground = true,
-                Name = "KeyboardHook"
-            };
             _mouseThread = new Thread(() =>
             {
                 try
@@ -127,8 +95,6 @@ namespace VRemoteClient
                 IsBackground = true,
                 Name = "MouseHook"
             };
-            _mouseThread.Start();
-            _keyboardThread.Start();
         }
         #region Properties
         public RemoteClient Client
@@ -207,6 +173,10 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
+            uint pId = (uint)Process.GetCurrentProcess().Id;
+            IntPtr windowHandle = this.Handle; ;
+            KeyboardHook.Start(pId, windowHandle);
+            _mouseThread.Start();
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -296,23 +266,6 @@ namespace VRemoteClient
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing PictureBox");
-            }
-
-            // Handle thread cleanup
-            try
-            {
-                if (_keyboardThread?.IsAlive == true)
-                {
-                    if (!_keyboardThread.Join(1000)) // Wait max 1 second
-                    {
-                        Log.ForContext("FileName", "FormRemote").Warning("Mouse thread did not finish gracefully");
-                    }
-                    _keyboardThread = null;
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "FormRemote").Error(ex, "Error cleaning up mouse thread");
             }
             try
             {
