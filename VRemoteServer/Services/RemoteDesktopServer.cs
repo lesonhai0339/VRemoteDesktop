@@ -190,7 +190,8 @@ namespace VRemoteServer.Services
 
                 //current we get three values from receiverData: connecter Id, receive Id, receive Password. i don't  know why i set connecter Id in this case, maybe i will remove it later
                 receiver = _clientsActing.FirstOrDefault(x => string.Compare(x.Value.Id, receiverData[1], StringComparison.OrdinalIgnoreCase) == 0
-                    && string.Compare(x.Value.Password, receiverData[2], StringComparison.OrdinalIgnoreCase) == 0).Value;
+                    && string.Compare(x.Value.Password, receiverData[2], StringComparison.OrdinalIgnoreCase) == 0
+                    && x.Value.Client != client).Value;
                 if(connecter == null || receiver == null)
                 {
                     await SendCommandAsync(client, Enums.CommandType.P2PConnectFailed);

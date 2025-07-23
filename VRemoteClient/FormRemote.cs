@@ -74,7 +74,7 @@ namespace VRemoteClient
             vPictureBox.MouseMove += MouseMoveEvent;
 
             clickTimer = new System.Windows.Forms.Timer();
-            clickTimer.Interval = Math.Max(50, SystemInformation.DoubleClickTime / 10);
+            clickTimer.Interval = Math.Max(100, SystemInformation.DoubleClickTime / 5);
             clickTimer.Tick += ClickTimer_Tick;
 
             //start mousehook on other thread
