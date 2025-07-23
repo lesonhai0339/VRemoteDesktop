@@ -310,6 +310,7 @@ namespace VRemoteClient.Services
         }
         public bool MouseEvent(int senderWidth, int senderHeight, int meWidth, int meHeight, MouseMessage button, MouseType action, int x, int y)
         {
+            Console.WriteLine("Mouse call: " + button);
             Tuple<float, float> scales = CaculateMouseCorrdinate(senderWidth, senderHeight, meWidth, meHeight);
             bool flag = false;
             switch (button)

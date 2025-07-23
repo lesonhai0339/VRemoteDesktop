@@ -51,9 +51,9 @@ namespace VRemoteClient
             this.Controls.Add(this.vPictureBox);
             this.Name = "FormRemote";
             this.Text = "FormRemote";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormRemote_FormClosing);
             this.Load += new System.EventHandler(this.FormRemote_Load);
             this.Shown += new System.EventHandler(this.FormRemote_Shown);
-            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormRemote_FormClosing);
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox)).EndInit();
             this.ResumeLayout(false);
 

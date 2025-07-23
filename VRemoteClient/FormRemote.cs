@@ -83,7 +83,6 @@ namespace VRemoteClient
                 try
                 {
                     MouseHook = new GlobalMouseHook();
-                    _mouseHook.MouseTask += MousePressedEventHandler;
 
                     // Keep thread alive for hook processing
                     Application.Run();
