@@ -34,7 +34,7 @@ namespace VRemoteClient.Services
             encoder = ImageCodecInfo.GetImageEncoders()
                 .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
             encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 75L);
+            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
         }
         internal List<ScreenBlock> GetScreen()
         {

@@ -546,6 +546,7 @@ namespace VRemoteClient.Services
         {
             try
             {
+                Log.ForContext("FileName", "Chunks").Info("Received: {"+ data.Length + "} bytes at: "+ DateTime.Now.ToString("hh:mm:ss.fff"));
                 string stringHashReceived = Encoding.ASCII.GetString(data, 1, 40);
 
                 var compressedLength = data.Length - 41; // 1 byte header + 40 hash

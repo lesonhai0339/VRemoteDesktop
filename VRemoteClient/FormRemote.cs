@@ -37,10 +37,9 @@ namespace VRemoteClient
         private RemoteClient _remoteClient;
         private ConnectionInfo _info;
         private KeyboardHook _keyboardHook;
-        private GlobalMouseHook _mouseHook;
+        private MouseHook _mouseHook;
 
         private DateTime lastMouseMoveTime = DateTime.MinValue;
-        private Thread _mouseThread;
 
         private System.Windows.Forms.Timer clickTimer;
         private MouseEventArgs pendingClickArgs;
@@ -55,6 +54,7 @@ namespace VRemoteClient
 
             Client = remoteClient;
             KeyboardHook = new KeyboardHook();
+            MouseHook = new MouseHook();
             _isDrag = false;
 
             this.Text = _info.Receiver.Id.Trim();
@@ -74,29 +74,8 @@ namespace VRemoteClient
             vPictureBox.MouseMove += MouseMoveEvent;
 
             clickTimer = new System.Windows.Forms.Timer();
-            clickTimer.Interval = Math.Max(100, SystemInformation.DoubleClickTime / 5);
+            clickTimer.Interval = Math.Min(100, SystemInformation.DoubleClickTime / 5);
             clickTimer.Tick += ClickTimer_Tick;
-
-            //start mousehook on other thread
-            _mouseThread = new Thread(() =>
-            {
-                try
-                {
-                    MouseHook = new GlobalMouseHook();
-
-                    // Keep thread alive for hook processing
-                    Application.Run();
-                }
-                catch (Exception ex)
-                {
-                    Log.ForContext("FileName", "FormRemote").Error(ex, "Cannot init mouse hook");
-                }
-            })
-            {
-                IsBackground = true,
-                Name = "MouseHook"
-            }; 
-            _mouseThread.Start();
         }
         #region Properties
         public RemoteClient Client
@@ -142,7 +121,7 @@ namespace VRemoteClient
                 }
             }
         }
-        public GlobalMouseHook MouseHook
+        public MouseHook MouseHook
         {
             get
             {
@@ -260,7 +239,7 @@ namespace VRemoteClient
                     vPictureBox.MouseClick -= MouseClickEventHandler;
                     vPictureBox.MouseDoubleClick -= MouseDbClickEventHandler;
                     vPictureBox.MouseWheel -= MouseWheelEventHandler;
-                    vPictureBox.MouseMove -= MouseMoveEvent; // Don't forget this one
+                    vPictureBox.MouseMove -= MouseMoveEvent;
                     vPictureBox.Image?.Dispose();
                 }
             }
@@ -268,22 +247,76 @@ namespace VRemoteClient
             {
                 Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing PictureBox");
             }
+        }
+        private void MouseClickEventHandler(object sender, MouseEventArgs e)
+        {
+            //waiting for double click called or timeout
+            pendingClickArgs = e;
+            pendingSender = sender as Control;
+            clickTimer.Stop();
+            clickTimer.Start();
+        }
+        private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
+        {
+            clickTimer.Stop(); // Cancel pending click
+            MouseHook.MouseEventToTask(MouseEventType.DoubleClick, vPictureBox, e);
+        }
+        private void MouseMoveEvent(object sender, MouseEventArgs e)
+        {
             try
             {
-                if (_mouseThread?.IsAlive == true)
+                //set delay
+                DateTime now = DateTime.Now;
+                if ((now - lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
+                    return; // Skip this event
+                lastMouseMoveTime = now;
+
+                bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;
+
+                if (isLeftButtonDown)
                 {
-                    if (!_mouseThread.Join(1000)) // Wait max 1 second
+                    if (!_isDrag)
                     {
-                        Log.ForContext("FileName", "FormRemote").Warning("Keyboard thread did not finish gracefully");
+                        MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEDOWN, MouseType.Down);
+                        _isDrag = true;
                     }
-                    _mouseThread = null;
+                    MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down);
+                }
+                else
+                {
+                    if (_isDrag)
+                    {
+                        MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEUP, MouseType.Down);
+                        _isDrag = false;
+                        return;
+                    }
+                    if (!_isDrag)
+                    {
+                        MouseHook.MouseEventToTask(MouseEventType.Move, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
+                    }
                 }
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "FormRemote").Error(ex, "Error cleaning up keyboard thread");
+                Log.ForContext("FileName", "FormRemote").Error(ex, "MouseMove event error");
             }
         }
+        private void MouseWheelEventHandler(object sender, MouseEventArgs e)
+        {
+            MouseHook.MouseEventToTask(MouseEventType.Wheel, vPictureBox, e);
+        }
+        private void ClickTimer_Tick(object sender, EventArgs e)
+        {
+            clickTimer.Stop();
+
+            if (pendingClickArgs != null)
+            {
+                MouseHook.MouseEventToTask(MouseEventType.Click, vPictureBox, pendingClickArgs);
+            }
+            pendingClickArgs = null;
+            pendingSender = null;
+        }
+
         #endregion
         #region Event Handlers
         private void TryAddWork(TaskObject task)
@@ -332,74 +365,6 @@ namespace VRemoteClient
                 return;
             }
             TryAddWork(e.Task);
-        }
-        private void MouseClickEventHandler(object sender, MouseEventArgs e)
-        {
-            //waiting for double click called or timeout
-            pendingClickArgs = e;
-            pendingSender = sender as Control;
-            clickTimer.Stop();
-            clickTimer.Start();
-        }
-        private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
-        {
-            clickTimer.Stop(); // Cancel pending click
-            MouseHook.MouseEventToTask(MouseEventType.DoubleClick, vPictureBox, e);
-        }
-        private void ClickTimer_Tick(object sender, EventArgs e)
-        {
-            clickTimer.Stop();
-
-            if(pendingClickArgs != null)
-            {
-                MouseHook.MouseEventToTask(MouseEventType.Click, vPictureBox, pendingClickArgs);
-            }
-            pendingClickArgs = null;
-            pendingSender = null;
-        }
-        private void MouseMoveEvent(object sender, MouseEventArgs e)
-        {
-            try
-            {
-                //set delay
-                DateTime now = DateTime.Now;
-                if ((now - lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
-                    return; // Skip this event
-                lastMouseMoveTime = now;
-
-                bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;
-
-                if (isLeftButtonDown)
-                {
-                    if (!_isDrag)
-                    {
-                        MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEDOWN, MouseType.Down);
-                        _isDrag = true;
-                    }
-                    MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down);
-                }
-                else
-                {
-                    if (_isDrag)
-                    {
-                        MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEUP, MouseType.Down);
-                        _isDrag = false;
-                        return;
-                    }
-                    if (!_isDrag)
-                    {
-                        MouseHook.MouseEventToTask(MouseEventType.Move, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
-                    }
-                }
-            }
-            catch(Exception ex)
-            {
-                Log.ForContext("FileName", "FormRemote").Error(ex, "MouseMove event error");
-            }
-        }
-        private void MouseWheelEventHandler(object sender, MouseEventArgs e)
-        {
-            MouseHook.MouseEventToTask(MouseEventType.Wheel, vPictureBox, e);
         }
         #endregion
         #region Screen

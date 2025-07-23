@@ -11,6 +11,6 @@ namespace VRemoteClient.Models.Entities
         public Keys Key { get; set; } = Keys.None;
         public bool IsKeyUp { get; set; } = false; 
         public List<Keys> Modifiers { get;set; }= new List<Keys>();
-        public int ModifiersUp { get; set; } = 0; 
+        public int ModifiersReleased { get; set; } = 0; 
     }
 }

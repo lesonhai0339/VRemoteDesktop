@@ -15,11 +15,11 @@ using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services
 {
-    public class GlobalMouseHook: IDisposable
+    public class MouseHook : IDisposable
     {
         private bool _disposed = false;
         public event EventHandler<CustomMouseTaskEventArgs> MouseTask;
-        public GlobalMouseHook()
+        public MouseHook()
         {
         }
         #region Methods 
