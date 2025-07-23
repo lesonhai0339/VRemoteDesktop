@@ -77,11 +77,13 @@ namespace VRemoteClient
             clickTimer.Interval = Math.Max(50, SystemInformation.DoubleClickTime / 10);
             clickTimer.Tick += ClickTimer_Tick;
 
+            //start mousehook on other thread
             _mouseThread = new Thread(() =>
             {
                 try
                 {
                     MouseHook = new GlobalMouseHook();
+                    _mouseHook.MouseTask += MousePressedEventHandler;
 
                     // Keep thread alive for hook processing
                     Application.Run();
@@ -94,7 +96,8 @@ namespace VRemoteClient
             {
                 IsBackground = true,
                 Name = "MouseHook"
-            };
+            }; 
+            _mouseThread.Start();
         }
         #region Properties
         public RemoteClient Client
@@ -160,7 +163,7 @@ namespace VRemoteClient
                     _mouseHook = value;
                     if (_mouseHook != null)
                     {
-                        _mouseHook.MouseTask -= MousePressedEventHandler;
+                        _mouseHook.MouseTask += MousePressedEventHandler;
                     }
                 }
             }
@@ -176,7 +179,6 @@ namespace VRemoteClient
             uint pId = (uint)Process.GetCurrentProcess().Id;
             IntPtr windowHandle = this.Handle; ;
             KeyboardHook.Start(pId, windowHandle);
-            _mouseThread.Start();
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
