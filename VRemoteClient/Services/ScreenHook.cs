@@ -133,30 +133,23 @@ namespace VRemoteClient.Services
         {
             while (!_cancel.IsCancellationRequested)
             {
-                if (RemoteClient.IsP2PConnected && !RemoteClient.IsSender)
+                Console.WriteLine("ScreenHook call");
+                var screens = _capture.GetScreen();
+                if (screens.Any())
                 {
-                    Console.WriteLine("ScreenHook call");
-                    var screens = _capture.GetScreen();
-                    if (screens.Any())
+                    int totalSize = checked(screens.Sum(x => x.TotalSize));
+                    ScreenEnum screenEnum = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
+                    switch (screenEnum)
                     {
-                        int totalSize = checked(screens.Sum(x => x.TotalSize));
-                        ScreenEnum screenEnum = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
-                        switch (screenEnum)
-                        {
-                            case ScreenEnum.FULLSCREEN:
-                                SendScreenData(screens);
-                                break;
-                            case ScreenEnum.REGIONSCREENS:
-                                SendChunk(screens, totalSize);
-                                break;
-                        }
+                        case ScreenEnum.FULLSCREEN:
+                            SendScreenData(screens);
+                            break;
+                        case ScreenEnum.REGIONSCREENS:
+                            SendChunk(screens, totalSize);
+                            break;
                     }
-                    Thread.Sleep(1);
                 }
-                else
-                {
-                    Thread.Sleep(10);
-                }
+                Thread.Sleep(1);
             }
         }
         // Send full screen to sender at first connect

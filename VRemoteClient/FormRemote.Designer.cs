@@ -53,7 +53,7 @@ namespace VRemoteClient
             this.Text = "FormRemote";
             this.Load += new System.EventHandler(this.FormRemote_Load);
             this.Shown += new System.EventHandler(this.FormRemote_Shown);
-            this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FormRemote_FormClosed);
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormRemote_FormClosing);
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox)).EndInit();
             this.ResumeLayout(false);
 

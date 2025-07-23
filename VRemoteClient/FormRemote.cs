@@ -25,6 +25,7 @@ namespace VRemoteClient
     public partial class FormRemote : Form
     {
         private readonly object _screenLock = new object();
+        private readonly object _lockObject = new object();
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
         private bool _isDrag;
@@ -39,7 +40,8 @@ namespace VRemoteClient
         private GlobalMouseHook _mouseHook;
 
         private DateTime lastMouseMoveTime = DateTime.MinValue;
-
+        private Thread _keyboardThread;
+        private Thread _mouseThread;
 
         private System.Windows.Forms.Timer clickTimer;
         private MouseEventArgs pendingClickArgs;
@@ -54,8 +56,6 @@ namespace VRemoteClient
 
             Client = remoteClient;
             _isDrag = false;
-            KeyboardHook = new KeyboardHook();
-            MouseHook = new GlobalMouseHook();
 
             this.Text = _info.Receiver.Id.Trim();
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
@@ -76,28 +76,59 @@ namespace VRemoteClient
             clickTimer = new System.Windows.Forms.Timer();
             clickTimer.Interval = Math.Max(50, SystemInformation.DoubleClickTime / 10);
             clickTimer.Tick += ClickTimer_Tick;
-        }
-        private void MouseClickEventHandler(object sender, MouseEventArgs e)
-        {
-            //waiting for double click called or timeout
-            pendingClickArgs = e;
-            pendingSender = sender as Control;
-            clickTimer.Stop();
-            clickTimer.Start();
-        }
-        private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
-        {
-            clickTimer.Stop(); // Cancel pending click
-            AddMouseEventToTask(MouseEventType.DoubleClick, vPictureBox, e);
-        }
 
-        private void ClickTimer_Tick(object sender, EventArgs e)
-        {
-            clickTimer.Stop();
-            AddMouseEventToTask(MouseEventType.Click, vPictureBox, pendingClickArgs);
+            _keyboardThread = new Thread(() =>
+            {
+                try
+                {
+                    KeyboardHook = new KeyboardHook();
 
-            pendingClickArgs = null;
-            pendingSender = null;
+                    // Wait for the form to be shown and handle to be available
+                    while (this.Handle == IntPtr.Zero || !this.IsHandleCreated)
+                    {
+                        Thread.Sleep(10);
+                    }
+
+                    uint pId = (uint)Process.GetCurrentProcess().Id;
+                    IntPtr windowHandle = IntPtr.Zero;
+
+                    // Get handle safely from UI thread
+                    this.Invoke(new Action(() => { windowHandle = this.Handle; }));
+
+                    KeyboardHook.Start(pId, windowHandle);
+
+                    // Keep thread alive for hook processing
+                    Application.Run();
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext("FileName", "FormRemote").Error(ex, "Cannot init keyboard hook");
+                }
+            })
+            {
+                IsBackground = true,
+                Name = "KeyboardHook"
+            };
+            _mouseThread = new Thread(() =>
+            {
+                try
+                {
+                    MouseHook = new GlobalMouseHook();
+
+                    // Keep thread alive for hook processing
+                    Application.Run();
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext("FileName", "FormRemote").Error(ex, "Cannot init mouse hook");
+                }
+            })
+            {
+                IsBackground = true,
+                Name = "MouseHook"
+            };
+            _mouseThread.Start();
+            _keyboardThread.Start();
         }
         #region Properties
         public RemoteClient Client
@@ -120,29 +151,54 @@ namespace VRemoteClient
         }
         public KeyboardHook KeyboardHook
         {
-            get => _keyboardHook;
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _keyboardHook;
+                }
+            }
             set
             {
-                if (_keyboardHook != null)
+                lock (_lockObject)
                 {
-                    _keyboardHook.KeyPressed -= KeyPressedEventHandler;
-                }
-                _keyboardHook = value;
-                if (_keyboardHook != null)
-                {
-                    _keyboardHook.KeyPressed += KeyPressedEventHandler;
+                    if (_keyboardHook != null)
+                    {
+                        _keyboardHook.KeyPressed -= KeyPressedEventHandler;
+                    }
+                    _keyboardHook = value;
+                    if (_keyboardHook != null)
+                    {
+                        _keyboardHook.KeyPressed += KeyPressedEventHandler;
+                    }
                 }
             }
         }
         public GlobalMouseHook MouseHook
         {
-            get => _mouseHook;
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _mouseHook;
+                }
+            }
             set
             {
-                _mouseHook = value;
+                lock (_lockObject)
+                {
+                    if (_mouseHook != null)
+                    {
+                        _mouseHook.MouseTask -= MousePressedEventHandler;
+                    }
+                    _mouseHook = value;
+                    if (_mouseHook != null)
+                    {
+                        _mouseHook.MouseTask -= MousePressedEventHandler;
+                    }
+                }
             }
         }
-
         #endregion
         #region Methods
         private void FormRemote_Load(object sender, EventArgs e)
@@ -151,53 +207,123 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
-            uint pId = (uint)Process.GetCurrentProcess().Id;
-            IntPtr windowHandle = this.Handle; // Get the handle of formRemote
-            new Thread(() =>
-            {
-                Thread.CurrentThread.IsBackground = true;
-                KeyboardHook = new KeyboardHook();
-                KeyboardHook.Start(pId, windowHandle);
-                Application.Run();
-            }).Start();
-            //KeyboardHook.Start(pId, windowHandle);
-            //MouseHook.StartHook(pId);
         }
-        private void FormRemote_FormClosed(object sender, FormClosedEventArgs e)
+        private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
+            // Cleanup keyboard hook
             try
             {
-                try { KeyboardHook?.Dispose(); } catch (Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
-                try { MouseHook?.Dispose(); } catch (Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
-
-                try
+                if (KeyboardHook != null)
                 {
-                    if (Client != null)
-                    {
-                        Client.P2PScreenEventHandler -= ScreenEvent;
-                        Client.P2PChunksEventHandler -= ChunksEvent;
-                        Client = null;
-                    }
+                    KeyboardHook.KeyPressed -= KeyPressedEventHandler;
+                    KeyboardHook.Stop();
+                    KeyboardHook.Dispose();
+                    KeyboardHook = null; // Prevent double disposal
                 }
-                catch(Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
-                try { Icon?.Dispose(); } catch (Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
-
-                try
-                {
-                    if (vPictureBox != null)
-                    {
-                        vPictureBox.MouseClick -= MouseClickEventHandler;
-                        vPictureBox.MouseDoubleClick -= MouseDbClickEventHandler;
-                        vPictureBox.MouseWheel -= MouseWheelEventHandler;
-                        vPictureBox.Image?.Dispose();
-                    }
-                }
-                catch (Exception ex) { Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message)); }
-               
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "FormRemote").Fatal(ex, string.Format("Error disposing MouseHook: {0}", ex.Message));
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing KeyboardHook");
+            }
+
+            // Cleanup mouse hook
+            try
+            {
+                if (MouseHook != null)
+                {
+                    MouseHook.MouseTask -= MousePressedEventHandler;
+                    MouseHook.Dispose();
+                    MouseHook = null; // Prevent double disposal
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing MouseHook");
+            }
+
+            // Cleanup timer
+            try
+            {
+                if (clickTimer != null)
+                {
+                    clickTimer.Stop();
+                    clickTimer.Tick -= ClickTimer_Tick; // Unsubscribe from event
+                    clickTimer.Dispose();
+                    clickTimer = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing Timer");
+            }
+
+            // Cleanup client
+            try
+            {
+                if (Client != null)
+                {
+                    Client.P2PScreenEventHandler -= ScreenEvent;
+                    Client.P2PChunksEventHandler -= ChunksEvent;
+                    Client = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing Client");
+            }
+
+            // Cleanup UI components
+            try
+            {
+                Icon?.Dispose();
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing Icon");
+            }
+
+            try
+            {
+                if (vPictureBox != null)
+                {
+                    vPictureBox.MouseClick -= MouseClickEventHandler;
+                    vPictureBox.MouseDoubleClick -= MouseDbClickEventHandler;
+                    vPictureBox.MouseWheel -= MouseWheelEventHandler;
+                    vPictureBox.MouseMove -= MouseMoveEvent; // Don't forget this one
+                    vPictureBox.Image?.Dispose();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing PictureBox");
+            }
+
+            // Handle thread cleanup
+            try
+            {
+                if (_keyboardThread?.IsAlive == true)
+                {
+                    if (!_keyboardThread.Join(1000)) // Wait max 1 second
+                    {
+                        Log.ForContext("FileName", "FormRemote").Warning("Keyboard thread did not finish gracefully");
+                    }
+                    _keyboardThread = null;
+                }
+            }
+             try
+            {
+                if (_mouseThread?.IsAlive == true)
+                {
+                    if (!_mouseThread.Join(1000)) // Wait max 1 second
+                    {
+                        Log.ForContext("FileName", "FormRemote").Warning("Keyboard thread did not finish gracefully");
+                    }
+                    _mouseThread = null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error cleaning up keyboard thread");
             }
         }
         #endregion
@@ -224,6 +350,12 @@ namespace VRemoteClient
         #region Keyboard
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action<object, KeyMessageEventArgs>(KeyPressedEventHandler), sender, e);
+                return;
+            }
+
             string keyCommandString = KeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
 
             TryAddWork(new TaskObject
@@ -234,6 +366,39 @@ namespace VRemoteClient
         }
         #endregion
         #region Mouse
+        private void MousePressedEventHandler(object sender, CustomMouseTaskEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action<object, CustomMouseTaskEventArgs>(MousePressedEventHandler), sender, e);
+                return;
+            }
+            TryAddWork(e.Task);
+        }
+        private void MouseClickEventHandler(object sender, MouseEventArgs e)
+        {
+            //waiting for double click called or timeout
+            pendingClickArgs = e;
+            pendingSender = sender as Control;
+            clickTimer.Stop();
+            clickTimer.Start();
+        }
+        private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
+        {
+            clickTimer.Stop(); // Cancel pending click
+            MouseHook.MouseEventToTask(MouseEventType.DoubleClick, vPictureBox, e);
+        }
+        private void ClickTimer_Tick(object sender, EventArgs e)
+        {
+            clickTimer.Stop();
+
+            if(pendingClickArgs != null)
+            {
+                MouseHook.MouseEventToTask(MouseEventType.Click, vPictureBox, pendingClickArgs);
+            }
+            pendingClickArgs = null;
+            pendingSender = null;
+        }
         private void MouseMoveEvent(object sender, MouseEventArgs e)
         {
             try
@@ -250,22 +415,22 @@ namespace VRemoteClient
                 {
                     if (!_isDrag)
                     {
-                        AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEDOWN, MouseType.Down);
+                        MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEDOWN, MouseType.Down);
                         _isDrag = true;
                     }
-                    AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down);
+                    MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down);
                 }
                 else
                 {
                     if (_isDrag)
                     {
-                        AddMouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEUP, MouseType.Down);
+                        MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEUP, MouseType.Down);
                         _isDrag = false;
                         return;
                     }
                     if (!_isDrag)
                     {
-                        AddMouseEventToTask(MouseEventType.Move, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
+                        MouseHook.MouseEventToTask(MouseEventType.Move, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
                     }
                 }
             }
@@ -276,45 +441,7 @@ namespace VRemoteClient
         }
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            AddMouseEventToTask(MouseEventType.Wheel, vPictureBox, e);
-        }
-        /// <summary>
-        /// mouseEvent = 1(mouse click, db click)
-        /// mouseEvent = 2(mouse wheel)
-        /// mouseEvent = 3(mouse drag and drop)
-        /// </summary>
-        /// <param name="isMouseClick"></param>
-        /// <param name="p"></param>
-        /// <param name="e"></param>
-        /// <param name="mouseMsg"></param>
-        /// <param name="mouseType"></param>
-        private void AddMouseEventToTask(MouseEventType mouseEvent, PictureBox p, MouseEventArgs e, MouseMessage mouseMsg = MouseMessage.None, MouseType mouseType = MouseType.None)
-        {
-            try
-            {
-
-                //check image nullable
-                if (vPictureBox.Image == null) return;
-
-                //get actual mouse coordinate before send
-                Point adjustedPoint = MouseHook.GetImagePointFromMouse(p, e.X, e.Y);
-
-                var adjustedMouseEventArgs = new MouseEventArgs(e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
-
-                string mouseEventString = MouseHook.MouseEventToString(mouseEvent, vPictureBox.Image.Width, vPictureBox.Image.Height, adjustedMouseEventArgs, mouseMsg, mouseType);
-
-                if (string.IsNullOrEmpty(mouseEventString))
-                    return;
-
-                TryAddWork(new TaskObject(
-                    taskType: Models.Enums.CommandType.Mouse,
-                    data: Encoding.ASCII.GetBytes(mouseEventString)
-                ));
-            }
-            catch(Exception ex)
-            {
-                Log.ForContext("FileName", "FormRemote").Error(ex, "MouseEvents error");
-            }
+            MouseHook.MouseEventToTask(MouseEventType.Wheel, vPictureBox, e);
         }
         #endregion
         #region Screen
@@ -334,54 +461,13 @@ namespace VRemoteClient
         {
             try
             {
-                RectangleF displayRect = TransformImageToDisplay(rectangle);
+                RectangleF displayRect = MouseHook.TransformImageToDisplay(vPictureBox ,rectangle);
                 Rectangle rect = Rectangle.Round(displayRect);
                 vPictureBox.Invalidate(rect);
             }
             catch(Exception ex)
             {
                 Log.ForContext("FileName", "FormRemote").Error(ex, "InvalidateRegion error");
-            }
-        }
-        /// <summary>
-        /// Calculates the scaled rectangle coordinates for display in PictureBox,
-        /// based on the original image rectangle, assuming PictureBox.SizeMode = Zoom.
-        /// </summary>
-        /// <param name="rectangle">Rectangle in image coordinates.</param>
-        /// <returns>Rectangle transformed to display coordinates.</returns>
-        private RectangleF TransformImageToDisplay(Rectangle rectangle)
-        {
-            try
-            {
-                if (vPictureBox.Image == null) return rectangle;
-
-
-                var imageSize = vPictureBox.Image.Size;
-                var pictureboxSize = vPictureBox.ClientSize;
-
-                float scaleX = (float)pictureboxSize.Width / imageSize.Width;
-                float scaleY = (float)pictureboxSize.Height / imageSize.Height;
-
-                float scale = Math.Min(scaleX, scaleY);
-
-                float displayWidth = (imageSize.Width * scale);
-                float displayHeight = (imageSize.Height * scale);
-
-                float offsetX = (pictureboxSize.Width - displayWidth) / 2;
-                float offsetY = (pictureboxSize.Height - displayHeight) / 2;
-
-                RectangleF displayRect = new RectangleF(
-                    offsetX + (rectangle.X * scale),
-                    offsetY + (rectangle.Y * scale),
-                    (rectangle.Width * scale),
-                    (rectangle.Height * scale));
-
-                return displayRect;
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "FormRemote").Error(ex, "Error in TransformImageToDisplay");
-                return rectangle;
             }
         }
         public void ScreenEvent(byte[] data)
