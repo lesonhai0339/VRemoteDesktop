@@ -46,9 +46,12 @@ namespace VRemoteClient.Services
 
             _resetEvent = new ManualResetEvent(false);
             BackgroundWorker = new BackgroundWorker();
-            BackgroundWorker.RunWorkerAsync();
         }
         #region Properties
+        public bool IsCapturing
+        {
+            get => BackgroundWorker.IsBusy;
+        }
         public bool IsDisposed
         {
             get=> _disposed;
@@ -108,6 +111,24 @@ namespace VRemoteClient.Services
             }
         }
         #endregion
+        public void StartCapture()
+        {
+            if (!BackgroundWorker.IsBusy)
+            {
+                BackgroundWorker.RunWorkerAsync();
+                Log.ForContext("Screen", "RemoteDesktopClient")
+                                         .Info($"Start capture");
+            }
+        }
+        public void StopCapture()
+        {
+            if (BackgroundWorker.IsBusy)
+            {
+                BackgroundWorker.CancelAsync();
+                Log.ForContext("Screen", "RemoteDesktopClient")
+                                                         .Info($"Stop capture");
+            }
+        }
         private void DoWork(object sender, DoWorkEventArgs e)
         {
             while (!_cancel.IsCancellationRequested)
