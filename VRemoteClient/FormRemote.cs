@@ -305,12 +305,16 @@ namespace VRemoteClient
                 {
                     if (!_keyboardThread.Join(1000)) // Wait max 1 second
                     {
-                        Log.ForContext("FileName", "FormRemote").Warning("Keyboard thread did not finish gracefully");
+                        Log.ForContext("FileName", "FormRemote").Warning("Mouse thread did not finish gracefully");
                     }
                     _keyboardThread = null;
                 }
             }
-             try
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error cleaning up mouse thread");
+            }
+            try
             {
                 if (_mouseThread?.IsAlive == true)
                 {
