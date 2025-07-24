@@ -91,7 +91,25 @@ namespace VRemoteServer.Services
         {
             try
             {
-                await ClientDisconnectCallback(client);
+                var connections = RemoteDesktop.Where(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).ToList();
+                if (connections.Count > 0)
+                {
+                    var tasks = connections.Select(async x =>
+                    {
+                        var partner = x.Value.Sender.Client == client ? x.Value.Receiver : x.Value.Sender;
+                        if (partner.Client != null)
+                        {
+                            int result = await SendCommandAsync(partner.Client, Enums.CommandType.P2PDisconnect);
+                            int result2 = await SendCommandAsync(client, Enums.CommandType.P2PDisconnect);
+                            if (result > 0 && result2 > 0)
+                            {
+                                RemoteDesktop.TryRemove(x.Key, out _);
+                            }
+                        }
+                        return true;
+                    }).ToList();
+                    await Task.WhenAll(tasks);
+                }
             }
             catch(Exception ex)
             {
@@ -267,10 +285,6 @@ namespace VRemoteServer.Services
             await SendCommandAsync(client, Enums.CommandType.Login);
 
         }
-        public void ProcessDisconnect(Client client, byte[] data)
-        {
-            // Handle disconnect logic here
-        }
         public void ProcessData(Client client, byte[] data)
         {
             // Handle data processing logic here
@@ -288,7 +302,7 @@ namespace VRemoteServer.Services
         {
             // Handle error logic here
         }
-        public async Task ClientDisconnectCallback(Client client)
+        public async void ClientDisconnectCallback(Client client)
         {
             var connections = RemoteDesktop.Where(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).ToList();
             if (connections.Any())
@@ -299,8 +313,7 @@ namespace VRemoteServer.Services
                     if(partner.Client != null)
                     {
                         int result = await SendCommandAsync(partner.Client, Enums.CommandType.P2PDisconnect);
-                        int result2 = await SendCommandAsync(client, Enums.CommandType.P2PDisconnect);
-                        if (result > 0 && result2 > 0)
+                        if (result > 0)
                         {
                             RemoteDesktop.TryRemove(x.Key, out _);
                         }

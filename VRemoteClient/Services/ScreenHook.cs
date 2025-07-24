@@ -137,6 +137,7 @@ namespace VRemoteClient.Services
         {
             while (!_cancel.IsCancellationRequested)
             {
+                Console.WriteLine("Screen hook called");
                 var screens = _capture.GetScreen();
                 if (screens.Any())
                 {
