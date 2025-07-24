@@ -112,6 +112,8 @@ namespace VRemoteClient
 
         private void GlobalKeyboardEvent(object sender, KeyMessageEventArgs e)
         {
+            if (Form.ActiveForm != this) return;
+            //Todo: handle keyeboard event in future
             Console.WriteLine("Global keyboard hook called on form: " + this.Text);
         }
 
