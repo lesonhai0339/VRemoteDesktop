@@ -57,9 +57,9 @@ namespace VRemoteClient
             _height = this.Height;
 
             Client = remoteClient;
-            //KeyboardHook = new KeyboardHook();
+            KeyboardHook = new KeyboardHook();
             MouseHook = new MouseHook();
-            GlobalKeyboard = globalKeyboardHook;
+            //GlobalKeyboard = globalKeyboardHook;
             _isDrag = false;
             isP2PDisconnectCallback = new ManualResetEvent(false);
 
@@ -193,9 +193,9 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
-            //uint pId = (uint)Process.GetCurrentProcess().Id;
-            //IntPtr windowHandle = this.Handle; ;
-            //KeyboardHook.Start(pId, windowHandle);
+            uint pId = (uint)Process.GetCurrentProcess().Id;
+            IntPtr windowHandle = this.Handle; ;
+            KeyboardHook.Start(pId, windowHandle);
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
