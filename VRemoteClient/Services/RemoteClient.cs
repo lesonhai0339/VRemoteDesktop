@@ -406,7 +406,6 @@ namespace VRemoteClient.Services
                         ProcessLogin(true);
                         break;
                     case CommandType.P2PConnect:
-                        Console.WriteLine("A");
                         ProcessP2PConnect(true, data);
                         break;
                     case CommandType.Disconnect:
@@ -450,7 +449,6 @@ namespace VRemoteClient.Services
                         ProcessLogin(false);
                         break;
                     case CommandType.P2PDisconnect:
-                        Console.WriteLine("P2PDisconnect Called");
                         IsP2PConnected = false;
                         P2PDisconnectedEvent disConnected = P2PDisconnectedEventhandler;
                         if (disConnected != null)

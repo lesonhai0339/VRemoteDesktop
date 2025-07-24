@@ -55,13 +55,11 @@ namespace VRemoteClient.Services
         /// <returns></returns>
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            if (nCode >= 0 && IsTargetWindowFocused())
+            if (nCode >= 0)
             {
                 // Only process key down and key up messages
                 if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
                 {
-
-                    // Correct way to read the virtual key code
                     KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
@@ -86,10 +84,26 @@ namespace VRemoteClient.Services
 
                     //    return (IntPtr)1;
                     //}
-                    KeyPressed?.Invoke(this, keyEventArgs);
-                    return (IntPtr)1;
+                    if (IsTargetWindowFocused())
+                    {
+                        KeyPressed?.Invoke(this, keyEventArgs);
+                        return (IntPtr)1;
+                    }
+                    else
+                    {
+                        if(IsControlPressed() && key == Keys.C)
+                        {
+                            string clipboardData = Clipboard.GetText();
+                            Console.WriteLine("No copy ngoai form, data: "+ clipboardData);
+                        }
+                        if(IsControlPressed() && key == Keys.V)
+                        {
+                            Clipboard.SetText("Hello world");
+                            Console.WriteLine("No parse ngoai form, data: "+ Clipboard.GetText());
+                        }
+                    } 
                 }
-            }
+            } 
             return CallNextHookEx(hookID, nCode, wParam, lParam);
         }
         private bool IsModifierKey(int vkCode)
