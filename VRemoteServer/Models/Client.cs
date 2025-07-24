@@ -25,6 +25,7 @@ namespace VRemoteServer.Models
 
         private Action<Client> _disconnectCallback;
         private Func<Enums.CommandType ,Client, byte[], Task<bool>> _dataCallback;
+        private object _lock = new object();
 
 
         //data
@@ -61,6 +62,13 @@ namespace VRemoteServer.Models
         }
         #endregion
         #region Methods
+        public void ClearHeader()
+        {
+            _currentHeader = null;
+            _remainingData = null;
+            _dataExpected = 0;
+            _dataReceived = 0;
+        }
         private bool CheckAlive()
         {
             try

@@ -86,7 +86,6 @@ namespace VRemoteServer.Services
                 }
             }
         }
-
         private async Task ProcessP2PDisconnect(Client client, byte[] data)
         {
             try
@@ -103,6 +102,8 @@ namespace VRemoteServer.Services
                             int result2 = await SendCommandAsync(client, Enums.CommandType.P2PDisconnect);
                             if (result > 0 && result2 > 0)
                             {
+                                partner.Client.ClearHeader();
+                                client.ClearHeader();
                                 RemoteDesktop.TryRemove(x.Key, out _);
                             }
                         }
@@ -315,6 +316,8 @@ namespace VRemoteServer.Services
                         int result = await SendCommandAsync(partner.Client, Enums.CommandType.P2PDisconnect);
                         if (result > 0)
                         {
+                            partner.Client.ClearHeader();
+                            client.ClearHeader();
                             RemoteDesktop.TryRemove(x.Key, out _);
                         }
                     }

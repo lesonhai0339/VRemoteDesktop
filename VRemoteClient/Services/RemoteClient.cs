@@ -402,6 +402,7 @@ namespace VRemoteClient.Services
                     ProcessLogin(true);
                     break;
                 case CommandType.P2PConnect:
+                    Console.WriteLine("A");
                     ProcessP2PConnect(true, data);
                     break;
                 case CommandType.Disconnect:
@@ -659,15 +660,7 @@ namespace VRemoteClient.Services
                             MinorVersion = partnerInfo[8],
                         };
                         connectionInfo.Receiver = _me;
-                        _vscreen?.StartCapture();
-                        //if(_vscreen == null)
-                        //{
-                        //    new Thread(() =>
-                        //    {
-                        //        Thread.CurrentThread.IsBackground = true;
-                        //        _vscreen = new ScreenHook(this);
-                        //    }).Start();
-                        //}    
+                        _vscreen?.StartCapture();   
                     }
                     else if (partnerInfo[0].ToLower() == "1")
                     {
