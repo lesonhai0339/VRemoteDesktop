@@ -62,7 +62,6 @@ namespace VRemoteServer.Services
                             break;
                         case Enums.CommandType.Screen:
                         case Enums.CommandType.Chunks:
-
                             await P2PDataSend(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Keyboard:
@@ -71,6 +70,9 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.ScreenOk:
                         case Enums.CommandType.ChunksOk:
                             await P2PCommand(task.Client, task.Data);
+                            break;
+                        case Enums.CommandType.P2PDisconnect:
+                            await ProcessP2PDisconnect(task.Client, task.Data);
                             break;
                         case Enums.CommandType.Ack:
                             await SendAck(task.Client, task.Data);
@@ -85,6 +87,21 @@ namespace VRemoteServer.Services
                 }
             }
         }
+
+        private async Task ProcessP2PDisconnect(Client client, byte[] data)
+        {
+            try
+            {
+                await P2PCommand(client, data);
+                ClientDisconnectCallback(client);
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteDesktopServer")
+                                   .Error(ex, "P2PDisconnect error");
+            }
+        }
+
         private async Task P2PCommand(Client client, byte[] data)
         {
             var partner = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).Value;
