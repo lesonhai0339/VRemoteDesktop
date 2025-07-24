@@ -46,6 +46,7 @@ namespace VRemoteClient.Services
 
             _resetEvent = new ManualResetEvent(false);
             BackgroundWorker = new BackgroundWorker();
+            BackgroundWorker.WorkerSupportsCancellation = true;
         }
         #region Properties
         public bool IsCapturing

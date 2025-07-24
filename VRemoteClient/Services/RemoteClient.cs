@@ -74,6 +74,8 @@ namespace VRemoteClient.Services
             ScreenTasks = new ConcurrentQueue<object>();
             CommandTasks = new ConcurrentQueue<object>();
             Worker = new BackgroundWorker();
+            Worker.WorkerSupportsCancellation = true;
+
 
             _screenThread = new Thread(() =>
             {
@@ -395,78 +397,85 @@ namespace VRemoteClient.Services
         }
         private void ProcessReceiveData(byte[] data)
         {
-            CommandType commandType = (CommandType)data[0];
-            switch (commandType)
+            try
             {
-                case CommandType.Login:
-                    ProcessLogin(true);
-                    break;
-                case CommandType.P2PConnect:
-                    Console.WriteLine("A");
-                    ProcessP2PConnect(true, data);
-                    break;
-                case CommandType.Disconnect:
-                    break;
-                case CommandType.Data:
-                    break;
-                case CommandType.Ping:
-                    break;
-                case CommandType.Pong:
-                    Console.WriteLine("Pong received from server");
-                    break;
-                case CommandType.Screen:
-                    ProcessScreen(data);
-                    break;
-                case CommandType.Chunks:
-                    ProcessChunks(data);
-                    break;
-                case CommandType.ScreenOk:
-                    ScreenSuccessEvent screenSuccess = ScreenSuccessEventHandler;
-                    if (screenSuccess != null)
-                    {
-                        screenSuccess(true);
-                    }
-                    break;
-                case CommandType.ChunksOk:
-                    ChunksSuccessEvent chunksSuccess = ChunksSuccessEventHandler;
-                    if (chunksSuccess != null)
-                    {
-                        chunksSuccess(true);
-                    }
-                    break;
-                case CommandType.Keyboard:
-                    ProcessKeyboard(data);
-                    break;
-                case CommandType.Mouse:
-                    ProcessMouse(data);
-                    break;
-                case CommandType.Error:
-                    break;
-                case CommandType.LoginFailed:
-                    ProcessLogin(false);
-                    break;
-                case CommandType.P2PDisconnect:
-                    Console.WriteLine("P2PDisconnect Called");
-                    IsP2PConnected = false;
-                    P2PDisconnectedEvent disConnected = P2PDisconnectedEventhandler;
-                    if(disConnected != null)
-                    {
-                        disConnected();
-                    }
-                    _vscreen.StopCapture();
-                    break;
-                case CommandType.P2PConnectFailed:
-                    ProcessP2PConnect(false, data);
-                    break;
-                case CommandType.Ack:
-                    AckEvent ack = AckEventHandler;
-                    if (ack != null)
-                    {
-                        ack();
-                    }
-                    break;
-                default:
-                    break;
+                CommandType commandType = (CommandType)data[0];
+                switch (commandType)
+                {
+                    case CommandType.Login:
+                        ProcessLogin(true);
+                        break;
+                    case CommandType.P2PConnect:
+                        Console.WriteLine("A");
+                        ProcessP2PConnect(true, data);
+                        break;
+                    case CommandType.Disconnect:
+                        break;
+                    case CommandType.Data:
+                        break;
+                    case CommandType.Ping:
+                        break;
+                    case CommandType.Pong:
+                        Console.WriteLine("Pong received from server");
+                        break;
+                    case CommandType.Screen:
+                        ProcessScreen(data);
+                        break;
+                    case CommandType.Chunks:
+                        ProcessChunks(data);
+                        break;
+                    case CommandType.ScreenOk:
+                        ScreenSuccessEvent screenSuccess = ScreenSuccessEventHandler;
+                        if (screenSuccess != null)
+                        {
+                            screenSuccess(true);
+                        }
+                        break;
+                    case CommandType.ChunksOk:
+                        ChunksSuccessEvent chunksSuccess = ChunksSuccessEventHandler;
+                        if (chunksSuccess != null)
+                        {
+                            chunksSuccess(true);
+                        }
+                        break;
+                    case CommandType.Keyboard:
+                        ProcessKeyboard(data);
+                        break;
+                    case CommandType.Mouse:
+                        ProcessMouse(data);
+                        break;
+                    case CommandType.Error:
+                        break;
+                    case CommandType.LoginFailed:
+                        ProcessLogin(false);
+                        break;
+                    case CommandType.P2PDisconnect:
+                        Console.WriteLine("P2PDisconnect Called");
+                        IsP2PConnected = false;
+                        P2PDisconnectedEvent disConnected = P2PDisconnectedEventhandler;
+                        if (disConnected != null)
+                        {
+                            disConnected();
+                        }
+                        _vscreen.StopCapture();
+                        break;
+                    case CommandType.P2PConnectFailed:
+                        ProcessP2PConnect(false, data);
+                        break;
+                    case CommandType.Ack:
+                        AckEvent ack = AckEventHandler;
+                        if (ack != null)
+                        {
+                            ack();
+                        }
+                        break;
+                    default:
+                        break;
+                }
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", "MouseHook").Error(ex, "ProcessReceiveData error");
             }
         }
         /// <summary>
