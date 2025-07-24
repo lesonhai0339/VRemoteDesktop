@@ -452,6 +452,7 @@ namespace VRemoteClient.Services
                     {
                         disConnected();
                     }
+                    _vscreen.StopCapture();
                     break;
                 case CommandType.P2PConnectFailed:
                     ProcessP2PConnect(false, data);
