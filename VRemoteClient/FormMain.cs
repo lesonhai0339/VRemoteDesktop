@@ -5,6 +5,7 @@ using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -19,12 +20,14 @@ namespace VRemoteClient
 {
     public partial class FormMain : Form
     {
+        private object _lockObject = new object();
         private bool _isSocketConnected;
         private bool _isP2PConnected;   
         private ManualResetEvent _resetEvent;
         private ClientInfo _clientInfo;
         private RemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
+        private GlobalKeyboardHook _globalKeyboardHook;
         public FormMain()
         {
             InitializeComponent();
@@ -35,13 +38,34 @@ namespace VRemoteClient
             Me = Utils.Extensions.InitInfo();
             RemoteClient = new RemoteClient(Me);
             this.Text = "VRemote - Vinhhy";
-            this.Icon = new Icon(@"Resources\logo.ico");
+            string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
+            this.Icon = new Icon(iconPath);
+            this.MaximizeBox = false;
             this.txtOwnerId.Text = Me.Id;
             this.txtOwnerPassword.Text = Me.Password;
-
+            txtPartnerPassword.UseSystemPasswordChar = true;
+            GlobalKeyboardHook = new GlobalKeyboardHook();
+            GlobalKeyboardHook.Start((uint)Process.GetCurrentProcess().Id);
         }
 
         #region Properties
+        public GlobalKeyboardHook GlobalKeyboardHook
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _globalKeyboardHook;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _globalKeyboardHook = value;
+                }
+            }
+        }
         public ClientInfo Me
         {
             get => _clientInfo;
@@ -178,7 +202,7 @@ namespace VRemoteClient
             _resetEvent.Reset();
             if (_isP2PConnected)
             {
-                FormRemote frmRemote = new FormRemote(RemoteClient, _connectionInfo);
+                FormRemote frmRemote = new FormRemote(RemoteClient, _connectionInfo, GlobalKeyboardHook);
                 frmRemote.Show();
             }
             else

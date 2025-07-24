@@ -39,6 +39,7 @@ namespace VRemoteClient
         private ConnectionInfo _info;
         private KeyboardHook _keyboardHook;
         private MouseHook _mouseHook;
+        private GlobalKeyboardHook _globalKeyboardHook;
 
         private DateTime lastMouseMoveTime = DateTime.MinValue;
 
@@ -47,7 +48,7 @@ namespace VRemoteClient
         private Control pendingSender;
 
         private ManualResetEvent isP2PDisconnectCallback;
-        public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
+        public FormRemote(RemoteClient remoteClient, ConnectionInfo info, GlobalKeyboardHook globalKeyboardHook)
         {
             InitializeComponent();
 
@@ -56,8 +57,9 @@ namespace VRemoteClient
             _height = this.Height;
 
             Client = remoteClient;
-            KeyboardHook = new KeyboardHook();
+            //KeyboardHook = new KeyboardHook();
             MouseHook = new MouseHook();
+            GlobalKeyboard = globalKeyboardHook;
             _isDrag = false;
             isP2PDisconnectCallback = new ManualResetEvent(false);
 
@@ -82,6 +84,37 @@ namespace VRemoteClient
             clickTimer.Tick += ClickTimer_Tick;
         }
         #region Properties
+        public GlobalKeyboardHook GlobalKeyboard
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _globalKeyboardHook;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    if(_globalKeyboardHook != null)
+                    {
+                        _globalKeyboardHook.KeyPressed -= GlobalKeyboardEvent;
+                    }
+                    _globalKeyboardHook = value;
+                    if (_globalKeyboardHook != null)
+                    {
+                        _globalKeyboardHook.KeyPressed += GlobalKeyboardEvent;
+                    }
+                }
+            }
+        }
+
+        private void GlobalKeyboardEvent(object sender, KeyMessageEventArgs e)
+        {
+            Console.WriteLine("Global keyboard hook called on form: " + this.Text);
+        }
+
         public RemoteClient Client
         {
             get => _remoteClient;
@@ -160,9 +193,9 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
-            uint pId = (uint)Process.GetCurrentProcess().Id;
-            IntPtr windowHandle = this.Handle; ;
-            KeyboardHook.Start(pId, windowHandle);
+            //uint pId = (uint)Process.GetCurrentProcess().Id;
+            //IntPtr windowHandle = this.Handle; ;
+            //KeyboardHook.Start(pId, windowHandle);
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -182,6 +215,12 @@ namespace VRemoteClient
                 catch(Exception ex)
                 {
                     Log.ForContext("FileName", "FormRemote").Error(ex, "Send P2PDisconnect error");
+                }
+
+                if(_globalKeyboardHook != null)
+                {
+                    _globalKeyboardHook.KeyPressed -= GlobalKeyboardEvent;
+                    _globalKeyboardHook = null;
                 }
 
                 if (KeyboardHook != null)
@@ -374,6 +413,7 @@ namespace VRemoteClient
         #region Keyboard
         private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
         {
+            if (Form.ActiveForm != this) return;
             if (this.InvokeRequired)
             {
                 this.BeginInvoke(new Action<object, KeyMessageEventArgs>(KeyPressedEventHandler), sender, e);
