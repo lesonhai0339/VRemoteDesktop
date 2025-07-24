@@ -23,7 +23,7 @@ namespace VRemoteServer.Models
         private readonly TimeSpan _timeout = TimeSpan.FromSeconds(300);
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
-        private Action<Client> _disconnectCallback;
+        private Func<Client, Task> _disconnectCallback;
         private Func<Enums.CommandType ,Client, byte[], Task<bool>> _dataCallback;
 
 
@@ -33,7 +33,7 @@ namespace VRemoteServer.Models
         private int _dataExpected;
         private int _dataReceived;
 
-        public Client(Socket socket, Action<Client> disconnectCallback, Func<Enums.CommandType, Client, byte[], Task<bool>> dataCallback)
+        public Client(Socket socket, Func<Client, Task> disconnectCallback, Func<Enums.CommandType, Client, byte[], Task<bool>> dataCallback)
         {
             _lastSendTime = DateTime.Now; //init before check timeout
 
