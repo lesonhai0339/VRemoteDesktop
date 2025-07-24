@@ -48,6 +48,7 @@ namespace VRemoteClient.Services
         public delegate void AckEvent();
         public delegate void ScreenSuccessEvent(bool flag);
         public delegate void ChunksSuccessEvent(bool flag);
+        public delegate void P2PDisconnectedEvent();
 
         public event ConnectSckEvent ConnectSckEventHandler;
         public event LoginEvent LoginEventHandler;
@@ -58,6 +59,7 @@ namespace VRemoteClient.Services
         public event AckEvent AckEventHandler;
         public event ScreenSuccessEvent ScreenSuccessEventHandler;
         public event ChunksSuccessEvent ChunksSuccessEventHandler;
+        public event P2PDisconnectedEvent P2PDisconnectedEventhandler;
 
         CancellationTokenSource _cancellationToken;
 
@@ -442,8 +444,14 @@ namespace VRemoteClient.Services
                 case CommandType.LoginFailed:
                     ProcessLogin(false);
                     break;
-                case CommandType.PartnerDisconnected:
+                case CommandType.P2PDisconnect:
+                    Console.WriteLine("P2PDisconnect Called");
                     IsP2PConnected = false;
+                    P2PDisconnectedEvent disConnected = P2PDisconnectedEventhandler;
+                    if(disConnected != null)
+                    {
+                        disConnected();
+                    }
                     break;
                 case CommandType.P2PConnectFailed:
                     ProcessP2PConnect(false, data);

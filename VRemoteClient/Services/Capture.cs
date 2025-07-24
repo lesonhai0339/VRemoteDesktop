@@ -22,6 +22,7 @@ namespace VRemoteClient.Services
         //private ConcurrentBag<ScreenBlock> blocks = new ConcurrentBag<ScreenBlock>();
 
         private Bitmap? _previousFrame;
+        private object _lock;
         private object _lockObject;
         private object _lockObject2;
         private ImageCodecInfo encoder;
@@ -29,6 +30,7 @@ namespace VRemoteClient.Services
         public Capture()
         {
             _previousFrame = null;
+            _lock = new object();
             _lockObject = new object();
             _lockObject2 = new object();
             encoder = ImageCodecInfo.GetImageEncoders()
@@ -36,6 +38,15 @@ namespace VRemoteClient.Services
             encoderParams = new EncoderParameters(1);
             encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
         }
+        #region Properties
+        public void Renew()
+        {
+            lock (_lock)
+            {
+                _previousFrame = null;
+            }
+        }
+        #endregion
         internal List<ScreenBlock> GetScreen()
         {
 

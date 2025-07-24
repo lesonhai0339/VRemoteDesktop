@@ -23,7 +23,7 @@ namespace VRemoteClient.Models.Enums
         ChunksOk = 0x0E,
 
         LoginFailed = 0x90,
-        PartnerDisconnected = 0x91,
+        P2PDisconnect = 0x91,
         P2PConnectFailed = 0x92,
         Ack = 0x94, // Acknowledgment for received data
     }

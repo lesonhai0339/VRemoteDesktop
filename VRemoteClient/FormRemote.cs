@@ -19,6 +19,7 @@ using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services;
 using VRemoteClient.Utils;
+using static VRemoteClient.Services.RemoteClient;
 
 namespace VRemoteClient
 {
@@ -44,6 +45,8 @@ namespace VRemoteClient
         private System.Windows.Forms.Timer clickTimer;
         private MouseEventArgs pendingClickArgs;
         private Control pendingSender;
+
+        private ManualResetEvent isP2PDisconnectCallback;
         public FormRemote(RemoteClient remoteClient, ConnectionInfo info)
         {
             InitializeComponent();
@@ -56,6 +59,7 @@ namespace VRemoteClient
             KeyboardHook = new KeyboardHook();
             MouseHook = new MouseHook();
             _isDrag = false;
+            isP2PDisconnectCallback = new ManualResetEvent(false);
 
             this.Text = _info.Receiver.Id.Trim();
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
@@ -87,12 +91,14 @@ namespace VRemoteClient
                 {
                     _remoteClient.P2PScreenEventHandler -= ScreenEvent;
                     _remoteClient.P2PChunksEventHandler -= ChunksEvent;
+                    _remoteClient.P2PDisconnectedEventhandler -= P2PDisconnectEvent;
                 }
                 _remoteClient = value;
                 if(_remoteClient != null)
                 {
                     _remoteClient.P2PScreenEventHandler += ScreenEvent;
                     _remoteClient.P2PChunksEventHandler += ChunksEvent;
+                    _remoteClient.P2PDisconnectedEventhandler += P2PDisconnectEvent;
                 }
             }
         }
@@ -163,6 +169,21 @@ namespace VRemoteClient
             // Cleanup keyboard hook
             try
             {
+                try
+                {
+                    TaskObject disConnectTask = new TaskObject(taskType: Models.Enums.CommandType.P2PDisconnect, data: new byte[0], isSendHeader: true);
+                    TryAddWork(disConnectTask);
+
+                    if (!isP2PDisconnectCallback.WaitOne(5000))
+                    {
+                        Log.ForContext("FileName", "FormRemote").Warning("P2P disconnect timed out after 5 seconds");
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Log.ForContext("FileName", "FormRemote").Error(ex, "Send P2PDisconnect error");
+                }
+
                 if (KeyboardHook != null)
                 {
                     KeyboardHook.KeyPressed -= KeyPressedEventHandler;
@@ -319,6 +340,18 @@ namespace VRemoteClient
 
         #endregion
         #region Event Handlers
+        private void P2PDisconnectEvent()
+        {
+            try
+            {
+                isP2PDisconnectCallback.Set();
+            }
+            catch (ObjectDisposedException)
+            {
+                // Handle case where the ManualResetEvent was disposed during shutdown
+                // This can happen if form disposal races with the disconnect event
+            }
+        }
         private void TryAddWork(TaskObject task)
         {
             if(task == null)

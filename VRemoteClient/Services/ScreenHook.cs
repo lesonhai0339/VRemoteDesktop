@@ -113,8 +113,11 @@ namespace VRemoteClient.Services
         #endregion
         public void StartCapture()
         {
+            _capture.Renew();
             if (!BackgroundWorker.IsBusy)
             {
+                _cancel?.Dispose();
+                _cancel = new CancellationTokenSource();
                 BackgroundWorker.RunWorkerAsync();
                 Log.ForContext("Screen", "RemoteDesktopClient")
                                          .Info($"Start capture");
@@ -124,6 +127,7 @@ namespace VRemoteClient.Services
         {
             if (BackgroundWorker.IsBusy)
             {
+                _cancel?.Cancel();
                 BackgroundWorker.CancelAsync();
                 Log.ForContext("Screen", "RemoteDesktopClient")
                                                          .Info($"Stop capture");
@@ -148,7 +152,7 @@ namespace VRemoteClient.Services
                             break;
                     }
                 }
-                Thread.Sleep(50);
+                Thread.Sleep(10);
             }
         }
         // Send full screen to sender at first connect
