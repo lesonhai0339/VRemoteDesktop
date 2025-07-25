@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using VRemoteClient.Models.Entities;
+using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
 
 namespace VRemoteClient.Services
@@ -152,6 +153,21 @@ namespace VRemoteClient.Services
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Stop screen hook failed");
+            }
+        }
+        public void ConnectToServer()
+        {
+            RemoteClient.Connect();
+        }
+        public void Send(CommandType type, byte[] data, int length, bool includeHeader = true)
+        {
+            if (includeHeader)
+            {
+                RemoteClient.Send(type, data, includeHeader);
+            }
+            else
+            {
+                RemoteClient.Send(type, data, length);
             }
         }
         #endregion
