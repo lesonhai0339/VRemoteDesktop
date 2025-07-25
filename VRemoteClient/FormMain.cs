@@ -22,7 +22,6 @@ namespace VRemoteClient
     {
         private object _lockObject = new object();
         private bool _isSocketConnected;
-        private bool _isP2PConnected;   
         private ManualResetEvent _resetEvent;
         private ClientInfo _clientInfo;
         private RemoteClient _remoteClient;
@@ -33,7 +32,6 @@ namespace VRemoteClient
             InitializeComponent();
 
             _isSocketConnected = false;
-            _isP2PConnected = false;
             _resetEvent = new ManualResetEvent(false);
             Me = Utils.Extensions.InitInfo();
             RemoteClient = new RemoteClient(Me);
@@ -140,7 +138,6 @@ namespace VRemoteClient
                 if(info != null)
                 {
                     _resetEvent.Set();
-                    _isP2PConnected = true;
                     _connectionInfo = info;
                 }
             }
@@ -168,8 +165,7 @@ namespace VRemoteClient
             else
             {
                 MessageBox.Show("Đăng nhập thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-           
+            } 
         }
         private void Login()
         {
@@ -182,7 +178,6 @@ namespace VRemoteClient
             ));
         }
         #endregion
-
         private void btnConnect_Click(object sender, EventArgs e)
         {
             if (string.IsNullOrEmpty(txtPartnerId.Text) || string.IsNullOrEmpty(txtPartnerPassword.Text))
@@ -198,17 +193,24 @@ namespace VRemoteClient
                 data: dataBytes
                 
             ));
-            _resetEvent.WaitOne(1000 * 5);
-            _resetEvent.Reset();
-            if (_isP2PConnected)
+            bool flag = _resetEvent.WaitOne(1000 * 5);
+            if (flag)
             {
-                FormRemote frmRemote = new FormRemote(RemoteClient, _connectionInfo, GlobalKeyboardHook);
+                ConnectionInfo info = new ConnectionInfo() 
+                {
+                    SessionId = _connectionInfo.SessionId,
+                    Receiver = _connectionInfo.Receiver,
+                    Sender = _connectionInfo.Sender
+                };
+                FormRemote frmRemote = new FormRemote(RemoteClient, info, GlobalKeyboardHook);
                 frmRemote.Show();
             }
             else
             {
                 MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+            _connectionInfo = null;
+            _resetEvent.Reset();
         }
     }
 }

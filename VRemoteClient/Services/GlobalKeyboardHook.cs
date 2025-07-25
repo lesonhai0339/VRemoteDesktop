@@ -38,6 +38,7 @@ namespace VRemoteClient.Services
                 ////get specifi windows handle
                 //return SetWindowsHookEx(WH_KEYBOARD_LL, proc,
                 //    GetModuleHandle(curModule.ModuleName), 0);
+
                 //get all of this process
                 return SetWindowsHookEx(WH_KEYBOARD_LL, proc,
                     IntPtr.Zero, 0);
@@ -52,7 +53,9 @@ namespace VRemoteClient.Services
         /// <returns></returns>
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
-            Console.WriteLine(KeyPressed == null);
+            //event do not be register, do not need to listen
+            if (KeyPressed == null) return (IntPtr)1;
+            
             if (nCode >= 0)
             {
                 if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
@@ -67,9 +70,8 @@ namespace VRemoteClient.Services
 
                     keyEventArgs = new KeyMessageEventArgs(wParam, Keys.None, key, keyState);
 
-                    Console.WriteLine("Key: " + key + " pressed");
-                    //KeyPressed?.Invoke(this, keyEventArgs);
-                    //return (IntPtr)1;
+                    KeyPressed?.Invoke(this, keyEventArgs);
+                    return (IntPtr)1;
                 }
             }
             return CallNextHookEx(hookID, nCode, wParam, lParam);

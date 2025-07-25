@@ -36,8 +36,7 @@ namespace VRemoteClient
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
         private RemoteClient _remoteClient;
-        private ConnectionInfo _info;
-        private KeyboardHook _keyboardHook;
+        private ConnectionInfo _connectionInfo;
         private MouseHook _mouseHook;
         private GlobalKeyboardHook _globalKeyboardHook;
 
@@ -52,18 +51,17 @@ namespace VRemoteClient
         {
             InitializeComponent();
 
-            _info = info;
+            _connectionInfo = info;
             _width = this.Width;
             _height = this.Height;
 
             Client = remoteClient;
-            KeyboardHook = new KeyboardHook();
             MouseHook = new MouseHook();
-            //GlobalKeyboard = globalKeyboardHook;
+            GlobalKeyboardHook = globalKeyboardHook;
             _isDrag = false;
             isP2PDisconnectCallback = new ManualResetEvent(false);
 
-            this.Text = _info.Receiver.Id.Trim();
+            this.Text = _connectionInfo.Receiver.Id.Trim();
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
             this.Icon = new Icon(iconPath);
             base.AutoScaleDimensions = new SizeF(6f, 13f);
@@ -84,7 +82,7 @@ namespace VRemoteClient
             clickTimer.Tick += ClickTimer_Tick;
         }
         #region Properties
-        public GlobalKeyboardHook GlobalKeyboard
+        public GlobalKeyboardHook GlobalKeyboardHook
         {
             get
             {
@@ -109,14 +107,6 @@ namespace VRemoteClient
                 }
             }
         }
-
-        private void GlobalKeyboardEvent(object sender, KeyMessageEventArgs e)
-        {
-            if (Form.ActiveForm != this) return;
-            //Todo: handle keyeboard event in future
-            Console.WriteLine("Global keyboard hook called on form: " + this.Text);
-        }
-
         public RemoteClient Client
         {
             get => _remoteClient;
@@ -134,31 +124,6 @@ namespace VRemoteClient
                     _remoteClient.P2PScreenEventHandler += ScreenEvent;
                     _remoteClient.P2PChunksEventHandler += ChunksEvent;
                     _remoteClient.P2PDisconnectedEventhandler += P2PDisconnectEvent;
-                }
-            }
-        }
-        public KeyboardHook KeyboardHook
-        {
-            get
-            {
-                lock (_lockObject)
-                {
-                    return _keyboardHook;
-                }
-            }
-            set
-            {
-                lock (_lockObject)
-                {
-                    if (_keyboardHook != null)
-                    {
-                        _keyboardHook.KeyPressed -= KeyPressedEventHandler;
-                    }
-                    _keyboardHook = value;
-                    if (_keyboardHook != null)
-                    {
-                        _keyboardHook.KeyPressed += KeyPressedEventHandler;
-                    }
                 }
             }
         }
@@ -195,9 +160,6 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
-            uint pId = (uint)Process.GetCurrentProcess().Id;
-            IntPtr windowHandle = this.Handle; ;
-            KeyboardHook.Start(pId, windowHandle);
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -206,7 +168,12 @@ namespace VRemoteClient
             {
                 try
                 {
-                    TaskObject disConnectTask = new TaskObject(taskType: Models.Enums.CommandType.P2PDisconnect, data: new byte[0], isSendHeader: true);
+                    TaskObject disConnectTask = new TaskObject(
+                        taskType: Models.Enums.CommandType.P2PDisconnect, 
+                        receiveId: _connectionInfo.Receiver.Id,
+                        receivePort: _connectionInfo.Receiver.Port,
+                        data: new byte[0], 
+                        isSendHeader: true);
                     TryAddWork(disConnectTask);
 
                     if (!isP2PDisconnectCallback.WaitOne(5000))
@@ -223,14 +190,6 @@ namespace VRemoteClient
                 {
                     _globalKeyboardHook.KeyPressed -= GlobalKeyboardEvent;
                     _globalKeyboardHook = null;
-                }
-
-                if (KeyboardHook != null)
-                {
-                    KeyboardHook.KeyPressed -= KeyPressedEventHandler;
-                    KeyboardHook.Stop();
-                    KeyboardHook.Dispose();
-                    KeyboardHook = null; // Prevent double disposal
                 }
             }
             catch (Exception ex)
@@ -321,7 +280,13 @@ namespace VRemoteClient
         private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
         {
             clickTimer.Stop(); // Cancel pending click
-            MouseHook.MouseEventToTask(MouseEventType.DoubleClick, vPictureBox, e);
+            MouseHook.MouseEventToTask(
+                _connectionInfo.Receiver.Id, 
+                _connectionInfo.Receiver.Port, 
+                MouseEventType.DoubleClick, 
+                vPictureBox, 
+                e
+             );
         }
         private void MouseMoveEvent(object sender, MouseEventArgs e)
         {
@@ -339,22 +304,52 @@ namespace VRemoteClient
                 {
                     if (!_isDrag)
                     {
-                        MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEDOWN, MouseType.Down);
+                        MouseHook.MouseEventToTask(
+                            _connectionInfo.Receiver.Id, 
+                            _connectionInfo.Receiver.Port, 
+                            MouseEventType.DragAndDrop, 
+                            vPictureBox, 
+                            e, 
+                            MouseMessage.DRAGDROP_MOUSEDOWN, 
+                            MouseType.Down
+                        );
                         _isDrag = true;
                     }
-                    MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEMOVE, MouseType.Down);
+                    MouseHook.MouseEventToTask(
+                        _connectionInfo.Receiver.Id, 
+                        _connectionInfo.Receiver.Port,
+                        MouseEventType.DragAndDrop, 
+                        vPictureBox, 
+                        e, 
+                        MouseMessage.DRAGDROP_MOUSEMOVE, 
+                        MouseType.Down
+                    );
                 }
                 else
                 {
                     if (_isDrag)
                     {
-                        MouseHook.MouseEventToTask(MouseEventType.DragAndDrop, vPictureBox, e, MouseMessage.DRAGDROP_MOUSEUP, MouseType.Down);
+                        MouseHook.MouseEventToTask(_connectionInfo.Receiver.Id, 
+                            _connectionInfo.Receiver.Port,
+                            MouseEventType.DragAndDrop, 
+                            vPictureBox, 
+                            e, 
+                            MouseMessage.DRAGDROP_MOUSEUP,
+                            MouseType.Down
+                        );
                         _isDrag = false;
                         return;
                     }
                     if (!_isDrag)
                     {
-                        MouseHook.MouseEventToTask(MouseEventType.Move, vPictureBox, e, MouseMessage.WM_MOUSEMOVE, MouseType.Down);
+                        MouseHook.MouseEventToTask(_connectionInfo.Receiver.Id, 
+                            _connectionInfo.Receiver.Port,
+                            MouseEventType.Move,
+                            vPictureBox, 
+                            e, 
+                            MouseMessage.WM_MOUSEMOVE,
+                            MouseType.Down
+                        );
                     }
                 }
             }
@@ -365,7 +360,13 @@ namespace VRemoteClient
         }
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            MouseHook.MouseEventToTask(MouseEventType.Wheel, vPictureBox, e);
+            MouseHook.MouseEventToTask(
+                _connectionInfo.Receiver.Id,
+                _connectionInfo.Receiver.Port,
+                MouseEventType.Wheel, 
+                vPictureBox, 
+                e
+            );
         }
         private void ClickTimer_Tick(object sender, EventArgs e)
         {
@@ -373,7 +374,13 @@ namespace VRemoteClient
 
             if (pendingClickArgs != null)
             {
-                MouseHook.MouseEventToTask(MouseEventType.Click, vPictureBox, pendingClickArgs);
+                MouseHook.MouseEventToTask(
+                    _connectionInfo.Receiver.Id, 
+                    _connectionInfo.Receiver.Port,
+                    MouseEventType.Click, 
+                    vPictureBox, 
+                    pendingClickArgs
+                );
             }
             pendingClickArgs = null;
             pendingSender = null;
@@ -413,20 +420,22 @@ namespace VRemoteClient
             Client.AddWork(task);
         }
         #region Keyboard
-        private void KeyPressedEventHandler(object sender, KeyMessageEventArgs e)
+        private void GlobalKeyboardEvent(object sender, KeyMessageEventArgs e)
         {
             if (Form.ActiveForm != this) return;
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<object, KeyMessageEventArgs>(KeyPressedEventHandler), sender, e);
+                this.BeginInvoke(new Action<object, KeyMessageEventArgs>(GlobalKeyboardEvent), sender, e);
                 return;
             }
 
-            string keyCommandString = KeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
+            string keyCommandString = GlobalKeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
 
             TryAddWork(new TaskObject
             (
                 taskType: Models.Enums.CommandType.Keyboard,
+                receiveId: _connectionInfo.Receiver.Id,
+                receivePort: _connectionInfo.Receiver.Port,
                 data: Encoding.ASCII.GetBytes(keyCommandString)
             ));
         }
