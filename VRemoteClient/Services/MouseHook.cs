@@ -43,7 +43,7 @@ namespace VRemoteClient.Services
                 MouseTask?.Invoke(this, new CustomMouseTaskEventArgs
                 {
                     Task = new TaskObject(
-                    taskType: Models.Enums.CommandType.Mouse,
+                    taskType: Models.Enums.RemoteType.Mouse,
                     receiveId: receiveId,
                     receivePort: receivePort,
                     data: Encoding.ASCII.GetBytes(mouseEventString)

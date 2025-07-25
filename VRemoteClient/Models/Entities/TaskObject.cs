@@ -17,14 +17,14 @@ namespace VRemoteClient.Models.Entities
     }
     public class TaskObject
     {
-        public TaskObject(CommandType taskType, byte[] data, string receiveId = "", string receivePort = "")
+        public TaskObject(RemoteType taskType, byte[] data, string receiveId = "", string receivePort = "")
         {
             TaskType = taskType;
             ReceiveId = receiveId;
             ReceivePort = receivePort;
             Data = data;
         }
-        public TaskObject(CommandType taskType, byte[] data, int length, string receiveId = "", string receivePort= "")
+        public TaskObject(RemoteType taskType, byte[] data, int length, string receiveId = "", string receivePort= "")
         {
             TaskType = taskType;
             ReceiveId = receiveId;
@@ -32,7 +32,7 @@ namespace VRemoteClient.Models.Entities
             Data = data;
             Length = length;
         }
-        public TaskObject(CommandType taskType, byte[] data, bool isSendHeader, string receiveId = "", string receivePort = "")
+        public TaskObject(RemoteType taskType, byte[] data, bool isSendHeader, string receiveId = "", string receivePort = "")
         {
             TaskType = taskType;
             ReceiveId = receiveId;
@@ -40,7 +40,7 @@ namespace VRemoteClient.Models.Entities
             Data = data;
             IsSendHeader = isSendHeader;
         }
-        public TaskObject(CommandType taskType, byte[] data, int length, bool isSendHeader, string receiveId = "", string receivePort = "")
+        public TaskObject(RemoteType taskType, byte[] data, int length, bool isSendHeader, string receiveId = "", string receivePort = "")
         {
             TaskType = taskType;
             ReceiveId = receiveId;
@@ -50,7 +50,7 @@ namespace VRemoteClient.Models.Entities
             IsSendHeader = isSendHeader;
         }
 
-        public CommandType TaskType { get; set; }
+        public RemoteType TaskType { get; set; }
         public string ReceiveId { get; set; } = "";
         public string ReceivePort { get; set; } = "";
         public byte[] Data { get; set; }

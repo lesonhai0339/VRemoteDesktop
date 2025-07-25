@@ -169,7 +169,7 @@ namespace VRemoteClient
                 try
                 {
                     TaskObject disConnectTask = new TaskObject(
-                        taskType: Models.Enums.CommandType.P2PDisconnect, 
+                        taskType: Models.Enums.RemoteType.P2PDisconnect, 
                         receiveId: _connectionInfo.Receiver.Id,
                         receivePort: _connectionInfo.Receiver.Port,
                         data: new byte[0], 
@@ -433,7 +433,7 @@ namespace VRemoteClient
 
             TryAddWork(new TaskObject
             (
-                taskType: Models.Enums.CommandType.Keyboard,
+                taskType: Models.Enums.RemoteType.Keyboard,
                 receiveId: _connectionInfo.Receiver.Id,
                 receivePort: _connectionInfo.Receiver.Port,
                 data: Encoding.ASCII.GetBytes(keyCommandString)
@@ -519,7 +519,7 @@ namespace VRemoteClient
                 }
 
                 TryAddWork(new TaskObject(
-                     taskType: Models.Enums.CommandType.ScreenOk,
+                     taskType: Models.Enums.RemoteType.ScreenOk,
                      data: new byte[0]
                 ));
             }
@@ -565,7 +565,7 @@ namespace VRemoteClient
                     InvalidateRegion(dirtyRegion);
 
                 TryAddWork(new TaskObject(
-                    taskType: Models.Enums.CommandType.ChunksOk,
+                    taskType: Models.Enums.RemoteType.ChunksOk,
                     data: new byte[0]
                 ));
             }

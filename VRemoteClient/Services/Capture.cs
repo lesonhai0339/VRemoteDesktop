@@ -46,10 +46,50 @@ namespace VRemoteClient.Services
                 _previousFrame = null;
             }
         }
+        public ScreenBlock GetCurrentScreen()
+        {
+            lock (_lock)
+            {
+                if (_previousFrame != null)
+                {
+                    using (var stream = new MemoryStream())
+                    {
+                        _previousFrame.Save(stream, encoder, encoderParams);
+                        ScreenBlock cell = new ScreenBlock
+                        {
+                            IsFullScreen = true,
+                            Rectangle = new Rectangle(0, 0, _previousFrame.Width, _previousFrame.Height),
+                            Bytes = stream.ToArray()
+                        };
+                        return cell;
+                    }
+                }
+                else
+                {
+                    using (Bitmap currentScreen = CaptureWindowsScreen1())
+                    {
+                        using (var stream = new MemoryStream())
+                        {
+                            currentScreen.Save(stream, encoder, encoderParams);
+                            ScreenBlock cell = new ScreenBlock
+                            {
+                                IsFullScreen = true,
+                                Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                                Bytes = stream.ToArray()
+                            };
+                            _previousFrame = currentScreen.Clone(
+                                new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                                PixelFormat.Format24bppRgb
+                            );
+                            return cell;
+                        }
+                    }
+                }
+            }
+        }
         #endregion
         internal List<ScreenBlock> GetScreen()
         {
-
             List<ScreenBlock> cells = new List<ScreenBlock>();
             lock (_lockObject)
             {
@@ -226,7 +266,6 @@ namespace VRemoteClient.Services
 
             return bitmap;
         }
-
         internal List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
         {
             Random rd = new Random();
@@ -286,7 +325,6 @@ namespace VRemoteClient.Services
                 }
             }
         }
-
         private List<Rectangle> MergeAdjacentRectangles(List<Rectangle> rectangles)
         {
             if (rectangles.Count <= 1) return rectangles;
@@ -315,7 +353,6 @@ namespace VRemoteClient.Services
             }
             return merged;
         }
-
         private bool CanMerge(Rectangle rect1, Rectangle rect2)
         {
             // Check if rectangles are adjacent or overlapping
@@ -327,11 +364,8 @@ namespace VRemoteClient.Services
             double efficiency = (double)combinedArea / unionArea;
             return efficiency > 0.75; // 75% efficiency threshold
         }
-
         //this method same with Math.abs()
         private int AbsBitwise(int x) => (x + (x >> 31)) ^ (x >> 31);
-
-
         private unsafe bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
         {
             byte* currentPtr = (byte*)currentData.Scan0;
@@ -371,7 +405,6 @@ namespace VRemoteClient.Services
             }
             return false;
         }
-
         // Cleanup method
         internal void Dispose()
         {
@@ -381,6 +414,5 @@ namespace VRemoteClient.Services
                 _previousFrame = null;
             }
         }
-
     }
 }

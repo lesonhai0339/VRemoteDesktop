@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
@@ -17,18 +18,14 @@ namespace VRemoteClient.Services
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
         private readonly object _lock = new object(); // For thread safety. Can use ReadWriteLockSlim instead
-        private readonly object _lockProperty = new object(); //Can use ReadWriteLockSlim instead
 
         private bool _disposed = false;
-        private bool _isSendSuccessed = false;
         private byte[] _buffer = new byte[20];
         private byte[] _dataSend;
 
         private Capture _capture;
-
         private BackgroundWorker _backgroundWorker;
-        private RemoteClient _remoteClient;
-        private ManualResetEvent _resetEvent;
+        public event EventHandler<CustomScreenEventArgs> ScreenEvent;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
         public GlobalScreenHook()
         {
@@ -36,10 +33,7 @@ namespace VRemoteClient.Services
             int pixelCount = bounds.Width * bounds.Height;
             int bufferSize = pixelCount > 3840000 ? 30 * 1024 * 1024 : 10 * 1024 * 1024;
             _dataSend = new byte[bufferSize];
-
             _capture = new Capture();
-
-            _resetEvent = new ManualResetEvent(false);
             BackgroundWorker = new BackgroundWorker();
             BackgroundWorker.WorkerSupportsCancellation = true;
         }
@@ -129,22 +123,22 @@ namespace VRemoteClient.Services
                                           .Error($"Blocks number more than expected");
                         return;
                     }
-                    byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
-                    byte[] screenHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(screenCompressed));
-                    int dataLength = screenCompressed.Length + 5 + screenHashed.Length;
+                    byte[] screenCompressed = Extensions.CompressGzip(blocks[0].Bytes);
+                    byte[] screenHashed = Encoding.ASCII.GetBytes(Extensions.SHAHash(screenCompressed));
+                    int dataLength = screenCompressed.Length + screenHashed.Length;
 
-                    //header
-                    Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, _dataSend, 0, 4); // Add total bytes at the start
-                    _dataSend[4] = (byte)CommandType.Screen; //data type
+                    //checksum
+                    Buffer.BlockCopy(screenHashed, 0, _dataSend, 0, screenHashed.Length);
 
-                    //hash string
-                    Buffer.BlockCopy(screenHashed, 0, _dataSend, 5, screenHashed.Length);//real data
-
-                    //data
-                    Buffer.BlockCopy(screenCompressed, 0, _dataSend, screenHashed.Length + 5, screenCompressed.Length);//real data
+                    //data compressed
+                    Buffer.BlockCopy(screenCompressed, 0, _dataSend, screenHashed.Length, screenCompressed.Length);
 
                     int numberOfChunk = (int)Math.Ceiling((double)dataLength / CHUNK_SIZE);
 
+                    CustomScreenEventArgs screen = new CustomScreenEventArgs(
+                        type: RemoteType.Screen,
+                        totalSize: dataLength
+                    );
                     for (int i = 0; i < numberOfChunk; i++)
                     {
                         int offset = i * CHUNK_SIZE;
@@ -156,13 +150,10 @@ namespace VRemoteClient.Services
                         byte[] chunkData = new byte[packetSize];
                         //data
                         Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
-                        var task = new TaskObject
-                        (
-                            taskType: CommandType.None,
-                            data: chunkData,
-                            length: packetSize
-                        );
+                        screen.Data.Add(chunkData);
                     }
+
+                    ScreenEvent?.Invoke(null,screen);
                 }
             }
             catch (Exception ex)
@@ -178,33 +169,24 @@ namespace VRemoteClient.Services
                 lock (_lock)
                 {
                     byte[] sourceChunks = MergeAllChunk(blocks);
-                    byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
-                    byte[] chunksHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(chunks)); //add hash to ensure data is correct
+                    byte[] chunksData = Extensions.CompressGzip(sourceChunks);
+                    byte[] chunksHashed = Encoding.ASCII.GetBytes(Extensions.SHAHash(chunksData)); //add hash to ensure data is correct
 
                     //headers always 5 bytes, 4 bytes for data length and 1 byte for command type, add more 40 bytes for hash string
-                    int numberOfChunk = (chunks.Length + chunksHashed.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5); 
-                    int totalLength = chunks.Length;
+                    int numberOfChunk = (chunksData.Length + chunksHashed.Length + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5); 
 
-                    int dataSendLength = totalLength + 5 + chunksHashed.Length;
+                    int dataSendLength = chunksData.Length + chunksHashed.Length;
 
-                    //header
-                    //Buffer.BlockCopy(BitConverter.GetBytes(totalLength + 5), 0, dataSend, 0, 4); // Set total bytes at the start
-                    //dataSend[4] = (byte)CommandType.Chunks; // Set command type at offset 4
-                    unsafe
-                    {
-                        fixed (byte* ptr = _dataSend)
-                        {
-                            *(int*)ptr = dataSendLength; // Set total bytes at the start
-                            *(ptr + 4) = (byte)CommandType.Chunks; // Set command type at offset 4
-                        }
-                    }
-
-                    //hash string
-                    Buffer.BlockCopy(chunksHashed, 0, _dataSend, 5, chunksHashed.Length);    //chunk data
+                    //checksum
+                    Buffer.BlockCopy(chunksHashed, 0, _dataSend, 0, chunksHashed.Length);
 
                     //data
-                    Buffer.BlockCopy(chunks, 0, _dataSend, chunksHashed.Length + 5, totalLength);    //chunk data
+                    Buffer.BlockCopy(chunksData, 0, _dataSend, chunksHashed.Length, chunksData.Length);
 
+                    CustomScreenEventArgs chunks = new CustomScreenEventArgs(
+                       type: RemoteType.Chunks,
+                       totalSize: dataSendLength
+                    );
                     //cut data to chunk(8192 bytes)  and send
                     for (int i = 0; i < numberOfChunk; i++)
                     {
@@ -217,16 +199,12 @@ namespace VRemoteClient.Services
                         // If a shared buffer is used, the next packet may overwrite the previous data,
                         // causing all queued packets to contain the same (last) data.
                         byte[] chunkData = new byte[packetSize];
+
                         //data
                         Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
-
-                        var task = new TaskObject
-                        (
-                            taskType: CommandType.None,
-                            data: chunkData,
-                            length: packetSize
-                        );
+                        chunks.Data.Add(chunkData);
                     }
+                    ScreenEvent?.Invoke(null, chunks);
                 }
             }
             catch (Exception ex)
@@ -295,8 +273,6 @@ namespace VRemoteClient.Services
                         _backgroundWorker.DoWork -= DoWork;
                         _backgroundWorker.Dispose();
                     }
-                    // Dispose other resources like _resetEvent if needed
-                    _resetEvent?.Dispose();
                 }
 
                 _disposed = true;

@@ -39,7 +39,7 @@ namespace VRemoteClient.Services
         private ConcurrentQueue<object> _commandTasks;
         private BackgroundWorker _backgroundWorker;
 
-        public delegate void ConnectSckEvent();
+        public delegate void ConnectEvent();
         public delegate void LoginEvent(bool flag);
         public delegate void P2PConnectEvent(bool flag, ConnectionInfo? info);
         public delegate void P2PDataSendSuccessEvent();
@@ -50,7 +50,7 @@ namespace VRemoteClient.Services
         public delegate void ChunksSuccessEvent(bool flag);
         public delegate void P2PDisconnectedEvent();
 
-        public event ConnectSckEvent ConnectSckEventHandler;
+        public event ConnectEvent ConnectEventHandler;
         public event LoginEvent LoginEventHandler;
         public event P2PConnectEvent P2PConnectEventHandler;
         public event P2PDataSendSuccessEvent P2PDataSendSuccessEventHandler;
@@ -196,7 +196,7 @@ namespace VRemoteClient.Services
         {
             switch (task.TaskType)
             {
-                case CommandType.None:
+                case RemoteType.None:
                     Send(commandType: task.TaskType, data: task.Data, sendLength: task.Length);
                     break;
                 default:
@@ -325,7 +325,7 @@ namespace VRemoteClient.Services
                 {
                     SocketConnected = true;
                 }
-                ConnectSckEvent connectEvent = ConnectSckEventHandler;
+                ConnectEvent connectEvent = ConnectEventHandler;
                 if (connectEvent != null)
                 {
                     connectEvent();
@@ -705,7 +705,7 @@ namespace VRemoteClient.Services
         /// <param name="commandType"></param>
         /// <param name="data"></param>
         /// <param name="sendLength"></param>
-        public void Send(CommandType commandType, byte[] data, int sendLength)
+        public void Send(RemoteType commandType, byte[] data, int sendLength)
         {
             try
             {
@@ -736,7 +736,7 @@ namespace VRemoteClient.Services
         /// <param name="commandType"></param>
         /// <param name="data"></param>
         /// <param name="sendHeader"></param>
-        public void Send(CommandType commandType, byte[] data, bool sendHeader = true)
+        public void Send(RemoteType commandType, byte[] data, bool sendHeader = true)
         {
             try
             {
@@ -884,7 +884,7 @@ namespace VRemoteClient.Services
                     {
                     }
 
-                    ConnectSckEventHandler = null;
+                    ConnectEventHandler = null;
                     LoginEventHandler = null;
                     P2PConnectEventHandler = null;
                     P2PDataSendSuccessEventHandler = null;

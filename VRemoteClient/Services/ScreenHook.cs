@@ -199,7 +199,7 @@ namespace VRemoteClient.Services
                         Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
                         var task = new TaskObject
                         (
-                            taskType: CommandType.None,
+                            taskType: RemoteType.None,
                             data: chunkData,
                             length: packetSize
                         );
@@ -266,7 +266,7 @@ namespace VRemoteClient.Services
 
                         var task = new TaskObject
                         (
-                            taskType: CommandType.None,
+                            taskType: RemoteType.None,
                             data: chunkData,
                             length: packetSize
                         );
