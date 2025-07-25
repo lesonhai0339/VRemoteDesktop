@@ -30,38 +30,27 @@ namespace VRemoteClient
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
         private bool _isDrag;
-        private int _width;
-        private int _height;
 
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
-        private RemoteClient _remoteClient;
+        private RemoteDesktopService _remoteDesktop;
         private ConnectionInfo _connectionInfo;
         private MouseHook _mouseHook;
-        private GlobalKeyboardHook _globalKeyboardHook;
 
         private DateTime lastMouseMoveTime = DateTime.MinValue;
 
         private System.Windows.Forms.Timer clickTimer;
         private MouseEventArgs pendingClickArgs;
         private Control pendingSender;
-
         private ManualResetEvent isP2PDisconnectCallback;
-        public FormRemote(RemoteClient remoteClient, ConnectionInfo info, GlobalKeyboardHook globalKeyboardHook)
+        public FormRemote(RemoteDesktopService remoteDesktop, ConnectionInfo info)
         {
             InitializeComponent();
+            Init(remoteDesktop, info);
 
-            _connectionInfo = info;
-            _width = this.Width;
-            _height = this.Height;
-
-            Client = remoteClient;
-            MouseHook = new MouseHook();
-            GlobalKeyboardHook = globalKeyboardHook;
             _isDrag = false;
             isP2PDisconnectCallback = new ManualResetEvent(false);
 
-            this.Text = _connectionInfo.Receiver.Id.Trim();
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
             this.Icon = new Icon(iconPath);
             base.AutoScaleDimensions = new SizeF(6f, 13f);
@@ -81,49 +70,47 @@ namespace VRemoteClient
             clickTimer.Interval = Math.Min(100, SystemInformation.DoubleClickTime / 5);
             clickTimer.Tick += ClickTimer_Tick;
         }
+        private void Init(RemoteDesktopService remoteDesktop , ConnectionInfo info)
+        {
+            if(remoteDesktop == null || info == null)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error("Args are null");
+                MessageBox.Show("Xảy ra lỗi", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                this.Close();
+                return;
+            }
+            RemoteDesktop ??= remoteDesktop;
+            MouseHook ??= new MouseHook();
+            _connectionInfo ??= info;
+            this.Text = _connectionInfo.Receiver.Id.Trim();
+        }
         #region Properties
-        public GlobalKeyboardHook GlobalKeyboardHook
+        public RemoteDesktopService RemoteDesktop
         {
             get
             {
                 lock (_lockObject)
                 {
-                    return _globalKeyboardHook;
+                    return _remoteDesktop;
                 }
             }
             set
             {
                 lock (_lockObject)
                 {
-                    if(_globalKeyboardHook != null)
+                    if (_remoteDesktop != null)
                     {
-                        _globalKeyboardHook.KeyPressed -= GlobalKeyboardEvent;
+                        _remoteDesktop.KeyboardEvent -= KeyboardEvent;
+                        _remoteDesktop.ScreenEvent -= ScreenEvent;
+                        _remoteDesktop.ChunksEvent -= ChunksEvent;
                     }
-                    _globalKeyboardHook = value;
-                    if (_globalKeyboardHook != null)
+                    _remoteDesktop = value;
+                    if (_remoteDesktop != null)
                     {
-                        _globalKeyboardHook.KeyPressed += GlobalKeyboardEvent;
+                        _remoteDesktop.KeyboardEvent += KeyboardEvent;
+                        _remoteDesktop.ScreenEvent += ScreenEvent;
+                        _remoteDesktop.ChunksEvent += ChunksEvent;
                     }
-                }
-            }
-        }
-        public RemoteClient Client
-        {
-            get => _remoteClient;
-            set
-            {
-                if(_remoteClient != null)
-                {
-                    _remoteClient.P2PScreenEventHandler -= ScreenEvent;
-                    _remoteClient.P2PChunksEventHandler -= ChunksEvent;
-                    _remoteClient.P2PDisconnectedEventhandler -= P2PDisconnectEvent;
-                }
-                _remoteClient = value;
-                if(_remoteClient != null)
-                {
-                    _remoteClient.P2PScreenEventHandler += ScreenEvent;
-                    _remoteClient.P2PChunksEventHandler += ChunksEvent;
-                    _remoteClient.P2PDisconnectedEventhandler += P2PDisconnectEvent;
                 }
             }
         }
@@ -186,11 +173,6 @@ namespace VRemoteClient
                     Log.ForContext("FileName", "FormRemote").Error(ex, "Send P2PDisconnect error");
                 }
 
-                if(_globalKeyboardHook != null)
-                {
-                    _globalKeyboardHook.KeyPressed -= GlobalKeyboardEvent;
-                    _globalKeyboardHook = null;
-                }
             }
             catch (Exception ex)
             {
@@ -231,11 +213,12 @@ namespace VRemoteClient
             // Cleanup client
             try
             {
-                if (Client != null)
+                if (_remoteDesktop != null)
                 {
-                    Client.P2PScreenEventHandler -= ScreenEvent;
-                    Client.P2PChunksEventHandler -= ChunksEvent;
-                    Client = null;
+                    _remoteDesktop.KeyboardEvent -= KeyboardEvent;
+                    _remoteDesktop.ScreenEvent -= ScreenEvent;
+                    _remoteDesktop.ChunksEvent -= ChunksEvent;
+                    _remoteDesktop = null;
                 }
             }
             catch (Exception ex)
@@ -412,28 +395,28 @@ namespace VRemoteClient
                 Log.ForContext("FileName", "FormRemote").Warning("task data is null, cannot add work");
                 return;
             }
-            if (Client == null)
+            if (RemoteDesktop == null)
             {
-                Log.ForContext("FileName", "FormRemote").Warning("Client is null, cannot add work");
+                Log.ForContext("FileName", "FormRemote").Warning("RemoteDesktop is null, cannot add work");
                 return;
             }
-            Client.AddWork(task);
+            RemoteDesktop.AddWork(task);
         }
         #region Keyboard
-        private void GlobalKeyboardEvent(object sender, KeyMessageEventArgs e)
+        private void KeyboardEvent(object sender, KeyMessageEventArgs e)
         {
             if (Form.ActiveForm != this) return;
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<object, KeyMessageEventArgs>(GlobalKeyboardEvent), sender, e);
+                this.BeginInvoke(new Action<object, KeyMessageEventArgs>(KeyboardEvent), sender, e);
                 return;
             }
 
-            string keyCommandString = GlobalKeyboardHook.KeyboardEventTostring(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
+            string keyCommandString = RemoteDesktop.FormatKeyboardInput(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
 
             TryAddWork(new TaskObject
             (
-                taskType: Models.Enums.RemoteType.Keyboard,
+                taskType: RemoteType.Keyboard,
                 receiveId: _connectionInfo.Receiver.Id,
                 receivePort: _connectionInfo.Receiver.Port,
                 data: Encoding.ASCII.GetBytes(keyCommandString)
@@ -501,9 +484,6 @@ namespace VRemoteClient
                         _curScreen?.Dispose();
 
                         _curScreen = new Bitmap(image);
-
-                        _width = _curScreen.Width;
-                        _height = _curScreen.Height;
 
                         var imageSize = image.Size;
                         _screenGraphics = Graphics.FromImage(_curScreen);

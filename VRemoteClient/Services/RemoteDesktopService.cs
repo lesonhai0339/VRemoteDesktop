@@ -10,6 +10,7 @@ using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
+using static VRemoteClient.Models.Enums.KeyboardEnums;
 
 namespace VRemoteClient.Services
 {
@@ -28,24 +29,36 @@ namespace VRemoteClient.Services
         private GlobalScreenHook _globakScreenHook;
         private RemoteClient _remoteClient;
 
-
+        public event Action<bool> ConnectServerEvent;
         public event Action<bool> LoginEvent;
+        public event Action<bool, ConnectionInfo> P2PConnectEvent;
+        public event Action<object, KeyMessageEventArgs> KeyboardEvent;
+        public event Action<byte[]> ScreenEvent;
+        public event Action<List<ScreenBlock>> ChunksEvent;
 
         public RemoteDesktopService() 
         {
             OwnerInfo = Extensions.InitInfo();
 
             _resetEvent = new ManualResetEvent(false);
+            InitializeCompoment();
+        }
+        public void InitializeCompoment()
+        {
+            if (KeyboardHook == null)
+            {
+                KeyboardHook = new GlobalKeyboardHook();
+            }
+            if(RemoteClient == null)
+            {
+                RemoteClient = new RemoteClient(OwnerInfo);
 
-            RemoteClient = new RemoteClient(OwnerInfo);
-            KeyboardHook = new GlobalKeyboardHook();
-
+            }
             Task.Factory.StartNew(() =>
             {
                 ScreenHook = new GlobalScreenHook();
             }, TaskCreationOptions.LongRunning);
         }
-
         #region Properties
         public bool IsSocketConnected
         {
@@ -75,12 +88,12 @@ namespace VRemoteClient.Services
                 {
                     if(_globakKeyboardHook != null)
                     {
-
+                        _globakKeyboardHook.KeyPressed -= KeyboardPressedEvent;
                     }
                     _globakKeyboardHook = value;
                     if(_globakKeyboardHook != null)
                     {
-
+                        _globakKeyboardHook.KeyPressed += KeyboardPressedEvent;
                     }
                 }
             }
@@ -110,9 +123,6 @@ namespace VRemoteClient.Services
                 }
             }
         }
-
-
-
         public RemoteClient RemoteClient
         {
             get
@@ -130,21 +140,22 @@ namespace VRemoteClient.Services
                     {
                         _remoteClient.ConnectEventHandler -= ConnectEventHandler;
                         _remoteClient.LoginEventHandler -= LoginEventHandler;
+                        _remoteClient.P2PConnectEventHandler -= P2PConnectEventHandler;
+                        _remoteClient.P2PScreenEventHandler -= P2PScreenEventHandler;
+                        _remoteClient.P2PChunksEventHandler -= P2PChunksEventHandler;
                     }
                     _remoteClient = value;
                     if (_remoteClient != null)
                     {
                         _remoteClient.ConnectEventHandler += ConnectEventHandler;
                         _remoteClient.LoginEventHandler += LoginEventHandler;
-
+                        _remoteClient.P2PConnectEventHandler += P2PConnectEventHandler;
+                        _remoteClient.P2PScreenEventHandler += P2PScreenEventHandler;
+                        _remoteClient.P2PChunksEventHandler += P2PChunksEventHandler;
                     }
                 }
             }
         }
-
-
-
-
         #endregion
         #region Methods
         public void StartKeyboardHook()
@@ -189,6 +200,7 @@ namespace VRemoteClient.Services
                 bool flag = _resetEvent.WaitOne(5000);
                 if (!flag)
                 {
+                    ConnectServerEvent?.Invoke(flag);
                     //TODO: invoke event form main from notify that login failed
                     Log.ForContext("Filename", this.GetType().Name).Error("Socket connect failed");
                     return;
@@ -200,6 +212,47 @@ namespace VRemoteClient.Services
                 Log.ForContext("Filename", this.GetType().Name).Error("ConnectToServer error");
             }
         }
+        public void InitP2PConnection(string partnerId, string partnerPassword)
+        {
+            try
+            {
+                string id = partnerId.Replace(" ", "");
+                string password = partnerPassword.Replace(" ", "");
+
+                string dataString = Extensions.DataStringBuilder(
+                    new string[] { 
+                        OwnerInfo.Id,
+                        id,
+                        password
+                    }
+                );
+                byte[] data = Encoding.ASCII.GetBytes(dataString);
+
+                RemoteClient.AddWork(new TaskObject
+                (
+                    taskType: RemoteType.P2PConnect,
+                    data: data
+                ));
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "P2P connection error");
+            }
+        }
+
+        public void AddWork(TaskObject task)
+        {
+            RemoteClient.AddWork(task);
+        }
+        public void AddWorkGroup(List<TaskObject> tasks)
+        {
+            RemoteClient.AddWorkGroup(tasks);
+        }
+        public string FormatKeyboardInput(IntPtr command, Keys modifier, Keys code, KeyState type)
+        {
+            return KeyboardHook.KeyboardEventTostring(command, modifier, code, type);
+        }
+
         private void Login()
         {
             try
@@ -225,6 +278,7 @@ namespace VRemoteClient.Services
         /// <exception cref="NotImplementedException"></exception>
         private void ConnectEventHandler()
         {
+            IsSocketConnected = true;
             _resetEvent.Set();
         }
         /// <summary>
@@ -235,6 +289,28 @@ namespace VRemoteClient.Services
         private void LoginEventHandler(bool flag)
         {
             LoginEvent?.Invoke(flag);
+        }
+        /// <summary>
+        /// Partner connect callback
+        /// </summary>
+        /// <param name="flag"></param>
+        /// <param name="info"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void P2PConnectEventHandler(bool flag, ConnectionInfo info)
+        {
+            P2PConnectEvent?.Invoke(flag, info);
+        }
+        private void P2PScreenEventHandler(byte[] screen)
+        {
+            ScreenEvent?.Invoke(screen);
+        }
+        private void P2PChunksEventHandler(List<ScreenBlock> blocks)
+        {
+            ChunksEvent?.Invoke(blocks);
+        }
+        private void KeyboardPressedEvent(object sender, KeyMessageEventArgs e)
+        {
+            KeyboardEvent?.Invoke(sender, e);
         }
         private void ScreenHookEventHandler(object sender, CustomScreenEventArgs e)
         {
@@ -249,7 +325,7 @@ namespace VRemoteClient.Services
                 //header
                 byte[] screenHeader = new byte[5];
                 Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 5), 0, screenHeader, 0, 4);
-                screenHeader[5] = (byte)e.Type;
+                screenHeader[4] = (byte)e.Type;
 
                 List<TaskObject> tasks = new List<TaskObject>();
                 tasks.Add(new TaskObject(

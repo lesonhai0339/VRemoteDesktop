@@ -41,7 +41,7 @@ namespace VRemoteClient.Services
 
         public delegate void ConnectEvent();
         public delegate void LoginEvent(bool flag);
-        public delegate void P2PConnectEvent(bool flag, ConnectionInfo? info);
+        public delegate void P2PConnectEvent(bool flag, ConnectionInfo info);
         public delegate void P2PDataSendSuccessEvent();
         public delegate void P2PScreenEvent(byte[] screen);
         public delegate void P2PChunksEvent(List<ScreenBlock> blocks);

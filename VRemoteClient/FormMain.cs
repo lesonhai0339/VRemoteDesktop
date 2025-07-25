@@ -56,16 +56,23 @@ namespace VRemoteClient
                 {
                     if (_remoteDesktop != null)
                     {
-                        RemoteDesktop.LoginEvent -= LoginCallback;
+                        _remoteDesktop.LoginEvent -= LoginCallback;
+                        _remoteDesktop.ConnectServerEvent -= ConnectServerEvent;
+                        _remoteDesktop.P2PConnectEvent -= P2PConnectEvent;
                     }
                     _remoteDesktop = value;
                     if (_remoteDesktop != null)
                     {
-                        RemoteDesktop.LoginEvent += LoginCallback;
+                        _remoteDesktop.LoginEvent += LoginCallback;
+                        _remoteDesktop.ConnectServerEvent += ConnectServerEvent;
+                        _remoteDesktop.P2PConnectEvent += P2PConnectEvent;
+
                     }
                 }
             }
         }
+
+
         #endregion
         #region Methods
         private void FormMain_Load(object sender, EventArgs e)
@@ -110,7 +117,10 @@ namespace VRemoteClient
                 }
             }
         }
-
+        private void ConnectServerEvent(bool flag)
+        {
+            if(!flag) MessageBox.Show("Kết nối đến máy chủ thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
         private void LoginCallback(bool flag)
         {
             if (flag)
@@ -138,37 +148,32 @@ namespace VRemoteClient
         #endregion
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            //if (string.IsNullOrEmpty(txtPartnerId.Text) || string.IsNullOrEmpty(txtPartnerPassword.Text))
-            //{
-            //    MessageBox.Show("Vui lòng nhập ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            //    return;
-            //}
-            //string receiverInfo = Utils.Extensions.DataStringBuilder(new string[] { Me.Id, txtPartnerId.Text.Trim(), txtPartnerPassword.Text.Trim() });
-            //byte[] dataBytes = Encoding.ASCII.GetBytes(receiverInfo);
-            //RemoteClient.AddWork(new TaskObject
-            //(
-            //    taskType:  Models.Enums.RemoteType.P2PConnect, 
-            //    data: dataBytes
-                
-            //));
-            //bool flag = _resetEvent.WaitOne(1000 * 5);
-            //if (flag)
-            //{
-            //    ConnectionInfo info = new ConnectionInfo() 
-            //    {
-            //        SessionId = _connectionInfo.SessionId,
-            //        Receiver = _connectionInfo.Receiver,
-            //        Sender = _connectionInfo.Sender
-            //    };
-            //    FormRemote frmRemote = new FormRemote(RemoteClient, info, GlobalKeyboardHook);
-            //    frmRemote.Show();
-            //}
-            //else
-            //{
-            //    MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //}
-            //_connectionInfo = null;
-            //_resetEvent.Reset();
+            _resetEvent.Reset();
+
+            if (string.IsNullOrEmpty(txtPartnerId.Text) || string.IsNullOrEmpty(txtPartnerPassword.Text))
+            {
+                MessageBox.Show("Vui lòng nhập ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            RemoteDesktop.InitP2PConnection(txtPartnerId.Text, txtPartnerPassword.Text);
+            
+            bool flag = _resetEvent.WaitOne(1000 * 5);
+            if (flag)
+            {
+                ConnectionInfo info = new ConnectionInfo()
+                {
+                    SessionId = _connectionInfo.SessionId,
+                    Receiver = _connectionInfo.Receiver,
+                    Sender = _connectionInfo.Sender
+                };
+                //FormRemote frmRemote = new FormRemote(RemoteDesktop, info);
+                //frmRemote.Show();
+            }
+            else
+            {
+                MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            _connectionInfo = null;
         }
     }
 }
