@@ -166,8 +166,8 @@ namespace VRemoteClient
                     Receiver = _connectionInfo.Receiver,
                     Sender = _connectionInfo.Sender
                 };
-                //FormRemote frmRemote = new FormRemote(RemoteDesktop, info);
-                //frmRemote.Show();
+                FormRemote frmRemote = new FormRemote(RemoteDesktop, info);
+                frmRemote.Show();
             }
             else
             {

@@ -14,9 +14,10 @@ using static VRemoteClient.Models.Enums.KeyboardEnums;
 
 namespace VRemoteClient.Services
 {
-    public class RemoteDesktopService
+    public class RemoteDesktopService: IDisposable
     {
         private readonly object _lockProperties = new object();
+        private bool _isDisposed = false;
         private volatile bool _isSocketConnectSuccess;
 
         private Thread _screenThread;
@@ -45,15 +46,8 @@ namespace VRemoteClient.Services
         }
         public void InitializeCompoment()
         {
-            if (KeyboardHook == null)
-            {
-                KeyboardHook = new GlobalKeyboardHook();
-            }
-            if(RemoteClient == null)
-            {
-                RemoteClient = new RemoteClient(OwnerInfo);
-
-            }
+            KeyboardHook ??= new GlobalKeyboardHook();
+            RemoteClient ??= new RemoteClient(OwnerInfo);
             Task.Factory.StartNew(() =>
             {
                 ScreenHook = new GlobalScreenHook();
@@ -169,6 +163,17 @@ namespace VRemoteClient.Services
                 Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Start keyboard hook failed");
             }
         }
+        public void StopKeyboardHook()
+        {
+            try
+            {
+                KeyboardHook.Stop();
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Stop keyboard hook failed");
+            }
+        }
         public void StartScreenHook()
         {
             try
@@ -239,7 +244,6 @@ namespace VRemoteClient.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "P2P connection error");
             }
         }
-
         public void AddWork(TaskObject task)
         {
             RemoteClient.AddWork(task);
@@ -348,6 +352,22 @@ namespace VRemoteClient.Services
             catch(Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ScreenHookEventHandler error");
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                if (disposing)
+                {
+                    //TODO: dispose here
+                }
             }
         }
         #endregion

@@ -54,7 +54,7 @@ namespace VRemoteClient.Services
         private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
         {
             //event do not be register, do not need to listen
-            if (KeyPressed == null) return (IntPtr)1;
+            //if (KeyPressed == null) return (IntPtr)1;
             
             if (nCode >= 0)
             {

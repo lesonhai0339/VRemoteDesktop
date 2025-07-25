@@ -83,6 +83,7 @@ namespace VRemoteClient
             MouseHook ??= new MouseHook();
             _connectionInfo ??= info;
             this.Text = _connectionInfo.Receiver.Id.Trim();
+            //RemoteDesktop.StartKeyboardHook();
         }
         #region Properties
         public RemoteDesktopService RemoteDesktop
@@ -312,7 +313,8 @@ namespace VRemoteClient
                 {
                     if (_isDrag)
                     {
-                        MouseHook.MouseEventToTask(_connectionInfo.Receiver.Id, 
+                        MouseHook.MouseEventToTask(
+                            _connectionInfo.Receiver.Id, 
                             _connectionInfo.Receiver.Port,
                             MouseEventType.DragAndDrop, 
                             vPictureBox, 
