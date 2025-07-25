@@ -28,9 +28,9 @@ namespace VRemoteClient
         public FormMain()
         {
             InitializeComponent();
-            RemoteDesktop = new RemoteDesktopService();
-            _isSocketConnected = false;
-            _resetEvent = new ManualResetEvent(false);
+            Init();
+
+
             this.Text = "VRemote - Vinhhy";
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
             this.Icon = new Icon(iconPath);
@@ -38,6 +38,13 @@ namespace VRemoteClient
             this.txtOwnerId.Text = RemoteDesktop.OwnerInfo.Id;
             this.txtOwnerPassword.Text = RemoteDesktop.OwnerInfo.Password;
             txtPartnerPassword.UseSystemPasswordChar = true;
+
+            _isSocketConnected = false;
+            _resetEvent = new ManualResetEvent(false);
+        }
+        private void Init()
+        {
+            RemoteDesktop ??= new RemoteDesktopService();
         }
 
         #region Properties
@@ -71,8 +78,6 @@ namespace VRemoteClient
                 }
             }
         }
-
-
         #endregion
         #region Methods
         private void FormMain_Load(object sender, EventArgs e)
@@ -157,7 +162,7 @@ namespace VRemoteClient
             }
             RemoteDesktop.InitP2PConnection(txtPartnerId.Text, txtPartnerPassword.Text);
             
-            bool flag = _resetEvent.WaitOne(1000 * 5);
+            bool flag = _resetEvent.WaitOne(5000);
             if (flag)
             {
                 ConnectionInfo info = new ConnectionInfo()

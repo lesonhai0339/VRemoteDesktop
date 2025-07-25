@@ -19,7 +19,6 @@ using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services;
 using VRemoteClient.Utils;
-using static VRemoteClient.Services.RemoteClient;
 
 namespace VRemoteClient
 {
