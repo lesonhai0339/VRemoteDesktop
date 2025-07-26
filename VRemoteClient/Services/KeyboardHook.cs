@@ -89,19 +89,6 @@ namespace VRemoteClient.Services
                         KeyPressed?.Invoke(this, keyEventArgs);
                         return (IntPtr)1;
                     }
-                    else
-                    {
-                        if(IsControlPressed() && key == Keys.C)
-                        {
-                            string clipboardData = Clipboard.GetText();
-                            Console.WriteLine("No copy ngoai form, data: "+ clipboardData);
-                        }
-                        if(IsControlPressed() && key == Keys.V)
-                        {
-                            Clipboard.SetText("Hello world");
-                            Console.WriteLine("No parse ngoai form, data: "+ Clipboard.GetText());
-                        }
-                    } 
                 }
             } 
             return CallNextHookEx(hookID, nCode, wParam, lParam);

@@ -99,41 +99,43 @@ namespace VRemoteClient.Services
             //event do not be register, do not need to listen
             //if (KeyPressed == null) return (IntPtr)1;
             
-            if(WindowsHandle.Count > 0)
+            if (nCode >= 0)
             {
-                if (nCode >= 0)
+                if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
                 {
-                    if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
+                    KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
+                    int vkCode = hookStruct.vkCode;
+                    Keys key = (Keys)vkCode;
+                    Console.WriteLine("Key: "+ key);
+
+                    KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
+
+                    CustomKeyMessageEventArgs keyEventArgs = null;
+
+                    if (IsControlPressed() && key == Keys.C)
                     {
-                        KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
-                        int vkCode = hookStruct.vkCode;
-                        Keys key = (Keys)vkCode;
-
-                        KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
-
-                        CustomKeyMessageEventArgs keyEventArgs = null;
-
-                        if (IsControlPressed() && key == Keys.C)
+                        keyEventArgs = new CustomKeyMessageEventArgs
+                        {
+                            Command = wParam,
+                            Handle = IntPtr.Zero,
+                            KeyModifier = Keys.Control,
+                            KeyCode = key,
+                            KeyType = keyState,
+                            Combination = KeyCombination.Copy
+                        };
+                        Console.WriteLine("Copy pressed");
+                        KeyPressed?.Invoke(this, keyEventArgs);
+                        return CallNextHookEx(hookID, nCode, wParam, lParam);
+                    }
+                    if (WindowsHandle.Count > 0)
+                    {
+                        var focusedHandles = WindowsHandle.Where(x => IsHandleFocus(x)).ToList();
+                        if (focusedHandles.Any())
                         {
                             keyEventArgs = new CustomKeyMessageEventArgs
                             {
                                 Command = wParam,
-                                Handle = IntPtr.Zero,
-                                KeyModifier = Keys.Control,
-                                KeyCode = key,
-                                KeyType = keyState,
-                                Combination = KeyCombination.Copy
-                            };
-                            KeyPressed?.Invoke(this, keyEventArgs);
-                            return CallNextHookEx(hookID, nCode, wParam, lParam);
-                        }
-                        var handleFocused = WindowsHandle.FirstOrDefault(x => IsHandleFocus(x));
-                        if (handleFocused != null)
-                        {
-                            keyEventArgs = new CustomKeyMessageEventArgs
-                            {
-                                Command = wParam,
-                                Handle = handleFocused,
+                                Handle = focusedHandles.First(),
                                 KeyModifier = Keys.None,
                                 KeyCode = key,
                                 KeyType = keyState,
@@ -141,9 +143,9 @@ namespace VRemoteClient.Services
                             KeyPressed?.Invoke(this, keyEventArgs);
                             return (IntPtr)1;
                         }
-                    }
+                    } 
                 }
-            }
+            }   
             return CallNextHookEx(hookID, nCode, wParam, lParam);
         }
         private bool IsControlPressed()

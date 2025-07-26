@@ -103,6 +103,7 @@ namespace VRemoteClient
                         _remoteDesktop.KeyboardEvent -= KeyboardEvent;
                         _remoteDesktop.ScreenEvent -= ScreenEvent;
                         _remoteDesktop.ChunksEvent -= ChunksEvent;
+                        _remoteDesktop.P2PDisconnect -= P2PDisconnectEvent;
                     }
                     _remoteDesktop = value;
                     if (_remoteDesktop != null)
@@ -110,10 +111,15 @@ namespace VRemoteClient
                         _remoteDesktop.KeyboardEvent += KeyboardEvent;
                         _remoteDesktop.ScreenEvent += ScreenEvent;
                         _remoteDesktop.ChunksEvent += ChunksEvent;
+                        _remoteDesktop.P2PDisconnect += P2PDisconnectEvent;
+
                     }
                 }
             }
         }
+
+
+
         public MouseHook MouseHook
         {
             get
@@ -371,14 +377,16 @@ namespace VRemoteClient
             pendingClickArgs = null;
             pendingSender = null;
         }
-
         #endregion
         #region Event Handlers
-        private void P2PDisconnectEvent()
+        private void P2PDisconnectEvent(bool flag)
         {
             try
             {
-                isP2PDisconnectCallback.Set();
+                if (flag)
+                {
+                    isP2PDisconnectCallback.Set();
+                }
             }
             catch (ObjectDisposedException)
             {
@@ -408,28 +416,31 @@ namespace VRemoteClient
         #region Keyboard
         private void KeyboardEvent(object sender, CustomKeyMessageEventArgs e)
         {
-            if(e.Handle != this.Handle && Form.ActiveForm != this)
-            {
-                return;
-            }
             if (this.InvokeRequired)
             {
                 this.BeginInvoke(new Action<object, CustomKeyMessageEventArgs>(KeyboardEvent), sender, e);
                 return;
             }
-            string keyCommandString = "";
 
+            string keyCommandString = "";
             if (e.Combination == KeyboardEnums.KeyCombination.Copy)
             {
+                Console.WriteLine("Copy");
                 keyCommandString = RemoteDesktop.GetClipboard();
+                Console.WriteLine(keyCommandString);
             }
             else
             {
+                if (e.Handle != this.Handle && Form.ActiveForm != this)
+                {
+                    return;
+                }
+                Console.WriteLine("Normal");
                 keyCommandString = RemoteDesktop.FormatKeyboardInput(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
             }
             TryAddWork(new TaskObject
             (
-                taskType: RemoteType.Keyboard,
+                taskType: (e.Combination == KeyboardEnums.KeyCombination.Copy) ? RemoteType.Clipboard : RemoteType.Keyboard,
                 receiveId: _connectionInfo.Receiver.Id,
                 receivePort: _connectionInfo.Receiver.Port,
                 data: Encoding.ASCII.GetBytes(keyCommandString)

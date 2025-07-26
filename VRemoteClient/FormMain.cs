@@ -88,6 +88,17 @@ namespace VRemoteClient
         {
             ConnectToServer();
         }
+        private void FormMain_Closing(object sender, FormClosingEventArgs e)
+        {
+            if(_remoteDesktop != null)
+            {
+                _remoteDesktop.LoginEvent -= LoginCallback;
+                _remoteDesktop.ConnectServerEvent -= ConnectServerEvent;
+                _remoteDesktop.P2PConnectEvent -= P2PConnectEvent;
+                _remoteDesktop.Dispose();
+                _remoteDesktop = null;
+            }
+        }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
         {
             Graphics g = e.Graphics;

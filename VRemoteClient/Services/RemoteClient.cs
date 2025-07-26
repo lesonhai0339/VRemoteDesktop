@@ -48,7 +48,7 @@ namespace VRemoteClient.Services
         public delegate void AckEvent();
         public delegate void ScreenSuccessEvent(bool flag);
         public delegate void ChunksSuccessEvent(bool flag);
-        public delegate void P2PDisconnectedEvent();
+        public delegate void P2PDisconnectedEvent(bool flag);
 
         public event ConnectEvent ConnectEventHandler;
         public event LoginEvent LoginEventHandler;
@@ -456,7 +456,7 @@ namespace VRemoteClient.Services
                         P2PDisconnectedEvent disConnected = P2PDisconnectedEventhandler;
                         if (disConnected != null)
                         {
-                            disConnected();
+                            disConnected(true);
                         }
                         _vscreen.StopCapture();
                         break;

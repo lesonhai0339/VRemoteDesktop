@@ -36,7 +36,7 @@ namespace VRemoteClient.Services
         public event Action<object, CustomKeyMessageEventArgs> KeyboardEvent;
         public event Action<byte[]> ScreenEvent;
         public event Action<List<ScreenBlock>> ChunksEvent;
-
+        public event Action<bool> P2PDisconnect;
         public RemoteDesktopService() 
         {
             OwnerInfo = Extensions.InitInfo();
@@ -137,6 +137,7 @@ namespace VRemoteClient.Services
                         _remoteClient.P2PConnectEventHandler -= P2PConnectEventHandler;
                         _remoteClient.P2PScreenEventHandler -= P2PScreenEventHandler;
                         _remoteClient.P2PChunksEventHandler -= P2PChunksEventHandler;
+                        _remoteClient.P2PDisconnectedEventhandler -= P2PDisconnectedEventhandler;
                     }
                     _remoteClient = value;
                     if (_remoteClient != null)
@@ -146,10 +147,14 @@ namespace VRemoteClient.Services
                         _remoteClient.P2PConnectEventHandler += P2PConnectEventHandler;
                         _remoteClient.P2PScreenEventHandler += P2PScreenEventHandler;
                         _remoteClient.P2PChunksEventHandler += P2PChunksEventHandler;
+                        _remoteClient.P2PDisconnectedEventhandler += P2PDisconnectedEventhandler;
+
                     }
                 }
             }
         }
+
+
         #endregion
         #region Methods
         /// <summary>
@@ -303,7 +308,15 @@ namespace VRemoteClient.Services
         }
         public string GetClipboard()
         {
-            return Clipboard.GetText();
+            try
+            {
+                return Utils.VirtualClipboard.GetClipboardString();
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("Filename", this.GetType().Name).Error(ex, "GetClipboard error");
+                return "";
+            }
         }
 
         private void Login()
@@ -361,6 +374,10 @@ namespace VRemoteClient.Services
         {
             ChunksEvent?.Invoke(blocks);
         }
+        private void P2PDisconnectedEventhandler(bool flag)
+        {
+            P2PDisconnect?.Invoke(flag);
+        }
         private void KeyboardPressedEvent(object sender, CustomKeyMessageEventArgs e)
         {
             KeyboardEvent?.Invoke(sender, e);
@@ -415,7 +432,14 @@ namespace VRemoteClient.Services
             {
                 if (disposing)
                 {
+                    StopKeyboardHook();
                     //TODO: dispose here
+                    if (_globakKeyboardHook != null)
+                    {
+                        _globakKeyboardHook.KeyPressed -= KeyboardPressedEvent;
+                        _globakKeyboardHook.Stop();
+                        _globakKeyboardHook = null;
+                    }
                 }
             }
         }
