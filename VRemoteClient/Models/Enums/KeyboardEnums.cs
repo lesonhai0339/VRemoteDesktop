@@ -7,6 +7,11 @@ namespace VRemoteClient.Models.Enums
 {
     public class KeyboardEnums
     {
+        public enum KeyCombination
+        {
+            None = 0,
+            Copy = 1
+        }
         public enum KeyState : int
         {
             KeyDown = 0,

@@ -399,56 +399,59 @@ namespace VRemoteClient.Services
         {
             try
             {
-                CommandType commandType = (CommandType)data[0];
+                RemoteType commandType = (RemoteType)data[0];
                 switch (commandType)
                 {
-                    case CommandType.Login:
+                    case RemoteType.Login:
                         ProcessLogin(true);
                         break;
-                    case CommandType.P2PConnect:
+                    case RemoteType.P2PConnect:
                         ProcessP2PConnect(true, data);
                         break;
-                    case CommandType.Disconnect:
+                    case RemoteType.Disconnect:
                         break;
-                    case CommandType.Data:
+                    case RemoteType.Data:
                         break;
-                    case CommandType.Ping:
+                    case RemoteType.Ping:
                         break;
-                    case CommandType.Pong:
+                    case RemoteType.Pong:
                         Console.WriteLine("Pong received from server");
                         break;
-                    case CommandType.Screen:
+                    case RemoteType.Screen:
                         ProcessScreen(data);
                         break;
-                    case CommandType.Chunks:
+                    case RemoteType.Chunks:
                         ProcessChunks(data);
                         break;
-                    case CommandType.ScreenOk:
+                    case RemoteType.ScreenOk:
                         ScreenSuccessEvent screenSuccess = ScreenSuccessEventHandler;
                         if (screenSuccess != null)
                         {
                             screenSuccess(true);
                         }
                         break;
-                    case CommandType.ChunksOk:
+                    case RemoteType.ChunksOk:
                         ChunksSuccessEvent chunksSuccess = ChunksSuccessEventHandler;
                         if (chunksSuccess != null)
                         {
                             chunksSuccess(true);
                         }
                         break;
-                    case CommandType.Keyboard:
+                    case RemoteType.Keyboard:
                         ProcessKeyboard(data);
                         break;
-                    case CommandType.Mouse:
+                    case RemoteType.Mouse:
                         ProcessMouse(data);
                         break;
-                    case CommandType.Error:
+                    case RemoteType.Clipboard:
+                        Console.WriteLine("Clip board receive");
                         break;
-                    case CommandType.LoginFailed:
+                    case RemoteType.Error:
+                        break;
+                    case RemoteType.LoginFailed:
                         ProcessLogin(false);
                         break;
-                    case CommandType.P2PDisconnect:
+                    case RemoteType.P2PDisconnect:
                         IsP2PConnected = false;
                         P2PDisconnectedEvent disConnected = P2PDisconnectedEventhandler;
                         if (disConnected != null)
@@ -457,10 +460,10 @@ namespace VRemoteClient.Services
                         }
                         _vscreen.StopCapture();
                         break;
-                    case CommandType.P2PConnectFailed:
+                    case RemoteType.P2PConnectFailed:
                         ProcessP2PConnect(false, data);
                         break;
-                    case CommandType.Ack:
+                    case RemoteType.Ack:
                         AckEvent ack = AckEventHandler;
                         if (ack != null)
                         {

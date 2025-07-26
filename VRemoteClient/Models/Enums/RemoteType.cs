@@ -21,6 +21,7 @@ namespace VRemoteClient.Models.Enums
         Mouse = 0x0C,
         ScreenOk = 0x0D,
         ChunksOk = 0x0E,
+        Clipboard = 0x0F,
 
         LoginFailed = 0x90,
         P2PDisconnect = 0x91,

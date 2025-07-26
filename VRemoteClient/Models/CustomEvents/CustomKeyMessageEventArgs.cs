@@ -39,5 +39,6 @@ namespace VRemoteClient.Models.CustomEvents
         public Keys KeyModifier { get; set; }
         public Keys KeyCode { get; set; }
         public KeyState KeyType { get; set; }
+        public KeyCombination Combination { get; set; } = KeyCombination.None;
     }
 }

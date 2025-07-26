@@ -301,6 +301,10 @@ namespace VRemoteClient.Services
         {
             return KeyboardHook.KeyboardEventTostring(command, modifier, code, type);
         }
+        public string GetClipboard()
+        {
+            return Clipboard.GetText();
+        }
 
         private void Login()
         {

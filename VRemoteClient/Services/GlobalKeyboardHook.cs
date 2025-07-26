@@ -113,7 +113,20 @@ namespace VRemoteClient.Services
 
                         CustomKeyMessageEventArgs keyEventArgs = null;
 
-
+                        if (IsControlPressed() && key == Keys.C)
+                        {
+                            keyEventArgs = new CustomKeyMessageEventArgs
+                            {
+                                Command = wParam,
+                                Handle = IntPtr.Zero,
+                                KeyModifier = Keys.Control,
+                                KeyCode = key,
+                                KeyType = keyState,
+                                Combination = KeyCombination.Copy
+                            };
+                            KeyPressed?.Invoke(this, keyEventArgs);
+                            return CallNextHookEx(hookID, nCode, wParam, lParam);
+                        }
                         var handleFocused = WindowsHandle.FirstOrDefault(x => IsHandleFocus(x));
                         if (handleFocused != null)
                         {
@@ -127,22 +140,6 @@ namespace VRemoteClient.Services
                             };
                             KeyPressed?.Invoke(this, keyEventArgs);
                             return (IntPtr)1;
-                        }
-                        else
-                        {
-                            if (IsControlPressed() && key == Keys.C)
-                            {
-                                keyEventArgs = new CustomKeyMessageEventArgs
-                                {
-                                    Command = wParam,
-                                    Handle = IntPtr.Zero,
-                                    KeyModifier = Keys.Control,
-                                    KeyCode = key,
-                                    KeyType = keyState,
-                                };
-                                Console.WriteLine("Copy pressed");
-                                KeyPressed?.Invoke(this, keyEventArgs);
-                            }
                         }
                     }
                 }

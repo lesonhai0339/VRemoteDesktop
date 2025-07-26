@@ -417,9 +417,16 @@ namespace VRemoteClient
                 this.BeginInvoke(new Action<object, CustomKeyMessageEventArgs>(KeyboardEvent), sender, e);
                 return;
             }
+            string keyCommandString = "";
 
-            string keyCommandString = RemoteDesktop.FormatKeyboardInput(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
-
+            if (e.Combination == KeyboardEnums.KeyCombination.Copy)
+            {
+                keyCommandString = RemoteDesktop.GetClipboard();
+            }
+            else
+            {
+                keyCommandString = RemoteDesktop.FormatKeyboardInput(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
+            }
             TryAddWork(new TaskObject
             (
                 taskType: RemoteType.Keyboard,
