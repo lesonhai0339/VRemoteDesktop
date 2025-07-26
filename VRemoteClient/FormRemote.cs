@@ -82,7 +82,7 @@ namespace VRemoteClient
             MouseHook ??= new MouseHook();
             _connectionInfo ??= info;
             this.Text = _connectionInfo.Receiver.Id.Trim();
-            //RemoteDesktop.StartKeyboardHook();
+            RemoteDesktop.AddKeyboardHookByHandle(this.Handle);
         }
         #region Properties
         public RemoteDesktopService RemoteDesktop
@@ -147,6 +147,7 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
+            Console.WriteLine(this.Handle);
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -215,6 +216,7 @@ namespace VRemoteClient
             {
                 if (_remoteDesktop != null)
                 {
+                    _remoteDesktop.RemoveKeyboardHookByHandle(this.Handle);
                     _remoteDesktop.KeyboardEvent -= KeyboardEvent;
                     _remoteDesktop.ScreenEvent -= ScreenEvent;
                     _remoteDesktop.ChunksEvent -= ChunksEvent;
@@ -404,12 +406,15 @@ namespace VRemoteClient
             RemoteDesktop.AddWork(task);
         }
         #region Keyboard
-        private void KeyboardEvent(object sender, KeyMessageEventArgs e)
+        private void KeyboardEvent(object sender, CustomKeyMessageEventArgs e)
         {
-            if (Form.ActiveForm != this) return;
+            if(e.Handle != this.Handle && Form.ActiveForm != this)
+            {
+                return;
+            }
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<object, KeyMessageEventArgs>(KeyboardEvent), sender, e);
+                this.BeginInvoke(new Action<object, CustomKeyMessageEventArgs>(KeyboardEvent), sender, e);
                 return;
             }
 

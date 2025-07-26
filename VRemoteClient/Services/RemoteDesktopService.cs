@@ -33,7 +33,7 @@ namespace VRemoteClient.Services
         public event Action<bool> ConnectServerEvent;
         public event Action<bool> LoginEvent;
         public event Action<bool, ConnectionInfo> P2PConnectEvent;
-        public event Action<object, KeyMessageEventArgs> KeyboardEvent;
+        public event Action<object, CustomKeyMessageEventArgs> KeyboardEvent;
         public event Action<byte[]> ScreenEvent;
         public event Action<List<ScreenBlock>> ChunksEvent;
 
@@ -152,6 +152,9 @@ namespace VRemoteClient.Services
         }
         #endregion
         #region Methods
+        /// <summary>
+        /// Start listening keyboard event(low-level keyboard hook). Listen on current process by process Id
+        /// </summary>
         public void StartKeyboardHook()
         {
             try
@@ -163,6 +166,9 @@ namespace VRemoteClient.Services
                 Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Start keyboard hook failed");
             }
         }
+        /// <summary>
+        ///  Stop listening keyboard event(low-level keyboard hook)
+        /// </summary>
         public void StopKeyboardHook()
         {
             try
@@ -174,6 +180,40 @@ namespace VRemoteClient.Services
                 Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Stop keyboard hook failed");
             }
         }
+        /// <summary>
+        /// Start listen keyboard event on specific Form by Form windows handle
+        /// </summary>
+        /// <param name="handle"></param>
+        public void AddKeyboardHookByHandle(IntPtr handle)
+        {
+            try
+            {
+                KeyboardHook.AddHook(handle);
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Add keyboard hook failed");
+            }
+        }
+        /// <summary>
+        /// Stop listen keyboard event on specific Form by Form windows handle
+        /// </summary>
+        /// <param name="handle"></param>
+        public void RemoveKeyboardHookByHandle(IntPtr handle)
+        {
+            try
+            {
+                KeyboardHook.RemoveHook(handle);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Remove keyboard hook failed");
+            }
+        }
+        /// <summary>
+        /// Start capturing the Windows screen on this window. This method will capture the screen and push data to the
+        /// <see cref="ScreenHookEventHandler"/> event, with <see cref="CustomScreenEventArgs"/> as the event args.
+        /// </summary>
         public void StartScreenHook()
         {
             try
@@ -185,6 +225,10 @@ namespace VRemoteClient.Services
                 Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Start screen hook failed");
             }
         }
+        /// <summary>
+        /// Stop capture windows screen on this windows(not completely closed). Can restart capture by call 
+        /// <see cref="StartScreenHook"/> method
+        /// </summary>
         public void StopScreenHook()
         {
             try
@@ -211,6 +255,7 @@ namespace VRemoteClient.Services
                     return;
                 }
                 Login();
+                StartKeyboardHook();
             }
             catch(Exception ex)
             {
@@ -312,7 +357,7 @@ namespace VRemoteClient.Services
         {
             ChunksEvent?.Invoke(blocks);
         }
-        private void KeyboardPressedEvent(object sender, KeyMessageEventArgs e)
+        private void KeyboardPressedEvent(object sender, CustomKeyMessageEventArgs e)
         {
             KeyboardEvent?.Invoke(sender, e);
         }

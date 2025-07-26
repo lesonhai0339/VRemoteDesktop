@@ -162,8 +162,8 @@ namespace VRemoteClient
             }
             RemoteDesktop.InitP2PConnection(txtPartnerId.Text, txtPartnerPassword.Text);
             
-            bool flag = _resetEvent.WaitOne(5000);
-            if (flag)
+            _resetEvent.WaitOne(5000);
+            if (_connectionInfo != null)
             {
                 ConnectionInfo info = new ConnectionInfo()
                 {

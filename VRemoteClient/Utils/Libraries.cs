@@ -34,6 +34,9 @@ namespace VRemoteClient.Utils
         public static  int VK_MENU = 0x12; // Alt
 
         [DllImport("user32.dll")]
+        public static extern IntPtr GetForegroundWindow();
+
+        [DllImport("user32.dll")]
         public static extern bool SetProcessDPIAware();
 
         [DllImport("user32.dll")]
@@ -75,8 +78,6 @@ namespace VRemoteClient.Utils
 
         [DllImport("kernel32.dll", CharSet = CharSet.Auto, SetLastError = true)]
         public static extern IntPtr GetModuleHandle(string lpModuleName);
-        [DllImport("user32.dll")]
-        public static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")]
         public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);

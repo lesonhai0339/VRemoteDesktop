@@ -13,22 +13,65 @@ namespace VRemoteClient.Services
 {
     public class GlobalKeyboardHook: IDisposable
     {
+        private readonly object _lockObject = new object();
         private uint _targetProcessId;
         private IntPtr hookID = IntPtr.Zero;
         private LowLevelKeyboardProc proc;
-        public event EventHandler<KeyMessageEventArgs> KeyPressed;
+        public HashSet<IntPtr> _windowsHandle = new HashSet<IntPtr>(); 
+        public event EventHandler<CustomKeyMessageEventArgs> KeyPressed;
+
         private bool _disposed = false;
-        public GlobalKeyboardHook() { }
+        public GlobalKeyboardHook() 
+        {
+            WindowsHandle = new HashSet<IntPtr>();
+        }
         public void Start(uint pId)
         {
             _targetProcessId = pId;
             proc = HookCallback;
             hookID = SetHook(proc);
         }
+        #region Properties
+        public HashSet<IntPtr> WindowsHandle
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _windowsHandle;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _windowsHandle = value;
+                }
+            }
+        }
+        public void AddHook(IntPtr handle)
+        {
+            lock (_lockObject)
+            {
+                WindowsHandle.Add(handle);
+            }
+        }
+        public void RemoveHook(IntPtr handle)
+        {
+            lock (_lockObject)
+            {
+                WindowsHandle.Remove(handle);
+            }
+        }
+        #endregion
         public void Stop()
         {
             UnhookWindowsHookEx(hookID);
             hookID = IntPtr.Zero;
+        }
+        private bool IsHandleFocus(IntPtr handle)
+        {
+            return GetForegroundWindow() == handle;
         }
         private IntPtr SetHook(LowLevelKeyboardProc proc)
         {
@@ -56,22 +99,52 @@ namespace VRemoteClient.Services
             //event do not be register, do not need to listen
             //if (KeyPressed == null) return (IntPtr)1;
             
-            if (nCode >= 0)
+            if(WindowsHandle.Count > 0)
             {
-                if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
+                if (nCode >= 0)
                 {
-                    KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
-                    int vkCode = hookStruct.vkCode;
-                    Keys key = (Keys)vkCode;
+                    if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
+                    {
+                        KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
+                        int vkCode = hookStruct.vkCode;
+                        Keys key = (Keys)vkCode;
 
-                    KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
+                        KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
 
-                    KeyMessageEventArgs keyEventArgs = null;
+                        CustomKeyMessageEventArgs keyEventArgs = null;
 
-                    keyEventArgs = new KeyMessageEventArgs(wParam, Keys.None, key, keyState);
 
-                    KeyPressed?.Invoke(this, keyEventArgs);
-                    return (IntPtr)1;
+                        var handleFocused = WindowsHandle.FirstOrDefault(x => IsHandleFocus(x));
+                        if (handleFocused != null)
+                        {
+                            keyEventArgs = new CustomKeyMessageEventArgs
+                            {
+                                Command = wParam,
+                                Handle = handleFocused,
+                                KeyModifier = Keys.None,
+                                KeyCode = key,
+                                KeyType = keyState,
+                            };
+                            KeyPressed?.Invoke(this, keyEventArgs);
+                            return (IntPtr)1;
+                        }
+                        else
+                        {
+                            if (IsControlPressed() && key == Keys.C)
+                            {
+                                keyEventArgs = new CustomKeyMessageEventArgs
+                                {
+                                    Command = wParam,
+                                    Handle = IntPtr.Zero,
+                                    KeyModifier = Keys.Control,
+                                    KeyCode = key,
+                                    KeyType = keyState,
+                                };
+                                Console.WriteLine("Copy pressed");
+                                KeyPressed?.Invoke(this, keyEventArgs);
+                            }
+                        }
+                    }
                 }
             }
             return CallNextHookEx(hookID, nCode, wParam, lParam);
