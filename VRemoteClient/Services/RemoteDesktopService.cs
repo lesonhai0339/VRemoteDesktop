@@ -381,17 +381,20 @@ namespace VRemoteClient.Services
         /// <exception cref="NotImplementedException"></exception>
         private void P2PConnectEventHandler(bool isSender, bool flag, ConnectionInfo info)
         {
-            if (isSender)
+            if (flag)
             {
-                P2PConnectEvent?.Invoke(flag, info);
+                if (isSender)
+                {
+                    P2PConnectEvent?.Invoke(flag, info);
+                }
+                else
+                {
+                    if (!ScreenHook.IsCapturing)
+                    {
+                        StartScreenHook();
+                    }
+                }
             }
-            //else
-            //{
-            //    if (!ScreenHook.IsCapturing)
-            //    {
-            //        StartScreenHook();
-            //    }
-            //}
         }
         private void P2PScreenEventHandler(byte[] screen)
         {
