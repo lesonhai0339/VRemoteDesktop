@@ -13,13 +13,13 @@ using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
 using static VRemoteClient.Utils.Libraries;
 
-namespace VRemoteClient.Services
+namespace VRemoteClient.Modules.Mouse
 {
-    public class MouseHook : IDisposable
+    public class MouseService : IDisposable
     {
         private bool _disposed = false;
         public event EventHandler<CustomMouseTaskEventArgs> MouseTask;
-        public MouseHook()
+        public MouseService()
         {
         }
         #region Methods 
@@ -43,7 +43,7 @@ namespace VRemoteClient.Services
                 MouseTask?.Invoke(this, new CustomMouseTaskEventArgs
                 {
                     Task = new TaskObject(
-                    taskType: Models.Enums.RemoteType.Mouse,
+                    taskType: RemoteType.Mouse,
                     sessionId: sessionId,
                     data: Encoding.ASCII.GetBytes(mouseEventString)
                     )
@@ -75,17 +75,17 @@ namespace VRemoteClient.Services
 
                 float scale = Math.Min(scaleX, scaleY);
 
-                float displayWidth = (imageSize.Width * scale);
-                float displayHeight = (imageSize.Height * scale);
+                float displayWidth = imageSize.Width * scale;
+                float displayHeight = imageSize.Height * scale;
 
                 float offsetX = (pictureboxSize.Width - displayWidth) / 2;
                 float offsetY = (pictureboxSize.Height - displayHeight) / 2;
 
                 RectangleF displayRect = new RectangleF(
-                    offsetX + (rectangle.X * scale),
-                    offsetY + (rectangle.Y * scale),
-                    (rectangle.Width * scale),
-                    (rectangle.Height * scale));
+                    offsetX + rectangle.X * scale,
+                    offsetY + rectangle.Y * scale,
+                    rectangle.Width * scale,
+                    rectangle.Height * scale);
 
                 return displayRect;
             }
@@ -131,23 +131,23 @@ namespace VRemoteClient.Services
             }
             return new Point(x, y);
         }
-        public string MouseEventToString(MouseEventType mouseEvent, int width, int height, System.Windows.Forms.MouseEventArgs e, MouseMessage mouseMsg = MouseMessage.None, MouseType mouseType = MouseType.None)
+        public string MouseEventToString(MouseEventType mouseEvent, int width, int height, MouseEventArgs e, MouseMessage mouseMsg = MouseMessage.None, MouseType mouseType = MouseType.None)
         {
             string result = "";
             switch (mouseEvent)
             {
                 case MouseEventType.Click:
-                    MouseMessage button = (e.Button == MouseButtons.Left) ? MouseMessage.WM_LBUTTONDOWN :
-                                          (e.Button == MouseButtons.Middle) ? MouseMessage.WM_MBUTTONDOWN :
-                                          (e.Button == MouseButtons.Right) ? MouseMessage.WM_RBUTTONDOWN :
+                    MouseMessage button = e.Button == MouseButtons.Left ? MouseMessage.WM_LBUTTONDOWN :
+                                          e.Button == MouseButtons.Middle ? MouseMessage.WM_MBUTTONDOWN :
+                                          e.Button == MouseButtons.Right ? MouseMessage.WM_RBUTTONDOWN :
                                           MouseMessage.None;
                     result =  ToString(width, height, button, MouseType.Down, e.X, e.Y);
                     break;
 
                 case MouseEventType.DoubleClick:
-                    MouseMessage dbButton = (e.Button == MouseButtons.Left) ? MouseMessage.WM_LBUTTONDBLCLK :
-                                         (e.Button == MouseButtons.Middle) ? MouseMessage.WM_MBUTTONDBLCLK :
-                                         (e.Button == MouseButtons.Right) ? MouseMessage.WM_RBUTTONDBLCLK :
+                    MouseMessage dbButton = e.Button == MouseButtons.Left ? MouseMessage.WM_LBUTTONDBLCLK :
+                                         e.Button == MouseButtons.Middle ? MouseMessage.WM_MBUTTONDBLCLK :
+                                         e.Button == MouseButtons.Right ? MouseMessage.WM_RBUTTONDBLCLK :
                                          MouseMessage.None;
                     result = ToString(width, height, dbButton, MouseType.Down, e.X, e.Y);
                     break;

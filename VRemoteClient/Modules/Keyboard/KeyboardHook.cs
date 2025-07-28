@@ -13,8 +13,9 @@ using static System.Runtime.CompilerServices.RuntimeHelpers;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Libraries;
 
-namespace VRemoteClient.Services
+namespace VRemoteClient.Modules.Keyboard
 {
+    [Obsolete("")]
     public class KeyboardHook: IDisposable
     {
         private uint _targetProcessId;
@@ -65,7 +66,7 @@ namespace VRemoteClient.Services
                     Keys key = (Keys)vkCode;
 
                     // Determine if it's key down or up
-                    KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
+                    KeyState keyState = wParam == (IntPtr)WM_KEYDOWN ? KeyState.KeyDown : KeyState.KeyUp;
 
                     KeyMessageEventArgs keyEventArgs = null;
                     //Keys modifier = IsControlPressed() ? Keys.Control :

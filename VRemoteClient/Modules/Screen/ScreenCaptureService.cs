@@ -12,11 +12,12 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Modules.Socket;
 using VRemoteClient.Utils;
 
-namespace VRemoteClient.Services
+namespace VRemoteClient.Modules.Screen
 {
-    public class ScreenHook: IDisposable
+    public class ScreenCaptureService: IDisposable
     {
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
@@ -28,13 +29,13 @@ namespace VRemoteClient.Services
         private byte[] _buffer = new byte[20];
         private byte[] _dataSend;
 
-        private Capture _capture;
+        private ScreenCapture _capture;
 
         private BackgroundWorker _backgroundWorker;
         private RemoteClient _remoteClient;
         private ManualResetEvent _resetEvent;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
-        public ScreenHook(RemoteClient client) 
+        public ScreenCaptureService(RemoteClient client) 
         {
             var bounds = Screen.PrimaryScreen.Bounds;
             int pixelCount = bounds.Width * bounds.Height;
@@ -42,7 +43,7 @@ namespace VRemoteClient.Services
             _dataSend = new byte[bufferSize];
 
             RemoteClient = client;
-            _capture = new Capture();
+            _capture = new ScreenCapture();
 
             _resetEvent = new ManualResetEvent(false);
             BackgroundWorker = new BackgroundWorker();
@@ -98,7 +99,7 @@ namespace VRemoteClient.Services
             set
             {
                 DoWorkEventHandler e = new DoWorkEventHandler(DoWork);
-                BackgroundWorker backgroundWorker = this._backgroundWorker;
+                BackgroundWorker backgroundWorker = _backgroundWorker;
                 if (backgroundWorker != null)
                 {
                     backgroundWorker.DoWork -= e;
@@ -142,7 +143,7 @@ namespace VRemoteClient.Services
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
-                    ScreenEnum screenEnum = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
+                    ScreenEnum screenEnum = screens.Count == 1 && screens[0].IsFullScreen ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
                     switch (screenEnum)
                     {
                         case ScreenEnum.FULLSCREEN:
@@ -170,8 +171,8 @@ namespace VRemoteClient.Services
                                           .Error($"Blocks number more than expected");
                         return;
                     }
-                    byte[] screenCompressed = Utils.Extensions.CompressGzip(blocks[0].Bytes);
-                    byte[] screenHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(screenCompressed));
+                    byte[] screenCompressed = Extensions.CompressGzip(blocks[0].Bytes);
+                    byte[] screenHashed = Encoding.ASCII.GetBytes(Extensions.SHAHash(screenCompressed));
                     int dataLength = screenCompressed.Length + 5 + screenHashed.Length;
 
                     //header
@@ -222,8 +223,8 @@ namespace VRemoteClient.Services
                 lock (_lock)
                 {
                     byte[] sourceChunks = MergeAllChunk(blocks);
-                    byte[] chunks = Utils.Extensions.CompressGzip(sourceChunks);
-                    byte[] chunksHashed = Encoding.ASCII.GetBytes(Utils.Extensions.SHAHash(chunks)); //add hash to ensure data is correct
+                    byte[] chunks = Extensions.CompressGzip(sourceChunks);
+                    byte[] chunksHashed = Encoding.ASCII.GetBytes(Extensions.SHAHash(chunks)); //add hash to ensure data is correct
 
                     //headers always 5 bytes, 4 bytes for data length and 1 byte for command type, add more 40 bytes for hash string
                     int numberOfChunk = (chunks.Length + chunksHashed.Length + 5 + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5); 

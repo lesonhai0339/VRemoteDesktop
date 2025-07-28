@@ -17,6 +17,7 @@ using System.Windows.Forms.VisualStyles;
 using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Modules.Mouse;
 using VRemoteClient.Services;
 using VRemoteClient.Utils;
 
@@ -34,7 +35,7 @@ namespace VRemoteClient
         private Graphics _screenGraphics;
         private RemoteDesktopService _remoteDesktop;
         private ConnectionInfo _connectionInfo;
-        private MouseHook _mouseHook;
+        private MouseService _mouseHook;
 
         private DateTime lastMouseMoveTime = DateTime.MinValue;
 
@@ -79,7 +80,7 @@ namespace VRemoteClient
                 return;
             }
             RemoteDesktop ??= remoteDesktop;
-            MouseHook ??= new MouseHook();
+            MouseHook ??= new MouseService();
             _connectionInfo ??= info;
             this.Text = _connectionInfo.Receiver.Id.Trim();
             RemoteDesktop.AddKeyboardHookByHandle(this.Handle);
@@ -120,7 +121,7 @@ namespace VRemoteClient
 
 
 
-        public MouseHook MouseHook
+        public MouseService MouseHook
         {
             get
             {

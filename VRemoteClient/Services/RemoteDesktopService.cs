@@ -9,6 +9,9 @@ using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Modules.Keyboard;
+using VRemoteClient.Modules.Screen;
+using VRemoteClient.Modules.Socket;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 
@@ -28,7 +31,7 @@ namespace VRemoteClient.Services
 
 
         private GlobalKeyboardHook _globakKeyboardHook;
-        private GlobalScreenHook _globakScreenHook;
+        private GlobalScreenCapture _globakScreenHook;
         private RemoteClient _remoteClient;
 
         public event Action<bool> ConnectServerEvent;
@@ -51,7 +54,7 @@ namespace VRemoteClient.Services
             RemoteClient ??= new RemoteClient(OwnerInfo);
             Task.Factory.StartNew(() =>
             {
-                ScreenHook = new GlobalScreenHook();
+                ScreenHook = new GlobalScreenCapture();
             }, TaskCreationOptions.LongRunning);
         }
         #region Properties
@@ -93,7 +96,7 @@ namespace VRemoteClient.Services
                 }
             }
         }
-        public GlobalScreenHook ScreenHook
+        public GlobalScreenCapture ScreenHook
         {
             get
             {
@@ -257,7 +260,7 @@ namespace VRemoteClient.Services
                 {
                     ConnectServerEvent?.Invoke(flag);
                     //TODO: invoke event form main from notify that login failed
-                    Log.ForContext("Filename", this.GetType().Name).Error("Socket connect failed");
+                    Log.ForContext("Filename", GetType().Name).Error("Socket connect failed");
                     return;
                 }
                 Login();
@@ -265,7 +268,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.ForContext("Filename", this.GetType().Name).Error("ConnectToServer error");
+                Log.ForContext("Filename", GetType().Name).Error("ConnectToServer error");
             }
         }
         public void InitP2PConnection(string partnerId, string partnerPassword)
@@ -292,7 +295,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "P2P connection error");
+                Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connection error");
             }
         }
         public void AddWork(TaskObject task)
@@ -315,7 +318,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.ForContext("Filename", this.GetType().Name).Error(ex, "GetClipboard error");
+                Log.ForContext("Filename", GetType().Name).Error(ex, "GetClipboard error");
                 return string.Empty;
             }
         }
@@ -333,7 +336,7 @@ namespace VRemoteClient.Services
             }
             catch (Exception ex)
             {
-                Log.ForContext("Filename", this.GetType().Name).Error(ex, "SetClipboard error");
+                Log.ForContext("Filename", GetType().Name).Error(ex, "SetClipboard error");
                 return false;
             }
         }
@@ -351,7 +354,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.ForContext("Filename", this.GetType().Name).Error(ex, "Login error");
+                Log.ForContext("Filename", GetType().Name).Error(ex, "Login error");
             }
         }
         #endregion
@@ -423,7 +426,7 @@ namespace VRemoteClient.Services
             {
                 if (e.Data.Count == 0 || e.TotalSize == 0)
                 {
-                    Log.ForContext("FileName", this.GetType().Name).Error("Screen missing some value");
+                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
                     return;
                 }
 
@@ -458,7 +461,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ScreenHookEventHandler error");
+                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
         }
         private void ClipboardReceivedEventHandler(byte[] clipboardData)

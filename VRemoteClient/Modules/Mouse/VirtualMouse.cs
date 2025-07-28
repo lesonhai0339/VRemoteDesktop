@@ -7,11 +7,10 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
-using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using static VRemoteClient.Utils.Libraries;
 
-namespace VRemoteClient.Utils
+namespace VRemoteClient.Modules.Mouse
 {
     public static class VirtualMouse
     {

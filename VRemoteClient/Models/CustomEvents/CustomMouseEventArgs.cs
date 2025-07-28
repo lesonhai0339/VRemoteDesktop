@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using VRemoteClient.Models.Enums;
 
-namespace VRemoteClient.Models.Entities
+namespace VRemoteClient.Models.CustomEvents
 {
     public class CustomMouseEventArgs : EventArgs
     {

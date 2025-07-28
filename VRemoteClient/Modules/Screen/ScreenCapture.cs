@@ -14,9 +14,9 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 
-namespace VRemoteClient.Services
+namespace VRemoteClient.Modules.Screen
 {
-    internal class Capture
+    internal class ScreenCapture
     {
         private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
         //private ConcurrentBag<ScreenBlock> blocks = new ConcurrentBag<ScreenBlock>();
@@ -27,7 +27,7 @@ namespace VRemoteClient.Services
         private object _lockObject2;
         private ImageCodecInfo encoder;
         private EncoderParameters encoderParams;
-        public Capture()
+        public ScreenCapture()
         {
             _previousFrame = null;
             _lock = new object();
@@ -280,8 +280,8 @@ namespace VRemoteClient.Services
             {
                 for (int x = 0; x < current.Width; x += blockSize)
                 {
-                    int width = (current.Width - x) > blockSize ? blockSize : current.Width - x;
-                    int height = (current.Height - y) > blockSize ? blockSize : current.Height - y;
+                    int width = current.Width - x > blockSize ? blockSize : current.Width - x;
+                    int height = current.Height - y > blockSize ? blockSize : current.Height - y;
                     Rectangle block = new Rectangle(x, y,
                         width,
                         height);
@@ -358,14 +358,14 @@ namespace VRemoteClient.Services
             // Check if rectangles are adjacent or overlapping
             Rectangle union = Rectangle.Union(rect1, rect2);
             int unionArea = union.Width * union.Height;
-            int combinedArea = (rect1.Width * rect1.Height) + (rect2.Width * rect2.Height);
+            int combinedArea = rect1.Width * rect1.Height + rect2.Width * rect2.Height;
 
             // Only merge if efficiency is above threshold (avoid creating large empty areas)
             double efficiency = (double)combinedArea / unionArea;
             return efficiency > 0.75; // 75% efficiency threshold
         }
         //this method same with Math.abs()
-        private int AbsBitwise(int x) => (x + (x >> 31)) ^ (x >> 31);
+        private int AbsBitwise(int x) => x + (x >> 31) ^ x >> 31;
         private unsafe bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
         {
             byte* currentPtr = (byte*)currentData.Scan0;

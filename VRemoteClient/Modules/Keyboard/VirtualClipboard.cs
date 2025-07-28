@@ -4,7 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 
-namespace VRemoteClient.Utils
+namespace VRemoteClient.Modules.Keyboard
 {
     public enum ClipboardFormat: uint
     {

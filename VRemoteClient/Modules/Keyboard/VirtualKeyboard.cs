@@ -9,7 +9,7 @@ using VRemoteClient.Models.Entities;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Libraries;
 
-namespace VRemoteClient.Utils
+namespace VRemoteClient.Modules.Keyboard
 {
     public class KeyboardState
     {
@@ -92,7 +92,7 @@ namespace VRemoteClient.Utils
                     {
                         wVk = (ushort)key,
                         wScan = 0,
-                        dwFlags = (keyState == KeyState.KeyDown) ? 0 : KEYEVENTF_KEYUP,
+                        dwFlags = keyState == KeyState.KeyDown ? 0 : KEYEVENTF_KEYUP,
                         time = 0,
                         dwExtraInfo = GetMessageExtraInfo()
                     }

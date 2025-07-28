@@ -10,7 +10,7 @@ using VRemoteClient.Models.CustomEvents;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using VRemoteClient.Utils;
 
-namespace VRemoteClient.Services
+namespace VRemoteClient.Modules.Keyboard
 {
     public class GlobalKeyboardHook: IDisposable
     {
@@ -107,7 +107,7 @@ namespace VRemoteClient.Services
                     KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
-                    KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
+                    KeyState keyState = wParam == (IntPtr)WM_KEYDOWN ? KeyState.KeyDown : KeyState.KeyUp;
 
                     CustomKeyMessageEventArgs keyEventArgs = null;
 

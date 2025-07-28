@@ -11,9 +11,9 @@ using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
 
-namespace VRemoteClient.Services
+namespace VRemoteClient.Modules.Screen
 {
-    public class GlobalScreenHook: IDisposable
+    public class GlobalScreenCapture: IDisposable
     {
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
@@ -23,17 +23,17 @@ namespace VRemoteClient.Services
         private byte[] _buffer = new byte[20];
         private byte[] _dataSend;
 
-        private Capture _capture;
+        private ScreenCapture _capture;
         private BackgroundWorker _backgroundWorker;
         public event EventHandler<CustomScreenEventArgs> ScreenEvent;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
-        public GlobalScreenHook()
+        public GlobalScreenCapture()
         {
             var bounds = Screen.PrimaryScreen.Bounds;
             int pixelCount = bounds.Width * bounds.Height;
             int bufferSize = pixelCount > 3840000 ? 30 * 1024 * 1024 : 10 * 1024 * 1024;
             _dataSend = new byte[bufferSize];
-            _capture = new Capture();
+            _capture = new ScreenCapture();
             BackgroundWorker = new BackgroundWorker();
             BackgroundWorker.WorkerSupportsCancellation = true;
         }
@@ -52,7 +52,7 @@ namespace VRemoteClient.Services
             set
             {
                 DoWorkEventHandler e = new DoWorkEventHandler(DoWork);
-                BackgroundWorker backgroundWorker = this._backgroundWorker;
+                BackgroundWorker backgroundWorker = _backgroundWorker;
                 if (backgroundWorker != null)
                 {
                     backgroundWorker.DoWork -= e;
@@ -96,7 +96,7 @@ namespace VRemoteClient.Services
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
-                    ScreenEnum screenEnum = (screens.Count == 1 && screens[0].IsFullScreen) ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
+                    ScreenEnum screenEnum = screens.Count == 1 && screens[0].IsFullScreen ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
                     switch (screenEnum)
                     {
                         case ScreenEnum.FULLSCREEN:

@@ -12,10 +12,12 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Modules.Keyboard;
+using VRemoteClient.Modules.Mouse;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 
-namespace VRemoteClient.Services
+namespace VRemoteClient.Modules.Socket
 {
     public class RemoteClient : IDisposable
     {
@@ -474,7 +476,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessReceiveData error");
+                Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
 
@@ -497,7 +499,7 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessClipboardReceive error");
+                Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessClipboardReceive error");
             }
         }
         /// <summary>
@@ -566,11 +568,11 @@ namespace VRemoteClient.Services
                 var compressedData = new byte[compressedLength];
                 Buffer.BlockCopy(data, 41, compressedData, 0, compressedLength);
 
-                string screenHash = Utils.Extensions.SHAHash(compressedData);
+                string screenHash = Extensions.SHAHash(compressedData);
 
                 if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    byte[] screenDecompressed = Utils.Extensions.DecompressGzip(compressedData);
+                    byte[] screenDecompressed = Extensions.DecompressGzip(compressedData);
                     P2PScreenEvent p2pScreen = P2PScreenEventHandler;
                     if (p2pScreen != null)
                     {
@@ -594,11 +596,11 @@ namespace VRemoteClient.Services
                 var compressedData = new byte[compressedLength];
                 Buffer.BlockCopy(data, 41, compressedData, 0, compressedLength);
 
-                string screenHash = Utils.Extensions.SHAHash(compressedData);
+                string screenHash = Extensions.SHAHash(compressedData);
 
                 if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    byte[] chunksDecompressed = Utils.Extensions.DecompressGzip(compressedData);
+                    byte[] chunksDecompressed = Extensions.DecompressGzip(compressedData);
 
                     List<ScreenBlock> blocks = new List<ScreenBlock>();
                     int offset = 0;

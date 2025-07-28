@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Services;
-using static VRemoteClient.Services.RemoteClient;
+using static VRemoteClient.Modules.Socket.RemoteClient;
 
 namespace VRemoteClient
 {
