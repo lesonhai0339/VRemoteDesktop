@@ -33,11 +33,12 @@ namespace VRemoteServer.Models
         private byte[] _remainingData;
         private int _dataExpected;
         private int _dataReceived;
+        private bool isFirstPacket;
 
         public Client(Socket socket, Action<Client> disconnectCallback, Func<string, Enums.CommandType, Client, byte[], Task<bool>> dataCallback)
         {
             _lastSendTime = DateTime.Now; //init before check timeout
-
+            isFirstPacket = true;
             Socket = socket;
             _disconnectCallback = disconnectCallback;
             _dataCallback = dataCallback;
@@ -253,15 +254,24 @@ namespace VRemoteServer.Models
 
                         if (dataNeedtoReceive > 0)
                         {
-                            byte[] bytes = new byte[dataNeedtoReceive];
-                            Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive);
+                            if (isFirstPacket)
+                            {
+                                byte[] bytes = new byte[dataNeedtoReceive - 16];
+                                Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive - 16);
+                                await ProcessData(sessionId, type, bytes);
+                                isFirstPacket = false;
+                            }
+                            else
+                            {
+                                byte[] bytes = new byte[dataNeedtoReceive];
+                                Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive);
+                                await ProcessData(sessionId, type, bytes);
+                            }
 
                             _dataReceived += dataNeedtoReceive;
                             bytesProcessed += dataNeedtoReceive;
-
                             Console.WriteLine($"Processing data: {_dataReceived}/{_dataExpected} bytes received at sessionId: {sessionId}");
 
-                            await ProcessData(sessionId, type, bytes);
                             if (_dataReceived >= _dataExpected)
                             {
                                 Console.WriteLine($"Complete {_dataExpected} - {_dataReceived} - {(Socket.RemoteEndPoint as IPEndPoint).Address.ToString()}");
@@ -269,6 +279,7 @@ namespace VRemoteServer.Models
                                 _dataExpected = 0;
                                 _dataReceived = 0;
                                 _currentHeader = null;
+                                isFirstPacket = true;
                             }
                         }
                     }
@@ -283,7 +294,6 @@ namespace VRemoteServer.Models
                 int remainingBytes = totalData.Length - bytesProcessed;
                 _remainingData = new byte[remainingBytes];
                 Buffer.BlockCopy(totalData, bytesProcessed, _remainingData, 0, remainingBytes);
-
             }
             else
             {

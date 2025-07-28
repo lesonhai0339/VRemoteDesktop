@@ -385,13 +385,13 @@ namespace VRemoteClient.Services
             {
                 P2PConnectEvent?.Invoke(flag, info);
             }
-            else
-            {
-                if (!ScreenHook.IsCapturing)
-                {
-                    StartScreenHook();
-                }
-            }
+            //else
+            //{
+            //    if (!ScreenHook.IsCapturing)
+            //    {
+            //        StartScreenHook();
+            //    }
+            //}
         }
         private void P2PScreenEventHandler(byte[] screen)
         {

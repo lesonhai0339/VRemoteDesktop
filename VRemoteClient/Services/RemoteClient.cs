@@ -361,7 +361,7 @@ namespace VRemoteClient.Services
                         {
                             break;
                         }
-                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
+                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(16, 4).ToArray(), 0);
 
                         if (!(stateObject.ByteArrayBuilder.Length >= length))
                         {
@@ -369,8 +369,8 @@ namespace VRemoteClient.Services
                             break;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(length).ToArray();
-                        byte[] data = new byte[length - 4];
-                        Buffer.BlockCopy(src, 4, data, 0, data.Length);
+                        byte[] data = new byte[length - 20 ];
+                        Buffer.BlockCopy(src, 20, data, 0, data.Length);
                         ProcessReceiveData(data);
                         if (_cancellationToken.IsCancellationRequested) break;
                     }
