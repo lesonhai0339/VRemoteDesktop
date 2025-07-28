@@ -324,22 +324,13 @@ namespace VRemoteClient.Services
         /// </summary>
         /// <param name="data">The input string that will be encoded as UTF-16.</param>
         /// <returns>Formatted byte array.</returns>
-        public bool SetClipboard(object data)
+        public bool SetClipboard(byte[] data)
         {
             try
             {
-                if (data is string c)
-                {
-                    byte[] formatted = Encoding.Unicode.GetBytes(c + '\0');
-                    return VirtualClipboard.SetClipboard(formatted);
-                }
-                else if (data is byte[] d)
-                {
-                    return VirtualClipboard.SetClipboard(d);
-                }
-                return false;
+                return VirtualClipboard.SetClipboard(data);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("Filename", this.GetType().Name).Error(ex, "SetClipboard error");
                 return false;

@@ -488,10 +488,15 @@ namespace VRemoteClient.Services
             {
                 byte[] clipboardData = new byte[data.Length - 1];
                 Buffer.BlockCopy(data, 1, clipboardData, 0, data.Length - 1);
+                string dataString = Encoding.ASCII.GetString(clipboardData);
+
+                //default setclipboard use CF_UNICODETEXT(UTF-16), need to convert data to utf-16
+                byte[] clipboardReformatted = Encoding.Unicode.GetBytes(dataString + '\0');
+
                 ClipboardReceivedEvent clipboardEvent = ClipboardReceivedEventHandler;
                 if (clipboardEvent != null)
                 {
-                    clipboardEvent(clipboardData);
+                    clipboardEvent(clipboardReformatted);
                 }
             }
             catch(Exception ex)
