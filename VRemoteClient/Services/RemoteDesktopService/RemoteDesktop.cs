@@ -9,15 +9,15 @@ using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
-using VRemoteClient.Modules.Keyboard;
-using VRemoteClient.Modules.Screen;
-using VRemoteClient.Modules.Socket;
+using VRemoteClient.Services.ScreenService;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
+using VRemoteClient.Services.SocketService;
+using VRemoteClient.Services.KeyboardService;
 
-namespace VRemoteClient.Services
+namespace VRemoteClient.Services.RemoteDesktopService
 {
-    public class RemoteDesktopService: IDisposable
+    public class RemoteDesktop: IDisposable
     {
         private readonly string defaultSessionId = "0000000000000000";
         private readonly object _lockProperties = new object();
@@ -41,7 +41,7 @@ namespace VRemoteClient.Services
         public event Action<byte[]> ScreenEvent;
         public event Action<List<ScreenBlock>> ChunksEvent;
         public event Action<bool> P2PDisconnect;
-        public RemoteDesktopService() 
+        public RemoteDesktop() 
         {
             OwnerInfo = Extensions.InitInfo();
 

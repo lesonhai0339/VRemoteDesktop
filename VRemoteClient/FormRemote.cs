@@ -17,8 +17,8 @@ using System.Windows.Forms.VisualStyles;
 using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
-using VRemoteClient.Modules.Mouse;
-using VRemoteClient.Services;
+using VRemoteClient.Services.MouseService;
+using VRemoteClient.Services.RemoteDesktopService;
 using VRemoteClient.Utils;
 
 namespace VRemoteClient
@@ -33,9 +33,9 @@ namespace VRemoteClient
 
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
-        private RemoteDesktopService _remoteDesktop;
+        private RemoteDesktop _remoteDesktop;
         private ConnectionInfo _connectionInfo;
-        private MouseService _mouseHook;
+        private Mouse _mouseHook;
 
         private DateTime lastMouseMoveTime = DateTime.MinValue;
 
@@ -43,7 +43,7 @@ namespace VRemoteClient
         private MouseEventArgs pendingClickArgs;
         private Control pendingSender;
         private ManualResetEvent isP2PDisconnectCallback;
-        public FormRemote(RemoteDesktopService remoteDesktop, ConnectionInfo info)
+        public FormRemote(RemoteDesktop remoteDesktop, ConnectionInfo info)
         {
             InitializeComponent();
             Init(remoteDesktop, info);
@@ -70,7 +70,7 @@ namespace VRemoteClient
             clickTimer.Interval = Math.Min(100, SystemInformation.DoubleClickTime / 5);
             clickTimer.Tick += ClickTimer_Tick;
         }
-        private void Init(RemoteDesktopService remoteDesktop , ConnectionInfo info)
+        private void Init(RemoteDesktop remoteDesktop , ConnectionInfo info)
         {
             if(remoteDesktop == null || info == null)
             {
@@ -80,13 +80,13 @@ namespace VRemoteClient
                 return;
             }
             RemoteDesktop ??= remoteDesktop;
-            MouseHook ??= new MouseService();
+            MouseHook ??= new Mouse();
             _connectionInfo ??= info;
             this.Text = _connectionInfo.Receiver.Id.Trim();
             RemoteDesktop.AddKeyboardHookByHandle(this.Handle);
         }
         #region Properties
-        public RemoteDesktopService RemoteDesktop
+        public RemoteDesktop RemoteDesktop
         {
             get
             {
@@ -121,7 +121,7 @@ namespace VRemoteClient
 
 
 
-        public MouseService MouseHook
+        public Mouse MouseHook
         {
             get
             {

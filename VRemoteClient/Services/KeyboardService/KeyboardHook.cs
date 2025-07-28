@@ -13,7 +13,7 @@ using static System.Runtime.CompilerServices.RuntimeHelpers;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Libraries;
 
-namespace VRemoteClient.Modules.Keyboard
+namespace VRemoteClient.Services.KeyboardService
 {
     [Obsolete("")]
     public class KeyboardHook: IDisposable

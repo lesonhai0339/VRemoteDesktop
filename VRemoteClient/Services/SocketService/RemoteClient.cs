@@ -12,12 +12,12 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
-using VRemoteClient.Modules.Keyboard;
-using VRemoteClient.Modules.Mouse;
+using VRemoteClient.Services.KeyboardService;
+using VRemoteClient.Services.MouseService;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 
-namespace VRemoteClient.Modules.Socket
+namespace VRemoteClient.Services.SocketService
 {
     public class RemoteClient : IDisposable
     {

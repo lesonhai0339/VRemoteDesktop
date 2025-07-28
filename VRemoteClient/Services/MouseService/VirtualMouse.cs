@@ -10,7 +10,7 @@ using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Enums;
 using static VRemoteClient.Utils.Libraries;
 
-namespace VRemoteClient.Modules.Mouse
+namespace VRemoteClient.Services.MouseService
 {
     public static class VirtualMouse
     {

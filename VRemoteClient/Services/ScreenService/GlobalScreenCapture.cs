@@ -11,7 +11,7 @@ using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
 
-namespace VRemoteClient.Modules.Screen
+namespace VRemoteClient.Services.ScreenService
 {
     public class GlobalScreenCapture: IDisposable
     {

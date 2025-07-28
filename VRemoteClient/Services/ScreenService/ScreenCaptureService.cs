@@ -12,10 +12,10 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
-using VRemoteClient.Modules.Socket;
+using VRemoteClient.Services.SocketService;
 using VRemoteClient.Utils;
 
-namespace VRemoteClient.Modules.Screen
+namespace VRemoteClient.Services.ScreenService
 {
     public class ScreenCaptureService: IDisposable
     {

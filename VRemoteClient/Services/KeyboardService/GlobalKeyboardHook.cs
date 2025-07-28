@@ -10,7 +10,7 @@ using VRemoteClient.Models.CustomEvents;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using VRemoteClient.Utils;
 
-namespace VRemoteClient.Modules.Keyboard
+namespace VRemoteClient.Services.KeyboardService
 {
     public class GlobalKeyboardHook: IDisposable
     {

@@ -13,8 +13,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
-using VRemoteClient.Services;
-using static VRemoteClient.Modules.Socket.RemoteClient;
+using VRemoteClient.Services.RemoteDesktopService;
 
 namespace VRemoteClient
 {
@@ -25,7 +24,7 @@ namespace VRemoteClient
         private bool _isSocketConnected;
         private ManualResetEvent _resetEvent;
         private ConnectionInfo _connectionInfo;
-        private RemoteDesktopService _remoteDesktop;
+        private RemoteDesktop _remoteDesktop;
         public FormMain()
         {
             InitializeComponent();
@@ -45,11 +44,11 @@ namespace VRemoteClient
         }
         private void Init()
         {
-            RemoteDesktop ??= new RemoteDesktopService();
+            RemoteDesktop ??= new RemoteDesktop();
         }
 
         #region Properties
-        public RemoteDesktopService RemoteDesktop
+        public RemoteDesktop RemoteDesktop
         {
             get
             {

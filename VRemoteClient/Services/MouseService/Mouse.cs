@@ -13,13 +13,13 @@ using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
 using static VRemoteClient.Utils.Libraries;
 
-namespace VRemoteClient.Modules.Mouse
+namespace VRemoteClient.Services.MouseService
 {
-    public class MouseService : IDisposable
+    public class Mouse : IDisposable
     {
         private bool _disposed = false;
         public event EventHandler<CustomMouseTaskEventArgs> MouseTask;
-        public MouseService()
+        public Mouse()
         {
         }
         #region Methods 

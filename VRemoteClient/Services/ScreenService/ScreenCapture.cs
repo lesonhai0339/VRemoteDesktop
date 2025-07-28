@@ -14,7 +14,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 
-namespace VRemoteClient.Modules.Screen
+namespace VRemoteClient.Services.ScreenService
 {
     internal class ScreenCapture
     {
