@@ -214,11 +214,10 @@ namespace VRemoteServer.Models
                 {
                     if (totalData.Length - bytesProcessed >= 21)
                     {
-                        //16 first bytes is sessionId, next 4 bytes is data length(sessionId, initial data, type), last byte is data type
+                        // Ignore the first 21 bytes: sessionId(16 first bytes), data length(4 next bytes), and data type(1 last byte)
                         _currentHeader = new byte[21];
                         Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 21);
 
-                        //sessionId[0:15], dataLength[16:19] , type[20]
                         _dataExpected = BitConverter.ToInt32(_currentHeader, 16);
                         _dataReceived = 0;
                     }
@@ -235,7 +234,7 @@ namespace VRemoteServer.Models
                     string sessionId = Encoding.ASCII.GetString(sessionIdBytes);
                     CommandType type = (CommandType)_currentHeader[20];
 
-                    //only command, not data send
+                    //command packet
                     if (_dataExpected == 0)
                     {
                         await ProcessData(sessionId, type, new byte[0]);
