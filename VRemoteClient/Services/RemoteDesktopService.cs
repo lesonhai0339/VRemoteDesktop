@@ -423,10 +423,18 @@ namespace VRemoteClient.Services
                     return;
                 }
 
+                //byte[] screenHeader = new byte[5];
+
+                //Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 5), 0, screenHeader, 0, 4);
+                //screenHeader[4] = (byte)e.Type;
+
                 //header
-                byte[] screenHeader = new byte[5];
-                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 5), 0, screenHeader, 0, 4);
-                screenHeader[4] = (byte)e.Type;
+                byte[] screenHeader = new byte[21];
+
+                string sessionId = "0000000000000000";
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(sessionId), 0, screenHeader, 0, 16);
+                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 16, 4);
+                screenHeader[20] = (byte)e.Type;
 
                 List<TaskObject> tasks = new List<TaskObject>();
                 tasks.Add(new TaskObject(

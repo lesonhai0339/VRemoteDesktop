@@ -146,10 +146,11 @@ namespace VRemoteServer.Services
         {
             await SendCommandAsync(client, Enums.CommandType.Ack, data);
         }
-        public async Task<bool> ProcessDataCallback(Enums.CommandType commandType ,Client client, byte[] buffer)
+        public async Task<bool> ProcessDataCallback(string sessionId, Enums.CommandType commandType ,Client client, byte[] buffer)
         {
             await Enqueue(new RemoteTask
             {
+                SessionId = sessionId,
                 CommandType = commandType,
                 Client = client,
                 Data = buffer
@@ -160,7 +161,8 @@ namespace VRemoteServer.Services
         {
             try
             {
-                int response = await client.Socket.SendAsync(data, SocketFlags.None);
+                var segment = new ArraySegment<byte>(data, 16, data.Length - 16);
+                int response = await client.Socket.SendAsync(segment, SocketFlags.None);
                 return response;
             }
             catch (SocketException ex)

@@ -757,17 +757,23 @@ namespace VRemoteClient.Services
         /// <param name="commandType"></param>
         /// <param name="data"></param>
         /// <param name="sendHeader"></param>
-        public void Send(RemoteType commandType, byte[] data, bool sendHeader = true)
+        public void Send(RemoteType commandType, byte[] data, bool sendHeader = true, string sessionId = "0000000000000000")
         {
             try
             {
                 if (sendHeader)
                 {
+                    //byte[] dataWithHeader = new byte[data.Length + 5];
+                    //Buffer.BlockCopy(BitConverter.GetBytes(dataWithHeader.Length), 0, dataWithHeader, 0, 4);
+                    //dataWithHeader[4] = (byte)commandType; //set command type
+                    //Buffer.BlockCopy(data, 0, dataWithHeader, 5, data.Length);
+
                     //send data with header
-                    byte[] dataWithHeader = new byte[data.Length + 5];
-                    Buffer.BlockCopy(BitConverter.GetBytes(dataWithHeader.Length), 0, dataWithHeader, 0, 4);
-                    dataWithHeader[4] = (byte)commandType; //set command type
-                    Buffer.BlockCopy(data, 0, dataWithHeader, 5, data.Length);
+                    byte[] dataWithHeader = new byte[data.Length + 21];
+                    Buffer.BlockCopy(dataWithHeader, 0, Encoding.ASCII.GetBytes(sessionId), 0, 16);
+                    Buffer.BlockCopy(BitConverter.GetBytes(dataWithHeader.Length), 0, dataWithHeader, 16, 4);
+                    dataWithHeader[20] = (byte)commandType; //set command type
+                    Buffer.BlockCopy(data, 0, dataWithHeader, 21, data.Length);
                     Socket.BeginSend(dataWithHeader, 0, dataWithHeader.Length, SocketFlags.None, (ar) =>
                     {
                         try
