@@ -195,7 +195,7 @@ namespace VRemoteClient.Services
                     Send(commandType: task.TaskType, data: task.Data, sendLength: task.Length);
                     break;
                 default:
-                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
+                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader, task.SessionId);
                     break;
             }
         }

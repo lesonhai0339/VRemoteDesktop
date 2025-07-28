@@ -16,6 +16,7 @@ namespace VRemoteClient.Services
 {
     public class RemoteDesktopService: IDisposable
     {
+        private const string defaultSessionId = "0000000000000000";
         private readonly object _lockProperties = new object();
         private bool _isDisposed = false;
         private volatile bool _isSocketConnectSuccess;
@@ -431,11 +432,9 @@ namespace VRemoteClient.Services
                 //Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 5), 0, screenHeader, 0, 4);
                 //screenHeader[4] = (byte)e.Type;
 
-                //header
+                //header, 16 byte for sessionID(this using defaultSessionId: "0000000000000000"), 4 bytes for data length, 1 byte for type
                 byte[] screenHeader = new byte[21];
-
-                string sessionId = "0000000000000000";
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(sessionId), 0, screenHeader, 0, 16);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(defaultSessionId), 0, screenHeader, 0, 16);
                 Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 16, 4);
                 screenHeader[20] = (byte)e.Type;
 
