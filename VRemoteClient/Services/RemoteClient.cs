@@ -188,7 +188,6 @@ namespace VRemoteClient.Services
         }
         private void ProcessSingleTask(TaskObject task)
         {
-            Console.WriteLine($"{task.SessionId} - {task.TaskType}");
             switch (task.TaskType)
             {
                 case RemoteType.None:
