@@ -194,8 +194,13 @@ namespace VRemoteClient.Services
                 case RemoteType.None:
                     Send(commandType: task.TaskType, data: task.Data, sendLength: task.Length);
                     break;
+                case RemoteType.Ping:
+                case RemoteType.Login:
+                case RemoteType.P2PConnect:
+                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
+                    break;
                 default:
-                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader, task.SessionId);
+                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader, sessionId: task.SessionId);
                     break;
             }
         }
@@ -770,7 +775,7 @@ namespace VRemoteClient.Services
 
                     //send data with header
                     byte[] dataWithHeader = new byte[data.Length + 21];
-                    Buffer.BlockCopy(dataWithHeader, 0, Encoding.ASCII.GetBytes(sessionId), 0, 16);
+                    Buffer.BlockCopy(Encoding.ASCII.GetBytes(sessionId), 0, dataWithHeader , 0, 16);
                     Buffer.BlockCopy(BitConverter.GetBytes(dataWithHeader.Length), 0, dataWithHeader, 16, 4);
                     dataWithHeader[20] = (byte)commandType; //set command type
                     Buffer.BlockCopy(data, 0, dataWithHeader, 21, data.Length);

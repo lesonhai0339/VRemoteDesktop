@@ -20,7 +20,8 @@ namespace VRemoteClient
 {
     public partial class FormMain : Form
     {
-        private object _lockObject = new object();
+        private readonly object _lockObject = new object();
+
         private bool _isSocketConnected;
         private ManualResetEvent _resetEvent;
         private ConnectionInfo _connectionInfo;
@@ -184,12 +185,12 @@ namespace VRemoteClient
                 };
                 FormRemote frmRemote = new FormRemote(RemoteDesktop, info);
                 frmRemote.Show();
+                _connectionInfo = null;
             }
             else
             {
                 MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
-            _connectionInfo = null;
         }
     }
 }
