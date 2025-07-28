@@ -33,12 +33,10 @@ namespace VRemoteServer.Models
         private byte[] _remainingData;
         private int _dataExpected;
         private int _dataReceived;
-        private bool isFirstPacket;
 
         public Client(Socket socket, Action<Client> disconnectCallback, Func<string, Enums.CommandType, Client, byte[], Task<bool>> dataCallback)
         {
             _lastSendTime = DateTime.Now; //init before check timeout
-            isFirstPacket = true;
             Socket = socket;
             _disconnectCallback = disconnectCallback;
             _dataCallback = dataCallback;
@@ -216,13 +214,12 @@ namespace VRemoteServer.Models
                 {
                     if (totalData.Length - bytesProcessed >= 21)
                     {
-                        //4 first byte is data length, 1 last byte is command type, 16 bytes for sessionID
+                        //16 first bytes is sessionId, next 4 bytes is data length(sessionId, initial data, type), last byte is data type
                         _currentHeader = new byte[21];
                         Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 21);
 
-                        //sessionId[0 -> 15], dataLength[16 -> 19] , type[20]
+                        //sessionId[0:15], dataLength[16:19] , type[20]
                         _dataExpected = BitConverter.ToInt32(_currentHeader, 16);
-                        //bytesProcessed += 5; //header
                         _dataReceived = 0;
                     }
                     else
@@ -284,7 +281,6 @@ namespace VRemoteServer.Models
                 int remainingBytes = totalData.Length - bytesProcessed;
                 _remainingData = new byte[remainingBytes];
                 Buffer.BlockCopy(totalData, bytesProcessed, _remainingData, 0, remainingBytes);
-
             }
             else
             {

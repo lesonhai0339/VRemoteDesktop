@@ -16,7 +16,7 @@ namespace VRemoteClient.Services
 {
     public class RemoteDesktopService: IDisposable
     {
-        private const string defaultSessionId = "0000000000000000";
+        private readonly string defaultSessionId = "0000000000000000";
         private readonly object _lockProperties = new object();
         private bool _isDisposed = false;
         private volatile bool _isSocketConnectSuccess;

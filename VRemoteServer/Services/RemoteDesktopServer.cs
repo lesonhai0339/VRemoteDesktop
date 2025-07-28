@@ -13,6 +13,7 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 using VRemoteServer.Models;
 using VRemoteServer.Utils;
+using static VRemoteServer.Utils.Enums;
 
 namespace VRemoteServer.Services
 {
@@ -43,7 +44,6 @@ namespace VRemoteServer.Services
                 {
                     switch (task.CommandType)
                     {
-                       
                         case Enums.CommandType.Login:
                             await ProcessLogin(task);
                             break;
@@ -120,7 +120,6 @@ namespace VRemoteServer.Services
                                    .Error(ex, "P2PDisconnect error");
             }
         }
-
         private async Task P2PCommand(RemoteTask task)
         {
             var room = RemoteDesktop.FirstOrDefault(x => 
@@ -144,7 +143,7 @@ namespace VRemoteServer.Services
 
             await SendDataAsync(partner.Client, task.Data);
 
-            //await SendAck(client, new byte[0]);
+            //reset timeout
             room.Sender.Client._lastSendTime = DateTime.Now;
             room.Receiver.Client._lastSendTime = DateTime.Now;
         }
@@ -167,8 +166,7 @@ namespace VRemoteServer.Services
         {
             try
             {
-                var segment = new ArraySegment<byte>(data, 16, data.Length - 16);
-                int response = await client.Socket.SendAsync(segment, SocketFlags.None);
+                int response = await client.Socket.SendAsync(data, SocketFlags.None);
                 return response;
             }
             catch (SocketException ex)
@@ -187,16 +185,18 @@ namespace VRemoteServer.Services
         {
             try
             {
+                // Some packets only contain a header without any data
                 byte[] bytes = (data != null) ? new byte[data.Length + 21] : new byte[21];
-
+                //sessionId
                 Buffer.BlockCopy(Encoding.ASCII.GetBytes(defaultSessionId), 0, bytes, 0, 16);
-                //4 first bytes is packet length
+                //data length
                 Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length), 0, bytes, 16, 4);
-                // The five byte is the command type, followed by the data length and then the data itself
+                //data type
                 bytes[20] = (byte)commandType;
                 if (data != null)
                 {
-                    Buffer.BlockCopy(data, 0, bytes, 5, data.Length);
+                    //if 'data' is not null, copy it into 'bytes'
+                    Buffer.BlockCopy(data, 0, bytes, 20, data.Length);
                 }
                 int response = await client.Socket.SendAsync(bytes, SocketFlags.None);
                 return response;
@@ -216,13 +216,15 @@ namespace VRemoteServer.Services
 
         public async Task ProcessP2PConnect(RemoteTask task)
         {
-            byte[] x = new byte[task.Data.Length - 21];
-            Buffer.BlockCopy(task.Data, 21, x, 0, task.Data.Length - 21);
             ClientInfo connecter;
             ClientInfo receiver;
-            var receiverData = Encoding.ASCII.GetString(x).Replace(" ", "").Split('|');
 
-            if(receiverData.Length != 3)
+            byte[] data = new byte[task.Data.Length - 21];
+            Buffer.BlockCopy(task.Data, 21, data, 0, task.Data.Length - 21);
+            var receiverData = Encoding.ASCII.GetString(data).Replace(" ", "").Split('|');
+
+            // Includes 3 parameters: senderId, receiverId, and receiverPassword
+            if (receiverData.Length != 3)
             {
                 await SendCommandAsync(task.Client, Enums.CommandType.P2PConnectFailed);
                 Log.ForContext("FileName", "RemoteDesktopServer")
@@ -231,9 +233,10 @@ namespace VRemoteServer.Services
             }
             else
             {
+                // Find 'Sender' in active socket
                 connecter = _clientsActing.FirstOrDefault(x=> x.Value.Client == task.Client).Value;
 
-                //current we get three values from receiverData: connecter Id, receive Id, receive Password. i don't  know why i set connecter Id in this case, maybe i will remove it later
+                //Find 'Receiver' in active socket
                 receiver = _clientsActing.FirstOrDefault(x => string.Compare(x.Value.Id, receiverData[1], StringComparison.OrdinalIgnoreCase) == 0
                     && string.Compare(x.Value.Password, receiverData[2], StringComparison.OrdinalIgnoreCase) == 0
                     && x.Value.Client != task.Client).Value;
@@ -245,17 +248,29 @@ namespace VRemoteServer.Services
                         .Error($"P2P connect failed. connecter: {task.Client.IP}");
                                         return;
                 }
+
+                // Create a connection between two sockets, considered as a remote desktop room
                 ConnectionInfo connection = new ConnectionInfo(sender: connecter, receiver: receiver);
 
                 bool flag = RemoteDesktop.TryAdd(connection.SessionId, connection);
                 if (flag)
                 {
-                    //infomation of connector and receiver
-                    StringBuilder receiveInfo = new StringBuilder().Append("1").Append("|").Append(connection.SessionId).Append("|").Append(receiver.ToString());
-                    StringBuilder connecterInfo = new StringBuilder().Append("0").Append("|").Append(connection.SessionId).Append("|").Append(connecter.ToString());
+                    // 'Receiver' information will be sent to the 'Sender'
+                    StringBuilder receiveInfo = new StringBuilder()
+                        .Append((int)Connecter.Receiver).Append("|")
+                        .Append(connection.SessionId).Append("|")
+                        .Append(receiver.ToString());
 
-                    //send the connection information to both clients
+                    // 'Sender' information will be sent to the 'Receiver'
+                    StringBuilder connecterInfo = new StringBuilder()
+                        .Append((int)Connecter.Sender).Append("|")
+                        .Append(connection.SessionId).Append("|")
+                        .Append(connecter.ToString());
+
+                    //Send data to both sockets
+                    //Send to 'Sender'
                     await SendCommandAsync(connecter.Client, Enums.CommandType.P2PConnect, Encoding.ASCII.GetBytes(receiveInfo.ToString()));
+                    //Send to 'Receiver'
                     await SendCommandAsync(receiver.Client, Enums.CommandType.P2PConnect, Encoding.ASCII.GetBytes(connecterInfo.ToString()));
                 }
                 else
@@ -268,35 +283,44 @@ namespace VRemoteServer.Services
         }
         public async Task ProcessLogin(RemoteTask task)
         {
-            byte[] x = new byte[task.Data.Length - 21];
-            Buffer.BlockCopy(task.Data, 21, x, 0, task.Data.Length - 21);
-            // Handle login logic here
-            IPEndPoint ep = task.Client.Socket.RemoteEndPoint as IPEndPoint;
-            
-            var clientInfo = Encoding.ASCII.GetString(x).Replace(" ", "").Split('|');
-            if(clientInfo.Length != 7)
+            try
             {
-                await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed);
-                Log.ForContext("FileName", "RemoteDesktopServer")
-                    .Error($"Invalid login data from client: {ep.Address}");
-                return;
-            }
-            ClientInfo loginInfo = new ClientInfo
-            {
-                Id = clientInfo[0],
-                Password = clientInfo[1],
-                ComputerName = clientInfo[2],
-                Width = int.Parse(clientInfo[3]),
-                Height = int.Parse(clientInfo[4]),
-                MajorVersion = clientInfo[5],
-                MinorVersion = clientInfo[6],
-                Ip = ep.Address.ToString(),
-                Port = ep.Port.ToString(),
-                Client = task.Client
-            };
-            _clientsActing.TryAdd(loginInfo.Id, loginInfo);
-            await SendCommandAsync(task.Client, Enums.CommandType.Login);
+                // Ignore the first 21 bytes: sessionId (not present during login), data length, and data type
+                byte[] data = new byte[task.Data.Length - 21];
+                Buffer.BlockCopy(task.Data, 21, data, 0, task.Data.Length - 21);
 
+                // Get the IPEndPoint of the current socket
+                IPEndPoint ep = task.Client.Socket.RemoteEndPoint as IPEndPoint;
+
+                var clientInfo = Encoding.ASCII.GetString(data).Replace(" ", "").Split('|');
+                if (clientInfo.Length != 7)
+                {
+                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed);
+                    Log.ForContext("FileName", "RemoteDesktopServer")
+                        .Error($"Invalid login data from client: {ep.Address}");
+                    return;
+                }
+                ClientInfo loginInfo = new ClientInfo
+                {
+                    Id = clientInfo[0],
+                    Password = clientInfo[1],
+                    ComputerName = clientInfo[2],
+                    Width = int.Parse(clientInfo[3]),
+                    Height = int.Parse(clientInfo[4]),
+                    MajorVersion = clientInfo[5],
+                    MinorVersion = clientInfo[6],
+                    Ip = ep.Address.ToString(),
+                    Port = ep.Port.ToString(),
+                    Client = task.Client
+                };
+                _clientsActing.TryAdd(loginInfo.Id, loginInfo);
+                await SendCommandAsync(task.Client, Enums.CommandType.Login);
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteDesktopServer")
+                       .Error(ex, "ProcessLogin error");
+            }
         }
         public void ProcessData(Client client, byte[] data)
         {
@@ -317,30 +341,38 @@ namespace VRemoteServer.Services
         }
         public async void ClientDisconnectCallback(Client client)
         {
-            var connections = RemoteDesktop.Where(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).ToList();
-            if (connections.Any())
+            try
             {
-                var tasks = connections.Select(async x =>
+                var connections = RemoteDesktop.Where(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).ToList();
+                if (connections.Any())
                 {
-                    var partner = x.Value.Sender.Client == client ? x.Value.Receiver : x.Value.Sender;
-                    if(partner.Client != null)
+                    var tasks = connections.Select(async x =>
                     {
-                        int result = await SendCommandAsync(partner.Client, Enums.CommandType.P2PDisconnect);
-                        if (result > 0)
+                        var partner = x.Value.Sender.Client == client ? x.Value.Receiver : x.Value.Sender;
+                        if (partner.Client != null)
                         {
-                            partner.Client.ClearHeader();
-                            client.ClearHeader();
-                            RemoteDesktop.TryRemove(x.Key, out _);
+                            int result = await SendCommandAsync(partner.Client, Enums.CommandType.P2PDisconnect);
+                            if (result > 0)
+                            {
+                                partner.Client.ClearHeader();
+                                client.ClearHeader();
+                                RemoteDesktop.TryRemove(x.Key, out _);
+                            }
                         }
-                    }
-                    return true;
-                }).ToList();
-                await Task.WhenAll(tasks);
+                        return true;
+                    }).ToList();
+                    await Task.WhenAll(tasks);
+                }
+                var a = _clientsActing.FirstOrDefault(x => x.Value.Client == client);
+                if (a.Value != null)
+                {
+                    _clientsActing.TryRemove(a.Key, out _);
+                }
             }
-            var a = _clientsActing.FirstOrDefault(x => x.Value.Client == client);
-            if(a.Value != null)
+            catch (Exception ex) 
             {
-                _clientsActing.TryRemove(a.Key, out _);
+                Log.ForContext("FileName", "RemoteDesktopServer")
+                       .Error(ex, "ClientDisconnectCallback error");
             }
         }
         public void Dispose()

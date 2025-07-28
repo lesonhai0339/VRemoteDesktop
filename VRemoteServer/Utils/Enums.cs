@@ -8,6 +8,11 @@ namespace VRemoteServer.Utils
 {
     public class Enums
     {
+        public enum Connecter: int
+        {
+            Sender = 0,
+            Receiver = 1
+        }
         public enum Test : int
         {
             PING= 0,
