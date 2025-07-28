@@ -137,7 +137,7 @@ namespace VRemoteClient.Utils
             return status > 0;
         }
 
-        //Alternatively
+        //alternative methods
         /*  private static ConcurrentQueue<KeyboardObject> KeyStorage = new ConcurrentQueue<KeyboardObject>();
           private static readonly HashSet<Keys> ModifierKeys = new HashSet<Keys>()
           {

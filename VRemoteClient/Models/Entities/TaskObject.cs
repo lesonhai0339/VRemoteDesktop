@@ -17,42 +17,37 @@ namespace VRemoteClient.Models.Entities
     }
     public class TaskObject
     {
-        public TaskObject(RemoteType taskType, byte[] data, string receiveId = "", string receivePort = "")
+        public TaskObject(RemoteType taskType, byte[] data, string sessionId = "")
         {
             TaskType = taskType;
-            ReceiveId = receiveId;
-            ReceivePort = receivePort;
+            SessionId = sessionId;
             Data = data;
         }
-        public TaskObject(RemoteType taskType, byte[] data, int length, string receiveId = "", string receivePort= "")
+        public TaskObject(RemoteType taskType, byte[] data, int length, string sessionId = "")
         {
             TaskType = taskType;
-            ReceiveId = receiveId;
-            ReceivePort = receivePort;
+            SessionId = sessionId;
             Data = data;
             Length = length;
         }
-        public TaskObject(RemoteType taskType, byte[] data, bool isSendHeader, string receiveId = "", string receivePort = "")
+        public TaskObject(RemoteType taskType, byte[] data, bool isSendHeader, string sessionId = "")
         {
             TaskType = taskType;
-            ReceiveId = receiveId;
-            ReceivePort = receivePort;
+            SessionId = sessionId;
             Data = data;
             IsSendHeader = isSendHeader;
         }
-        public TaskObject(RemoteType taskType, byte[] data, int length, bool isSendHeader, string receiveId = "", string receivePort = "")
+        public TaskObject(RemoteType taskType, byte[] data, int length, bool isSendHeader, string sessionId = "")
         {
             TaskType = taskType;
-            ReceiveId = receiveId;
-            ReceivePort = receivePort;
+            SessionId = sessionId;
             Data = data;
             Length = length;
             IsSendHeader = isSendHeader;
         }
 
         public RemoteType TaskType { get; set; }
-        public string ReceiveId { get; set; } = "";
-        public string ReceivePort { get; set; } = "";
+        public string SessionId { get; set; } = "";
         public byte[] Data { get; set; }
         public int Length { get; set; } = 0;
         public bool IsSendHeader { get; set; } = true;

@@ -107,7 +107,6 @@ namespace VRemoteClient.Services
                     KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
-
                     KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
 
                     CustomKeyMessageEventArgs keyEventArgs = null;
@@ -124,6 +123,10 @@ namespace VRemoteClient.Services
                             Combination = KeyCombination.Copy
                         };
                         KeyPressed?.Invoke(this, keyEventArgs);
+                        return CallNextHookEx(hookID, nCode, wParam, lParam);
+                    }
+                    if(IsAltPressed() && key == Keys.Tab)
+                    {
                         return CallNextHookEx(hookID, nCode, wParam, lParam);
                     }
                     if (WindowsHandle.Count > 0)
@@ -155,10 +158,9 @@ namespace VRemoteClient.Services
         {
             return (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
         }
-
         private bool IsAltPressed()
         {
-            return (GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+            return (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 || (GetAsyncKeyState(VK_LMENU) & 0x8000) != 0 || (GetAsyncKeyState(VK_RMENU) & 0x8000) != 0;
         }
         private bool isLeftWindowKeyPressed()
         {

@@ -379,9 +379,19 @@ namespace VRemoteClient.Services
         /// <param name="flag"></param>
         /// <param name="info"></param>
         /// <exception cref="NotImplementedException"></exception>
-        private void P2PConnectEventHandler(bool flag, ConnectionInfo info)
+        private void P2PConnectEventHandler(bool isSender, bool flag, ConnectionInfo info)
         {
-            P2PConnectEvent?.Invoke(flag, info);
+            if (isSender)
+            {
+                P2PConnectEvent?.Invoke(flag, info);
+            }
+            else
+            {
+                if (!ScreenHook.IsCapturing)
+                {
+                    StartScreenHook();
+                }
+            }
         }
         private void P2PScreenEventHandler(byte[] screen)
         {
@@ -394,6 +404,10 @@ namespace VRemoteClient.Services
         private void P2PDisconnectedEventhandler(bool flag)
         {
             P2PDisconnect?.Invoke(flag);
+            if (ScreenHook.IsCapturing)
+            {
+                StopScreenHook();
+            }
         }
         private void KeyboardPressedEvent(object sender, CustomKeyMessageEventArgs e)
         {

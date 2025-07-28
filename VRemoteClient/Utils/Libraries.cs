@@ -33,6 +33,8 @@ namespace VRemoteClient.Utils
         public static  int VK_RCONTROL = 0xA3;  // Right Control
         public static  int VK_SHIFT = 0x10;
         public static  int VK_MENU = 0x12; // Alt
+        public static  int VK_LMENU = 0xA4; // left Alt
+        public static  int VK_RMENU = 0xA5; // right Alt
 
         [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
@@ -93,10 +95,6 @@ namespace VRemoteClient.Utils
 
         [DllImport("user32.dll")]
         public static extern IntPtr WindowFromPoint(Point pt);
-
-
-
-
 
 
         public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);

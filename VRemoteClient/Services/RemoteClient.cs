@@ -33,7 +33,6 @@ namespace VRemoteClient.Services
         private Thread _screenThread;
         //private System.Threading.Timer _timer;
         private ClientInfo _me;
-        private ScreenHook _vscreen;
 
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
@@ -41,7 +40,7 @@ namespace VRemoteClient.Services
 
         public delegate void ConnectEvent();
         public delegate void LoginEvent(bool flag);
-        public delegate void P2PConnectEvent(bool flag, ConnectionInfo info);
+        public delegate void P2PConnectEvent(bool isSender, bool flag, ConnectionInfo info);
         public delegate void P2PDataSendSuccessEvent();
         public delegate void P2PScreenEvent(byte[] screen);
         public delegate void P2PChunksEvent(List<ScreenBlock> blocks);
@@ -78,13 +77,6 @@ namespace VRemoteClient.Services
             Worker = new BackgroundWorker();
             Worker.WorkerSupportsCancellation = true;
 
-
-            _screenThread = new Thread(() =>
-            {
-                Thread.CurrentThread.IsBackground = true;
-                _vscreen = new ScreenHook(this);
-            });
-            _screenThread.Start();
         }
         #region Properties
         public bool IsP2PConnected
@@ -196,6 +188,7 @@ namespace VRemoteClient.Services
         }
         private void ProcessSingleTask(TaskObject task)
         {
+            Console.WriteLine($"{task.SessionId} - {task.TaskType}");
             switch (task.TaskType)
             {
                 case RemoteType.None:
@@ -460,7 +453,6 @@ namespace VRemoteClient.Services
                         {
                             disConnected(true);
                         }
-                        _vscreen.StopCapture();
                         break;
                     case RemoteType.P2PConnectFailed:
                         ProcessP2PConnect(false, data);
@@ -674,7 +666,7 @@ namespace VRemoteClient.Services
             }
             if (!flag)
             {
-                p2pConnect(false, null);
+                p2pConnect(false, false, null);
             }
             else
             {
@@ -695,7 +687,7 @@ namespace VRemoteClient.Services
                             MinorVersion = partnerInfo[8],
                         };
                         connectionInfo.Receiver = _me;
-                        _vscreen?.StartCapture();   
+                        p2pConnect(false, true, connectionInfo);
                     }
                     else if (partnerInfo[0].ToLower() == "1")
                     {
@@ -710,20 +702,21 @@ namespace VRemoteClient.Services
                             MinorVersion = partnerInfo[8],
                         };
                         connectionInfo.Sender = _me;
+                        p2pConnect(true, true, connectionInfo);
+
                     }
                     else
                     {
                         Log.ForContext("FileName", "RemoteClient").Error("Invalid P2P connection data format: {Data}", Encoding.ASCII.GetString(data, 1, data.Length - 1));
-                        p2pConnect(false, null);
+                        p2pConnect(false, false, null);
                         return;
                     }
-                    p2pConnect(true, connectionInfo);
                     IsP2PConnected = true;
                 }
                 catch (Exception ex)
                 {
                     Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing P2P connection data");
-                    p2pConnect(false, null);
+                    p2pConnect(false, false, null);
                 }
             }
         }
@@ -866,27 +859,6 @@ namespace VRemoteClient.Services
                         }
                         _commandTasks = null;
                     }
-
-                    if (_screenThread != null && _screenThread.IsAlive)
-                    {
-                        _screenThread.Join(2000);
-                    }
-                    _screenThread = null;
-                    // Screen hook  
-                    _vscreen?.StopCapture();
-
-                    if (_vscreen?.IsCapturing == true)
-                    {
-                        int timeout = 2000;
-                        while (_vscreen.IsCapturing && timeout > 0)
-                        {
-                            Thread.Sleep(100);
-                            timeout -= 100;
-                        }
-                    }
-                    _vscreen?.Dispose();
-                    _vscreen = null;
-
 
                     if (_cancellationToken != null)
                     {

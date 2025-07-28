@@ -23,7 +23,7 @@ namespace VRemoteClient.Services
         {
         }
         #region Methods 
-        public void MouseEventToTask(string receiveId, string receivePort,MouseEventType mouseEvent, PictureBox p, MouseEventArgs e, MouseMessage mouseMsg = MouseMessage.None, MouseType mouseType = MouseType.None)
+        public void MouseEventToTask(string sessionId,MouseEventType mouseEvent, PictureBox p, MouseEventArgs e, MouseMessage mouseMsg = MouseMessage.None, MouseType mouseType = MouseType.None)
         {
             try
             {
@@ -44,8 +44,7 @@ namespace VRemoteClient.Services
                 {
                     Task = new TaskObject(
                     taskType: Models.Enums.RemoteType.Mouse,
-                    receiveId: receiveId,
-                    receivePort: receivePort,
+                    sessionId: sessionId,
                     data: Encoding.ASCII.GetBytes(mouseEventString)
                     )
                 });

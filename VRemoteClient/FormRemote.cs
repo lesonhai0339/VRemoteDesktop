@@ -153,7 +153,6 @@ namespace VRemoteClient
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
-            Console.WriteLine(this.Handle);
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -164,8 +163,7 @@ namespace VRemoteClient
                 {
                     TaskObject disConnectTask = new TaskObject(
                         taskType: Models.Enums.RemoteType.P2PDisconnect, 
-                        receiveId: _connectionInfo.Receiver.Id,
-                        receivePort: _connectionInfo.Receiver.Port,
+                        sessionId: _connectionInfo.SessionId,
                         data: new byte[0], 
                         isSendHeader: true);
                     TryAddWork(disConnectTask);
@@ -272,8 +270,7 @@ namespace VRemoteClient
         {
             clickTimer.Stop(); // Cancel pending click
             MouseHook.MouseEventToTask(
-                _connectionInfo.Receiver.Id, 
-                _connectionInfo.Receiver.Port, 
+                _connectionInfo.SessionId, 
                 MouseEventType.DoubleClick, 
                 vPictureBox, 
                 e
@@ -296,8 +293,7 @@ namespace VRemoteClient
                     if (!_isDrag)
                     {
                         MouseHook.MouseEventToTask(
-                            _connectionInfo.Receiver.Id, 
-                            _connectionInfo.Receiver.Port, 
+                            _connectionInfo.SessionId, 
                             MouseEventType.DragAndDrop, 
                             vPictureBox, 
                             e, 
@@ -307,8 +303,7 @@ namespace VRemoteClient
                         _isDrag = true;
                     }
                     MouseHook.MouseEventToTask(
-                        _connectionInfo.Receiver.Id, 
-                        _connectionInfo.Receiver.Port,
+                        _connectionInfo.SessionId, 
                         MouseEventType.DragAndDrop, 
                         vPictureBox, 
                         e, 
@@ -321,8 +316,7 @@ namespace VRemoteClient
                     if (_isDrag)
                     {
                         MouseHook.MouseEventToTask(
-                            _connectionInfo.Receiver.Id, 
-                            _connectionInfo.Receiver.Port,
+                            _connectionInfo.SessionId, 
                             MouseEventType.DragAndDrop, 
                             vPictureBox, 
                             e, 
@@ -334,8 +328,8 @@ namespace VRemoteClient
                     }
                     if (!_isDrag)
                     {
-                        MouseHook.MouseEventToTask(_connectionInfo.Receiver.Id, 
-                            _connectionInfo.Receiver.Port,
+                        MouseHook.MouseEventToTask(
+                            _connectionInfo.SessionId, 
                             MouseEventType.Move,
                             vPictureBox, 
                             e, 
@@ -353,8 +347,7 @@ namespace VRemoteClient
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
             MouseHook.MouseEventToTask(
-                _connectionInfo.Receiver.Id,
-                _connectionInfo.Receiver.Port,
+                _connectionInfo.SessionId,
                 MouseEventType.Wheel, 
                 vPictureBox, 
                 e
@@ -367,8 +360,7 @@ namespace VRemoteClient
             if (pendingClickArgs != null)
             {
                 MouseHook.MouseEventToTask(
-                    _connectionInfo.Receiver.Id, 
-                    _connectionInfo.Receiver.Port,
+                    _connectionInfo.SessionId, 
                     MouseEventType.Click, 
                     vPictureBox, 
                     pendingClickArgs
@@ -425,9 +417,7 @@ namespace VRemoteClient
             string keyCommandString = "";
             if (e.Combination == KeyboardEnums.KeyCombination.Copy)
             {
-                Console.WriteLine("Copy");
                 keyCommandString = RemoteDesktop.GetClipboard();
-                Console.WriteLine(keyCommandString);
             }
             else
             {
@@ -435,14 +425,12 @@ namespace VRemoteClient
                 {
                     return;
                 }
-                Console.WriteLine("Normal");
                 keyCommandString = RemoteDesktop.FormatKeyboardInput(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
             }
             TryAddWork(new TaskObject
             (
                 taskType: (e.Combination == KeyboardEnums.KeyCombination.Copy) ? RemoteType.Clipboard : RemoteType.Keyboard,
-                receiveId: _connectionInfo.Receiver.Id,
-                receivePort: _connectionInfo.Receiver.Port,
+                sessionId: _connectionInfo.SessionId,
                 data: Encoding.ASCII.GetBytes(keyCommandString)
             ));
         }
