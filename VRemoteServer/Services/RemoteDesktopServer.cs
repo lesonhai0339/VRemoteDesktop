@@ -18,6 +18,7 @@ namespace VRemoteServer.Services
 {
     public class RemoteDesktopServer: IDisposable
     {
+        private readonly string defaultSessionId = "0000000000000000";
         private ConcurrentDictionary<string, ConnectionInfo> RemoteDesktop = new ConcurrentDictionary<string, ConnectionInfo>();
         private ConcurrentDictionary<string ,ClientInfo> _clientsActing = new ConcurrentDictionary<string, ClientInfo>();
         private Channel<RemoteTask> _taskChanel = Channel.CreateUnbounded<RemoteTask>();
@@ -181,11 +182,13 @@ namespace VRemoteServer.Services
         {
             try
             {
-                byte[] bytes= (data != null) ? new byte[data.Length + 5] : new byte[5];
+                byte[] bytes = (data != null) ? new byte[data.Length + 21] : new byte[21];
+
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(defaultSessionId), 0, bytes, 0, 16);
                 //4 first bytes is packet length
-                Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length), 0, bytes, 0, 4);
+                Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length), 0, bytes, 16, 4);
                 // The five byte is the command type, followed by the data length and then the data itself
-                bytes[4] = (byte)commandType;
+                bytes[20] = (byte)commandType;
                 if (data != null)
                 {
                     Buffer.BlockCopy(data, 0, bytes, 5, data.Length);
@@ -208,8 +211,8 @@ namespace VRemoteServer.Services
 
         public async Task ProcessP2PConnect(Client client, byte[] data)
         {
-            byte[] x = new byte[data.Length - 5];
-            Buffer.BlockCopy(data, 5, x, 0, data.Length -5);
+            byte[] x = new byte[data.Length - 21];
+            Buffer.BlockCopy(data, 21, x, 0, data.Length - 21);
             ClientInfo connecter;
             ClientInfo receiver;
             var receiverData = Encoding.ASCII.GetString(x).Replace(" ", "").Split('|');
@@ -259,8 +262,8 @@ namespace VRemoteServer.Services
         }
         public async Task ProcessLogin(Client client, byte[] data)
         {
-            byte[] x = new byte[data.Length - 5];
-            Buffer.BlockCopy(data, 5, x, 0, data.Length - 5);
+            byte[] x = new byte[data.Length - 21];
+            Buffer.BlockCopy(data, 21, x, 0, data.Length - 21);
             // Handle login logic here
             IPEndPoint ep = client.Socket.RemoteEndPoint as IPEndPoint;
             

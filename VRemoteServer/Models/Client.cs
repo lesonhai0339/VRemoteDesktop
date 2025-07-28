@@ -207,10 +207,10 @@ namespace VRemoteServer.Models
             byte[] totalData = new byte[_remainingData.Length + data.Length];
             Buffer.BlockCopy(_remainingData, 0, totalData, 0, _remainingData.Length);
             Buffer.BlockCopy(data, 0, totalData, _remainingData.Length, data.Length);
-            
-            int bytesProcessed = 0; 
 
-            while(bytesProcessed < totalData.Length)
+            int bytesProcessed = 0;
+
+            while (bytesProcessed < totalData.Length)
             {
                 if (_currentHeader == null)
                 {
@@ -254,24 +254,15 @@ namespace VRemoteServer.Models
 
                         if (dataNeedtoReceive > 0)
                         {
-                            if (isFirstPacket)
-                            {
-                                byte[] bytes = new byte[dataNeedtoReceive - 16];
-                                Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive - 16);
-                                await ProcessData(sessionId, type, bytes);
-                                isFirstPacket = false;
-                            }
-                            else
-                            {
-                                byte[] bytes = new byte[dataNeedtoReceive];
-                                Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive);
-                                await ProcessData(sessionId, type, bytes);
-                            }
+                            byte[] bytes = new byte[dataNeedtoReceive];
+                            Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive);
 
                             _dataReceived += dataNeedtoReceive;
                             bytesProcessed += dataNeedtoReceive;
+
                             Console.WriteLine($"Processing data: {_dataReceived}/{_dataExpected} bytes received at sessionId: {sessionId}");
 
+                            await ProcessData(sessionId, type, bytes);
                             if (_dataReceived >= _dataExpected)
                             {
                                 Console.WriteLine($"Complete {_dataExpected} - {_dataReceived} - {(Socket.RemoteEndPoint as IPEndPoint).Address.ToString()}");
@@ -279,7 +270,6 @@ namespace VRemoteServer.Models
                                 _dataExpected = 0;
                                 _dataReceived = 0;
                                 _currentHeader = null;
-                                isFirstPacket = true;
                             }
                         }
                     }
@@ -289,17 +279,105 @@ namespace VRemoteServer.Models
                     break;
                 }
             }
-            if(bytesProcessed < totalData.Length)
+            if (bytesProcessed < totalData.Length)
             {
                 int remainingBytes = totalData.Length - bytesProcessed;
                 _remainingData = new byte[remainingBytes];
                 Buffer.BlockCopy(totalData, bytesProcessed, _remainingData, 0, remainingBytes);
+
             }
             else
             {
                 _remainingData = Array.Empty<byte>();
             }
         }
+        /*        private async Task CaculateData(byte[] data)
+                {
+                    if (_remainingData == null)
+                        _remainingData = new byte[0];
+
+                    byte[] totalData = new byte[_remainingData.Length + data.Length];
+                    Buffer.BlockCopy(_remainingData, 0, totalData, 0, _remainingData.Length);
+                    Buffer.BlockCopy(data, 0, totalData, _remainingData.Length, data.Length);
+
+                    int bytesProcessed = 0; 
+
+                    while(bytesProcessed < totalData.Length)
+                    {
+                        if (_currentHeader == null)
+                        {
+                            if (totalData.Length - bytesProcessed >= 5)
+                            {
+                                //4 first byte is data length, 1 last byte is command type
+                                _currentHeader = new byte[5];
+                                Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 5);
+
+                                _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
+                                //bytesProcessed += 5; //header
+                                _dataReceived = 0;
+                            }
+                            else
+                            {
+                                break;
+                            }
+
+                        }
+                        if (_currentHeader != null)
+                        {
+                            //only command, not data send
+                            if(_dataExpected == 0)
+                            {
+                                await ProcessData((Enums.CommandType)_currentHeader[4], new byte[0]);
+                                _dataExpected = 0;
+                                _currentHeader = null;
+                                bytesProcessed += 5;
+                            }
+                            else
+                            {
+                                int remainingDataNeeded = _dataExpected - _dataReceived;
+                                int avaiblebleData = totalData.Length - bytesProcessed;
+                                int dataNeedtoReceive = Math.Min(remainingDataNeeded, avaiblebleData);
+
+                                if (dataNeedtoReceive > 0)
+                                {
+                                    byte[] bytes = new byte[dataNeedtoReceive];
+                                    Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedtoReceive);
+
+                                    _dataReceived += dataNeedtoReceive;
+                                    bytesProcessed += dataNeedtoReceive;
+
+                                    Console.WriteLine($"Processing data: {_dataReceived}/{_dataExpected} bytes received");
+
+                                    await ProcessData((Enums.CommandType)_currentHeader[4], bytes);
+                                    if (_dataReceived >= _dataExpected)
+                                    {
+                                        Console.WriteLine($"Complete {_dataExpected} - {_dataReceived} - {(Socket.RemoteEndPoint as IPEndPoint).Address.ToString()}");
+                                        Console.WriteLine("-------------------------------\n");
+                                        _dataExpected = 0;
+                                        _dataReceived = 0;
+                                        _currentHeader = null;
+                                    }
+                                }
+                            }
+                        }
+                        else
+                        {
+                            break;
+                        }
+                    }
+                    if(bytesProcessed < totalData.Length)
+                    {
+                        int remainingBytes = totalData.Length - bytesProcessed;
+                        _remainingData = new byte[remainingBytes];
+                        Buffer.BlockCopy(totalData, bytesProcessed, _remainingData, 0, remainingBytes);
+
+                    }
+                    else
+                    {
+                        _remainingData = Array.Empty<byte>();
+                    }
+                }
+        */
         public void Dispose()
         {
             if (!_isDisposed)
