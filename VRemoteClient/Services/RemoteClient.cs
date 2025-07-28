@@ -49,6 +49,7 @@ namespace VRemoteClient.Services
         public delegate void ScreenSuccessEvent(bool flag);
         public delegate void ChunksSuccessEvent(bool flag);
         public delegate void P2PDisconnectedEvent(bool flag);
+        public delegate void ClipboardReceivedEvent(byte[] clipboardData);
 
         public event ConnectEvent ConnectEventHandler;
         public event LoginEvent LoginEventHandler;
@@ -60,6 +61,7 @@ namespace VRemoteClient.Services
         public event ScreenSuccessEvent ScreenSuccessEventHandler;
         public event ChunksSuccessEvent ChunksSuccessEventHandler;
         public event P2PDisconnectedEvent P2PDisconnectedEventhandler;
+        public event ClipboardReceivedEvent ClipboardReceivedEventHandler;
 
         CancellationTokenSource _cancellationToken;
 
@@ -444,7 +446,7 @@ namespace VRemoteClient.Services
                         ProcessMouse(data);
                         break;
                     case RemoteType.Clipboard:
-                        Console.WriteLine("Clip board receive");
+                        ProcessClipboardReceive(data);
                         break;
                     case RemoteType.Error:
                         break;
@@ -476,7 +478,25 @@ namespace VRemoteClient.Services
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", "MouseHook").Error(ex, "ProcessReceiveData error");
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessReceiveData error");
+            }
+        }
+
+        private void ProcessClipboardReceive(byte[] data)
+        {
+            try
+            {
+                byte[] clipboardData = new byte[data.Length - 1];
+                Buffer.BlockCopy(data, 1, clipboardData, 0, data.Length - 1);
+                ClipboardReceivedEvent clipboardEvent = ClipboardReceivedEventHandler;
+                if (clipboardEvent != null)
+                {
+                    clipboardEvent(clipboardData);
+                }
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessClipboardReceive error");
             }
         }
         /// <summary>

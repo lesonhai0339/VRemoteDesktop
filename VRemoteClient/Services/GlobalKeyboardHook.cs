@@ -8,6 +8,7 @@ using static VRemoteClient.Utils.Libraries;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
+using VRemoteClient.Utils;
 
 namespace VRemoteClient.Services
 {
@@ -106,7 +107,6 @@ namespace VRemoteClient.Services
                     KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
-                    Console.WriteLine("Key: "+ key);
 
                     KeyState keyState = (wParam == (IntPtr)WM_KEYDOWN) ? KeyState.KeyDown : KeyState.KeyUp;
 
@@ -123,7 +123,6 @@ namespace VRemoteClient.Services
                             KeyType = keyState,
                             Combination = KeyCombination.Copy
                         };
-                        Console.WriteLine("Copy pressed");
                         KeyPressed?.Invoke(this, keyEventArgs);
                         return CallNextHookEx(hookID, nCode, wParam, lParam);
                     }

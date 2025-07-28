@@ -138,6 +138,7 @@ namespace VRemoteClient.Services
                         _remoteClient.P2PScreenEventHandler -= P2PScreenEventHandler;
                         _remoteClient.P2PChunksEventHandler -= P2PChunksEventHandler;
                         _remoteClient.P2PDisconnectedEventhandler -= P2PDisconnectedEventhandler;
+                        _remoteClient.ClipboardReceivedEventHandler -= ClipboardReceivedEventHandler;
                     }
                     _remoteClient = value;
                     if (_remoteClient != null)
@@ -148,13 +149,12 @@ namespace VRemoteClient.Services
                         _remoteClient.P2PScreenEventHandler += P2PScreenEventHandler;
                         _remoteClient.P2PChunksEventHandler += P2PChunksEventHandler;
                         _remoteClient.P2PDisconnectedEventhandler += P2PDisconnectedEventhandler;
+                        _remoteClient.ClipboardReceivedEventHandler += ClipboardReceivedEventHandler;
 
                     }
                 }
             }
         }
-
-
         #endregion
         #region Methods
         /// <summary>
@@ -310,15 +310,41 @@ namespace VRemoteClient.Services
         {
             try
             {
-                return Utils.VirtualClipboard.GetClipboardString();
+                return VirtualClipboard.GetClipboardString();
             }
             catch(Exception ex)
             {
                 Log.ForContext("Filename", this.GetType().Name).Error(ex, "GetClipboard error");
-                return "";
+                return string.Empty;
             }
         }
-
+        /// <summary>
+        /// Default using CF_UNICODETEXT format then need to convert string data to UTF-16
+        /// (like this: <c>byte[] formatted = Encoding.Unicode.GetBytes(<paramref name="data"/> + '\0');</c>)
+        /// </summary>
+        /// <param name="data">The input string that will be encoded as UTF-16.</param>
+        /// <returns>Formatted byte array.</returns>
+        public bool SetClipboard(object data)
+        {
+            try
+            {
+                if (data is string c)
+                {
+                    byte[] formatted = Encoding.Unicode.GetBytes(c + '\0');
+                    return VirtualClipboard.SetClipboard(formatted);
+                }
+                else if (data is byte[] d)
+                {
+                    return VirtualClipboard.SetClipboard(d);
+                }
+                return false;
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("Filename", this.GetType().Name).Error(ex, "SetClipboard error");
+                return false;
+            }
+        }
         private void Login()
         {
             try
@@ -420,7 +446,10 @@ namespace VRemoteClient.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
         }
-
+        private void ClipboardReceivedEventHandler(byte[] clipboardData)
+        {
+            SetClipboard(clipboardData);
+        }
         public void Dispose()
         {
             Dispose(true);
