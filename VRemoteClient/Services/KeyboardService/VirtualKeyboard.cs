@@ -91,10 +91,11 @@ namespace VRemoteClient.Services.KeyboardService
                     ki = new KEYBDINPUT
                     {
                         wVk = (ushort)key,
-                        wScan = (ushort)MapVirtualKeyA((uint)key, 0),
+                        wScan = (ushort)MapVirtualKeyA((uint)key, 0), //windows using scan code wScan 
+                        //wScan = 0,  //windows using virtual key code wVk 
                         dwFlags = keyState == KeyState.KeyDown ? 0 : KEYEVENTF_KEYUP,
                         time = 0,
-                        dwExtraInfo = GetMessageExtraInfo()
+                        dwExtraInfo = new IntPtr(SYNTHETIC_KEY_MARKER) //Magic number, used to classify key pressed from USB or from virtual keyboard
                     }
                 }
             };

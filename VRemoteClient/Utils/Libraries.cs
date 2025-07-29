@@ -10,6 +10,10 @@ namespace VRemoteClient.Utils
 {
     public static class Libraries
     {
+        //Keyboard Magic number, use in dwExtraInfo  of INPUT[] used to classify key pressed from USB or from virtual keyboard
+        public static uint SYNTHETIC_KEY_MARKER = 0x12345678; 
+
+
         //mouse
         public static int WH_MOUSE_LL = 14;
         //for windows api

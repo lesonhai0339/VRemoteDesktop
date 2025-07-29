@@ -12,27 +12,30 @@ namespace VRemoteClient.Models.CustomEvents
         public CustomKeyMessageEventArgs()
         {
         }
-        public CustomKeyMessageEventArgs(IntPtr command, IntPtr handle, Keys keyCode, KeyState keyType)
+        public CustomKeyMessageEventArgs(IntPtr command, IntPtr handle, Keys keyCode, KeyState keyType, bool isSynthetic = false)
         {
             Command = command;
             Handle = handle;
             KeyCode = keyCode;
             KeyType = keyType;
+            IsSynthetic = isSynthetic;
         }
-        public CustomKeyMessageEventArgs(IntPtr command, IntPtr handle, Keys keyModifier, Keys keyCode)
+        public CustomKeyMessageEventArgs(IntPtr command, IntPtr handle, Keys keyModifier, Keys keyCode, bool isSynthetic = false)
         {
             Command = command;
             Handle = handle;
             KeyModifier = keyModifier;
             KeyCode = keyCode;
+            IsSynthetic = isSynthetic;
         }
-        public CustomKeyMessageEventArgs(IntPtr command, IntPtr handle, Keys keyModifier, Keys keyCode, KeyState keyType)
+        public CustomKeyMessageEventArgs(IntPtr command, IntPtr handle, Keys keyModifier, Keys keyCode, KeyState keyType, bool isSynthetic = false)
         {
             Command = command;
             Handle = handle;
             KeyModifier = keyModifier;
             KeyCode = keyCode;
             KeyType = keyType;
+            IsSynthetic = isSynthetic;
         }
         public IntPtr Command { get; set; }
         public IntPtr Handle { get; set; }
@@ -40,5 +43,6 @@ namespace VRemoteClient.Models.CustomEvents
         public Keys KeyCode { get; set; }
         public KeyState KeyType { get; set; }
         public KeyCombination Combination { get; set; } = KeyCombination.None;
+        public bool IsSynthetic { get; set; } = false;
     }
 }

@@ -430,7 +430,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         private void KeyboardPressedEvent(object sender, CustomKeyMessageEventArgs e)
         {
             //'Receive' will send clipboard data to all connections when copy pressed globally (not from app forms)
-            if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero)
+            if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
             {
                 string clipboard = GetClipboard();
 

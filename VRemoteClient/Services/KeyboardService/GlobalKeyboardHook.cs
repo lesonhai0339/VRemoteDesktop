@@ -106,12 +106,32 @@ namespace VRemoteClient.Services.KeyboardService
                 if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
                 {
                     KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
+
+                    bool isSynthetic = hookStruct.dwExtraInfo.ToInt32() == SYNTHETIC_KEY_MARKER;
+
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
                     KeyState keyState = wParam == (IntPtr)WM_KEYDOWN ? KeyState.KeyDown : KeyState.KeyUp;
 
                     CustomKeyMessageEventArgs keyEventArgs = null;
 
+                    if (IsControlPressed() && key == Keys.C)
+                    {
+                        keyEventArgs = new CustomKeyMessageEventArgs
+                        {
+                            Command = wParam,
+                            Handle = IntPtr.Zero,
+                            KeyModifier = Keys.Control,
+                            KeyCode = key,
+                            KeyType = keyState,
+                            Combination = KeyCombination.Copy
+                        };
+                        if (isSynthetic)
+                            keyEventArgs.IsSynthetic = true;
+
+                        KeyPressed?.Invoke(this, keyEventArgs);
+                        return CallNextHookEx(hookID, nCode, wParam, lParam);
+                    }
                     if (WindowsHandle.Count > 0)
                     {
                         var focusedHandles = WindowsHandle.Where(x => IsHandleFocus(x)).ToList();
@@ -125,35 +145,9 @@ namespace VRemoteClient.Services.KeyboardService
                                 KeyCode = key,
                                 KeyType = keyState,
                             };
-                            if (IsControlPressed() && key == Keys.C)
-                            {
-                                keyEventArgs.KeyModifier = Keys.Control;
-                                keyEventArgs.Combination = KeyCombination.Copy;
-                                KeyPressed?.Invoke(this, keyEventArgs);
-                                return (IntPtr)1;
-                            }
-                            if (key == Keys.LControlKey || key == Keys.RControlKey || key == Keys.Control)
-                            {
-                                KeyPressed?.Invoke(this, keyEventArgs);
-                                return CallNextHookEx(hookID, nCode, wParam, lParam);
-                            }
                             KeyPressed?.Invoke(this, keyEventArgs);
                             return (IntPtr)1;
                         }
-                    }
-                    if (IsControlPressed() && key == Keys.C)
-                    {
-                        keyEventArgs = new CustomKeyMessageEventArgs
-                        {
-                            Command = wParam,
-                            Handle = IntPtr.Zero,
-                            KeyModifier = Keys.Control,
-                            KeyCode = key,
-                            KeyType = keyState,
-                            Combination = KeyCombination.Copy
-                        };
-                        KeyPressed?.Invoke(this, keyEventArgs);
-                        return CallNextHookEx(hookID, nCode, wParam, lParam);
                     }
                 }
             }   
