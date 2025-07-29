@@ -37,6 +37,9 @@ namespace VRemoteClient.Utils
         public static  int VK_RMENU = 0xA5; // right Alt
 
         [DllImport("user32.dll")]
+        public static extern IntPtr MapVirtualKeyA(uint uCode, uint uMapType);
+
+        [DllImport("user32.dll")]
         public static extern IntPtr GetForegroundWindow();
 
         [DllImport("user32.dll")]

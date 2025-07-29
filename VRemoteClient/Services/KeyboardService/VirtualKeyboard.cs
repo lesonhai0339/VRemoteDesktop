@@ -91,7 +91,7 @@ namespace VRemoteClient.Services.KeyboardService
                     ki = new KEYBDINPUT
                     {
                         wVk = (ushort)key,
-                        wScan = 0,
+                        wScan = (ushort)MapVirtualKeyA((uint)key, 0),
                         dwFlags = keyState == KeyState.KeyDown ? 0 : KEYEVENTF_KEYUP,
                         time = 0,
                         dwExtraInfo = GetMessageExtraInfo()
