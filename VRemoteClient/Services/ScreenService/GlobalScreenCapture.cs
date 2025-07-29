@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Services.ConnectionService;
 using VRemoteClient.Utils;
 
 namespace VRemoteClient.Services.ScreenService
@@ -92,6 +93,12 @@ namespace VRemoteClient.Services.ScreenService
         {
             while (!_cancel.IsCancellationRequested)
             {
+                if(!(ConnectionManager.NumberOfConnections > 0))
+                {
+                    StopCapture();
+                    Log.ForContext("Screen", "RemoteDesktopClient")
+                                         .Info($"No connection, screen capture will be stopping");
+                }
                 var screens = _capture.GetScreen();
                 if (screens.Any())
                 {

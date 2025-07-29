@@ -49,7 +49,7 @@ namespace VRemoteClient.Services.SocketService
         public delegate void AckEvent();
         public delegate void ScreenSuccessEvent(bool flag);
         public delegate void ChunksSuccessEvent(bool flag);
-        public delegate void P2PDisconnectedEvent(bool flag);
+        public delegate void P2PDisconnectedEvent(bool flag, string sessionId);
         public delegate void ClipboardReceivedEvent(byte[] clipboardData);
 
         public event ConnectEvent ConnectEventHandler;
@@ -363,7 +363,7 @@ namespace VRemoteClient.Services.SocketService
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
                     while (!_cancellationToken.Token.IsCancellationRequested)
                     {
-                        if (!(stateObject.ByteArrayBuilder.Length >= 4))
+                        if (!(stateObject.ByteArrayBuilder.Length >= 20))
                         {
                             break;
                         }
@@ -375,8 +375,8 @@ namespace VRemoteClient.Services.SocketService
                             break;
                         }
                         Array src = stateObject.ByteArrayBuilder.Cut(length).ToArray();
-                        byte[] data = new byte[length - 20 ];
-                        Buffer.BlockCopy(src, 20, data, 0, data.Length);
+                        byte[] data = new byte[length];
+                        Buffer.BlockCopy(src, 0, data, 0, data.Length);
                         ProcessReceiveData(data);
                         if (_cancellationToken.IsCancellationRequested) break;
                     }
@@ -400,7 +400,12 @@ namespace VRemoteClient.Services.SocketService
         {
             try
             {
-                RemoteType commandType = (RemoteType)data[0];
+                byte[] sessionIdBytes = new byte[16];
+                Buffer.BlockCopy(data, 0, sessionIdBytes, 0, 16);
+                string sessionId = Encoding.ASCII.GetString(sessionIdBytes);
+                int length = BitConverter.ToInt32(data, 16);
+
+                RemoteType commandType = (RemoteType)data[20];
                 switch (commandType)
                 {
                     case RemoteType.Login:
@@ -457,7 +462,7 @@ namespace VRemoteClient.Services.SocketService
                         P2PDisconnectedEvent disConnected = P2PDisconnectedEventhandler;
                         if (disConnected != null)
                         {
-                            disConnected(true);
+                            disConnected(true, sessionId);
                         }
                         break;
                     case RemoteType.P2PConnectFailed:

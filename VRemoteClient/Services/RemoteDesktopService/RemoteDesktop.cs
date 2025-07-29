@@ -14,6 +14,7 @@ using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using VRemoteClient.Services.SocketService;
 using VRemoteClient.Services.KeyboardService;
+using VRemoteClient.Services.ConnectionService;
 
 namespace VRemoteClient.Services.RemoteDesktopService
 {
@@ -387,6 +388,10 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             if (flag)
             {
+                if(info != null)
+                {
+                    ConnectionManager.AddConnection(info.SessionId, info);
+                }
                 if (isSender)
                 {
                     P2PConnectEvent?.Invoke(flag, info);
@@ -408,8 +413,14 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             ChunksEvent?.Invoke(blocks);
         }
-        private void P2PDisconnectedEventhandler(bool flag)
+        private void P2PDisconnectedEventhandler(bool flag, string sessionId)
         {
+            if(ConnectionManager.NumberOfConnections > 0)
+            {
+                bool f = ConnectionManager.RemoveConnection(sessionId);
+                if(!f)
+                    Log.ForContext("Filename", GetType().Name).Error("Cannot remove connection with sessionId "+ sessionId);
+            }
             P2PDisconnect?.Invoke(flag);
             if (ScreenHook.IsCapturing)
             {
