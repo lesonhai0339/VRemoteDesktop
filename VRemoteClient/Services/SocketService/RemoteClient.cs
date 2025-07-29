@@ -396,16 +396,19 @@ namespace VRemoteClient.Services.SocketService
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when receiving data from remote server");
             }
         }
-        private void ProcessReceiveData(byte[] data)
+        private void ProcessReceiveData(byte[] bytes)
         {
             try
             {
                 byte[] sessionIdBytes = new byte[16];
-                Buffer.BlockCopy(data, 0, sessionIdBytes, 0, 16);
+                Buffer.BlockCopy(bytes, 0, sessionIdBytes, 0, 16);
                 string sessionId = Encoding.ASCII.GetString(sessionIdBytes);
-                int length = BitConverter.ToInt32(data, 16);
+                int length = BitConverter.ToInt32(bytes, 16);
 
-                RemoteType commandType = (RemoteType)data[20];
+                RemoteType commandType = (RemoteType)bytes[20];
+
+                byte[] data = new byte[bytes.Length - 20];
+                Buffer.BlockCopy(bytes, 20, data, 0, data.Length);
                 switch (commandType)
                 {
                     case RemoteType.Login:
