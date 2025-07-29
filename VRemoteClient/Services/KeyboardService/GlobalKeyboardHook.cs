@@ -134,6 +134,7 @@ namespace VRemoteClient.Services.KeyboardService
                             }
                             if (key == Keys.LControlKey || key == Keys.RControlKey || key == Keys.Control)
                             {
+                                KeyPressed?.Invoke(this, keyEventArgs);
                                 return CallNextHookEx(hookID, nCode, wParam, lParam);
                             }
                             KeyPressed?.Invoke(this, keyEventArgs);
