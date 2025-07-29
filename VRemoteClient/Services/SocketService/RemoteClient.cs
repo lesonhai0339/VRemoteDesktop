@@ -200,9 +200,6 @@ namespace VRemoteClient.Services.SocketService
                 case RemoteType.P2PConnect:
                     Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
                     break;
-                case RemoteType.P2PDisconnect:
-                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader, sessionId: task.SessionId);
-                    break;
                 default:
                     Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader, sessionId: task.SessionId);
                     break;
@@ -497,7 +494,7 @@ namespace VRemoteClient.Services.SocketService
             {
                 byte[] clipboardData = new byte[data.Length - 1];
                 Buffer.BlockCopy(data, 1, clipboardData, 0, data.Length - 1);
-                string dataString = Encoding.ASCII.GetString(clipboardData);
+                string dataString = Encoding.UTF8.GetString(clipboardData);
 
                 //default setclipboard use CF_UNICODETEXT(UTF-16), need to convert data to utf-16
                 byte[] clipboardReformatted = Encoding.Unicode.GetBytes(dataString + '\0');

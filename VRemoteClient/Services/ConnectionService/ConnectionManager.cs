@@ -9,8 +9,13 @@ namespace VRemoteClient.Services.ConnectionService
 {
     public static class ConnectionManager
     {
+        private static readonly object _lock = new object();
         private static ConcurrentDictionary<string, ConnectionInfo> _currentConnections = new ConcurrentDictionary<string, ConnectionInfo>();
         public static int NumberOfConnections => _currentConnections.Count;
+        public static List<ConnectionInfo> GetCurrentConnections()
+        {
+            return _currentConnections.Values.ToList();
+        }
         public static bool AddConnection(string sessionId, ConnectionInfo info)
         {
             bool flag = _currentConnections.TryAdd(sessionId, info);

@@ -47,7 +47,7 @@ namespace VRemoteClient.Models.Entities
         }
 
         public RemoteType TaskType { get; set; }
-        public string SessionId { get; set; } = "";
+        public string SessionId { get; set; } = "0000000000000000";
         public byte[] Data { get; set; }
         public int Length { get; set; } = 0;
         public bool IsSendHeader { get; set; } = true;

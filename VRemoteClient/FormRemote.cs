@@ -428,11 +428,15 @@ namespace VRemoteClient
                 }
                 keyCommandString = RemoteDesktop.FormatKeyboardInput(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
             }
+
+            //return if data is empty
+            if (string.IsNullOrEmpty(keyCommandString)) return;
+
             TryAddWork(new TaskObject
             (
                 taskType: (e.Combination == KeyboardEnums.KeyCombination.Copy) ? RemoteType.Clipboard : RemoteType.Keyboard,
                 sessionId: _connectionInfo.SessionId,
-                data: Encoding.ASCII.GetBytes(keyCommandString)
+                data: Encoding.UTF8.GetBytes(keyCommandString)
             ));
         }
         #endregion

@@ -422,13 +422,32 @@ namespace VRemoteClient.Services.RemoteDesktopService
                     Log.ForContext("Filename", GetType().Name).Error("Cannot remove connection with sessionId "+ sessionId);
             }
             P2PDisconnect?.Invoke(flag);
-            if (ScreenHook.IsCapturing)
-            {
-                StopScreenHook();
-            }
+            //if (ScreenHook.IsCapturing)
+            //{
+            //    StopScreenHook();
+            //}
         }
         private void KeyboardPressedEvent(object sender, CustomKeyMessageEventArgs e)
         {
+            //'Receive' will send clipboard data to all of sender when copy pressed(control + c)
+            if(e.Combination == KeyCombination.Copy)
+            {
+                string clipboard = GetClipboard();
+
+                if (string.IsNullOrEmpty(clipboard)) return;
+
+                foreach(var connection in ConnectionManager.GetCurrentConnections())
+                {
+                    AddWork(new TaskObject
+                    (
+                       taskType: RemoteType.Clipboard,
+                       sessionId: connection.SessionId,
+                       data: Encoding.UTF8.GetBytes(clipboard)
+                    ));
+                }
+            }
+
+            //'Sender' will send clipboard to receiver
             KeyboardEvent?.Invoke(sender, e);
         }
         private void ScreenHookEventHandler(object sender, CustomScreenEventArgs e)

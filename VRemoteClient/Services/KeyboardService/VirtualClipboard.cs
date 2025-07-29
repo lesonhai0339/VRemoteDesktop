@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using VRemoteClient.Utils;
 
 namespace VRemoteClient.Services.KeyboardService
 {
@@ -88,11 +89,29 @@ namespace VRemoteClient.Services.KeyboardService
             {
                 if (IsClipboardFormatAvailable(CF_UNICODETEXT))
                 {
-                    return ExtractUnicodeText();
+                    string data=  ExtractUnicodeText();
+                    if (data.Length > 1000000)
+                    {
+                        Log.ForContext("FileName", "VirtualClipboard").Warning($"Clipboard too large: {data.Length} characters");
+                        return string.Empty;
+                    }
+                    else
+                    {
+                        return data;
+                    }
                 }
                 if (IsClipboardFormatAvailable(CF_TEXT))
                 {
-                    return ExtractAnsiText();
+                    string data = ExtractAnsiText();
+                    if (data.Length > 1000000)
+                    {
+                        Log.ForContext("FileName", "VirtualClipboard").Warning($"Clipboard too large: {data.Length} characters");
+                        return string.Empty;
+                    }
+                    else
+                    {
+                        return data;
+                    }
                 }
             }
             finally
