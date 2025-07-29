@@ -9,6 +9,7 @@ using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using VRemoteClient.Utils;
+using static System.Runtime.CompilerServices.RuntimeHelpers;
 
 namespace VRemoteClient.Services.KeyboardService
 {
@@ -111,6 +112,28 @@ namespace VRemoteClient.Services.KeyboardService
 
                     CustomKeyMessageEventArgs keyEventArgs = null;
 
+                    if (WindowsHandle.Count > 0)
+                    {
+                        var focusedHandles = WindowsHandle.Where(x => IsHandleFocus(x)).ToList();
+                        if (focusedHandles.Any())
+                        {
+                            keyEventArgs = new CustomKeyMessageEventArgs
+                            {
+                                Command = wParam,
+                                Handle = focusedHandles.First(),
+                                KeyModifier = Keys.None,
+                                KeyCode = key,
+                                KeyType = keyState,
+                            };
+                            if (IsControlPressed() && key == Keys.C)
+                            {
+                                keyEventArgs.KeyModifier = Keys.Control;
+                                keyEventArgs.Combination = KeyCombination.Copy;
+                            }
+                            KeyPressed?.Invoke(this, keyEventArgs);
+                            return (IntPtr)1;
+                        }
+                    }
                     if (IsControlPressed() && key == Keys.C)
                     {
                         keyEventArgs = new CustomKeyMessageEventArgs
@@ -125,27 +148,6 @@ namespace VRemoteClient.Services.KeyboardService
                         KeyPressed?.Invoke(this, keyEventArgs);
                         return CallNextHookEx(hookID, nCode, wParam, lParam);
                     }
-                    if(IsAltPressed() && key == Keys.Tab)
-                    {
-                        return CallNextHookEx(hookID, nCode, wParam, lParam);
-                    }
-                    if (WindowsHandle.Count > 0)
-                    {
-                        var focusedHandles = WindowsHandle.Where(x => IsHandleFocus(x)).ToList();
-                        if (focusedHandles.Any())
-                        {
-                            keyEventArgs = new CustomKeyMessageEventArgs
-                            {
-                                Command = wParam,
-                                Handle = focusedHandles.First(),
-                                KeyModifier = Keys.None,
-                                KeyCode = key,
-                                KeyType = keyState,
-                            };
-                            KeyPressed?.Invoke(this, keyEventArgs);
-                            return (IntPtr)1;
-                        }
-                    } 
                 }
             }   
             return CallNextHookEx(hookID, nCode, wParam, lParam);
