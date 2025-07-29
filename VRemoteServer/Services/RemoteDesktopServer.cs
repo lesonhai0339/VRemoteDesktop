@@ -148,14 +148,23 @@ namespace VRemoteServer.Services
         }
         private async Task P2PDataSend(RemoteTask task)
         {
-            var room = RemoteDesktop.FirstOrDefault(x => string.Compare(x.Key, task.SessionId, StringComparison.OrdinalIgnoreCase) == 0).Value;
-            var partner = (room.Sender.Client == task.Client) ? room.Receiver : room.Sender;  
+            ConnectionInfo connection;
+            if (string.Compare(task.SessionId, defaultSessionId, StringComparison.OrdinalIgnoreCase) == 0)
+            {
+                connection = RemoteDesktop.FirstOrDefault(x => x.Value.Sender.Client == task.Client || x.Value.Receiver.Client == task.Client).Value;
+            }
+            else
+            {
+                connection = RemoteDesktop.FirstOrDefault(x => string.Compare(x.Key, task.SessionId, StringComparison.OrdinalIgnoreCase) == 0).Value;
+            }
+
+            var partner = (connection.Sender.Client == task.Client) ? connection.Receiver : connection.Sender;
 
             await SendDataAsync(partner.Client, task.Data);
 
             //reset timeout
-            room.Sender.Client._lastSendTime = DateTime.Now;
-            room.Receiver.Client._lastSendTime = DateTime.Now;
+            connection.Sender.Client._lastSendTime = DateTime.Now;
+            connection.Receiver.Client._lastSendTime = DateTime.Now;
         }
         private async Task SendAck(RemoteTask task)
         {
@@ -206,7 +215,7 @@ namespace VRemoteServer.Services
                 if (data != null)
                 {
                     //if 'data' is not null, copy it into 'bytes'
-                    Buffer.BlockCopy(data, 0, bytes, 20, data.Length);
+                    Buffer.BlockCopy(data, 0, bytes, 21, data.Length);
                 }
                 int response = await client.Socket.SendAsync(bytes, SocketFlags.None);
                 return response;
