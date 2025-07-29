@@ -200,6 +200,9 @@ namespace VRemoteClient.Services.SocketService
                 case RemoteType.P2PConnect:
                     Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader);
                     break;
+                case RemoteType.P2PDisconnect:
+                    Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader, sessionId: task.SessionId);
+                    break;
                 default:
                     Send(commandType: task.TaskType, data: task.Data, sendHeader: task.IsSendHeader, sessionId: task.SessionId);
                     break;

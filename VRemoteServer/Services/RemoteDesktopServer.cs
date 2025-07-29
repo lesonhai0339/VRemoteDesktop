@@ -100,8 +100,18 @@ namespace VRemoteServer.Services
                         var partner = (room.Value.Sender.Client == task.Client) ? room.Value.Receiver : room.Value.Sender;
                         if (partner.Client != null)
                         {
-                            int result = await SendCommandAsync(room.Value.Receiver.Client, Enums.CommandType.P2PDisconnect);
-                            int result2 = await SendCommandAsync(room.Value.Sender.Client, Enums.CommandType.P2PDisconnect);
+                            int result = await SendCommandAsync(
+                               client: room.Value.Receiver.Client, 
+                               commandType: Enums.CommandType.P2PDisconnect,
+                               data: null, 
+                               sessionId: room.Key);
+
+                            int result2 = await SendCommandAsync(
+                                client: room.Value.Sender.Client,
+                                commandType: Enums.CommandType.P2PDisconnect,
+                                data: null,
+                                sessionId: room.Key);
+
                             if (result > 0 && result2 > 0)
                             {
                                 room.Value.Sender.Client.ClearHeader();
@@ -181,14 +191,14 @@ namespace VRemoteServer.Services
             }
             return 0;
         }
-        private async Task<int> SendCommandAsync(Client client,Enums.CommandType commandType, byte[] data= null)
+        private async Task<int> SendCommandAsync(Client client,Enums.CommandType commandType, byte[] data= null, string sessionId = "0000000000000000")
         {
             try
             {
                 // Some packets only contain a header without any data
                 byte[] bytes = (data != null) ? new byte[data.Length + 21] : new byte[21];
                 //sessionId
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(defaultSessionId), 0, bytes, 0, 16);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(sessionId), 0, bytes, 0, 16);
                 //data length
                 Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length), 0, bytes, 16, 4);
                 //data type
@@ -346,17 +356,21 @@ namespace VRemoteServer.Services
                 var connections = RemoteDesktop.Where(x => x.Value.Sender.Client == client || x.Value.Receiver.Client == client).ToList();
                 if (connections.Any())
                 {
-                    var tasks = connections.Select(async x =>
+                    var tasks = connections.Select(async room =>
                     {
-                        var partner = x.Value.Sender.Client == client ? x.Value.Receiver : x.Value.Sender;
+                        var partner = room.Value.Sender.Client == client ? room.Value.Receiver : room.Value.Sender;
                         if (partner.Client != null)
                         {
-                            int result = await SendCommandAsync(partner.Client, Enums.CommandType.P2PDisconnect);
+                            int result = await SendCommandAsync(
+                                client: partner.Client, 
+                                commandType: Enums.CommandType.P2PDisconnect,
+                                data: null,
+                                sessionId : room.Key);  
                             if (result > 0)
                             {
                                 partner.Client.ClearHeader();
                                 client.ClearHeader();
-                                RemoteDesktop.TryRemove(x.Key, out _);
+                                RemoteDesktop.TryRemove(room.Key, out _);
                             }
                         }
                         return true;
