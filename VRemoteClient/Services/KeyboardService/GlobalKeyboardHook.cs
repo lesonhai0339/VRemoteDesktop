@@ -129,6 +129,12 @@ namespace VRemoteClient.Services.KeyboardService
                             {
                                 keyEventArgs.KeyModifier = Keys.Control;
                                 keyEventArgs.Combination = KeyCombination.Copy;
+                                KeyPressed?.Invoke(this, keyEventArgs);
+                                return (IntPtr)1;
+                            }
+                            if (key == Keys.LControlKey || key == Keys.RControlKey || key == Keys.Control)
+                            {
+                                return CallNextHookEx(hookID, nCode, wParam, lParam);
                             }
                             KeyPressed?.Invoke(this, keyEventArgs);
                             return (IntPtr)1;
