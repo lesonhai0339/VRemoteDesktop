@@ -14,21 +14,21 @@ using VRemoteClient.Models.Entities;
 
 namespace VRemoteClient.Utils
 {
-    internal static class Extensions
+    public static class Extensions
     {
         private static Random rd = new Random();
         private static string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         private static string digits = "0123456789";
         private static bool bool_0 = false;
         internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
-        internal static void RemoveFirst(ref byte[] data, int cutLength)
+        public static void RemoveFirst(ref byte[] data, int cutLength)
         {
             if (cutLength < 0 || cutLength > data.Length)
                 throw new ArgumentOutOfRangeException(nameof(cutLength));
 
             data = data.Skip(cutLength).ToArray();
         }
-        internal static byte[] Compress(byte[] data)
+        public static byte[] Compress(byte[] data)
         {
             if (data == null || data.Length == 0) return data;
 
@@ -41,7 +41,7 @@ namespace VRemoteClient.Utils
                 return stream.ToArray();
             }
         }
-        internal static string SHAHash(byte[] data)
+        public static string SHAHash(byte[] data)
         {
             using (var sha= SHA1.Create())
             {
@@ -54,7 +54,7 @@ namespace VRemoteClient.Utils
                 return stringBuilder.ToString();
             }
         }
-        internal static byte[] Decompress(byte[] data)
+        public static byte[] Decompress(byte[] data)
         {
             MemoryStream input = new MemoryStream(data);
             MemoryStream output = new MemoryStream();
@@ -64,7 +64,7 @@ namespace VRemoteClient.Utils
             }
             return output.ToArray();
         }
-        internal static byte[] CompressGzip(byte[] data)
+        public static byte[] CompressGzip(byte[] data)
         {
             if (data == null || data.Length == 0) return data;
 
@@ -79,7 +79,7 @@ namespace VRemoteClient.Utils
             }
         }
 
-        internal static byte[] DecompressGzip(byte[] data)
+        public static byte[] DecompressGzip(byte[] data)
         {
             using (MemoryStream input = new MemoryStream(data))
             using (MemoryStream output = new MemoryStream())
@@ -90,7 +90,7 @@ namespace VRemoteClient.Utils
             }
         }
         //add padding byte(0x20) to output data = length
-        internal static byte[] AddPaddingToBytes(byte[] sourceByte, int length = 1025)
+        public static byte[] AddPaddingToBytes(byte[] sourceByte, int length = 1025)
         {
             byte[] bytes = new byte[length];
             int byteNeededToAdd = Math.Max(0, length - sourceByte.Length);
@@ -113,7 +113,7 @@ namespace VRemoteClient.Utils
             }
             return bytes;
         }
-        internal static ClientInfo InitInfo()
+        public static ClientInfo InitInfo()
         {
             var computerName = Environment.MachineName;
             int width = Screen.PrimaryScreen.Bounds.Width;
@@ -131,7 +131,7 @@ namespace VRemoteClient.Utils
             };
             return info;
         }
-        internal static string DataStringBuilder(string[] data)
+        public static string DataStringBuilder(string[] data)
         {
             StringBuilder stringBuilder = new StringBuilder();
             for (int i = 0; i < data.Length; i++)
@@ -144,7 +144,7 @@ namespace VRemoteClient.Utils
             }
             return stringBuilder.ToString();
         }
-        internal static string RandomStringNumber(int length)
+        public static string RandomStringNumber(int length)
         {
             StringBuilder result = new StringBuilder();
             for (int i = 0; i < length; i++)
@@ -154,7 +154,7 @@ namespace VRemoteClient.Utils
             }
             return result.ToString();
         }
-        internal static string RandomString(int length)
+        public static string RandomString(int length)
         {
             StringBuilder result = new StringBuilder();
             for (int i = 0; i < length; i++)
@@ -164,7 +164,7 @@ namespace VRemoteClient.Utils
             }
             return result.ToString();
         }
-        internal static Bitmap CaptureScreen()
+        public static Bitmap CaptureScreen()
         {
             Rectangle bounds = Screen.PrimaryScreen.Bounds;
             Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
@@ -173,7 +173,7 @@ namespace VRemoteClient.Utils
 
             return bitmap;
         }
-        internal static byte[] BitmapToByteArray(Bitmap bitmap)
+        public static byte[] BitmapToByteArray(Bitmap bitmap)
         {
             BitmapData bmpdata = null;
 

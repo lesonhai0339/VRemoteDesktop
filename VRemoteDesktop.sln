@@ -9,7 +9,17 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteClient", "Client\Remo
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VRemoteServer", "VRemoteServer\VRemoteServer.csproj", "{7DAB01DF-DCCA-4271-8481-E422C864F602}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteClient", "VRemoteClient\VRemoteClient.csproj", "{801824C2-2E66-4EF9-9E46-B1267B84B704}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "VRemoteClient", "VRemoteClient\VRemoteClient.csproj", "{801824C2-2E66-4EF9-9E46-B1267B84B704}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{ACFD9BB2-3919-4AB3-B4C3-CA1E5BC40C5F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RemoteClient", "RemoteClient", "{A502030B-0293-4AA1-A8C8-3B1232240E87}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RemoteClientTest", "RemoteClientTest\RemoteClientTest.csproj", "{0621BCBF-591F-4C89-981C-CAD3F8263DC2}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "VRemoteClient", "VRemoteClient", "{67C5D6C5-C9EA-4346-B349-A6637BA9D424}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "VRemoteServer", "VRemoteServer", "{2D94BEB2-0410-4103-A8A3-C495DFA8CCBA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -51,9 +61,23 @@ Global
 		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Release|Any CPU.Build.0 = Release|Any CPU
 		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Release|x86.ActiveCfg = Release|Any CPU
 		{801824C2-2E66-4EF9-9E46-B1267B84B704}.Release|x86.Build.0 = Release|Any CPU
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2}.Debug|x86.Build.0 = Debug|Any CPU
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2}.Release|x86.ActiveCfg = Release|Any CPU
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A502030B-0293-4AA1-A8C8-3B1232240E87} = {67C5D6C5-C9EA-4346-B349-A6637BA9D424}
+		{0621BCBF-591F-4C89-981C-CAD3F8263DC2} = {A502030B-0293-4AA1-A8C8-3B1232240E87}
+		{67C5D6C5-C9EA-4346-B349-A6637BA9D424} = {ACFD9BB2-3919-4AB3-B4C3-CA1E5BC40C5F}
+		{2D94BEB2-0410-4103-A8A3-C495DFA8CCBA} = {ACFD9BB2-3919-4AB3-B4C3-CA1E5BC40C5F}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {036C5C1B-7DE3-4147-8C2C-A350ACB5D6FF}
