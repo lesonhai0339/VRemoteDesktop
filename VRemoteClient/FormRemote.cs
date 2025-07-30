@@ -276,6 +276,9 @@ namespace VRemoteClient
             if (!_isDrag)
             {
                 _clickCount++;
+
+                _clickTimer.Stop();
+                _clickTimer.Start();
             }
         }
         private void ClickTimer_Tick(object sender, EventArgs e)
@@ -294,7 +297,7 @@ namespace VRemoteClient
             {
                 mouseType = MouseEventType.TripleClick;
             }
-            if (_pendingClickArgs != null && !_isDrag && _clickCount >= 2)
+            if (_pendingClickArgs != null && !_isDrag && mouseType != MouseEventType.None)
             {
                 MouseHook.MouseEventToTask(
                     _connectionInfo.SessionId,
