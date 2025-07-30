@@ -151,7 +151,10 @@ namespace VRemoteClient.Services.MouseService
                                          MouseMessage.None;
                     result = ToString(width, height, dbButton, MouseType.Down, e.X, e.Y);
                     break;
-
+                case MouseEventType.TripleClick:
+                    MouseMessage tbButton = MouseMessage.WM_BUTTONTRIPLECLICK;
+                    result = ToString(width, height, tbButton, MouseType.Down, e.X, e.Y);
+                    break;
                 case MouseEventType.Wheel:
                     if (e.Delta > 0)
                     {

@@ -8,7 +8,7 @@ using System.Text;
 using System.Threading;
 using VRemoteClient.Services.SocketService;
 
-namespace RemoteClientTest
+namespace RemoteClientTest.SocketServiceTests
 {
     public class RemoteClientTests
     {
@@ -24,7 +24,8 @@ namespace RemoteClientTest
 
             _client.Worker = new BackgroundWorker();
             _client.Worker.WorkerSupportsCancellation = true;
-            _client.ConnectEventHandler += () => {
+            _client.ConnectEventHandler += () =>
+            {
                 _resetEvent.Set();
             };
         }
@@ -49,7 +50,7 @@ namespace RemoteClientTest
 
             //ACT
             _client.Connect(host, port);
-            bool wasSignaled =  _resetEvent.WaitOne(5000);
+            bool wasSignaled = _resetEvent.WaitOne(5000);
 
             //ASSERT
             Assert.IsTrue(wasSignaled, "ConnectEventHandler was not triggered within timeout.");

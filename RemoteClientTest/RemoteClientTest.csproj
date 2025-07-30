@@ -16,4 +16,8 @@
     <ProjectReference Include="..\VRemoteClient\VRemoteClient.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+  </ItemGroup>
+
 </Project>

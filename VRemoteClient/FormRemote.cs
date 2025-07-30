@@ -37,19 +37,20 @@ namespace VRemoteClient
         private ConnectionInfo _connectionInfo;
         private Mouse _mouseHook;
 
-        private DateTime lastMouseMoveTime = DateTime.MinValue;
+        private DateTime _lastMouseMoveTime = DateTime.MinValue;
+        private ManualResetEvent _isP2PDisconnectCallback;
 
-        private System.Windows.Forms.Timer clickTimer;
-        private MouseEventArgs pendingClickArgs;
-        private Control pendingSender;
-        private ManualResetEvent isP2PDisconnectCallback;
+        private System.Windows.Forms.Timer _clickTimer;
+        private MouseEventArgs _pendingClickArgs;
+        private Control _pendingSender;
+        private int _clickCount;
         public FormRemote(RemoteDesktop remoteDesktop, ConnectionInfo info)
         {
             InitializeComponent();
             Init(remoteDesktop, info);
 
             _isDrag = false;
-            isP2PDisconnectCallback = new ManualResetEvent(false);
+            _isP2PDisconnectCallback = new ManualResetEvent(false);
 
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
             this.Icon = new Icon(iconPath);
@@ -61,18 +62,21 @@ namespace VRemoteClient
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 
-            vPictureBox.MouseClick += MouseClickEventHandler;
-            vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
+            //vPictureBox.MouseClick += MouseClickEventHandler;
+            //vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
             vPictureBox.MouseWheel += MouseWheelEventHandler;
             vPictureBox.MouseMove += MouseMoveEvent;
+            vPictureBox.MouseDown += MouseDownEventHandler;
 
-            clickTimer = new System.Windows.Forms.Timer();
-            clickTimer.Interval = Math.Min(100, SystemInformation.DoubleClickTime / 5);
-            clickTimer.Tick += ClickTimer_Tick;
+
+            _clickTimer = new System.Windows.Forms.Timer();
+            int interval = Math.Min(200, SystemInformation.DoubleClickTime / 2);
+            _clickTimer.Interval = interval;
+            _clickTimer.Tick += ClickTimer_Tick;
         }
         private void Init(RemoteDesktop remoteDesktop , ConnectionInfo info)
         {
-            if(remoteDesktop == null || info == null)
+            if(remoteDesktop == null || info == null || info.Receiver == null || info.Sender == null)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error("Args are null");
                 MessageBox.Show("Xảy ra lỗi", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -80,9 +84,10 @@ namespace VRemoteClient
                 return;
             }
             RemoteDesktop ??= remoteDesktop;
-            MouseHook ??= new Mouse();
             _connectionInfo ??= info;
             this.Text = _connectionInfo.Receiver.Id.Trim();
+
+            MouseHook ??= new Mouse();
             RemoteDesktop.AddKeyboardHookByHandle(this.Handle);
         }
         #region Properties
@@ -169,7 +174,7 @@ namespace VRemoteClient
                         isSendHeader: true);
                     TryAddWork(disConnectTask);
 
-                    if (!isP2PDisconnectCallback.WaitOne(5000))
+                    if (!_isP2PDisconnectCallback.WaitOne(5000))
                     {
                         Log.ForContext("FileName", "FormRemote").Warning("P2P disconnect timed out after 5 seconds");
                     }
@@ -203,12 +208,12 @@ namespace VRemoteClient
             // Cleanup timer
             try
             {
-                if (clickTimer != null)
+                if (_clickTimer != null)
                 {
-                    clickTimer.Stop();
-                    clickTimer.Tick -= ClickTimer_Tick; // Unsubscribe from event
-                    clickTimer.Dispose();
-                    clickTimer = null;
+                    _clickTimer.Stop();
+                    _clickTimer.Tick -= ClickTimer_Tick; // Unsubscribe from event
+                    _clickTimer.Dispose();
+                    _clickTimer = null;
                 }
             }
             catch (Exception ex)
@@ -259,17 +264,25 @@ namespace VRemoteClient
                 Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing PictureBox");
             }
         }
+        private void MouseDownEventHandler(object sender, MouseEventArgs e)
+        {
+            _pendingClickArgs = e;
+            _pendingSender = sender as Control;
+            _clickTimer.Stop();
+            _clickTimer.Start();
+            _clickCount++;
+        }
         private void MouseClickEventHandler(object sender, MouseEventArgs e)
         {
             //waiting for double click called or timeout
-            pendingClickArgs = e;
-            pendingSender = sender as Control;
-            clickTimer.Stop();
-            clickTimer.Start();
+            _pendingClickArgs = e;
+            _pendingSender = sender as Control;
+            _clickTimer.Stop();
+            _clickTimer.Start();
         }
         private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
         {
-            clickTimer.Stop(); // Cancel pending click
+            _clickTimer.Stop(); // Cancel pending click
             MouseHook.MouseEventToTask(
                 _connectionInfo.SessionId, 
                 MouseEventType.DoubleClick, 
@@ -277,15 +290,62 @@ namespace VRemoteClient
                 e
              );
         }
+        private void ClickTimer_Tick(object sender, EventArgs e)
+        {
+            _clickTimer.Stop();
+            MouseEventType mouseType = MouseEventType.None;
+            if(_clickCount == 2)
+            {
+                Console.WriteLine("Double click");
+                mouseType = MouseEventType.DoubleClick;
+            }
+            else if(_clickCount == 3)
+            {
+                Console.WriteLine("Triple click");
+                mouseType = MouseEventType.TripleClick;
+            }
+            else
+            {
+                Console.WriteLine("Single click");
+                mouseType = MouseEventType.Click;
+            }
+            if (_pendingClickArgs != null)
+            {
+                MouseHook.MouseEventToTask(
+                    _connectionInfo.SessionId,
+                    mouseType,
+                    vPictureBox,
+                    _pendingClickArgs
+                );
+            }
+            _pendingClickArgs = null;
+            _pendingSender = null;
+            _clickCount = 0;
+        }
+        //private void ClickTimer_Tick(object sender, EventArgs e)
+        //{
+        //    _clickTimer.Stop();
+        //    if (_pendingClickArgs != null)
+        //    {
+        //        MouseHook.MouseEventToTask(
+        //            _connectionInfo.SessionId,
+        //            MouseEventType.Click,
+        //            vPictureBox,
+        //            _pendingClickArgs
+        //        );
+        //    }
+        //    _pendingClickArgs = null;
+        //    _pendingSender = null;
+        //}
         private void MouseMoveEvent(object sender, MouseEventArgs e)
         {
             try
             {
                 //set delay
                 DateTime now = DateTime.Now;
-                if ((now - lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
+                if ((now - _lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
                     return; // Skip this event
-                lastMouseMoveTime = now;
+                _lastMouseMoveTime = now;
 
                 bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;
 
@@ -353,23 +413,7 @@ namespace VRemoteClient
                 vPictureBox, 
                 e
             );
-        }
-        private void ClickTimer_Tick(object sender, EventArgs e)
-        {
-            clickTimer.Stop();
-
-            if (pendingClickArgs != null)
-            {
-                MouseHook.MouseEventToTask(
-                    _connectionInfo.SessionId, 
-                    MouseEventType.Click, 
-                    vPictureBox, 
-                    pendingClickArgs
-                );
-            }
-            pendingClickArgs = null;
-            pendingSender = null;
-        }
+        }  
         #endregion
         #region Event Handlers
         private void P2PDisconnectEvent(bool flag)
@@ -378,7 +422,7 @@ namespace VRemoteClient
             {
                 if (flag)
                 {
-                    isP2PDisconnectCallback.Set();
+                    _isP2PDisconnectCallback.Set();
                 }
             }
             catch (ObjectDisposedException)

@@ -64,5 +64,8 @@ namespace VRemoteClient.Models.Enums
         DRAGDROP_MOUSEMOVE = 0x998,
         DRAGDROP_MOUSEUP = 0x999,
 
+
+        //Custom for triple click, only left mouse
+        WM_BUTTONTRIPLECLICK = 0x996
     }
 }

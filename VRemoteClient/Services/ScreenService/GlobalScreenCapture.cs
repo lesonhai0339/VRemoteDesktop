@@ -95,7 +95,6 @@ namespace VRemoteClient.Services.ScreenService
             {
                 if(!(ConnectionManager.NumberOfConnections > 0))
                 {
-                    Console.WriteLine("Into");
                     Log.ForContext("Screen", "RemoteDesktopClient")
                                          .Info($"No connection, screen capture will be stopping");
                     StopCapture();
