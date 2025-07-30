@@ -62,11 +62,11 @@ namespace VRemoteClient
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 
-            //vPictureBox.MouseClick += MouseClickEventHandler;
-            //vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
+            vPictureBox.MouseClick += MouseClickEventHandler;
+            vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
             vPictureBox.MouseWheel += MouseWheelEventHandler;
             vPictureBox.MouseMove += MouseMoveEvent;
-            vPictureBox.MouseDown += MouseDownEventHandler;
+            //vPictureBox.MouseDown += MouseDownEventHandler;
 
 
             _clickTimer = new System.Windows.Forms.Timer();

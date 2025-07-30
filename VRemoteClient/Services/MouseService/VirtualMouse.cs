@@ -140,57 +140,39 @@ namespace VRemoteClient.Services.MouseService
         {
             Tuple<float, float> scales = CaculateMouseCorrdinate(senderWidth, senderHeight, meWidth, meHeight);
             bool flag = false;
+            List<uint> mouseEvents = new List<uint>();
             switch (button)
             {
                 //left mouse click
                 case MouseMessage.WM_LBUTTONDOWN:
-                    flag = MousePress(
-                        scaleX: scales.Item1,
-                        scaleY: scales.Item2,
-                        x: x,
-                        y: y,
+                    mouseEvents.AddRange(
                         new List<uint>
                         {
                             MOUSEEVENTF_LEFTDOWN,
                             MOUSEEVENTF_LEFTUP
                         });
-                    //flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
                 // middle mouse click
                 case MouseMessage.WM_MBUTTONDOWN:
-                    flag = MousePress(
-                        scaleX: scales.Item1,
-                        scaleY: scales.Item2,
-                        x: x,
-                        y: y,
+                    mouseEvents.AddRange(
                         new List<uint>
                         {
                             MOUSEEVENTF_MIDDLEDOWN,
                             MOUSEEVENTF_MIDDLEUP
                         });
-                    //flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, x, y); //left mouse click
                     break;
                 // right mouse click
                 case MouseMessage.WM_RBUTTONDOWN:
-                    flag = MousePress(
-                        scaleX: scales.Item1,
-                        scaleY: scales.Item2,
-                        x: x,
-                        y: y,
-                        new List<uint>
-                        {
-                            MOUSEEVENTF_RIGHTDOWN,
+                    mouseEvents.AddRange(
+                       new List<uint>
+                       {
+                             MOUSEEVENTF_RIGHTDOWN,
                             MOUSEEVENTF_RIGHTUP
-                        });
-                    //flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //left mouse click
+                       });
                     break;
                 //left mouse dbclick
                 case MouseMessage.WM_LBUTTONDBLCLK:
-                    flag = MousePress(
-                       scaleX: scales.Item1,
-                       scaleY: scales.Item2,
-                       x: x,
-                       y: y,
+                    mouseEvents.AddRange(
                        new List<uint>
                        {
                             MOUSEEVENTF_LEFTDOWN,
@@ -198,42 +180,28 @@ namespace VRemoteClient.Services.MouseService
                             MOUSEEVENTF_LEFTDOWN,
                             MOUSEEVENTF_LEFTUP
                        });
-                    //MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
-                    //flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
                     break;
                 // middle mouse dbclick
                 case MouseMessage.WM_MBUTTONDBLCLK:
-                    flag = MousePress(
-                      scaleX: scales.Item1,
-                      scaleY: scales.Item2,
-                      x: x,
-                      y: y,
-                      new List<uint>
-                      {
+                    mouseEvents.AddRange(
+                        new List<uint>
+                        {
                             MOUSEEVENTF_MIDDLEDOWN,
                             MOUSEEVENTF_MIDDLEUP,
                             MOUSEEVENTF_MIDDLEDOWN,
                             MOUSEEVENTF_MIDDLEUP
-                      });
-                    //MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_MIDDLEDOWN, MOUSEEVENTF_MIDDLEUP, x, y); //left mouse click
-                    //flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
+                        });
                     break;
                 // right mouse dbclick
                 case MouseMessage.WM_RBUTTONDBLCLK:
-                    flag = MousePress(
-                     scaleX: scales.Item1,
-                     scaleY: scales.Item2,
-                     x: x,
-                     y: y,
-                     new List<uint>
-                     {
+                    mouseEvents.AddRange(
+                        new List<uint>
+                        {
                             MOUSEEVENTF_RIGHTDOWN,
                             MOUSEEVENTF_RIGHTUP,
                             MOUSEEVENTF_RIGHTDOWN,
                             MOUSEEVENTF_RIGHTUP
-                     });
-                    //MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_RIGHTDOWN, MOUSEEVENTF_RIGHTUP, x, y); //left mouse click
-                    //flag = MousePress(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_LEFTUP, x, y); //left mouse click
+                        });
                     break;
                 // mouse wheel event
                 case MouseMessage.WM_MOUSEWHEEL:
@@ -250,35 +218,41 @@ namespace VRemoteClient.Services.MouseService
                     break;
                 //mouse drag and drop
                 case MouseMessage.DRAGDROP_MOUSEDOWN:
-                    flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTDOWN, x, y);
+                    mouseEvents.Add(MOUSEEVENTF_LEFTDOWN);
                     break;
                 case MouseMessage.WM_MOUSEMOVE:
                 case MouseMessage.DRAGDROP_MOUSEMOVE:
-                    flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_MOVE, x, y);
+                    mouseEvents.Add(MOUSEEVENTF_MOVE);
                     break;
                 case MouseMessage.DRAGDROP_MOUSEUP:
-                    flag = SingleMouseEvent(scales.Item1, scales.Item2, MOUSEEVENTF_LEFTUP, x, y);
+                    mouseEvents.Add(MOUSEEVENTF_LEFTUP);
                     break;
                 //triple left click case
                 case MouseMessage.WM_BUTTONTRIPLECLICK:
-                    flag = MousePress(
-                        scaleX: scales.Item1,
-                        scaleY: scales.Item2,
-                        x: x,
-                        y: y,
-                        new List<uint>
-                        {
+                    mouseEvents.AddRange(
+                       new List<uint>
+                       {
                             MOUSEEVENTF_LEFTDOWN,
                             MOUSEEVENTF_LEFTUP,
                             MOUSEEVENTF_LEFTDOWN,
                             MOUSEEVENTF_LEFTUP,
                             MOUSEEVENTF_LEFTDOWN,
                             MOUSEEVENTF_LEFTUP,
-                        });
+                       });
                     break;
                 default:
                     break;
             }
+
+            if (mouseEvents.Count == 0) return false;
+
+            flag = MousePress(
+                scaleX: scales.Item1,
+                scaleY: scales.Item2,
+                x: x,
+                y: y,
+                mouseEvents: mouseEvents);
+
             return flag;
         }
         /// <summary>
