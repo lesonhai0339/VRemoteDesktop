@@ -62,11 +62,10 @@ namespace VRemoteClient
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 
-            vPictureBox.MouseClick += MouseClickEventHandler;
-            vPictureBox.MouseDoubleClick += MouseDbClickEventHandler;
             vPictureBox.MouseWheel += MouseWheelEventHandler;
             vPictureBox.MouseMove += MouseMoveEvent;
-            //vPictureBox.MouseDown += MouseDownEventHandler;
+            vPictureBox.MouseDown += MouseDownEventHandler;
+            vPictureBox.MouseDown += MouseUpEventHandler;
 
 
             _clickTimer = new System.Windows.Forms.Timer();
@@ -252,8 +251,8 @@ namespace VRemoteClient
             {
                 if (vPictureBox != null)
                 {
-                    vPictureBox.MouseClick -= MouseClickEventHandler;
-                    vPictureBox.MouseDoubleClick -= MouseDbClickEventHandler;
+                    vPictureBox.MouseDown -= MouseDownEventHandler;
+                    vPictureBox.MouseUp -= MouseUpEventHandler;
                     vPictureBox.MouseWheel -= MouseWheelEventHandler;
                     vPictureBox.MouseMove -= MouseMoveEvent;
                     vPictureBox.Image?.Dispose();
@@ -272,23 +271,12 @@ namespace VRemoteClient
             _clickTimer.Start();
             _clickCount++;
         }
-        private void MouseClickEventHandler(object sender, MouseEventArgs e)
+        private void MouseUpEventHandler(object sender, MouseEventArgs e)
         {
-            //waiting for double click called or timeout
-            _pendingClickArgs = e;
-            _pendingSender = sender as Control;
-            _clickTimer.Stop();
-            _clickTimer.Start();
-        }
-        private void MouseDbClickEventHandler(object sender, MouseEventArgs e)
-        {
-            _clickTimer.Stop(); // Cancel pending click
-            MouseHook.MouseEventToTask(
-                _connectionInfo.SessionId, 
-                MouseEventType.DoubleClick, 
-                vPictureBox, 
-                e
-             );
+            if (!_isDrag)
+            {
+                _clickCount++;
+            }
         }
         private void ClickTimer_Tick(object sender, EventArgs e)
         {
@@ -296,20 +284,17 @@ namespace VRemoteClient
             MouseEventType mouseType = MouseEventType.None;
             if(_clickCount == 2)
             {
-                Console.WriteLine("Double click");
-                mouseType = MouseEventType.DoubleClick;
-            }
-            else if(_clickCount == 3)
-            {
-                Console.WriteLine("Triple click");
-                mouseType = MouseEventType.TripleClick;
-            }
-            else
-            {
-                Console.WriteLine("Single click");
                 mouseType = MouseEventType.Click;
             }
-            if (_pendingClickArgs != null)
+            else if(_clickCount == 4)
+            {
+                mouseType = MouseEventType.DoubleClick;
+            }
+            else if(_clickCount == 6)
+            {
+                mouseType = MouseEventType.TripleClick;
+            }
+            if (_pendingClickArgs != null && !_isDrag && _clickCount >= 2)
             {
                 MouseHook.MouseEventToTask(
                     _connectionInfo.SessionId,
@@ -322,21 +307,6 @@ namespace VRemoteClient
             _pendingSender = null;
             _clickCount = 0;
         }
-        //private void ClickTimer_Tick(object sender, EventArgs e)
-        //{
-        //    _clickTimer.Stop();
-        //    if (_pendingClickArgs != null)
-        //    {
-        //        MouseHook.MouseEventToTask(
-        //            _connectionInfo.SessionId,
-        //            MouseEventType.Click,
-        //            vPictureBox,
-        //            _pendingClickArgs
-        //        );
-        //    }
-        //    _pendingClickArgs = null;
-        //    _pendingSender = null;
-        //}
         private void MouseMoveEvent(object sender, MouseEventArgs e)
         {
             try

@@ -256,46 +256,8 @@ namespace VRemoteClient.Services.MouseService
             return flag;
         }
         /// <summary>
-        /// Moves the mouse cursor to the scaled position and sends a single mouse event.
-        /// Typically used in virtual drag or drawing operations where only one mouse event
-        /// is needed (e.g., just Down, just Move, or just Up).
-        /// </summary>
-        /// <param name="scaleX">Scaling factor on the X-axis (relative to the original size).</param>
-        /// <param name="scaleY">Scaling factor on the Y-axis (relative to the original size).</param>
-        /// <param name="mouseEvent">Mouse event flag (e.g., MOUSEEVENTF_LEFTDOWN, MOUSEEVENTF_MOVE, etc.).</param>
-        /// <param name="x">Original X coordinate (before scaling).</param>
-        /// <param name="y">Original Y coordinate (before scaling).</param>
-        /// <returns>True if the event was sent successfully; otherwise, false.</returns>
-        public static bool SingleMouseEvent(float scaleX, float scaleY, uint mouseEvent, int x, int y)
-        {
-            int pointX = (int)Math.Round(scaleX * x);
-            int pointY = (int)Math.Round(scaleY * y);
-            bool cusorFlag = SetCursorPos(pointX, pointY);
-            if (!cusorFlag) return false;
-
-            INPUT[] inputs = new INPUT[1];
-            inputs[0].type = INPUT_MOUSE;
-            inputs[0].u.mi.dwFlags = mouseEvent;
-            inputs[0].u.mi.dx = 0;
-            inputs[0].u.mi.dy = 0;
-
-            uint flag = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
-            return flag > 0;
-        }
-        /// <summary>
         /// Simulates a mouse wheel scroll event at a specified screen position.
         /// </summary>
-        /// <remarks>This method adjusts the target position based on the provided scaling factors and
-        /// moves the cursor to the calculated position before simulating the mouse wheel event. If the cursor cannot be
-        /// moved to the specified position, the method returns <see langword="false"/>.</remarks>
-        /// <param name="scaleX">The horizontal scaling factor to adjust the x-coordinate.</param>
-        /// <param name="scaleY">The vertical scaling factor to adjust the y-coordinate.</param>
-        /// <param name="x">The x-coordinate of the target position, in unscaled screen coordinates.</param>
-        /// <param name="y">The y-coordinate of the target position, in unscaled screen coordinates.</param>
-        /// <param name="wheelDelta">The amount of wheel movement. Positive values indicate scrolling up, and negative values indicate scrolling
-        /// down.</param>
-        /// <returns><see langword="true"/> if the mouse wheel event was successfully simulated; otherwise, <see
-        /// langword="false"/>.</returns>
         public static bool MouseWheel(float scaleX, float scaleY, int x, int y, int wheelDelta)
         {
             int pointX = (int)Math.Round(scaleX * x);
@@ -316,58 +278,18 @@ namespace VRemoteClient.Services.MouseService
         /// <summary>
         /// Simulates a mouse press at the specified screen coordinates.
         /// </summary>
-        /// <remarks>This method adjusts the provided coordinates using the specified scaling factors to
-        /// account for screen resolution differences, moves the cursor to the calculated position, and simulates a
-        /// mouse button press and release.</remarks>
-        /// <param name="scaleX">The horizontal scaling factor to adjust the x-coordinate to the screen resolution.</param>
-        /// <param name="scaleY">The vertical scaling factor to adjust the y-coordinate to the screen resolution.</param>
-        /// <param name="mouseDown">The mouse event flag representing the mouse button press (e.g., <see langword="MOUSEEVENTF_LEFTDOWN"/>).</param>
-        /// <param name="mouseUp">The mouse event flag representing the mouse button release (e.g., <see langword="MOUSEEVENTF_LEFTUP"/>).</param>
-        /// <param name="x">The x-coordinate of the target position, relative to the original resolution.</param>
-        /// <param name="y">The y-coordinate of the target position, relative to the original resolution.</param>
-        /// <returns><see langword="true"/> if the mouse press was successfully simulated; otherwise, <see langword="false"/>.</returns>
-        private static bool MousePress(float scaleX, float scaleY, uint mouseDown, uint mouseUp, int x, int y)
+        private static bool MousePress(float scaleX, float scaleY, int x, int y, List<uint> mouseEvents)
         {
+            int eventCount = mouseEvents.Count;
+
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);
-
-            bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
-            if (!cusorFlag) return false;
-
             ////or you do not want use SetcursorPos, you can use this code
             //int normalizedX = x * 65535 / Screen.PrimaryScreen.Bounds.Width;
             //int normalizedY = y * 65535 / Screen.PrimaryScreen.Bounds.Height;
             ////and set 
             //inputs[0].u.mi.dx = normalizedX;
             //inputs[0].u.mi.dy = normalizedY;
-
-            INPUT[] inputs = new INPUT[2];
-
-            inputs[0].type = INPUT_MOUSE;
-            inputs[0].u.mi.dwFlags = mouseDown;
-            inputs[0].u.mi.dx = 0;
-            inputs[0].u.mi.dy = 0;
-
-            inputs[1].type = INPUT_MOUSE;
-            inputs[1].u.mi.dwFlags = mouseUp;
-            inputs[1].u.mi.dx = 0;
-            inputs[1].u.mi.dy = 0;
-
-            uint flag = SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
-            if (flag > 0)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-        private static bool MousePress(float scaleX, float scaleY, int x, int y, List<uint> mouseEvents)
-        {
-            int eventCount = mouseEvents.Count;
-            int pointX = (int)Math.Round(scaleX * x);
-            int pointY = (int)Math.Round(scaleY * y);
 
             bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
             if (!cusorFlag) return false;
