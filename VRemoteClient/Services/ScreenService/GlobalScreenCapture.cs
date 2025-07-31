@@ -270,7 +270,7 @@ namespace VRemoteClient.Services.ScreenService
                         _capture = null;
                     }
 
-                    _cancel.Cancel();
+                    StopCapture();
                     int count = 0;
                     while (_backgroundWorker.IsBusy && count++ < 20)
                         Thread.Sleep(100);
