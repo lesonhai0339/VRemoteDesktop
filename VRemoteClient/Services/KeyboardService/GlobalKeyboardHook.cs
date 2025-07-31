@@ -76,8 +76,11 @@ namespace VRemoteClient.Services.KeyboardService
         }
         public void Stop()
         {
-            UnhookWindowsHookEx(hookID);
-            hookID = IntPtr.Zero;
+            if (hookID != IntPtr.Zero)
+            {
+                UnhookWindowsHookEx(hookID);
+                hookID = IntPtr.Zero;
+            }
         }
         private bool IsHandleFocus(IntPtr handle)
         {
@@ -191,6 +194,10 @@ namespace VRemoteClient.Services.KeyboardService
                     .Append("|")
                     .Append((int)type).ToString();
         }
+        ~GlobalKeyboardHook()
+        {
+            Dispose(false);
+        }
         public void Dispose()
         {
             Dispose(true);
@@ -206,7 +213,11 @@ namespace VRemoteClient.Services.KeyboardService
                     // Clear event handlers to prevent memory leaks
                     KeyPressed = null;
                 }
-
+                lock (_lockObject)
+                {
+                    WindowsHandle.Clear();
+                }
+                proc = null;
                 // Dispose unmanaged resources
                 Stop(); // This will unhook the Windows hook
 

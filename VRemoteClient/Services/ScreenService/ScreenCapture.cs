@@ -18,6 +18,7 @@ namespace VRemoteClient.Services.ScreenService
 {
     internal class ScreenCapture
     {
+        private bool _isDisposed = false;
         private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
         //private ConcurrentBag<ScreenBlock> blocks = new ConcurrentBag<ScreenBlock>();
 
@@ -406,12 +407,30 @@ namespace VRemoteClient.Services.ScreenService
             return false;
         }
         // Cleanup method
-        internal void Dispose()
+        ~ScreenCapture()
         {
-            lock (_lockObject)
+            Dispose(false);
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
             {
-                _previousFrame?.Dispose();
-                _previousFrame = null;
+                if (!_isDisposed)
+                {
+                    lock (_lockObject)
+                    {
+                        _previousFrame?.Dispose();
+                        _previousFrame = null;
+
+                        while (changedBlocks.TryTake(out _)) { }
+                    }
+                    _isDisposed = true;
+                }
             }
         }
     }

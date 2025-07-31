@@ -279,9 +279,11 @@ namespace VRemoteClient.Services.ScreenService
                     {
                         _backgroundWorker.DoWork -= DoWork;
                         _backgroundWorker.Dispose();
+                        _backgroundWorker = null;
                     }
                 }
-
+                _buffer = null;
+                _dataSend = null;
                 _disposed = true;
             }
         }

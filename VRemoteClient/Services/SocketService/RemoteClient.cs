@@ -28,11 +28,9 @@ namespace VRemoteClient.Services.SocketService
         private bool _isSocketConnected;
         private bool _isP2PConnected;
         private bool _isDisposed;
-
         private object _lockObject = new object();
 
         private Socket _socket;
-        private Thread _screenThread;
         //private System.Threading.Timer _timer;
         private ClientInfo _me;
 
@@ -63,7 +61,6 @@ namespace VRemoteClient.Services.SocketService
         public event ChunksSuccessEvent ChunksSuccessEventHandler;
         public event P2PDisconnectedEvent P2PDisconnectedEventhandler;
         public event ClipboardReceivedEvent ClipboardReceivedEventHandler;
-
         CancellationTokenSource _cancellationToken;
 
         public RemoteClient(ClientInfo me)
@@ -78,7 +75,6 @@ namespace VRemoteClient.Services.SocketService
             CommandTasks = new ConcurrentQueue<object>();
             Worker = new BackgroundWorker();
             Worker.WorkerSupportsCancellation = true;
-
         }
         #region Properties
         public bool IsP2PConnected
@@ -854,7 +850,6 @@ namespace VRemoteClient.Services.SocketService
                     Worker.DoWork -= DoWork;
                     _backgroundWorker.Dispose();
                     _backgroundWorker = null;
-
 
                     //queue
                     if (_screenTasks != null)

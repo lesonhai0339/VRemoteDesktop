@@ -229,6 +229,7 @@ namespace VRemoteClient
                     _remoteDesktop.KeyboardEvent -= KeyboardEvent;
                     _remoteDesktop.ScreenEvent -= ScreenEvent;
                     _remoteDesktop.ChunksEvent -= ChunksEvent;
+                    _remoteDesktop.P2PDisconnect -= P2PDisconnectEvent;
                     _remoteDesktop = null;
                 }
             }
@@ -256,6 +257,8 @@ namespace VRemoteClient
                     vPictureBox.MouseWheel -= MouseWheelEventHandler;
                     vPictureBox.MouseMove -= MouseMoveEvent;
                     vPictureBox.Image?.Dispose();
+                    vPictureBox.Dispose();
+                    vPictureBox = null;
                 }
             }
             catch (Exception ex)
@@ -277,6 +280,10 @@ namespace VRemoteClient
                 _curScreen = null;
                 _screenGraphics = null;
             }
+            _pendingSender?.Dispose();
+            _isP2PDisconnectCallback?.Dispose();
+            _isP2PDisconnectCallback = null;
+            this.Dispose();
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {
@@ -511,12 +518,25 @@ namespace VRemoteClient
         }
         public void ScreenEvent(byte[] data)
         {
-            if (this.InvokeRequired)
+            if (!this.IsDisposed && !this.Disposing)
             {
-                //cannnot using beginInvoke because need sure this call before chunks event
-                this.Invoke(new Action<byte[]>(ScreenEvent), data);
-                return;
-            }
+                if (this.InvokeRequired)
+                {
+                    //cannnot using beginInvoke because need sure this call before chunks event
+                    this.Invoke(new Action(()=>{
+                        try
+                        {
+                            ScreenEvent(data);
+                        }
+                        catch(Exception ex)
+                        {
+                            Log.ForContext("FileName", "FormRemote").Error(ex, "ScreenEvent error");
+                        }
+                    }));
+                    //this.Invoke(new Action<byte[]>(ScreenEvent), data);
+                    return;
+                }
+            } 
 
             // UI thread code
             try
@@ -588,10 +608,26 @@ namespace VRemoteClient
                 }
 
                 // Invalidate last merge region
-                if (this.InvokeRequired)
-                    this.BeginInvoke(new Action(() => InvalidateRegion(dirtyRegion)));
-                else
-                    InvalidateRegion(dirtyRegion);
+                if(!this.IsDisposed && !this.Disposing)
+                {
+                    if (this.InvokeRequired)
+                    {
+                        this.BeginInvoke(new Action(() =>
+                        {
+                            try
+                            {
+                                InvalidateRegion(dirtyRegion);
+                            }catch(Exception ex)
+                            {
+                                Log.ForContext("FileName", "FormRemote").Warning(ex, "InvalidateRegion error");
+                            }
+                        }));
+                    }
+                    else
+                    {
+                        InvalidateRegion(dirtyRegion);
+                    }
+                }
 
                 TryAddWork(new TaskObject(
                     taskType: Models.Enums.RemoteType.ChunksOk,

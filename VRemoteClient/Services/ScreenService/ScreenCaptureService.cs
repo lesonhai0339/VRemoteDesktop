@@ -17,6 +17,7 @@ using VRemoteClient.Utils;
 
 namespace VRemoteClient.Services.ScreenService
 {
+    [Obsolete("Not used", true)]
     public class ScreenCaptureService: IDisposable
     {
         private const int TIME_OUT = 10;

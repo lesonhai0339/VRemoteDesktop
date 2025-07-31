@@ -30,8 +30,7 @@ namespace VRemoteClient
             InitializeComponent();
             Init();
 
-
-            this.Text = "VRemote - Vinhhy";
+            this.Text = "VRemote";
             string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
             this.Icon = new Icon(iconPath);
             this.MaximizeBox = false;
@@ -91,13 +90,25 @@ namespace VRemoteClient
         }
         private void FormMain_Closing(object sender, FormClosingEventArgs e)
         {
-            if(_remoteDesktop != null)
+            try
             {
-                _remoteDesktop.LoginEvent -= LoginCallback;
-                _remoteDesktop.ConnectServerEvent -= ConnectServerEvent;
-                _remoteDesktop.P2PConnectEvent -= P2PConnectEvent;
-                _remoteDesktop.Dispose();
+                if (_remoteDesktop != null)
+                {
+                    _remoteDesktop.LoginEvent -= LoginCallback;
+                    _remoteDesktop.ConnectServerEvent -= ConnectServerEvent;
+                    _remoteDesktop.P2PConnectEvent -= P2PConnectEvent;
+                    _remoteDesktop.Dispose();
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show("Xảy ra lỗi "+ ex.Message, "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
                 _remoteDesktop = null;
+                _resetEvent?.Dispose();
+                _connectionInfo = null;
             }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
