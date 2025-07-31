@@ -7,6 +7,9 @@ using VRemoteClient.Models.Entities;
 
 namespace VRemoteClient.Services.ConnectionService
 {
+    /// <summary>
+    /// Manager remote connections to this computer
+    /// </summary>
     public static class ConnectionManager
     {
         private static readonly object _lock = new object();

@@ -15,7 +15,7 @@ using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services.KeyboardService
 {
-    [Obsolete("")]
+    [Obsolete("Not used", true)]
     public class KeyboardHook: IDisposable
     {
         private uint _targetProcessId;

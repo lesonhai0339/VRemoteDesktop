@@ -177,7 +177,7 @@ namespace VRemoteClient.Services.ScreenService
 
                     //header
                     Buffer.BlockCopy(BitConverter.GetBytes(dataLength), 0, _dataSend, 0, 4); // Add total bytes at the start
-                    _dataSend[4] = (byte)CommandType.Screen; //data type
+                    _dataSend[4] = (byte)RemoteType.Screen; //data type
 
                     //hash string
                     Buffer.BlockCopy(screenHashed, 0, _dataSend, 5, screenHashed.Length);//real data
@@ -240,7 +240,7 @@ namespace VRemoteClient.Services.ScreenService
                         fixed (byte* ptr = _dataSend)
                         {
                             *(int*)ptr = dataSendLength; // Set total bytes at the start
-                            *(ptr + 4) = (byte)CommandType.Chunks; // Set command type at offset 4
+                            *(ptr + 4) = (byte)RemoteType.Chunks; // Set command type at offset 4
                         }
                     }
 
