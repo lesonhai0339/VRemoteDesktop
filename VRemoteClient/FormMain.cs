@@ -44,6 +44,7 @@ namespace VRemoteClient
         }
         private void Init()
         {
+            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
             RemoteDesktop ??= new RemoteDesktop();
         }
 

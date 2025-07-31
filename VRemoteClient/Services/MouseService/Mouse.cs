@@ -205,6 +205,7 @@ namespace VRemoteClient.Services.MouseService
                 }
                 _disposed = true;
             }
+            _disposed = true;
         }
         #endregion
     }

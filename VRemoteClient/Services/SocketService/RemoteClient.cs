@@ -924,6 +924,7 @@ namespace VRemoteClient.Services.SocketService
                     _isDisposed = true;
                 }
             }
+            _isDisposed = true;
         }
         #endregion
     }

@@ -27,6 +27,9 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
         private Thread _screenThread;
         private ManualResetEvent _resetEvent;
+        private Task _screenCaptureTask;
+        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+
 
         private ClientInfo _ownerInfo;
 
@@ -53,10 +56,15 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             KeyboardHook ??= new GlobalKeyboardHook();
             RemoteClient ??= new RemoteClient(OwnerInfo);
-            Task.Factory.StartNew(() =>
+            _screenCaptureTask = Task.Factory.StartNew(() =>
             {
                 ScreenHook = new GlobalScreenCapture();
-            }, TaskCreationOptions.LongRunning);
+
+                while (!_cancellationTokenSource.Token.IsCancellationRequested)
+                {
+                    _cancellationTokenSource.Token.ThrowIfCancellationRequested();
+                }
+            }, _cancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
         #region Properties
         public bool IsSocketConnected
@@ -509,16 +517,85 @@ namespace VRemoteClient.Services.RemoteDesktopService
             {
                 if (disposing)
                 {
-                    StopKeyboardHook();
-                    //TODO: dispose here
-                    if (_globakKeyboardHook != null)
+                    try
                     {
-                        _globakKeyboardHook.KeyPressed -= KeyboardPressedEvent;
-                        _globakKeyboardHook.Stop();
-                        _globakKeyboardHook = null;
+                        //TODO: dispose here
+                        if (_globakKeyboardHook != null)
+                        {
+                            _globakKeyboardHook.Stop();
+                            _globakKeyboardHook.KeyPressed -= KeyboardPressedEvent;
+                            _globakKeyboardHook.Dispose();
+                            _globakKeyboardHook = null;
+                        }
                     }
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _globakKeyboardHook");
+                    }
+                    _cancellationTokenSource?.Cancel();
+                    try
+                    {
+                        _screenCaptureTask?.Wait(TimeSpan.FromSeconds(5));
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                    catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
+                    {
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", GetType().Name).Error(ex, "Error waiting for screen capture task to complete");
+                    }
+                    finally
+                    {
+                        _screenCaptureTask?.Dispose();
+                        _cancellationTokenSource?.Dispose();
+
+                        if (_globakScreenHook != null)
+                        {
+                            try
+                            {
+                                _globakScreenHook.StopCapture();
+                                _globakScreenHook.ScreenEvent -= ScreenHookEventHandler;
+                                _globakScreenHook.Dispose();
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _globakScreenHook");
+                            }
+                            finally
+                            {
+                                _globakScreenHook = null;
+                            }
+                        }
+                    }
+
+                    try
+                    {
+                        if(_remoteClient != null)
+                        {
+                            _remoteClient.ConnectEventHandler -= ConnectEventHandler;
+                            _remoteClient.LoginEventHandler -= LoginEventHandler;
+                            _remoteClient.P2PConnectEventHandler -= P2PConnectEventHandler;
+                            _remoteClient.P2PScreenEventHandler -= P2PScreenEventHandler;
+                            _remoteClient.P2PChunksEventHandler -= P2PChunksEventHandler;
+                            _remoteClient.P2PDisconnectedEventhandler -= P2PDisconnectedEventhandler;
+                            _remoteClient.ClipboardReceivedEventHandler -= ClipboardReceivedEventHandler;
+
+                            _remoteClient.Dispose();
+                            _remoteClient = null;
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _remoteClient");
+                    }
+
+                    ConnectionManager.Clear();
                 }
             }
+            _isDisposed = true;
         }
         #endregion
     }
