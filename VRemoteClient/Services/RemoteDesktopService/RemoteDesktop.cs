@@ -27,12 +27,8 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
         private Thread _screenThread;
         private ManualResetEvent _resetEvent;
-        private Task _screenCaptureTask;
-        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
-
 
         private ClientInfo _ownerInfo;
-
 
         private GlobalKeyboardHook _globakKeyboardHook;
         private GlobalScreenCapture _globakScreenHook;
@@ -56,15 +52,11 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             KeyboardHook ??= new GlobalKeyboardHook();
             RemoteClient ??= new RemoteClient(OwnerInfo);
-            _screenCaptureTask = Task.Factory.StartNew(() =>
+            Task.Factory.StartNew(() =>
             {
                 ScreenHook = new GlobalScreenCapture();
 
-                while (!_cancellationTokenSource.Token.IsCancellationRequested)
-                {
-                    _cancellationTokenSource.Token.ThrowIfCancellationRequested();
-                }
-            }, _cancellationTokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+            },TaskCreationOptions.LongRunning);
         }
         #region Properties
         public bool IsSocketConnected
@@ -532,42 +524,21 @@ namespace VRemoteClient.Services.RemoteDesktopService
                     {
                         Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _globakKeyboardHook");
                     }
-                    _cancellationTokenSource?.Cancel();
-                    try
+                    if (_globakScreenHook != null)
                     {
-                        _screenCaptureTask?.Wait(TimeSpan.FromSeconds(5));
-                    }
-                    catch (OperationCanceledException)
-                    {
-                    }
-                    catch (AggregateException ex) when (ex.InnerException is OperationCanceledException)
-                    {
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("FileName", GetType().Name).Error(ex, "Error waiting for screen capture task to complete");
-                    }
-                    finally
-                    {
-                        _screenCaptureTask?.Dispose();
-                        _cancellationTokenSource?.Dispose();
-
-                        if (_globakScreenHook != null)
+                        try
                         {
-                            try
-                            {
-                                _globakScreenHook.StopCapture();
-                                _globakScreenHook.ScreenEvent -= ScreenHookEventHandler;
-                                _globakScreenHook.Dispose();
-                            }
-                            catch (Exception ex)
-                            {
-                                Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _globakScreenHook");
-                            }
-                            finally
-                            {
-                                _globakScreenHook = null;
-                            }
+                            _globakScreenHook.StopCapture();
+                            _globakScreenHook.ScreenEvent -= ScreenHookEventHandler;
+                            _globakScreenHook.Dispose();
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _globakScreenHook");
+                        }
+                        finally
+                        {
+                            _globakScreenHook = null;
                         }
                     }
 

@@ -8,12 +8,13 @@
 	  <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	  <UseWindowsForms>true</UseWindowsForms>
 	  <ApplicationManifest>app.manifest</ApplicationManifest>
-	  <ApplicationIcon>bin\Debug\net40\Resources\logo.ico</ApplicationIcon>
+	  <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
 	<Content Include="Resources\**\*" CopyToOutputDirectory="PreserveNewest" />
 	<Content Include="bin\Debug\net40\Resources\logo.ico" />
+	<Content Include="logo.ico" />
 	 <Content Include="Resources\logo.ico" CopyToOutputDirectory="PreserveNewest" />
 
   </ItemGroup>
