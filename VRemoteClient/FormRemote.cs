@@ -246,7 +246,7 @@ namespace VRemoteClient
             {
                 Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing Icon");
             }
-
+            //clear picturebox
             try
             {
                 if (vPictureBox != null)
@@ -261,6 +261,21 @@ namespace VRemoteClient
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing PictureBox");
+            }
+            //clear unmanaged bitmap and graphic
+            try
+            {
+                _curScreen?.Dispose();
+                _screenGraphics?.Dispose();
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "Error disposing _curScreen and _screenGraphics");
+            }
+            finally
+            {
+                _curScreen = null;
+                _screenGraphics = null;
             }
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
