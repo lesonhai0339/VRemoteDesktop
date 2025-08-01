@@ -557,7 +557,7 @@ namespace VRemoteClient.Services.SocketService
                 KeyState keyType = (KeyState)int.Parse(keyboards[4]);
                 if(keyModifier == Keys.Control && keyModifier2 == Keys.Alt && keyCode == Keys.End)
                 {
-                    Console.WriteLine("SaS key");
+                    Utils.Libraries.LockWorkStation();
                 }
                 else
                 {
