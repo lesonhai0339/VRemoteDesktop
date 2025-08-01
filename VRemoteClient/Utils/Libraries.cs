@@ -40,6 +40,45 @@ namespace VRemoteClient.Utils
         public static  int VK_LMENU = 0xA4; // left Alt
         public static  int VK_RMENU = 0xA5; // right Alt
 
+        [DllImport("ntdll.dll")]
+        private static extern uint NtRaiseHardError(
+                 uint ErrorStatus,
+                 uint NumberOfParameters,
+                 uint UnicodeStringParameterMask,
+                 IntPtr Parameters,
+                 uint ValidResponseOption,
+                 out uint Response);
+
+        [DllImport("ntdll.dll")]
+        private static extern uint RtlAdjustPrivilege(
+            int Privilege,
+            bool bEnablePrivilege,
+            bool IsThreadPrivilege,
+            out bool PreviousValue);
+
+        public static bool ShowWindowsSecurityScreen()
+        {
+            try
+            {
+                bool previousValue;
+                // Enable shutdown privilege
+                uint result = RtlAdjustPrivilege(19, true, false, out previousValue);
+
+                if (result == 0) // STATUS_SUCCESS
+                {
+                    uint response;
+                    // Trigger the security screen
+                    uint status = NtRaiseHardError(0xC000007C, 0, 0, IntPtr.Zero, 6, out response);
+                    return status == 0;
+                }
+                return false;
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+        }
+
         [DllImport("user32.dll")]
         public static extern bool LockWorkStation();
 

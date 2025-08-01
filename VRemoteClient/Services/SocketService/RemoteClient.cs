@@ -557,7 +557,7 @@ namespace VRemoteClient.Services.SocketService
                 KeyState keyType = (KeyState)int.Parse(keyboards[4]);
                 if(keyModifier == Keys.Control && keyModifier2 == Keys.Alt && keyCode == Keys.End)
                 {
-                    Utils.Libraries.LockWorkStation();
+                    Utils.Libraries.ShowWindowsSecurityScreen();
                 }
                 else
                 {
@@ -849,7 +849,6 @@ namespace VRemoteClient.Services.SocketService
                         {
                             _cancellationToken.Cancel();
                             _cancellationToken.Dispose();
-                            _cancellationToken = null;
                         }
                         catch (ObjectDisposedException)
                         {
@@ -920,6 +919,7 @@ namespace VRemoteClient.Services.SocketService
                     // Clear other objects
                     _me = null;
                     _lockObject = null;
+                    _cancellationToken = null;
 
                     // Set flags
                     _isSocketConnected = false;
