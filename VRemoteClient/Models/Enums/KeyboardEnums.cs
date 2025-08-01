@@ -10,7 +10,8 @@ namespace VRemoteClient.Models.Enums
         public enum KeyCombination
         {
             None = 0,
-            Copy = 1
+            Copy = 1,
+            SAS = 2,
         }
         public enum KeyState : int
         {

@@ -144,7 +144,7 @@ namespace VRemoteClient.Services.KeyboardService
 
                         KeyPressed?.Invoke(this, keyEventArgs);
                         return CallNextHookEx(hookID, nCode, wParam, lParam);
-                    }
+                    } 
                     //Handle keyboard events on form
                     if (WindowsHandle.Count > 0)
                     {
@@ -159,6 +159,29 @@ namespace VRemoteClient.Services.KeyboardService
                                 KeyCode = key,
                                 KeyType = keyState,
                             };
+                            if (IsControlPressed() && IsAltPressed() && key == Keys.End)
+                            {
+                                keyEventArgs = new CustomKeyMessageEventArgs
+                                {
+                                    Command = wParam,
+                                    Handle = IntPtr.Zero,
+                                    KeyModifier = Keys.Control,
+                                    Keymodifier2 = Keys.Alt,
+                                    KeyCode = key,
+                                    KeyType = keyState,
+                                    Combination = KeyCombination.SAS
+                                };
+                                KeyPressed?.Invoke(this, keyEventArgs);
+                                return (IntPtr)1;
+                            }
+                            if (key == Keys.Control 
+                                || key == Keys.LControlKey 
+                                || key == Keys.RControlKey 
+                                || key == Keys.LMenu
+                                || key == Keys.RMenu)
+                            {
+                                return CallNextHookEx(hookID, nCode, wParam, lParam);
+                            }
                             KeyPressed?.Invoke(this, keyEventArgs);
                             return (IntPtr)1;
                         }
@@ -189,6 +212,19 @@ namespace VRemoteClient.Services.KeyboardService
                     .Append((int)command)
                     .Append("|")
                     .Append((int)modifier)
+                    .Append("|")
+                    .Append((int)code)
+                    .Append("|")
+                    .Append((int)type).ToString();
+        }
+        public string KeyboardEventTostring(IntPtr command, Keys modifier, Keys modifier2, Keys code, KeyState type)
+        {
+            return new StringBuilder()
+                    .Append((int)command)
+                    .Append("|")
+                    .Append((int)modifier)
+                    .Append("|")
+                    .Append((int)modifier2)
                     .Append("|")
                     .Append((int)code)
                     .Append("|")

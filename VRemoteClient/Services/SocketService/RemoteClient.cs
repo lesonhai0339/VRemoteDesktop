@@ -61,7 +61,7 @@ namespace VRemoteClient.Services.SocketService
         public event ChunksSuccessEvent ChunksSuccessEventHandler;
         public event P2PDisconnectedEvent P2PDisconnectedEventhandler;
         public event ClipboardReceivedEvent ClipboardReceivedEventHandler;
-        CancellationTokenSource _cancellationToken;
+        private CancellationTokenSource _cancellationToken;
 
         public RemoteClient(ClientInfo me)
         {
@@ -552,10 +552,17 @@ namespace VRemoteClient.Services.SocketService
                 }
                 IntPtr ptr = (IntPtr)int.Parse(keyboards[0]);
                 Keys keyModifier = (Keys)int.Parse(keyboards[1]);
-                Keys keyCode = (Keys)int.Parse(keyboards[2]);
-                KeyState keyType = (KeyState)int.Parse(keyboards[3]);
-
-                VirtualKeyboard.ProcessKeyboardReceived(keyCode, keyType);
+                Keys keyModifier2 = (Keys)int.Parse(keyboards[2]);
+                Keys keyCode = (Keys)int.Parse(keyboards[3]);
+                KeyState keyType = (KeyState)int.Parse(keyboards[4]);
+                if(keyModifier == Keys.Control && keyModifier2 == Keys.Alt && keyCode == Keys.End)
+                {
+                    Console.WriteLine("SaS key");
+                }
+                else
+                {
+                    VirtualKeyboard.ProcessKeyboardReceived(keyCode, keyType);
+                }
             }
             catch (Exception ex)
             {
@@ -836,6 +843,18 @@ namespace VRemoteClient.Services.SocketService
             {
                 if (disposing)
                 {
+                    if (_cancellationToken != null)
+                    {
+                        try
+                        {
+                            _cancellationToken.Cancel();
+                            _cancellationToken.Dispose();
+                            _cancellationToken = null;
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                        }
+                    }
                     //background worker
                     if (Worker.IsBusy)
                     {
@@ -875,18 +894,7 @@ namespace VRemoteClient.Services.SocketService
                         _commandTasks = null;
                     }
 
-                    if (_cancellationToken != null)
-                    {
-                        try
-                        {
-                            _cancellationToken.Cancel();
-                            _cancellationToken.Dispose();
-                            _cancellationToken = null;
-                        }
-                        catch (ObjectDisposedException)
-                        {
-                        }
-                    }
+                    
 
                     try
                     {
