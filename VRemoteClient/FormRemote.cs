@@ -465,7 +465,7 @@ namespace VRemoteClient
                 {
                     return;
                 }
-                keyCommandString = RemoteDesktop.FormatKeyboardInput(e.Command, e.KeyModifier, e.Keymodifier2, e.KeyCode, e.KeyType);
+                keyCommandString = RemoteDesktop.FormatKeyboardInput(e.Command, e.KeyModifier, e.KeyCode, e.KeyType);
             }
 
             //return if data is empty

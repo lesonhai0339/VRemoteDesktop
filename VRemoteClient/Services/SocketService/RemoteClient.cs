@@ -552,17 +552,9 @@ namespace VRemoteClient.Services.SocketService
                 }
                 IntPtr ptr = (IntPtr)int.Parse(keyboards[0]);
                 Keys keyModifier = (Keys)int.Parse(keyboards[1]);
-                Keys keyModifier2 = (Keys)int.Parse(keyboards[2]);
-                Keys keyCode = (Keys)int.Parse(keyboards[3]);
-                KeyState keyType = (KeyState)int.Parse(keyboards[4]);
-                if(keyModifier == Keys.Control && keyModifier2 == Keys.Alt && keyCode == Keys.End)
-                {
-                    Utils.Libraries.ShowWindowsSecurityScreen();
-                }
-                else
-                {
-                    VirtualKeyboard.ProcessKeyboardReceived(keyCode, keyType);
-                }
+                Keys keyCode = (Keys)int.Parse(keyboards[2]);
+                KeyState keyType = (KeyState)int.Parse(keyboards[3]);
+                VirtualKeyboard.ProcessKeyboardReceived(keyCode, keyType);
             }
             catch (Exception ex)
             {

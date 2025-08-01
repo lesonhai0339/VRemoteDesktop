@@ -311,10 +311,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             return KeyboardHook.KeyboardEventTostring(command, modifier, code, type);
         }
-        public string FormatKeyboardInput(IntPtr command, Keys modifier, Keys modifier2,  Keys code, KeyState type)
-        {
-            return KeyboardHook.KeyboardEventTostring(command, modifier, modifier2,  code, type);
-        }
         public string GetClipboard()
         {
             try
