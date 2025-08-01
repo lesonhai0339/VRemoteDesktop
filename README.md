@@ -19,6 +19,7 @@ Clipboard Sync: Copy clipboard content between the controller and controlled mac
 <b>⚙️ Requirements</b>
 
 A public IP server is required to run the relay server (VRemoteServer).
+Only work on Windows
 
 <b>🚀 How to Use</b>
 
