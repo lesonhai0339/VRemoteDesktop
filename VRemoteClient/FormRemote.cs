@@ -52,8 +52,8 @@ namespace VRemoteClient
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
 
-            string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
-            this.Icon = new Icon(iconPath);
+            //string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
+            //this.Icon = new Icon(iconPath);
             base.AutoScaleDimensions = new SizeF(6f, 13f);
 
             // PictureBox

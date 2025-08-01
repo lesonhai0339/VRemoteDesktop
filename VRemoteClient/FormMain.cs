@@ -31,8 +31,8 @@ namespace VRemoteClient
             Init();
 
             this.Text = "VRemote";
-            string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
-            this.Icon = new Icon(iconPath);
+            //string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
+            //this.Icon = new Icon(iconPath);
             this.MaximizeBox = false;
             this.txtOwnerId.Text = RemoteDesktop.OwnerInfo.Id;
             this.txtOwnerPassword.Text = RemoteDesktop.OwnerInfo.Password;
