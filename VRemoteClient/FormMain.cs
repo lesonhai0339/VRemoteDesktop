@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
@@ -8,6 +9,7 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -109,6 +111,7 @@ namespace VRemoteClient
                 _remoteDesktop = null;
                 _resetEvent?.Dispose();
                 _connectionInfo = null;
+
             }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
@@ -174,8 +177,12 @@ namespace VRemoteClient
             } 
         }
         #endregion
+        [DllImport("user32.dll")]
+        public static extern bool LockWorkStation();
         private void btnConnect_Click(object sender, EventArgs e)
         {
+            LockWorkStation();
+            return;
             _resetEvent.Reset();
 
             if (string.IsNullOrEmpty(txtPartnerId.Text) || string.IsNullOrEmpty(txtPartnerPassword.Text))

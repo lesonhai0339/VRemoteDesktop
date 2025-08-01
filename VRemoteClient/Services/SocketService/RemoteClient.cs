@@ -847,16 +847,8 @@ namespace VRemoteClient.Services.SocketService
                         }
                     }
                     //background worker
-                    if (Worker.IsBusy)
-                    {
-                        Worker.CancelAsync();
-                        int timeout = 5000;
-                        while (Worker.IsBusy && timeout > 0)
-                        {
-                            Thread.Sleep(100);
-                            timeout -= 100;
-                        }
-                    }
+                    Worker.CancelAsync();
+                    
                     Worker.DoWork -= DoWork;
                     _backgroundWorker.Dispose();
                     _backgroundWorker = null;
@@ -886,13 +878,11 @@ namespace VRemoteClient.Services.SocketService
                     }
 
                     
-
                     try
                     {
                         _socket?.Shutdown(SocketShutdown.Both);
                         _socket?.Close();
                         _socket?.Dispose();
-                        _socket = null;
                     }
                     catch (Exception)
                     {
@@ -911,7 +901,6 @@ namespace VRemoteClient.Services.SocketService
                     // Clear other objects
                     _me = null;
                     _lockObject = null;
-                    _cancellationToken = null;
 
                     // Set flags
                     _isSocketConnected = false;

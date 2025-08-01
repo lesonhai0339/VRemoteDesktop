@@ -420,7 +420,7 @@ namespace VRemoteClient
                     _isP2PDisconnectCallback.Set();
                     Bitmap blackImage = new Bitmap(vPictureBox.Width, vPictureBox.Height);
                     vPictureBox.Image = blackImage;
-                    MessageBox.Show("Đối tác đã ngắt kết nối", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    MessageBox.Show("Đã ngắt kết nối", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 }
             }
             catch (ObjectDisposedException)
