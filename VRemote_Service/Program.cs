@@ -20,5 +20,23 @@ namespace VRemote_Service
             };
             ServiceBase.Run(ServicesToRun);
         }
+        //link https://learn.microsoft.com/en-us/windows/win32/api/sas/nf-sas-sendsas
+        //        static void Main()
+        //        {
+        //#if (!DEBUG)
+        //           ServiceBase[] ServicesToRun;
+        //           ServicesToRun = new ServiceBase[] 
+        //	   { 
+        //	        new MyService() 
+        //	   };
+        //           ServiceBase.Run(ServicesToRun);
+        //#else
+        //            Service1 myServ = new Service1();
+        //            myServ.StartWinFormsInUserSession();
+        //            // here Process is my Service function
+        //            // that will run when my service onstart is call
+        //            // you need to call your own method or function name here instead of Process();
+        //#endif
+        //        }
     }
 }
