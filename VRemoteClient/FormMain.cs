@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Services.RemoteDesktopService;
+using VRemoteClient.Utils;
 
 namespace VRemoteClient
 {
@@ -89,6 +90,7 @@ namespace VRemoteClient
         private void FormMain_Shown(object sender, EventArgs e)
         {
             ConnectToServer();
+            PipeClient.RunPipe(new string[] { "spawnclient" });
         }
         private void FormMain_Closing(object sender, FormClosingEventArgs e)
         {
@@ -177,12 +179,8 @@ namespace VRemoteClient
             } 
         }
         #endregion
-        [DllImport("user32.dll")]
-        public static extern bool LockWorkStation();
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            LockWorkStation();
-            return;
             _resetEvent.Reset();
 
             if (string.IsNullOrEmpty(txtPartnerId.Text) || string.IsNullOrEmpty(txtPartnerPassword.Text))
