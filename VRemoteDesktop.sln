@@ -11,10 +11,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{ACFD9BB2
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RemoteClientTest", "RemoteClientTest\RemoteClientTest.csproj", "{0621BCBF-591F-4C89-981C-CAD3F8263DC2}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "VRemoteClient", "VRemoteClient", "{67C5D6C5-C9EA-4346-B349-A6637BA9D424}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "VRemoteServer", "VRemoteServer", "{2D94BEB2-0410-4103-A8A3-C495DFA8CCBA}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemote_Service", "VRemote_Service\VRemote_Service.csproj", "{4FE53444-0C08-447F-8568-7C4827FDD681}"
 EndProject
 Global
