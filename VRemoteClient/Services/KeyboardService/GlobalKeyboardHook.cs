@@ -4,32 +4,34 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
-using static VRemoteClient.Utils.Libraries;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
-using static VRemoteClient.Models.Enums.KeyboardEnums;
+using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
-using static System.Runtime.CompilerServices.RuntimeHelpers;
+using static VRemoteClient.Models.Enums.KeyboardEnums;
+using static VRemoteClient.Utils.Libraries;
+using static VRemoteClient.Utils.Libraries.HookApis;
 
 namespace VRemoteClient.Services.KeyboardService
 {
     public class GlobalKeyboardHook: IDisposable
     {
         private readonly object _lockObject = new object();
-        private IntPtr hookID = IntPtr.Zero;
-        private LowLevelKeyboardProc proc;
-        public HashSet<IntPtr> _windowsHandle = new HashSet<IntPtr>(); 
+        private bool _disposed;
+        private IntPtr _hookID;
+        private LowLevelProc _proc;
+        public HashSet<IntPtr> _windowsHandle; 
         public event EventHandler<CustomKeyMessageEventArgs> KeyPressed;
-
-        private bool _disposed = false;
         public GlobalKeyboardHook() 
         {
+            _disposed = false;
+            _hookID = IntPtr.Zero;
             WindowsHandle = new HashSet<IntPtr>();
         }
         public void Start(uint pId)
         {
-            proc = HookCallback;
-            hookID = SetHook(proc);
+            _proc = HookCallback;
+            _hookID = SetHook(_proc);
         }
         #region Properties
         public HashSet<IntPtr> WindowsHandle
@@ -74,17 +76,17 @@ namespace VRemoteClient.Services.KeyboardService
         }
         public void Stop()
         {
-            if (hookID != IntPtr.Zero)
+            if (_hookID != IntPtr.Zero)
             {
-                UnhookWindowsHookEx(hookID);
-                hookID = IntPtr.Zero;
+                HookApis.UnhookWindowsHookEx(_hookID);
+                _hookID = IntPtr.Zero;
             }
         }
         private bool IsHandleFocus(IntPtr handle)
         {
-            return GetForegroundWindow() == handle;
+            return WindowApis.GetForegroundWindow() == handle;
         }
-        private IntPtr SetHook(LowLevelKeyboardProc proc)
+        private IntPtr SetHook(LowLevelProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
             using (ProcessModule curModule = curProcess.MainModule)
@@ -94,7 +96,7 @@ namespace VRemoteClient.Services.KeyboardService
                 //    GetModuleHandle(curModule.ModuleName), 0);
 
                 //get all of this process
-                return SetWindowsHookEx(WH_KEYBOARD_LL, proc,
+                return HookApis.SetWindowsHookEx((int)WindowsKeyboardEvent.WH_KEYBOARD_LL, proc,
                     IntPtr.Zero, 0);
             }
         }
@@ -112,7 +114,7 @@ namespace VRemoteClient.Services.KeyboardService
             
             if (nCode >= 0)
             {
-                if (wParam == (IntPtr)WM_KEYDOWN || wParam == (IntPtr)WM_KEYUP)
+                if (wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYDOWN || wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYUP)
                 {
                     KBDLLHOOKSTRUCT hookStruct = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(KBDLLHOOKSTRUCT));
 
@@ -121,9 +123,9 @@ namespace VRemoteClient.Services.KeyboardService
 
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
-                    KeyState keyState = wParam == (IntPtr)WM_KEYDOWN ? KeyState.KeyDown : KeyState.KeyUp;
+                    KeyState keyState = wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYDOWN ? KeyState.KeyDown : KeyState.KeyUp;
 
-                    CustomKeyMessageEventArgs keyEventArgs = null;
+                    CustomKeyMessageEventArgs keyEventArgs;
 
                     //Copy event
                     if (IsControlPressed() && key == Keys.C)
@@ -141,7 +143,7 @@ namespace VRemoteClient.Services.KeyboardService
                             keyEventArgs.IsSynthetic = true;
 
                         KeyPressed?.Invoke(this, keyEventArgs);
-                        return CallNextHookEx(hookID, nCode, wParam, lParam);
+                        return Libraries.HookApis.CallNextHookEx(_hookID, nCode, wParam, lParam);
                     } 
                     //Handle keyboard events on form
                     if (WindowsHandle.Count > 0)
@@ -163,23 +165,23 @@ namespace VRemoteClient.Services.KeyboardService
                     }
                 }
             }   
-            return CallNextHookEx(hookID, nCode, wParam, lParam);
+            return HookApis.CallNextHookEx(_hookID, nCode, wParam, lParam);
         }
         private bool IsControlPressed()
         {
-            return (GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0 || (GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0;
+            return (KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_LCONTROL) & 0x8000) != 0 || (KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_RCONTROL) & 0x8000) != 0;
         }
         private bool IsShiftPressed()
         {
-            return (GetAsyncKeyState(VK_SHIFT) & 0x8000) != 0;
+            return (KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_SHIFT) & 0x8000) != 0;
         }
         private bool IsAltPressed()
         {
-            return (GetAsyncKeyState(VK_MENU) & 0x8000) != 0 || (GetAsyncKeyState(VK_LMENU) & 0x8000) != 0 || (GetAsyncKeyState(VK_RMENU) & 0x8000) != 0;
+            return (KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_MENU) & 0x8000) != 0 || (KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_LMENU) & 0x8000) != 0 || (KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_RMENU) & 0x8000) != 0;
         }
         private bool isLeftWindowKeyPressed()
         {
-            return (GetAsyncKeyState((int)Keys.LWin) & 0x8000) != 0;
+            return (KeyboardApis.GetAsyncKeyState((int)Keys.LWin) & 0x8000) != 0;
         }
         public string KeyboardEventTostring(IntPtr command, Keys modifier, Keys code, KeyState type)
         {
@@ -207,19 +209,13 @@ namespace VRemoteClient.Services.KeyboardService
             {
                 if (disposing)
                 {
-                    // Dispose managed resources
-                    // Clear event handlers to prevent memory leaks
-                    KeyPressed = null;
-                }
-                lock (_lockObject)
-                {
-                    WindowsHandle.Clear();
-                }
-                proc = null;
-                // Dispose unmanaged resources
-                Stop(); // This will unhook the Windows hook
-
-                _disposed = true;
+                    lock (_lockObject)
+                    {
+                        WindowsHandle.Clear();
+                    }
+                    Stop();
+                    _disposed = true;
+                }  
             }
         }
     }

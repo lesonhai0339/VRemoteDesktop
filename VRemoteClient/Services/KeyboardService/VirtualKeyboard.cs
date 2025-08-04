@@ -114,7 +114,7 @@ namespace VRemoteClient.Services.KeyboardService
                     ki = new KEYBDINPUT
                     {
                         wVk = (ushort)key,
-                        wScan = (ushort)MapVirtualKeyA((uint)key, 0), //windows using scan code wScan 
+                        wScan = (ushort)Libraries.KeyboardApis.MapVirtualKeyA((uint)key, 0), //windows using scan code wScan 
                         //wScan = 0,  //windows using virtual key code wVk 
                         dwFlags = keyState == KeyState.KeyDown ? 0 : KEYEVENTF_KEYUP,
                         time = 0,
@@ -122,7 +122,7 @@ namespace VRemoteClient.Services.KeyboardService
                     }
                 }
             };
-            uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+            uint status = Libraries.WindowApis.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
             if (status > 0)
             {
                 if (keyState == KeyState.KeyDown)
@@ -151,12 +151,12 @@ namespace VRemoteClient.Services.KeyboardService
                         wScan = 0,
                         dwFlags = KEYEVENTF_KEYUP,
                         time = 0,
-                        dwExtraInfo = GetMessageExtraInfo()
+                        dwExtraInfo = Libraries.WindowApis.GetMessageExtraInfo()
                     }
                 }
             };
 
-            uint status = SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+            uint status = Libraries.WindowApis.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
 
             return status > 0;
         }

@@ -30,6 +30,7 @@ namespace VRemoteClient.Services.RemoteClientService
         private Socket _socket;
         private ConcurrentQueue<DataReceive> _tasks;
         private BackgroundWorker _backgroundWorker;
+        private CancellationTokenSource _cancellationToken;
 
         public event Action ConnectEvent;
         public event Action<bool> LoginEvent;
@@ -42,9 +43,6 @@ namespace VRemoteClient.Services.RemoteClientService
         public event Action<byte[]> MouseReceivedEvent;
         public event Action<byte[]> ClipboardReceivedEvent;
         public event Action<bool, string> P2PDisconnectedEvent;
-
-        private CancellationTokenSource _cancellationToken;
-
         public RemoteClient(ClientInfo me)
         {
             _isSocketConnected = false;

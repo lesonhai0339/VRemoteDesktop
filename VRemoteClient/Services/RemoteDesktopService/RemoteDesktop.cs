@@ -12,17 +12,16 @@ using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.ScreenService;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
-using VRemoteClient.Services.SocketService;
 using VRemoteClient.Services.KeyboardService;
 using VRemoteClient.Services.ConnectionService;
 using System.Configuration;
 using System.Net;
 using System.Collections.Concurrent;
 using System.ComponentModel;
-using static VRemoteClient.Services.SocketService.RemoteClient;
 using System.Drawing;
 using VRemoteClient.Services.MouseService;
 using static System.Runtime.CompilerServices.RuntimeHelpers;
+using VRemoteClient.Services.RemoteClientService;
 
 namespace VRemoteClient.Services.RemoteDesktopService
 {
@@ -510,7 +509,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             try
             {
-                return VirtualClipboard.SetClipboard(data);
+                return VirtualClipboard.SetClipboard(data, (uint)ClipboardFormat.CF_UNICODETEXT);
             }
             catch (Exception ex)
             {

@@ -13,6 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
+using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services.ScreenService
 {
@@ -178,13 +179,13 @@ namespace VRemoteClient.Services.ScreenService
             using (Graphics bitmapGraphics = Graphics.FromImage(bitmap))
             {
                 IntPtr bitmapHdc = bitmapGraphics.GetHdc();
-                IntPtr screenHdc = Utils.Libraries.GetDC(IntPtr.Zero);
+                IntPtr screenHdc = CaptureApis.GetDC(IntPtr.Zero);
 
-                Utils.Libraries.BitBlt(bitmapHdc, 0, 0, bounds.Width, bounds.Height,
+                CaptureApis.BitBlt(bitmapHdc, 0, 0, bounds.Width, bounds.Height,
                        screenHdc, bounds.X, bounds.Y, 0x00CC0020); // SRCCOPY
 
                 bitmapGraphics.ReleaseHdc(bitmapHdc);
-                Utils.Libraries.ReleaseDC(IntPtr.Zero, screenHdc);
+                CaptureApis.ReleaseDC(IntPtr.Zero, screenHdc);
             }
             return bitmap;
         }

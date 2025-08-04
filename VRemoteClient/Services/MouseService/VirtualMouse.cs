@@ -12,17 +12,13 @@ using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
 using static VRemoteClient.Utils.Libraries;
 
+
 namespace VRemoteClient.Services.MouseService
 {
     public static class VirtualMouse
     {
-        private static LowLevelMouseProc _proc;
-        private static IntPtr _hookID = IntPtr.Zero;
-        private static uint _targetProcessId;
-        private static bool _disposed = false;
+        private const int WHEEL_DELTA = 120;
 
-        public static event EventHandler<CustomMouseEventArgs> MouseClick;
-        public static event EventHandler<CustomMouseEventArgs> MouseMove;
         #region Virtual mouse
         /// <summary>
         /// caculate scales between current physical screen dimesion and remote physical screen dimesion
@@ -32,7 +28,7 @@ namespace VRemoteClient.Services.MouseService
         /// <param name="meWidth">current width</param>
         /// <param name="meHeight">current height</param>
         /// <returns><b>scaleX</b> and <b>scaleY</b></returns>
-        private static Tuple<float, float> CaculateMouseCorrdinate(int senderWidth, int senderHeight, int meWidth, int meHeight)
+        private static Tuple<float, float> CalculateMouseCoordinate(int senderWidth, int senderHeight, int meWidth, int meHeight)
         {
             float scaleX = (float)meWidth / senderWidth;
             float scaleY = (float)meHeight / senderHeight;
@@ -68,69 +64,69 @@ namespace VRemoteClient.Services.MouseService
         }
         public static bool MouseEvent(MouseReceived mouseEvent)
         {
-            Tuple<float, float> scales = CaculateMouseCorrdinate(mouseEvent.SenderWidth, mouseEvent.SenderHeight, mouseEvent.ReceiverWidth, mouseEvent.ReceiverHeight);
+            Tuple<float, float> scales = CalculateMouseCoordinate(mouseEvent.SenderWidth, mouseEvent.SenderHeight, mouseEvent.ReceiverWidth, mouseEvent.ReceiverHeight);
             bool flag = false;
-            List<uint> mouseEvents = new List<uint>();
+            List<WindowsMouseEvent> mouseEvents = new List<WindowsMouseEvent>();
             switch (mouseEvent.Button)
             {
                 //left mouse click
                 case MouseMessage.WM_LBUTTONDOWN:
                     mouseEvents.AddRange(
-                        new List<uint>
+                        new List<WindowsMouseEvent>
                         {
-                            MOUSEEVENTF_LEFTDOWN,
-                            MOUSEEVENTF_LEFTUP
+                            WindowsMouseEvent.MOUSEEVENTF_LEFTDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_LEFTUP
                         });
                     break;
                 // middle mouse click
                 case MouseMessage.WM_MBUTTONDOWN:
                     mouseEvents.AddRange(
-                        new List<uint>
+                        new List<WindowsMouseEvent>
                         {
-                            MOUSEEVENTF_MIDDLEDOWN,
-                            MOUSEEVENTF_MIDDLEUP
+                            WindowsMouseEvent.MOUSEEVENTF_MIDDLEDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_MIDDLEUP
                         });
                     break;
                 // right mouse click
                 case MouseMessage.WM_RBUTTONDOWN:
                     mouseEvents.AddRange(
-                       new List<uint>
+                       new List<WindowsMouseEvent>
                        {
-                             MOUSEEVENTF_RIGHTDOWN,
-                            MOUSEEVENTF_RIGHTUP
+                           WindowsMouseEvent.MOUSEEVENTF_RIGHTDOWN,
+                           WindowsMouseEvent.MOUSEEVENTF_RIGHTUP
                        });
                     break;
                 //left mouse dbclick
                 case MouseMessage.WM_LBUTTONDBLCLK:
                     mouseEvents.AddRange(
-                       new List<uint>
+                       new List<WindowsMouseEvent>
                        {
-                            MOUSEEVENTF_LEFTDOWN,
-                            MOUSEEVENTF_LEFTUP,
-                            MOUSEEVENTF_LEFTDOWN,
-                            MOUSEEVENTF_LEFTUP
+                           WindowsMouseEvent.MOUSEEVENTF_LEFTDOWN,
+                           WindowsMouseEvent.MOUSEEVENTF_LEFTUP,
+                           WindowsMouseEvent.MOUSEEVENTF_LEFTDOWN,
+                           WindowsMouseEvent.MOUSEEVENTF_LEFTUP
                        });
                     break;
                 // middle mouse dbclick
                 case MouseMessage.WM_MBUTTONDBLCLK:
                     mouseEvents.AddRange(
-                        new List<uint>
+                        new List<WindowsMouseEvent>
                         {
-                            MOUSEEVENTF_MIDDLEDOWN,
-                            MOUSEEVENTF_MIDDLEUP,
-                            MOUSEEVENTF_MIDDLEDOWN,
-                            MOUSEEVENTF_MIDDLEUP
+                            WindowsMouseEvent.MOUSEEVENTF_MIDDLEDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_MIDDLEUP,
+                            WindowsMouseEvent.MOUSEEVENTF_MIDDLEDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_MIDDLEUP
                         });
                     break;
                 // right mouse dbclick
                 case MouseMessage.WM_RBUTTONDBLCLK:
                     mouseEvents.AddRange(
-                        new List<uint>
+                        new List<WindowsMouseEvent>
                         {
-                            MOUSEEVENTF_RIGHTDOWN,
-                            MOUSEEVENTF_RIGHTUP,
-                            MOUSEEVENTF_RIGHTDOWN,
-                            MOUSEEVENTF_RIGHTUP
+                            WindowsMouseEvent.MOUSEEVENTF_RIGHTDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_RIGHTUP,
+                            WindowsMouseEvent.MOUSEEVENTF_RIGHTDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_RIGHTUP
                         });
                     break;
                 // mouse wheel event
@@ -138,36 +134,36 @@ namespace VRemoteClient.Services.MouseService
                     //wheel up
                     if (mouseEvent.Action == MouseType.Up)
                     {
-                        flag = MouseWheel(scales.Item1, scales.Item2, mouseEvent.X, mouseEvent.Y, +120);
+                        flag = MouseWheel(scales.Item1, scales.Item2, mouseEvent.X, mouseEvent.Y, +WHEEL_DELTA);
                     }
                     //wheel down
                     else
                     {
-                        flag = MouseWheel(scales.Item1, scales.Item2, mouseEvent.X, mouseEvent.Y, -120);
+                        flag = MouseWheel(scales.Item1, scales.Item2, mouseEvent.X, mouseEvent.Y, -WHEEL_DELTA);
                     }
                     break;
                 //mouse drag and drop
                 case MouseMessage.DRAGDROP_MOUSEDOWN:
-                    mouseEvents.Add(MOUSEEVENTF_LEFTDOWN);
+                    mouseEvents.Add(WindowsMouseEvent.MOUSEEVENTF_LEFTDOWN);
                     break;
                 case MouseMessage.WM_MOUSEMOVE:
                 case MouseMessage.DRAGDROP_MOUSEMOVE:
-                    mouseEvents.Add(MOUSEEVENTF_MOVE);
+                    mouseEvents.Add(WindowsMouseEvent.MOUSEEVENTF_MOVE);
                     break;
                 case MouseMessage.DRAGDROP_MOUSEUP:
-                    mouseEvents.Add(MOUSEEVENTF_LEFTUP);
+                    mouseEvents.Add(WindowsMouseEvent.MOUSEEVENTF_LEFTUP);
                     break;
                 //triple left click case
                 case MouseMessage.WM_BUTTONTRIPLECLICK:
                     mouseEvents.AddRange(
-                       new List<uint>
+                       new List<WindowsMouseEvent>
                        {
-                            MOUSEEVENTF_LEFTDOWN,
-                            MOUSEEVENTF_LEFTUP,
-                            MOUSEEVENTF_LEFTDOWN,
-                            MOUSEEVENTF_LEFTUP,
-                            MOUSEEVENTF_LEFTDOWN,
-                            MOUSEEVENTF_LEFTUP,
+                            WindowsMouseEvent.MOUSEEVENTF_LEFTDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_LEFTUP,
+                            WindowsMouseEvent.MOUSEEVENTF_LEFTDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_LEFTUP,
+                            WindowsMouseEvent.MOUSEEVENTF_LEFTDOWN,
+                            WindowsMouseEvent.MOUSEEVENTF_LEFTUP,
                        });
                     break;
                 default:
@@ -192,26 +188,25 @@ namespace VRemoteClient.Services.MouseService
         {
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);
-            bool cusorFlag = SetCursorPos(pointX, pointY);
+            bool cusorFlag = MouseApis.SetCursorPos(pointX, pointY);
             if (!cusorFlag) return false;
 
             INPUT[] inputs = new INPUT[1];
             inputs[0].type = INPUT_MOUSE;
-            inputs[0].u.mi.dwFlags = MOUSEEVENTF_WHEEL;
+            inputs[0].u.mi.dwFlags = (uint)WindowsMouseEvent.MOUSEEVENTF_WHEEL;
             inputs[0].u.mi.dx = 0;
             inputs[0].u.mi.dy = 0;
             inputs[0].u.mi.mouseData = unchecked((uint)wheelDelta);
 
-            uint flag = SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
+            uint flag = WindowApis.SendInput(1, inputs, Marshal.SizeOf(typeof(INPUT)));
             return flag > 0;
         }
         /// <summary>
         /// Simulates a mouse press at the specified screen coordinates.
         /// </summary>
-        private static bool MousePress(float scaleX, float scaleY, int x, int y, List<uint> mouseEvents)
+        private static bool MousePress(float scaleX, float scaleY, int x, int y, List<WindowsMouseEvent> mouseEvents)
         {
             int eventCount = mouseEvents.Count;
-
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);
             ////or you do not want use SetcursorPos, you can use this code
@@ -221,7 +216,7 @@ namespace VRemoteClient.Services.MouseService
             //inputs[0].u.mi.dx = normalizedX;
             //inputs[0].u.mi.dy = normalizedY;
 
-            bool cusorFlag = SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
+            bool cusorFlag = MouseApis.SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
             if (!cusorFlag) return false;
 
 
@@ -230,19 +225,16 @@ namespace VRemoteClient.Services.MouseService
             for(int i = 0; i < eventCount; i++)
             {
                 inputs[i].type = INPUT_MOUSE;
-                inputs[i].u.mi.dwFlags = mouseEvents[i];
+                inputs[i].u.mi.dwFlags = (uint)mouseEvents[i];
                 inputs[i].u.mi.dx = 0;
                 inputs[i].u.mi.dy = 0;
             }
-            uint flag = SendInput((uint)eventCount, inputs, Marshal.SizeOf(typeof(INPUT)));
-            if (flag > 0)
-            {
-                return true;
-            }
-            else
+            uint flag = WindowApis.SendInput((uint)eventCount, inputs, Marshal.SizeOf(typeof(INPUT)));
+            if (flag != eventCount)
             {
                 return false;
             }
+            return true;
         }
         #endregion
     }
