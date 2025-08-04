@@ -52,8 +52,6 @@ namespace VRemoteServer.Services
                             break;
                         case Enums.CommandType.Disconnect:
                             break;
-                        case Enums.CommandType.Data:
-                            break;
                         case Enums.CommandType.Ping:
                             ProcessPing(task);
                             break;
@@ -74,9 +72,6 @@ namespace VRemoteServer.Services
                             break;
                         case Enums.CommandType.P2PDisconnect:
                             await ProcessP2PDisconnect(task);
-                            break;
-                        case Enums.CommandType.Ack:
-                            await SendAck(task);
                             break;
                         default:
                             break;
@@ -165,10 +160,6 @@ namespace VRemoteServer.Services
             //reset timeout
             connection.Sender.Client._lastSendTime = DateTime.Now;
             connection.Receiver.Client._lastSendTime = DateTime.Now;
-        }
-        private async Task SendAck(RemoteTask task)
-        {
-            await SendCommandAsync(task.Client, Enums.CommandType.Ack, task.Data);
         }
         public async Task<bool> ProcessDataCallback(string sessionId, Enums.CommandType commandType ,Client client, byte[] buffer)
         {

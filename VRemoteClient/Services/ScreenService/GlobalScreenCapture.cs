@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -18,8 +19,10 @@ namespace VRemoteClient.Services.ScreenService
     {
         private const int TIME_OUT = 10;
         private const int CHUNK_SIZE = 8192;
+        private const int DEFAULT_FPS = 10;
         private readonly object _lock = new object(); // For thread safety. Can use ReadWriteLockSlim instead
 
+        private volatile bool _isCapturing;
         private bool _disposed = false;
         private byte[] _buffer = new byte[20];
         private byte[] _dataSend;
@@ -32,16 +35,21 @@ namespace VRemoteClient.Services.ScreenService
         {
             var bounds = Screen.PrimaryScreen.Bounds;
             int pixelCount = bounds.Width * bounds.Height;
-            int bufferSize = pixelCount > 3840000 ? 30 * 1024 * 1024 : 10 * 1024 * 1024;
+            int bufferSize = pixelCount > 3840000 ? 30 * 1024 * 1024 : 10 * 1024 * 1024; 
+
             _dataSend = new byte[bufferSize];
-            _capture = new ScreenCapture();
+            _capture = new ScreenCapture(); 
+            
+            IsCapturing = false;
+
             BackgroundWorker = new BackgroundWorker();
             BackgroundWorker.WorkerSupportsCancellation = true;
         }
         #region Properties
         public bool IsCapturing
         {
-            get => BackgroundWorker.IsBusy;
+            get => _isCapturing;
+            set => _isCapturing = value;
         }
         public bool IsDisposed
         {
@@ -91,14 +99,10 @@ namespace VRemoteClient.Services.ScreenService
         }
         private void DoWork(object sender, DoWorkEventArgs e)
         {
+            Stopwatch stopwatch = new Stopwatch();
             while (!_cancel.IsCancellationRequested)
             {
-                if(!(ConnectionManager.NumberOfConnections > 0))
-                {
-                    Log.ForContext("Screen", "RemoteDesktopClient")
-                                         .Info($"No connection, screen capture will be stopping");
-                    StopCapture();
-                }
+                stopwatch.Restart();
                 var screens = _capture.GetScreen();
                 if (screens.Any())
                 {
@@ -107,30 +111,31 @@ namespace VRemoteClient.Services.ScreenService
                     switch (screenEnum)
                     {
                         case ScreenEnum.FULLSCREEN:
-                            SendScreenData(screens);
+                            ScreenToChunks(screens[0]);
                             break;
                         case ScreenEnum.REGIONSCREENS:
-                            SendChunk(screens, totalSize);
+                            RegionsChangedToChunks(screens, totalSize);
                             break;
                     }
                 }
-                Thread.Sleep(10);
+                stopwatch.Stop();
+                int elapsed = (int)stopwatch.ElapsedMilliseconds;
+                int frameTime = 1000 / DEFAULT_FPS;
+                int remainTime = frameTime - elapsed;
+                if (remainTime > 0)
+                {
+                    Thread.Sleep(remainTime);
+                }
             }
         }
         // Send full screen to sender at first connect
-        private void SendScreenData(List<ScreenBlock> blocks)
+        private void ScreenToChunks(ScreenRegion screen)
         {
             try
             {
                 lock (_lock)
                 {
-                    if (blocks.Count != 1)
-                    {
-                        Log.ForContext("Screen", "RemoteDesktopClient")
-                                          .Error($"Blocks number more than expected");
-                        return;
-                    }
-                    byte[] screenCompressed = Extensions.CompressGzip(blocks[0].Bytes);
+                    byte[] screenCompressed = Extensions.CompressGzip(screen.Bytes);
                     byte[] screenHashed = Encoding.ASCII.GetBytes(Extensions.SHAHash(screenCompressed));
                     int dataLength = screenCompressed.Length + screenHashed.Length;
 
@@ -142,7 +147,7 @@ namespace VRemoteClient.Services.ScreenService
 
                     int numberOfChunk = (int)Math.Ceiling((double)dataLength / CHUNK_SIZE);
 
-                    CustomScreenEventArgs screen = new CustomScreenEventArgs(
+                    CustomScreenEventArgs screenArgs = new CustomScreenEventArgs(
                         type: RemoteType.Screen,
                         totalSize: dataLength
                     );
@@ -157,10 +162,10 @@ namespace VRemoteClient.Services.ScreenService
                         byte[] chunkData = new byte[packetSize];
                         //data
                         Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
-                        screen.Data.Add(chunkData);
+                        screenArgs.Data.Add(chunkData);
                     }
 
-                    ScreenEvent?.Invoke(null,screen);
+                    ScreenEvent?.Invoke(null, screenArgs);
                 }
             }
             catch (Exception ex)
@@ -169,13 +174,13 @@ namespace VRemoteClient.Services.ScreenService
             }
         }
         //Capture and send screen region change to sender
-        private void SendChunk(List<ScreenBlock> blocks, int totalChunksSize)
+        private void RegionsChangedToChunks(List<ScreenRegion> regions, int totalChunksSize)
         {
             try
             {
                 lock (_lock)
                 {
-                    byte[] sourceChunks = MergeAllChunk(blocks);
+                    byte[] sourceChunks = MergeAllChunk(regions);
                     byte[] chunksData = Extensions.CompressGzip(sourceChunks);
                     byte[] chunksHashed = Encoding.ASCII.GetBytes(Extensions.SHAHash(chunksData)); //add hash to ensure data is correct
 
@@ -190,7 +195,7 @@ namespace VRemoteClient.Services.ScreenService
                     //data
                     Buffer.BlockCopy(chunksData, 0, _dataSend, chunksHashed.Length, chunksData.Length);
 
-                    CustomScreenEventArgs chunks = new CustomScreenEventArgs(
+                    CustomScreenEventArgs chunksArgs = new CustomScreenEventArgs(
                        type: RemoteType.Chunks,
                        totalSize: dataSendLength
                     );
@@ -209,9 +214,9 @@ namespace VRemoteClient.Services.ScreenService
 
                         //data
                         Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
-                        chunks.Data.Add(chunkData);
+                        chunksArgs.Data.Add(chunkData);
                     }
-                    ScreenEvent?.Invoke(null, chunks);
+                    ScreenEvent?.Invoke(null, chunksArgs);
                 }
             }
             catch (Exception ex)
@@ -220,7 +225,7 @@ namespace VRemoteClient.Services.ScreenService
             }
         }
         // Merge all chunks into a single byte array
-        private unsafe byte[] MergeAllChunk(List<ScreenBlock> blocks)
+        private unsafe byte[] MergeAllChunk(List<ScreenRegion> blocks)
         {
             using (var ms = new MemoryStream())
             {
@@ -257,7 +262,6 @@ namespace VRemoteClient.Services.ScreenService
             Dispose(true);
             GC.SuppressFinalize(this);
         }
-
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)

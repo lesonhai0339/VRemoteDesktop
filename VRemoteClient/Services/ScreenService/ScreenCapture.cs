@@ -18,6 +18,7 @@ namespace VRemoteClient.Services.ScreenService
 {
     internal class ScreenCapture
     {
+        private const int BLOCK_SIZE = 64; // Size of each block for change detection
         private bool _isDisposed = false;
         private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
         //private ConcurrentBag<ScreenBlock> blocks = new ConcurrentBag<ScreenBlock>();
@@ -47,7 +48,7 @@ namespace VRemoteClient.Services.ScreenService
                 _previousFrame = null;
             }
         }
-        public ScreenBlock GetCurrentScreen()
+        public ScreenRegion GetCurrentScreen()
         {
             lock (_lock)
             {
@@ -56,13 +57,13 @@ namespace VRemoteClient.Services.ScreenService
                     using (var stream = new MemoryStream())
                     {
                         _previousFrame.Save(stream, encoder, encoderParams);
-                        ScreenBlock cell = new ScreenBlock
+                        ScreenRegion region = new ScreenRegion
                         {
                             IsFullScreen = true,
                             Rectangle = new Rectangle(0, 0, _previousFrame.Width, _previousFrame.Height),
                             Bytes = stream.ToArray()
                         };
-                        return cell;
+                        return region;
                     }
                 }
                 else
@@ -72,7 +73,7 @@ namespace VRemoteClient.Services.ScreenService
                         using (var stream = new MemoryStream())
                         {
                             currentScreen.Save(stream, encoder, encoderParams);
-                            ScreenBlock cell = new ScreenBlock
+                            ScreenRegion region = new ScreenRegion
                             {
                                 IsFullScreen = true,
                                 Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
@@ -82,16 +83,16 @@ namespace VRemoteClient.Services.ScreenService
                                 new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
                                 PixelFormat.Format24bppRgb
                             );
-                            return cell;
+                            return region;
                         }
                     }
                 }
             }
         }
         #endregion
-        internal List<ScreenBlock> GetScreen()
+        public List<ScreenRegion> GetScreen()
         {
-            List<ScreenBlock> cells = new List<ScreenBlock>();
+            List<ScreenRegion> regions = new List<ScreenRegion>();
             lock (_lockObject)
             {
                 using (Bitmap currentScreen = CaptureWindowsScreen1())
@@ -102,13 +103,13 @@ namespace VRemoteClient.Services.ScreenService
                         using (var stream = new MemoryStream())
                         {
                             currentScreen.Save(stream, encoder, encoderParams);
-                            ScreenBlock cell = new ScreenBlock
+                            ScreenRegion cell = new ScreenRegion
                             {
                                 IsFullScreen = true,
                                 Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
                                 Bytes = stream.ToArray()
                             };
-                            cells.Add(cell);
+                            regions.Add(cell);
                         }
                         // Store current frame as previous
                         _previousFrame = currentScreen.Clone(
@@ -123,51 +124,15 @@ namespace VRemoteClient.Services.ScreenService
                         using (Bitmap pre = _previousFrame.Clone(new Rectangle(0, 0, _previousFrame.Width, _previousFrame.Height), PixelFormat.Format24bppRgb))
                         {
                             // Detect changes and create cells, 
-                            dirtyRegions = DetectDirtyRegions(cur, pre);
+                            var skeRegions = GenerateRegions(cur, pre);
+                            dirtyRegions = DetectDirtyRegions(cur, pre, skeRegions);
                         }
 
                         if (dirtyRegions.Count > 0)
                         {
                             // Merge adjacent regions for efficiency
                             List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
-
-                           /* BitmapData bitmapData = currentScreen.LockBits(
-                                new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                                ImageLockMode.ReadOnly,
-                                PixelFormat.Format24bppRgb
-                            );
-
-                            int stride = bitmapData.Stride;
-                            int bytes = Math.Abs(stride) * bitmapData.Height;
-                            byte[] screenBytes = new byte[bytes];
-
-                            Marshal.Copy(bitmapData.Scan0, screenBytes, 0, bytes);
-                            currentScreen.UnlockBits(bitmapData);
-
-
-                            Parallel.ForEach(mergedRegions, region =>
-                            {
-                                using (Bitmap regionBitmap = CropFromBytes(screenBytes, bitmapData.Width, bitmapData.Height, stride, region))
-                                {
-                                    byte[] compressedData;
-                                    using (var stream = new MemoryStream())
-                                    {
-                                        regionBitmap.Save(stream, encoder, encoderParams);
-                                        compressedData = Utils.Extensions.Compress(stream.ToArray());
-                                    }
-                                    blocks.Add(new ScreenBlock
-                                    {
-                                        IsFullScreen = false,
-                                        Rectangle = region,
-                                        Bytes = compressedData
-                                    });
-                                }
-                            });
-                            cells.AddRange(blocks);
-                            lock (_lockObject)
-                            {
-                                blocks = new ConcurrentBag<ScreenBlock>();
-                            }*/
+                           
                             for (int i = 0; i < mergedRegions.Count; i++)
                             {
                                 using (Bitmap regionBitmap = CropBitmap(currentScreen, mergedRegions[i]))
@@ -175,13 +140,13 @@ namespace VRemoteClient.Services.ScreenService
                                     using (var stream = new MemoryStream())
                                     {
                                         regionBitmap.Save(stream, encoder, encoderParams);
-                                        ScreenBlock cell = new ScreenBlock
+                                        ScreenRegion region = new ScreenRegion
                                         {
                                             IsFullScreen = false,
                                             Rectangle = mergedRegions[i],
                                             Bytes = stream.ToArray()
                                         };
-                                        cells.Add(cell);
+                                        regions.Add(region);
                                     }
                                 }
                             }
@@ -196,49 +161,17 @@ namespace VRemoteClient.Services.ScreenService
                     }
                 }
             }
-            return cells;
-        }
-       /* private Bitmap CropFromBytes(byte[] screenBytes, int screenWidth, int screenHeight, int stride, Rectangle region)
-        {
-            Bitmap cropped = new Bitmap(region.Width, region.Height, PixelFormat.Format24bppRgb);
-
-            BitmapData targetData = cropped.LockBits(
-                new Rectangle(0, 0, region.Width, region.Height),
-                ImageLockMode.WriteOnly,
-                PixelFormat.Format24bppRgb
-            );
-
-            int bytesPerPixel = 3;
-
-            unsafe
-            {
-                fixed (byte* srcBase = screenBytes)
-                {
-                    for (int y = 0; y < region.Height; y++)
-                    {
-                        byte* src = srcBase + ((region.Y + y) * stride) + (region.X * bytesPerPixel);
-                        byte* dst = (byte*)targetData.Scan0 + y * targetData.Stride;
-
-                        for (int x = 0; x < region.Width * bytesPerPixel; x++)
-                        {
-                            dst[x] = src[x];
-                        }
-                    }
-                }
-            }
-
-            cropped.UnlockBits(targetData);
-            return cropped;
-        }*/
-        internal Bitmap CropBitmap(Bitmap source, Rectangle region)
+            return regions;
+        }  
+        private Bitmap CropBitmap(Bitmap source, Rectangle region)
         {
             // Validate region bounds
             region = Rectangle.Intersect(region, new Rectangle(0, 0, source.Width, source.Height));
             if (region.IsEmpty) return null;
 
             return source.Clone(region, source.PixelFormat);
-        }// This runs when the application starts.
-        internal Bitmap CaptureWindowsScreen1()
+        }
+        private Bitmap CaptureWindowsScreen1()
         {
             var bounds = Screen.PrimaryScreen.Bounds;
             Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
@@ -255,7 +188,7 @@ namespace VRemoteClient.Services.ScreenService
             }
             return bitmap;
         }
-        internal Bitmap CaptureWindowsScreen()
+        private Bitmap CaptureWindowsScreen()
         {
             Rectangle bounds = Screen.PrimaryScreen.Bounds;
             Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
@@ -267,37 +200,34 @@ namespace VRemoteClient.Services.ScreenService
 
             return bitmap;
         }
-        internal List<Rectangle> DetectDirtyRegions(Bitmap current, Bitmap previous)
+        private List<Rectangle> GenerateRegions(Bitmap curBitmap, Bitmap preBitmap)
         {
-            Random rd = new Random();
-
-            var dirtyRegions = new List<Rectangle>();
-            const int blockSize = 64;
-
-            // Parallel processing for better performance
             var regions = new List<Rectangle>();
 
-            for (int y = 0; y < current.Height; y += blockSize)
+            for (int y = 0; y < curBitmap.Height; y += BLOCK_SIZE)
             {
-                for (int x = 0; x < current.Width; x += blockSize)
+                for (int x = 0; x < curBitmap.Width; x += BLOCK_SIZE)
                 {
-                    int width = current.Width - x > blockSize ? blockSize : current.Width - x;
-                    int height = current.Height - y > blockSize ? blockSize : current.Height - y;
+                    int width = curBitmap.Width - x > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Width - x;
+                    int height = curBitmap.Height - y > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Height - y;
                     Rectangle block = new Rectangle(x, y,
                         width,
                         height);
                     regions.Add(block);
                 }
             }
-            
+            return regions;
+        }
+        private List<Rectangle> DetectDirtyRegions(Bitmap curBitmap, Bitmap preBitmap, List<Rectangle> regions)
+        {
             BitmapData currentData = null;
             BitmapData previousData = null;
             var maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
 
             try
             {
-                currentData = current.LockBits(new Rectangle(0, 0, current.Width, current.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-                previousData = previous.LockBits(new Rectangle(0, 0, previous.Width, previous.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                currentData = curBitmap.LockBits(new Rectangle(0, 0, curBitmap.Width, curBitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
+                previousData = preBitmap.LockBits(new Rectangle(0, 0, preBitmap.Width, preBitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
 
                 Parallel.ForEach(regions,
                     new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
@@ -307,18 +237,17 @@ namespace VRemoteClient.Services.ScreenService
                             changedBlocks.Add(block);
                     });
                 var result = changedBlocks.ToList() ;
-
                 return result;
             }
             finally
             {
                 if (currentData != null)
                 {
-                    current.UnlockBits(currentData);
+                    curBitmap.UnlockBits(currentData);
                 }
                 if (previousData != null)
                 {
-                    previous.UnlockBits(previousData);
+                    preBitmap.UnlockBits(previousData);
                 }
                 lock (_lockObject2)
                 {

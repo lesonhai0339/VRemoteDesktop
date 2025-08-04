@@ -10,7 +10,7 @@ namespace VRemoteClient.Models.Entities
     {
 
         public ScreenEnum WorkType { get; set; }
-        public List<ScreenBlock> Blocks { get; set; }
+        public List<ScreenRegion> Blocks { get; set; }
         public int TotalSize { get; set; }
     }
 }

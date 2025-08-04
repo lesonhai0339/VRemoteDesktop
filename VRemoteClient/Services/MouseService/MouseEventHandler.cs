@@ -15,11 +15,11 @@ using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services.MouseService
 {
-    public class Mouse : IDisposable
+    public class MouseHandler : IDisposable
     {
         private bool _disposed = false;
         public event EventHandler<CustomMouseTaskEventArgs> MouseTask;
-        public Mouse()
+        public MouseHandler()
         {
         }
         #region Methods 
@@ -42,11 +42,12 @@ namespace VRemoteClient.Services.MouseService
 
                 MouseTask?.Invoke(this, new CustomMouseTaskEventArgs
                 {
-                    Task = new TaskObject(
-                    taskType: RemoteType.Mouse,
-                    sessionId: sessionId,
-                    data: Encoding.ASCII.GetBytes(mouseEventString)
-                    )
+                    Task = new TaskObject
+                    {
+                        TaskType = RemoteType.Mouse,
+                        SessionId = sessionId,
+                        Data = Encoding.ASCII.GetBytes(mouseEventString)
+                    }
                 });
             }
             catch (Exception ex)

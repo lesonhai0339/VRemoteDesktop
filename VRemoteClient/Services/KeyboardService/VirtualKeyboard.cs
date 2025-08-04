@@ -5,7 +5,10 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteClient.Models.CustomEvents;
+using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
+using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Libraries;
 
@@ -37,6 +40,26 @@ namespace VRemoteClient.Services.KeyboardService
 
             AppDomain.CurrentDomain.ProcessExit += OnProcessExit;
             AppDomain.CurrentDomain.DomainUnload += OnDomainUnload;
+        }
+        public static KeyboardReceived BytesToCustomKeyboardEvent(byte[] data)
+        {
+            string[] keyboards = Encoding.ASCII.GetString(data).Trim().Split('|');
+            if (keyboards.Length != 4)
+            {
+                Log.ForContext("FileName", "VirtualKeyboard").Error("Number of elements not exaclly");
+            }
+            IntPtr ptr = (IntPtr)int.Parse(keyboards[0]);
+            Keys keyModifier = (Keys)int.Parse(keyboards[1]);
+            Keys keyCode = (Keys)int.Parse(keyboards[2]);
+            KeyState keyType = (KeyState)int.Parse(keyboards[3]);
+
+            return new KeyboardReceived
+            {
+                Command = ptr,
+                Modifier = keyModifier,
+                Key = keyCode,
+                Type = keyType,
+            };
         }
         private static void OnProcessExit(object sender, EventArgs e) => Dispose();
         private static void OnDomainUnload(object sender, EventArgs e) => Dispose();

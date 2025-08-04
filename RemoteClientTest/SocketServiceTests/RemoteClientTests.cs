@@ -24,7 +24,7 @@ namespace RemoteClientTest.SocketServiceTests
 
             _client.Worker = new BackgroundWorker();
             _client.Worker.WorkerSupportsCancellation = true;
-            _client.ConnectEventHandler += () =>
+            _client.ConnectEvent += () =>
             {
                 _resetEvent.Set();
             };

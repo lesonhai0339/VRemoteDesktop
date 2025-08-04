@@ -89,8 +89,8 @@ namespace VRemoteClient
         }
         private void FormMain_Shown(object sender, EventArgs e)
         {
-            ConnectToServer();
-            PipeClient.RunPipe(new string[] { "spawnclient" });
+            RemoteDesktop.ConnectToServer();
+           // PipeClient.RunPipe(new string[] { "spawnclient" });
         }
         private void FormMain_Closing(object sender, FormClosingEventArgs e)
         {
@@ -126,14 +126,6 @@ namespace VRemoteClient
             {
                 g.FillEllipse(brush, 1, 1, pnStatus.Width - 2, pnStatus.Height - 2);
             }
-        }
-        private void ConnectToServer()
-        {
-            string serverIp = ConfigurationManager.AppSettings["RemoteServerIP"];
-            string serverPort = ConfigurationManager.AppSettings["RemoteServerPort"];
-            var address = IPAddress.Parse(serverIp);
-            IPEndPoint remoteEP = new IPEndPoint(address, int.Parse(serverPort));
-            RemoteDesktop.ConnectToServer(serverIp, int.Parse(serverPort));
         }
         private void P2PConnectEvent(bool flag, ConnectionInfo? info)
         {

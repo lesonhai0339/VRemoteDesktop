@@ -79,6 +79,26 @@ namespace VRemoteClient.Services.KeyboardService
         [DllImport("kernel32.dll")]
         private static extern IntPtr GlobalAlloc(uint uFlags, UIntPtr dwBytes);
 
+
+        public static byte[] DecodeClipboard(byte[] data, int offset, int length)
+        {
+            try
+            {
+                byte[] clipboardData = new byte[length];
+                Buffer.BlockCopy(data, offset, clipboardData, 0, length);
+                string dataString = Encoding.UTF8.GetString(clipboardData);
+
+                //default setclipboard use CF_UNICODETEXT(UTF-16), need to convert data to utf-16
+                byte[] clipboardReformatted = Encoding.Unicode.GetBytes(dataString + '\0');
+
+                return clipboardReformatted;
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "DecodeClipboard").Error(ex, "Decode Clipboard error");
+            }
+            return new byte[0];
+        }
         public static string GetClipboardString()
         {
             if (!OpenClipboard(IntPtr.Zero))

@@ -7,7 +7,9 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
+using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Utils;
 using static VRemoteClient.Utils.Libraries;
 
 namespace VRemoteClient.Services.MouseService
@@ -136,12 +138,40 @@ namespace VRemoteClient.Services.MouseService
             float scaleY = (float)meHeight / senderHeight;
             return new Tuple<float, float>(item1: scaleX, item2: scaleY);
         }
-        public static bool MouseEvent(int senderWidth, int senderHeight, int meWidth, int meHeight, MouseMessage button, MouseType action, int x, int y)
+        public static MouseReceived BytesToCustomMouseEvent(byte[] data, int width, int height)
         {
-            Tuple<float, float> scales = CaculateMouseCorrdinate(senderWidth, senderHeight, meWidth, meHeight);
+            string[] mouseData = Encoding.ASCII.GetString(data).Trim().Split('|');
+            if (mouseData.Length != 6)
+            {
+                Log.ForContext("FileName", "MouseHook").Error("Number of elements not exaclly");
+            }
+            int senderSceenWidth = int.Parse(mouseData[0]);
+            int senderScreenHeight = int.Parse(mouseData[1]);
+            int receiverScreenWidth = width;
+            int receiverScreenHeight = height;
+            MouseMessage button = (MouseMessage)int.Parse(mouseData[2]);
+            MouseType action = (MouseType)int.Parse(mouseData[3]);
+            int mouseX = int.Parse(mouseData[4]);
+            int mouseY = int.Parse(mouseData[5]);
+
+            return new MouseReceived
+            {
+                SenderWidth = senderSceenWidth,
+                SenderHeight = senderScreenHeight,
+                ReceiverWidth = receiverScreenWidth,
+                ReceiverHeight = receiverScreenHeight,
+                Button = button,
+                Action = action,
+                X = mouseX,
+                Y = mouseY
+            };
+        }
+        public static bool MouseEvent(MouseReceived mouseEvent)
+        {
+            Tuple<float, float> scales = CaculateMouseCorrdinate(mouseEvent.SenderWidth, mouseEvent.SenderHeight, mouseEvent.ReceiverWidth, mouseEvent.ReceiverHeight);
             bool flag = false;
             List<uint> mouseEvents = new List<uint>();
-            switch (button)
+            switch (mouseEvent.Button)
             {
                 //left mouse click
                 case MouseMessage.WM_LBUTTONDOWN:
@@ -206,14 +236,14 @@ namespace VRemoteClient.Services.MouseService
                 // mouse wheel event
                 case MouseMessage.WM_MOUSEWHEEL:
                     //wheel up
-                    if (action == MouseType.Up)
+                    if (mouseEvent.Action == MouseType.Up)
                     {
-                        flag = MouseWheel(scales.Item1, scales.Item2, x, y, +120);
+                        flag = MouseWheel(scales.Item1, scales.Item2, mouseEvent.X, mouseEvent.Y, +120);
                     }
                     //wheel down
                     else
                     {
-                        flag = MouseWheel(scales.Item1, scales.Item2, x, y, -120);
+                        flag = MouseWheel(scales.Item1, scales.Item2, mouseEvent.X, mouseEvent.Y, -120);
                     }
                     break;
                 //mouse drag and drop
@@ -249,8 +279,8 @@ namespace VRemoteClient.Services.MouseService
             flag = MousePress(
                 scaleX: scales.Item1,
                 scaleY: scales.Item2,
-                x: x,
-                y: y,
+                x: mouseEvent.X,
+                y: mouseEvent.Y,
                 mouseEvents: mouseEvents);
 
             return flag;

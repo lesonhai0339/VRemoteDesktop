@@ -19,7 +19,9 @@ using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.MouseService;
 using VRemoteClient.Services.RemoteDesktopService;
+using VRemoteClient.Services.ScreenService;
 using VRemoteClient.Utils;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace VRemoteClient
 {
@@ -35,7 +37,8 @@ namespace VRemoteClient
         private Graphics _screenGraphics;
         private RemoteDesktop _remoteDesktop;
         private ConnectionInfo _connectionInfo;
-        private Mouse _mouseHook;
+        private MouseHandler _mouseHook;
+        private ScreenEventHandle _screenEventHandle;
 
         private DateTime _lastMouseMoveTime = DateTime.MinValue;
         private ManualResetEvent _isP2PDisconnectCallback;
@@ -84,10 +87,14 @@ namespace VRemoteClient
             }
             RemoteDesktop ??= remoteDesktop;
             _connectionInfo ??= info;
+            _screenEventHandle = new ScreenEventHandle();
             this.Text = _connectionInfo.Receiver.Id.Trim();
 
-            MouseHook ??= new Mouse();
+            MouseHook ??= new MouseHandler();
             RemoteDesktop.AddKeyboardHookByHandle(this.Handle);
+
+            InitializeGraphicsSettings();
+
         }
         #region Properties
         public RemoteDesktop RemoteDesktop
@@ -125,7 +132,7 @@ namespace VRemoteClient
 
 
 
-        public Mouse MouseHook
+        public MouseHandler MouseHook
         {
             get
             {
@@ -166,11 +173,13 @@ namespace VRemoteClient
             {
                 try
                 {
-                    TaskObject disConnectTask = new TaskObject(
-                        taskType: Models.Enums.RemoteType.P2PDisconnect, 
-                        sessionId: _connectionInfo.SessionId,
-                        data: new byte[0], 
-                        isSendHeader: true);
+                    TaskObject disConnectTask = new TaskObject 
+                    {
+                        TaskType = Models.Enums.RemoteType.P2PDisconnect,
+                        SessionId = _connectionInfo.SessionId,
+                        IsSendHeader = true
+                    };
+
                     TryAddWork(disConnectTask);
 
                     if (!_isP2PDisconnectCallback.WaitOne(5000))
@@ -306,19 +315,16 @@ namespace VRemoteClient
         private void ClickTimer_Tick(object sender, EventArgs e)
         {
             _clickTimer.Stop();
-            MouseEventType mouseType = MouseEventType.None;
-            if(_clickCount == 2)
+
+            MouseEventType mouseType;
+            switch (_clickCount)
             {
-                mouseType = MouseEventType.Click;
+                case 2: mouseType = MouseEventType.Click; break;
+                case 4: mouseType = MouseEventType.DoubleClick; break;
+                case 6: mouseType = MouseEventType.TripleClick; break;
+                default: mouseType = MouseEventType.None; break;
             }
-            else if(_clickCount == 4)
-            {
-                mouseType = MouseEventType.DoubleClick;
-            }
-            else if(_clickCount == 6)
-            {
-                mouseType = MouseEventType.TripleClick;
-            }
+
             if (_pendingClickArgs != null && !_isDrag && mouseType != MouseEventType.None)
             {
                 MouseHook.MouseEventToTask(
@@ -344,62 +350,51 @@ namespace VRemoteClient
 
                 bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;
 
+                MouseEventType mouseEvent= MouseEventType.DragAndDrop;
+                MouseMessage mouseMessage = MouseMessage.None;
+
                 if (isLeftButtonDown)
                 {
                     if (!_isDrag)
                     {
-                        MouseHook.MouseEventToTask(
-                            _connectionInfo.SessionId, 
-                            MouseEventType.DragAndDrop, 
-                            vPictureBox, 
-                            e, 
-                            MouseMessage.DRAGDROP_MOUSEDOWN, 
-                            MouseType.Down
-                        );
+                        mouseMessage = MouseMessage.DRAGDROP_MOUSEDOWN;
                         _isDrag = true;
                     }
-                    MouseHook.MouseEventToTask(
-                        _connectionInfo.SessionId, 
-                        MouseEventType.DragAndDrop, 
-                        vPictureBox, 
-                        e, 
-                        MouseMessage.DRAGDROP_MOUSEMOVE, 
-                        MouseType.Down
-                    );
+                    else
+                    {
+                        mouseMessage = MouseMessage.DRAGDROP_MOUSEMOVE;
+                    }
                 }
                 else
                 {
-                    if (_isDrag)
-                    {
-                        MouseHook.MouseEventToTask(
-                            _connectionInfo.SessionId, 
-                            MouseEventType.DragAndDrop, 
-                            vPictureBox, 
-                            e, 
-                            MouseMessage.DRAGDROP_MOUSEUP,
-                            MouseType.Down
-                        );
-                        _isDrag = false;
-                        return;
-                    }
                     if (!_isDrag)
                     {
-                        MouseHook.MouseEventToTask(
-                            _connectionInfo.SessionId, 
-                            MouseEventType.Move,
-                            vPictureBox, 
-                            e, 
-                            MouseMessage.WM_MOUSEMOVE,
-                            MouseType.Down
-                        );
+                        mouseEvent = MouseEventType.Move;
+                        mouseMessage = MouseMessage.DRAGDROP_MOUSEUP;
+                       
+                    }
+                    else
+                    {
+                        mouseMessage = MouseMessage.DRAGDROP_MOUSEUP;
+                        _isDrag = false;
                     }
                 }
+
+                MouseHook.MouseEventToTask(
+                    _connectionInfo.SessionId,
+                    mouseEvent,
+                    vPictureBox,
+                    e,
+                    mouseMessage,
+                    MouseType.Down
+                );
             }
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "FormRemote").Error(ex, "MouseMove event error");
             }
         }
+
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
             MouseHook.MouseEventToTask(
@@ -475,11 +470,11 @@ namespace VRemoteClient
             if (string.IsNullOrEmpty(keyCommandString)) return;
 
             TryAddWork(new TaskObject
-            (
-                taskType: (e.Combination == KeyboardEnums.KeyCombination.Copy) ? RemoteType.Clipboard : RemoteType.Keyboard,
-                sessionId: _connectionInfo.SessionId,
-                data: Encoding.UTF8.GetBytes(keyCommandString)
-            ));
+            {
+                TaskType = (e.Combination == KeyboardEnums.KeyCombination.Copy) ? RemoteType.Clipboard : RemoteType.Keyboard,
+                SessionId = _connectionInfo.SessionId,
+                Data = Encoding.UTF8.GetBytes(keyCommandString)
+            });
         }
         #endregion
         #region Mouse
@@ -521,6 +516,8 @@ namespace VRemoteClient
         }
         public void ScreenEvent(byte[] data)
         {
+            var screenData = _screenEventHandle.RawScreenToScreenData(data);
+
             if (!this.IsDisposed && !this.Disposing)
             {
                 if (this.InvokeRequired)
@@ -529,7 +526,7 @@ namespace VRemoteClient
                     this.Invoke(new Action(()=>{
                         try
                         {
-                            ScreenEvent(data);
+                            ScreenEvent(screenData);
                         }
                         catch(Exception ex)
                         {
@@ -546,69 +543,41 @@ namespace VRemoteClient
             {
                 lock (_screenLock)
                 {
-                    using (MemoryStream stream = new MemoryStream(data))
-                    {
-                        Bitmap image = (Bitmap)Image.FromStream(stream);
+                    Bitmap image =  _screenEventHandle.WriteToBitmap(screenData);
 
-                        // Dispose old image to prevent memory leak
-                        var oldImage = vPictureBox.Image;
-                        _screenGraphics?.Dispose();
-                        _curScreen?.Dispose();
+                    // Dispose old image to prevent memory leak
+                    var oldImage = vPictureBox.Image;
+                    _screenGraphics?.Dispose();
+                    _curScreen?.Dispose();
 
-                        _curScreen = new Bitmap(image);
+                    _curScreen = new Bitmap(image);
+                    _screenGraphics = Graphics.FromImage(_curScreen);
 
-                        var imageSize = image.Size;
-                        _screenGraphics = Graphics.FromImage(_curScreen);
-
-                        InitializeGraphicsSettings();
-
-                        vPictureBox.Image = _curScreen;
-
-
-                        oldImage?.Dispose();
-                        image?.Dispose();
-                    }
+                    vPictureBox.Image = _curScreen;
+                    oldImage?.Dispose();
+                    image?.Dispose();
                 }
 
-                TryAddWork(new TaskObject(
-                     taskType: Models.Enums.RemoteType.ScreenOk,
-                     data: new byte[0]
-                ));
+                TryAddWork(new TaskObject
+                {
+                    TaskType = RemoteType.ScreenOk
+                });
             }
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "FormRemote").Error(ex, "ScreenEvent error");
             }
         }
-        private void ChunksEvent(List<ScreenBlock> blocks)
+        private void ChunksEvent(byte[] data)
         {
             try
             {
-                if (blocks == null || blocks.Count == 0)
+                var regions = _screenEventHandle.RawChunksToRegions(data);
+
+                if (regions == null || regions.Count == 0)
                     return;
-                Rectangle dirtyRegion = Rectangle.Empty;
-                lock (_screenLock)
-                {
-                    for (int i = 0; i < blocks.Count; i++)
-                    {
-                        try
-                        {
-                            using MemoryStream ms = new MemoryStream(blocks[i].Bytes);
-                            using Bitmap chunkBitmap = new Bitmap(ms);
 
-                            // draw on _curScreen
-                            _screenGraphics.DrawImage(chunkBitmap, blocks[i].Rectangle);
-
-
-                            // merge dirty region
-                            dirtyRegion = Rectangle.Union(dirtyRegion, blocks[i].Rectangle);
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.ForContext("FileName", "FormRemote").Warning(ex, "Chunks:Draw block error");
-                        }
-                    }
-                }
+                Rectangle rect =  _screenEventHandle.MergeRegions(_screenGraphics, regions);
 
                 // Invalidate last merge region
                 if(!this.IsDisposed && !this.Disposing)
@@ -619,8 +588,9 @@ namespace VRemoteClient
                         {
                             try
                             {
-                                InvalidateRegion(dirtyRegion);
-                            }catch(Exception ex)
+                                InvalidateRegion(rect);
+                            }
+                            catch(Exception ex)
                             {
                                 Log.ForContext("FileName", "FormRemote").Warning(ex, "InvalidateRegion error");
                             }
@@ -628,14 +598,14 @@ namespace VRemoteClient
                     }
                     else
                     {
-                        InvalidateRegion(dirtyRegion);
+                        InvalidateRegion(rect);
                     }
                 }
 
-                TryAddWork(new TaskObject(
-                    taskType: Models.Enums.RemoteType.ChunksOk,
-                    data: new byte[0]
-                ));
+                TryAddWork(new TaskObject
+                {
+                    TaskType = Models.Enums.RemoteType.ChunksOk
+                });
             }
             catch(Exception ex)
             {

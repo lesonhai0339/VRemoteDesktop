@@ -6,7 +6,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Entities
 {
-    public class ScreenBlock : IDisposable
+    public class ScreenRegion : IDisposable
     {
         public bool IsFullScreen { get; set; } // Indicates if this cell is a full-screen capture
         public Rectangle Rectangle { get; set; }
