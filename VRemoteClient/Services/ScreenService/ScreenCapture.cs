@@ -103,13 +103,13 @@ namespace VRemoteClient.Services.ScreenService
                         using (var stream = new MemoryStream())
                         {
                             currentScreen.Save(stream, encoder, encoderParams);
-                            ScreenRegion cell = new ScreenRegion
+                            ScreenRegion region = new ScreenRegion
                             {
                                 IsFullScreen = true,
                                 Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
                                 Bytes = stream.ToArray()
                             };
-                            regions.Add(cell);
+                            regions.Add(region);
                         }
                         // Store current frame as previous
                         _previousFrame = currentScreen.Clone(

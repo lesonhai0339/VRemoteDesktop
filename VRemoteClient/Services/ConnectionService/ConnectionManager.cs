@@ -14,7 +14,6 @@ namespace VRemoteClient.Services.ConnectionService
     /// </summary>
     public class ConnectionManager
     {
-        private readonly object _lock = new object();
         private ConcurrentDictionary<string, ConnectionInfo> _currentConnections;
         public int NumberOfConnections => _currentConnections.Count;
 

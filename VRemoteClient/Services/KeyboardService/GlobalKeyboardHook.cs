@@ -16,7 +16,6 @@ namespace VRemoteClient.Services.KeyboardService
     public class GlobalKeyboardHook: IDisposable
     {
         private readonly object _lockObject = new object();
-        private uint _targetProcessId;
         private IntPtr hookID = IntPtr.Zero;
         private LowLevelKeyboardProc proc;
         public HashSet<IntPtr> _windowsHandle = new HashSet<IntPtr>(); 
@@ -29,7 +28,6 @@ namespace VRemoteClient.Services.KeyboardService
         }
         public void Start(uint pId)
         {
-            _targetProcessId = pId;
             proc = HookCallback;
             hookID = SetHook(proc);
         }

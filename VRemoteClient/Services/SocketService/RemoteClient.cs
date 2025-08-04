@@ -22,17 +22,12 @@ namespace VRemoteClient.Services.SocketService
 {
     public class RemoteClient : IDisposable
     {
-        private const int MAX_BUFFER_SIZE = 10 * 1024 * 1024;
-
         private bool _isSocketConnected;
         private bool _isP2PConnected;
         private bool _isDisposed;
         private object _lockObject = new object();
 
         private Socket _socket;
-        //private System.Threading.Timer _timer;
-        private ClientInfo _me;
-
         private ConcurrentQueue<DataReceive> _tasks;
         private BackgroundWorker _backgroundWorker;
 
@@ -57,7 +52,6 @@ namespace VRemoteClient.Services.SocketService
             _isDisposed = false;
             _cancellationToken = new CancellationTokenSource();
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
-            _me = me;
             Tasks = new ConcurrentQueue<DataReceive>();
             Worker = new BackgroundWorker();
             Worker.WorkerSupportsCancellation = true;
@@ -264,9 +258,7 @@ namespace VRemoteClient.Services.SocketService
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
 
-
                 Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
-
             }
             catch (SocketException ex)
             {
@@ -298,7 +290,6 @@ namespace VRemoteClient.Services.SocketService
                             break;
                         }
                         int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(16, 4).ToArray(), 0);
-
                         if (!(stateObject.ByteArrayBuilder.Length >= length))
                         {
                             break;
@@ -307,7 +298,9 @@ namespace VRemoteClient.Services.SocketService
                         byte[] data = new byte[length];
                         Buffer.BlockCopy(src, 0, data, 0, data.Length);
                         ProcessReceiveData(data);
-                        if (_cancellationToken.IsCancellationRequested) break;
+
+                        if (_cancellationToken.IsCancellationRequested) 
+                            break;
                     }
                 }
                 try
@@ -403,7 +396,6 @@ namespace VRemoteClient.Services.SocketService
                     
                     Worker.DoWork -= DoWork;
                     _backgroundWorker.Dispose();
-                    _backgroundWorker = null;
 
                     //queue
                     if (Tasks != null)
@@ -415,7 +407,6 @@ namespace VRemoteClient.Services.SocketService
                                 disposableItem.Dispose();
                             }
                         }
-                        Tasks = null;
                     }
                     try
                     {
@@ -426,11 +417,6 @@ namespace VRemoteClient.Services.SocketService
                     catch (Exception)
                     {
                     }
-
-                    // Clear other objects
-                    _me = null;
-                    _lockObject = null;
-
                     // Set flags
                     _isSocketConnected = false;
                     _isP2PConnected = false;
