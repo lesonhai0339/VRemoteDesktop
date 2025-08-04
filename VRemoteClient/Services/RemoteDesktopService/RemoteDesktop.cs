@@ -793,7 +793,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
                                     disposableItem.Dispose();
                                 }
                             }
-                            _commandTasks = null;
                         }
                         if (_screenTasks != null)
                         {
@@ -804,7 +803,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
                                     disposableItem.Dispose();
                                 }
                             }
-                            _screenTasks = null;
                         }
 
 
@@ -814,7 +812,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
                             _globakKeyboardHook.Stop();
                             _globakKeyboardHook.KeyPressed -= KeyboardPressedEvent;
                             _globakKeyboardHook.Dispose();
-                            _globakKeyboardHook = null;
                         }
                     }
                     catch (Exception ex)
@@ -832,10 +829,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
                         catch (Exception ex)
                         {
                             Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _globakScreenHook");
-                        }
-                        finally
-                        {
-                            _globakScreenHook = null;
                         }
                     }
 
@@ -855,7 +848,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
                             _remoteClient.ClipboardReceivedEvent -= ClipboardReceivedEventHandler;
 
                             _remoteClient.Dispose();
-                            _remoteClient = null;
                         }
                     }
                     catch(Exception ex)
@@ -866,6 +858,11 @@ namespace VRemoteClient.Services.RemoteDesktopService
                     _connectionManager.Clear();
                 }
             }
+            _commandTasks = null;
+            _screenTasks = null;
+            _globakKeyboardHook = null;
+            _globakScreenHook = null;
+            _remoteClient = null;
             _isDisposed = true;
         }
         #endregion
