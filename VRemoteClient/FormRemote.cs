@@ -516,8 +516,6 @@ namespace VRemoteClient
         }
         public void ScreenEvent(byte[] data)
         {
-            var screenData = _screenEventHandle.RawScreenToScreenData(data);
-
             if (!this.IsDisposed && !this.Disposing)
             {
                 if (this.InvokeRequired)
@@ -526,7 +524,7 @@ namespace VRemoteClient
                     this.Invoke(new Action(()=>{
                         try
                         {
-                            ScreenEvent(screenData);
+                            ScreenEvent(data);
                         }
                         catch(Exception ex)
                         {
@@ -543,6 +541,8 @@ namespace VRemoteClient
             {
                 lock (_screenLock)
                 {
+                    var screenData = _screenEventHandle.RawScreenToScreenData(data);
+
                     Bitmap image =  _screenEventHandle.WriteToBitmap(screenData);
 
                     // Dispose old image to prevent memory leak
