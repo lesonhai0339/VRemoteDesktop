@@ -107,13 +107,13 @@ namespace VRemoteClient.Services.ScreenService
                 if (screens.Any())
                 {
                     int totalSize = checked(screens.Sum(x => x.TotalSize));
-                    ScreenEnum screenEnum = screens.Count == 1 && screens[0].IsFullScreen ? ScreenEnum.FULLSCREEN : ScreenEnum.REGIONSCREENS;
+                    ScreenType screenEnum = screens.Count == 1 && screens[0].IsFullScreen ? ScreenType.FULLSCREEN : ScreenType.REGIONSCREENS;
                     switch (screenEnum)
                     {
-                        case ScreenEnum.FULLSCREEN:
+                        case ScreenType.FULLSCREEN:
                             ScreenToChunks(screens[0]);
                             break;
-                        case ScreenEnum.REGIONSCREENS:
+                        case ScreenType.REGIONSCREENS:
                             RegionsChangedToChunks(screens, totalSize);
                             break;
                     }
@@ -148,7 +148,7 @@ namespace VRemoteClient.Services.ScreenService
                     int numberOfChunk = (int)Math.Ceiling((double)dataLength / CHUNK_SIZE);
 
                     CustomScreenEventArgs screenArgs = new CustomScreenEventArgs(
-                        type: RemoteType.Screen,
+                        type: ResponseType.Screen,
                         totalSize: dataLength
                     );
                     for (int i = 0; i < numberOfChunk; i++)
@@ -196,7 +196,7 @@ namespace VRemoteClient.Services.ScreenService
                     Buffer.BlockCopy(chunksData, 0, _dataSend, chunksHashed.Length, chunksData.Length);
 
                     CustomScreenEventArgs chunksArgs = new CustomScreenEventArgs(
-                       type: RemoteType.Chunks,
+                       type: ResponseType.Chunks,
                        totalSize: dataSendLength
                     );
                     //cut data to chunk(8192 bytes)  and send
@@ -271,7 +271,6 @@ namespace VRemoteClient.Services.ScreenService
                     if (_capture != null)
                     {
                         _capture.Dispose();
-                        _capture = null;
                     }
 
                     StopCapture();
@@ -283,11 +282,8 @@ namespace VRemoteClient.Services.ScreenService
                     {
                         _backgroundWorker.DoWork -= DoWork;
                         _backgroundWorker.Dispose();
-                        _backgroundWorker = null;
                     }
                 }
-                _buffer = null;
-                _dataSend = null;
                 _disposed = true;
             }
         }

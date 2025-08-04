@@ -5,10 +5,10 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
-    public enum ScreenEnum
+    public enum KeyCombination
     {
         None = 0,
-        FULLSCREEN = 1,
-        REGIONSCREENS = 2,
+        Copy = 1,
+        SAS = 2,
     }
 }

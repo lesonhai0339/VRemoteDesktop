@@ -45,8 +45,8 @@ namespace VRemoteClient.Services.MouseService
             int senderScreenHeight = int.Parse(mouseData[1]);
             int receiverScreenWidth = width;
             int receiverScreenHeight = height;
-            MouseMessage button = (MouseMessage)int.Parse(mouseData[2]);
-            MouseType action = (MouseType)int.Parse(mouseData[3]);
+            WindowsMouseMessage button = (WindowsMouseMessage)int.Parse(mouseData[2]);
+            MouseState action = (MouseState)int.Parse(mouseData[3]);
             int mouseX = int.Parse(mouseData[4]);
             int mouseY = int.Parse(mouseData[5]);
 
@@ -70,7 +70,7 @@ namespace VRemoteClient.Services.MouseService
             switch (mouseEvent.Button)
             {
                 //left mouse click
-                case MouseMessage.WM_LBUTTONDOWN:
+                case WindowsMouseMessage.WM_LBUTTONDOWN:
                     mouseEvents.AddRange(
                         new List<WindowsMouseEvent>
                         {
@@ -79,7 +79,7 @@ namespace VRemoteClient.Services.MouseService
                         });
                     break;
                 // middle mouse click
-                case MouseMessage.WM_MBUTTONDOWN:
+                case WindowsMouseMessage.WM_MBUTTONDOWN:
                     mouseEvents.AddRange(
                         new List<WindowsMouseEvent>
                         {
@@ -88,7 +88,7 @@ namespace VRemoteClient.Services.MouseService
                         });
                     break;
                 // right mouse click
-                case MouseMessage.WM_RBUTTONDOWN:
+                case WindowsMouseMessage.WM_RBUTTONDOWN:
                     mouseEvents.AddRange(
                        new List<WindowsMouseEvent>
                        {
@@ -97,7 +97,7 @@ namespace VRemoteClient.Services.MouseService
                        });
                     break;
                 //left mouse dbclick
-                case MouseMessage.WM_LBUTTONDBLCLK:
+                case WindowsMouseMessage.WM_LBUTTONDBLCLK:
                     mouseEvents.AddRange(
                        new List<WindowsMouseEvent>
                        {
@@ -108,7 +108,7 @@ namespace VRemoteClient.Services.MouseService
                        });
                     break;
                 // middle mouse dbclick
-                case MouseMessage.WM_MBUTTONDBLCLK:
+                case WindowsMouseMessage.WM_MBUTTONDBLCLK:
                     mouseEvents.AddRange(
                         new List<WindowsMouseEvent>
                         {
@@ -119,7 +119,7 @@ namespace VRemoteClient.Services.MouseService
                         });
                     break;
                 // right mouse dbclick
-                case MouseMessage.WM_RBUTTONDBLCLK:
+                case WindowsMouseMessage.WM_RBUTTONDBLCLK:
                     mouseEvents.AddRange(
                         new List<WindowsMouseEvent>
                         {
@@ -130,9 +130,9 @@ namespace VRemoteClient.Services.MouseService
                         });
                     break;
                 // mouse wheel event
-                case MouseMessage.WM_MOUSEWHEEL:
+                case WindowsMouseMessage.WM_MOUSEWHEEL:
                     //wheel up
-                    if (mouseEvent.Action == MouseType.Up)
+                    if (mouseEvent.Action == MouseState.Up)
                     {
                         flag = MouseWheel(scales.Item1, scales.Item2, mouseEvent.X, mouseEvent.Y, +WHEEL_DELTA);
                     }
@@ -143,18 +143,18 @@ namespace VRemoteClient.Services.MouseService
                     }
                     break;
                 //mouse drag and drop
-                case MouseMessage.DRAGDROP_MOUSEDOWN:
+                case WindowsMouseMessage.DRAGDROP_MOUSEDOWN:
                     mouseEvents.Add(WindowsMouseEvent.MOUSEEVENTF_LEFTDOWN);
                     break;
-                case MouseMessage.WM_MOUSEMOVE:
-                case MouseMessage.DRAGDROP_MOUSEMOVE:
+                case WindowsMouseMessage.WM_MOUSEMOVE:
+                case WindowsMouseMessage.DRAGDROP_MOUSEMOVE:
                     mouseEvents.Add(WindowsMouseEvent.MOUSEEVENTF_MOVE);
                     break;
-                case MouseMessage.DRAGDROP_MOUSEUP:
+                case WindowsMouseMessage.DRAGDROP_MOUSEUP:
                     mouseEvents.Add(WindowsMouseEvent.MOUSEEVENTF_LEFTUP);
                     break;
                 //triple left click case
-                case MouseMessage.WM_BUTTONTRIPLECLICK:
+                case WindowsMouseMessage.WM_BUTTONTRIPLECLICK:
                     mouseEvents.AddRange(
                        new List<WindowsMouseEvent>
                        {

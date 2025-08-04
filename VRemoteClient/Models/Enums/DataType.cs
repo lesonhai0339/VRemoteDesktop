@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
-    public enum QueueTask
+    public enum DataType
     {
         Command = 0,
         Screen = 1

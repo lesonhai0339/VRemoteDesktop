@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
-    public enum ClipboardFormat : uint
+    public enum WindowsClipboardFormat : uint
     {
         CF_TEXT = 1,
         CF_BITMAP = 2,

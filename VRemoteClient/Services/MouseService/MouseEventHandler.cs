@@ -23,7 +23,7 @@ namespace VRemoteClient.Services.MouseService
         {
         }
         #region Methods 
-        public void MouseEventToTask(string sessionId,MouseEventType mouseEvent, PictureBox p, MouseEventArgs e, MouseMessage mouseMsg = MouseMessage.None, MouseType mouseType = MouseType.None)
+        public void MouseEventToTask(string sessionId, MouseEventType mouseEvent, PictureBox p, MouseEventArgs e, WindowsMouseMessage mouseMsg = WindowsMouseMessage.None, MouseState mouseType = MouseState.None)
         {
             try
             {
@@ -44,7 +44,7 @@ namespace VRemoteClient.Services.MouseService
                 {
                     Task = new TaskObject
                     {
-                        TaskType = RemoteType.Mouse,
+                        TaskType = ResponseType.Mouse,
                         SessionId = sessionId,
                         Data = Encoding.ASCII.GetBytes(mouseEventString)
                     }
@@ -132,43 +132,43 @@ namespace VRemoteClient.Services.MouseService
             }
             return new Point(x, y);
         }
-        public string MouseEventToString(MouseEventType mouseEvent, int width, int height, MouseEventArgs e, MouseMessage mouseMsg = MouseMessage.None, MouseType mouseType = MouseType.None)
+        public string MouseEventToString(MouseEventType mouseEvent, int width, int height, MouseEventArgs e, WindowsMouseMessage mouseMsg = WindowsMouseMessage.None, MouseState mouseType = MouseState.None)
         {
             string result = "";
             switch (mouseEvent)
             {
                 case MouseEventType.Click:
-                    MouseMessage button = e.Button == MouseButtons.Left ? MouseMessage.WM_LBUTTONDOWN :
-                                          e.Button == MouseButtons.Middle ? MouseMessage.WM_MBUTTONDOWN :
-                                          e.Button == MouseButtons.Right ? MouseMessage.WM_RBUTTONDOWN :
-                                          MouseMessage.None;
-                    result =  ToString(width, height, button, MouseType.Down, e.X, e.Y);
+                    WindowsMouseMessage button = e.Button == MouseButtons.Left ? WindowsMouseMessage.WM_LBUTTONDOWN :
+                                          e.Button == MouseButtons.Middle ? WindowsMouseMessage.WM_MBUTTONDOWN :
+                                          e.Button == MouseButtons.Right ? WindowsMouseMessage.WM_RBUTTONDOWN :
+                                          WindowsMouseMessage.None;
+                    result =  ToString(width, height, button, MouseState.Down, e.X, e.Y);
                     break;
 
                 case MouseEventType.DoubleClick:
-                    MouseMessage dbButton = e.Button == MouseButtons.Left ? MouseMessage.WM_LBUTTONDBLCLK :
-                                         e.Button == MouseButtons.Middle ? MouseMessage.WM_MBUTTONDBLCLK :
-                                         e.Button == MouseButtons.Right ? MouseMessage.WM_RBUTTONDBLCLK :
-                                         MouseMessage.None;
-                    result = ToString(width, height, dbButton, MouseType.Down, e.X, e.Y);
+                    WindowsMouseMessage dbButton = e.Button == MouseButtons.Left ? WindowsMouseMessage.WM_LBUTTONDBLCLK :
+                                         e.Button == MouseButtons.Middle ? WindowsMouseMessage.WM_MBUTTONDBLCLK :
+                                         e.Button == MouseButtons.Right ? WindowsMouseMessage.WM_RBUTTONDBLCLK :
+                                         WindowsMouseMessage.None;
+                    result = ToString(width, height, dbButton, MouseState.Down, e.X, e.Y);
                     break;
                 case MouseEventType.TripleClick:
-                    MouseMessage tbButton = MouseMessage.WM_BUTTONTRIPLECLICK;
-                    result = ToString(width, height, tbButton, MouseType.Down, e.X, e.Y);
+                    WindowsMouseMessage tbButton = WindowsMouseMessage.WM_BUTTONTRIPLECLICK;
+                    result = ToString(width, height, tbButton, MouseState.Down, e.X, e.Y);
                     break;
                 case MouseEventType.Wheel:
                     if (e.Delta > 0)
                     {
-                        result = ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Up, e.X, e.Y);
+                        result = ToString(width, height, WindowsMouseMessage.WM_MOUSEWHEEL, MouseState.Up, e.X, e.Y);
                     }
                     if (e.Delta < 0)
                     {
-                        result = ToString(width, height, MouseMessage.WM_MOUSEWHEEL, MouseType.Down, e.X, e.Y);
+                        result = ToString(width, height, WindowsMouseMessage.WM_MOUSEWHEEL, MouseState.Down, e.X, e.Y);
                     }
                     break;
 
                 case MouseEventType.Move:
-                    result = ToString(width, height, MouseMessage.WM_MOUSEMOVE, MouseType.Down, e.X, e.Y);
+                    result = ToString(width, height, WindowsMouseMessage.WM_MOUSEMOVE, MouseState.Down, e.X, e.Y);
                     break;
 
                 case MouseEventType.DragAndDrop:
@@ -181,7 +181,7 @@ namespace VRemoteClient.Services.MouseService
             }
             return result;
         }
-        public string ToString(int width, int height, MouseMessage button, MouseType action, int x, int y)
+        public string ToString(int width, int height, WindowsMouseMessage button, MouseState action, int x, int y)
         {
             return new StringBuilder()
                 .Append(width).Append("|")

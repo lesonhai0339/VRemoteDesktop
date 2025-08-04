@@ -11,23 +11,20 @@ using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.ScreenService;
 using VRemoteClient.Utils;
-using static VRemoteClient.Models.Enums.KeyboardEnums;
 using VRemoteClient.Services.KeyboardService;
 using VRemoteClient.Services.ConnectionService;
 using System.Configuration;
-using System.Net;
 using System.Collections.Concurrent;
 using System.ComponentModel;
-using System.Drawing;
 using VRemoteClient.Services.MouseService;
-using static System.Runtime.CompilerServices.RuntimeHelpers;
 using VRemoteClient.Services.RemoteClientService;
+using static VRemoteClient.Models.Enums.KeyboardEnums;
 
 namespace VRemoteClient.Services.RemoteDesktopService
 {
     public class RemoteDesktop: IDisposable
     {
-        private readonly string defaultSessionId = "0000000000000000";
+        private readonly string SSID = "0000000000000000";
         private readonly object _lockProperties = new object();
         private bool _isDisposed = false;
         private volatile bool _isSocketConnectSuccess;
@@ -299,9 +296,9 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 return ScreenTasks.TryDequeue(out var tasks) ? tasks : null;
             }
         }
-        public void AddWork(TaskObject task, QueueTask type = QueueTask.Command)
+        public void AddWork(TaskObject task, DataType type = DataType.Command)
         {
-            if (type == QueueTask.Screen)
+            if (type == DataType.Screen)
             {
                 if (ScreenTasks.Count >= 2)
                 {
@@ -323,9 +320,9 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 CommandTasks.Enqueue(task);
             }
         }
-        public void AddWorkGroup(List<TaskObject> tasks, QueueTask type = QueueTask.Command)
+        public void AddWorkGroup(List<TaskObject> tasks, DataType type = DataType.Command)
         {
-            if (type == QueueTask.Screen)
+            if (type == DataType.Screen)
             {
                 ScreenTasks.Enqueue(new TaskGroup(tasks));
             }
@@ -474,7 +471,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
                 AddWork(new TaskObject
                 {
-                    TaskType = RemoteType.P2PConnect,
+                    TaskType = ResponseType.P2PConnect,
                     Data = data
                 });
             }
@@ -509,7 +506,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             try
             {
-                return VirtualClipboard.SetClipboard(data, (uint)ClipboardFormat.CF_UNICODETEXT);
+                return VirtualClipboard.SetClipboard(data, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
             }
             catch (Exception ex)
             {
@@ -525,7 +522,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 byte[] dataBytes = Encoding.ASCII.GetBytes(data);
                 AddWork(new TaskObject
                 {
-                    TaskType = RemoteType.Login,
+                    TaskType = ResponseType.Login,
                     Data = dataBytes,
                     IsSendHeader = true
                 });
@@ -696,7 +693,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 {
                     AddWork(new TaskObject
                     {
-                        TaskType = RemoteType.Clipboard,
+                        TaskType = ResponseType.Clipboard,
                         SessionId = connection.SessionId,
                         Data = Encoding.UTF8.GetBytes(clipboard),
                     });
@@ -723,7 +720,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
                 //header, 16 byte for sessionID(this using defaultSessionId: "0000000000000000"), 4 bytes for data length, 1 byte for type
                 byte[] screenHeader = new byte[21];
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(defaultSessionId), 0, screenHeader, 0, 16);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(SSID), 0, screenHeader, 0, 16);
                 Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 16, 4);
                 screenHeader[20] = (byte)e.Type;
 

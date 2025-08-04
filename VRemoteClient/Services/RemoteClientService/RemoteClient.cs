@@ -131,51 +131,51 @@ namespace VRemoteClient.Services.RemoteClientService
                     {
                         switch (task.Type)
                         {
-                            case RemoteType.Login:
+                            case ResponseType.Login:
                                 LoginEvent?.Invoke(true);
                                 break;
-                            case RemoteType.P2PConnect:
+                            case ResponseType.P2PConnect:
                                 IsP2PConnected = true;
                                 P2PConnectEvent?.Invoke(true, task.Data);
                                 break;
-                            case RemoteType.Disconnect:
+                            case ResponseType.Disconnect:
                                 break;
-                            case RemoteType.Ping:
+                            case ResponseType.Ping:
                                 break;
-                            case RemoteType.Pong:
+                            case ResponseType.Pong:
                                 Console.WriteLine("Pong received from server");
                                 break;
-                            case RemoteType.Screen:
+                            case ResponseType.Screen:
                                 ScreenEvent?.Invoke(task.Data);
                                 break;
-                            case RemoteType.Chunks:
+                            case ResponseType.Chunks:
                                 ChunksEvent?.Invoke(task.Data);
                                 break;
-                            case RemoteType.ScreenOk:
+                            case ResponseType.ScreenOk:
                                 ScreenSuccessEvent?.Invoke(true);
                                 break;
-                            case RemoteType.ChunksOk:
+                            case ResponseType.ChunksOk:
                                 ChunksSuccessEvent?.Invoke(true);
                                 break;
-                            case RemoteType.Keyboard:
+                            case ResponseType.Keyboard:
                                 KeyboardReceivedEvent?.Invoke(task.Data);
                                 break;
-                            case RemoteType.Mouse:
+                            case ResponseType.Mouse:
                                 MouseReceivedEvent?.Invoke(task.Data);
                                 break;
-                            case RemoteType.Clipboard:
+                            case ResponseType.Clipboard:
                                 ClipboardReceivedEvent?.Invoke(task.Data);
                                 break;
-                            case RemoteType.Error:
+                            case ResponseType.Error:
                                 break;
-                            case RemoteType.LoginFailed:
+                            case ResponseType.LoginFailed:
                                 LoginEvent?.Invoke(false);
                                 break;
-                            case RemoteType.P2PDisconnect:
+                            case ResponseType.P2PDisconnect:
                                 IsP2PConnected = false;
                                 P2PDisconnectedEvent?.Invoke(true, task.SessionId);
                                 break;
-                            case RemoteType.P2PConnectFailed:
+                            case ResponseType.P2PConnectFailed:
                                 P2PConnectEvent?.Invoke(false, task.Data);
                                 break;
                             default:
@@ -323,7 +323,7 @@ namespace VRemoteClient.Services.RemoteClientService
                 string sessionId = Encoding.ASCII.GetString(sessionIdBytes);
                 int length = BitConverter.ToInt32(bytes, 16);
 
-                RemoteType commandType = (RemoteType)bytes[20];
+                ResponseType commandType = (ResponseType)bytes[20];
 
                 byte[] data = new byte[bytes.Length - 20];
                 Buffer.BlockCopy(bytes, 20, data, 0, data.Length);

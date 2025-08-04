@@ -23,9 +23,9 @@ namespace VRemoteClient.Utils
     public class Logging
     {
         private static readonly Dictionary<string, object> _fileLocks = new Dictionary<string, object>();
-        private string _filePath;
-        private string _template;
-        private string _context;
+        private string _filePath = "";
+        private string _template = "";
+        private string _context = "";
         private static object GetFileLock(string file)
         {
             lock (_fileLocks)
@@ -69,7 +69,7 @@ namespace VRemoteClient.Utils
         public void Fatal(string message, string message1) => Write("FATAL", string.Format("{0} {1}", message, message1));
 
 
-        private void Write(string level, string message, Exception ex = null)
+        private void Write(string level, string message, Exception? ex = null)
         {
             try
             {

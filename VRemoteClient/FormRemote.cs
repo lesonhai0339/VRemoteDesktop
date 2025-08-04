@@ -175,7 +175,7 @@ namespace VRemoteClient
                 {
                     TaskObject disConnectTask = new TaskObject 
                     {
-                        TaskType = Models.Enums.RemoteType.P2PDisconnect,
+                        TaskType = Models.Enums.ResponseType.P2PDisconnect,
                         SessionId = _connectionInfo.SessionId,
                         IsSendHeader = true
                     };
@@ -350,19 +350,19 @@ namespace VRemoteClient
 
                 bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;
 
-                MouseEventType mouseEvent= MouseEventType.DragAndDrop;
-                MouseMessage mouseMessage = MouseMessage.None;
+                MouseEventType mouseEvent = MouseEventType.DragAndDrop;
+                WindowsMouseMessage mouseMessage = WindowsMouseMessage.None;
 
                 if (isLeftButtonDown)
                 {
                     if (!_isDrag)
                     {
-                        mouseMessage = MouseMessage.DRAGDROP_MOUSEDOWN;
+                        mouseMessage = WindowsMouseMessage.DRAGDROP_MOUSEDOWN;
                         _isDrag = true;
                     }
                     else
                     {
-                        mouseMessage = MouseMessage.DRAGDROP_MOUSEMOVE;
+                        mouseMessage = WindowsMouseMessage.DRAGDROP_MOUSEMOVE;
                     }
                 }
                 else
@@ -370,12 +370,12 @@ namespace VRemoteClient
                     if (!_isDrag)
                     {
                         mouseEvent = MouseEventType.Move;
-                        mouseMessage = MouseMessage.DRAGDROP_MOUSEUP;
+                        mouseMessage = WindowsMouseMessage.DRAGDROP_MOUSEUP;
                        
                     }
                     else
                     {
-                        mouseMessage = MouseMessage.DRAGDROP_MOUSEUP;
+                        mouseMessage = WindowsMouseMessage.DRAGDROP_MOUSEUP;
                         _isDrag = false;
                     }
                 }
@@ -386,7 +386,7 @@ namespace VRemoteClient
                     vPictureBox,
                     e,
                     mouseMessage,
-                    MouseType.Down
+                    MouseState.Down
                 );
             }
             catch (Exception ex)
@@ -453,7 +453,7 @@ namespace VRemoteClient
             }
 
             string keyCommandString = "";
-            if (e.Combination == KeyboardEnums.KeyCombination.Copy)
+            if (e.Combination == KeyCombination.Copy)
             {
                 keyCommandString = RemoteDesktop.GetClipboard();
             }
@@ -471,7 +471,7 @@ namespace VRemoteClient
 
             TryAddWork(new TaskObject
             {
-                TaskType = (e.Combination == KeyboardEnums.KeyCombination.Copy) ? RemoteType.Clipboard : RemoteType.Keyboard,
+                TaskType = (e.Combination == KeyCombination.Copy) ? ResponseType.Clipboard : ResponseType.Keyboard,
                 SessionId = _connectionInfo.SessionId,
                 Data = Encoding.UTF8.GetBytes(keyCommandString)
             });
@@ -560,7 +560,7 @@ namespace VRemoteClient
 
                 TryAddWork(new TaskObject
                 {
-                    TaskType = RemoteType.ScreenOk
+                    TaskType = ResponseType.ScreenOk
                 });
             }
             catch (Exception ex)
@@ -604,7 +604,7 @@ namespace VRemoteClient
 
                 TryAddWork(new TaskObject
                 {
-                    TaskType = Models.Enums.RemoteType.ChunksOk
+                    TaskType = Models.Enums.ResponseType.ChunksOk
                 });
             }
             catch(Exception ex)

@@ -21,7 +21,7 @@ namespace VRemoteClient.Models.Entities
         {
         }
 
-        public RemoteType TaskType { get; set; } = RemoteType.None;
+        public ResponseType TaskType { get; set; } = ResponseType.None;
         public string SessionId { get; set; } = "0000000000000000";
         public byte[] Data { get; set; }= new byte[0];
         public int Length => Data?.Length ?? 0;

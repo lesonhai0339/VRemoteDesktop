@@ -5,14 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
-    public enum MouseType
-    {
-        None = 0,
-        Down = 1,
-        Up = 2,
-        Move = 3,
-    }
-    public enum MouseMessage
+    public enum WindowsMouseMessage
     {
         None = 0x0000,
         // Left mouse

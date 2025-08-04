@@ -13,8 +13,8 @@ namespace VRemoteClient.Models.DTOs
         public int ReceiverWidth { get; set; }
         public int ReceiverHeight { get; set; }
 
-        public MouseMessage Button { get; set; }
-        public MouseType Action { get; set; }
+        public WindowsMouseMessage Button { get; set; }
+        public MouseState Action { get; set; }
         public int X { get; set; }
         public int Y { get; set; }
     }

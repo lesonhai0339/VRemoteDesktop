@@ -5,13 +5,10 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
-    public class KeyboardEnums
+    public enum ScreenType
     {
-        public enum KeyState : int
-        {
-            KeyDown = 0,
-            KeyUp = 1
-        }
-
+        None = 0,
+        FULLSCREEN = 1,
+        REGIONSCREENS = 2,
     }
 }

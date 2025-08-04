@@ -5,13 +5,11 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
-    public class KeyboardEnums
+    public enum MouseState
     {
-        public enum KeyState : int
-        {
-            KeyDown = 0,
-            KeyUp = 1
-        }
-
+        None = 0,
+        Down = 1,
+        Up = 2,
+        Move = 3,
     }
 }

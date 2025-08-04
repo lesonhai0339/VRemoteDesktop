@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
-    public enum RemoteType: byte
+    public enum ResponseType: byte
     {
         None = 0x00,
         Login = 0x01,

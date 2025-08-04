@@ -10,7 +10,6 @@ using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Win32Apis;
-using static VRemoteClient.Utils.Win32Apis.HookApis;
 
 namespace VRemoteClient.Services.KeyboardService
 {
@@ -19,7 +18,7 @@ namespace VRemoteClient.Services.KeyboardService
         private readonly object _lockObject = new object();
         private bool _disposed;
         private IntPtr _hookID;
-        private LowLevelProc _proc;
+        private HookApis.LowLevelProc _proc;
         public HashSet<IntPtr> _windowsHandle; 
         public event EventHandler<CustomKeyMessageEventArgs> KeyPressed;
         public GlobalKeyboardHook() 
@@ -86,7 +85,7 @@ namespace VRemoteClient.Services.KeyboardService
         {
             return WindowApis.GetForegroundWindow() == handle;
         }
-        private IntPtr SetHook(LowLevelProc proc)
+        private IntPtr SetHook(HookApis.LowLevelProc proc)
         {
             using (Process curProcess = Process.GetCurrentProcess())
             using (ProcessModule curModule = curProcess.MainModule)

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteClient.Models.Enums;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 
 namespace VRemoteClient.Models.CustomEvents

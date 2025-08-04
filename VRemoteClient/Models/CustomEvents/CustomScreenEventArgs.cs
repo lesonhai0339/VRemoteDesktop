@@ -9,19 +9,19 @@ namespace VRemoteClient.Models.CustomEvents
     public class CustomScreenEventArgs: EventArgs
     {
         public CustomScreenEventArgs() { }
-        public CustomScreenEventArgs(RemoteType type, int totalSize)
+        public CustomScreenEventArgs(ResponseType type, int totalSize)
         {
             Type = type;
             TotalSize = totalSize;
         }
-        public CustomScreenEventArgs(RemoteType type, List<byte[]> data, int totalSize)
+        public CustomScreenEventArgs(ResponseType type, List<byte[]> data, int totalSize)
         {
             Type = type;
             Data = data;
             TotalSize = totalSize;
         }
 
-        public RemoteType Type { get; set; } = RemoteType.None;
+        public ResponseType Type { get; set; } = ResponseType.None;
         public List<byte[]> Data { get; set; } = new List<byte[]>();
         public int TotalSize { get; set; } = 0;
     }

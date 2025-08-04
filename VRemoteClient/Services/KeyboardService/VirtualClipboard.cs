@@ -38,7 +38,7 @@ namespace VRemoteClient.Services.KeyboardService
             }
             try
             {
-                if (ClipboardApis.IsClipboardFormatAvailable((uint)ClipboardFormat.CF_UNICODETEXT))
+                if (ClipboardApis.IsClipboardFormatAvailable((uint)WindowsClipboardFormat.CF_UNICODETEXT))
                 {
                     string data=  ExtractUnicodeText();
                     if (data.Length > 1000000)
@@ -51,7 +51,7 @@ namespace VRemoteClient.Services.KeyboardService
                         return data;
                     }
                 }
-                if (ClipboardApis.IsClipboardFormatAvailable((uint)ClipboardFormat.CF_TEXT))
+                if (ClipboardApis.IsClipboardFormatAvailable((uint)WindowsClipboardFormat.CF_TEXT))
                 {
                     string data = ExtractAnsiText();
                     if (data.Length > 1000000)
@@ -82,7 +82,7 @@ namespace VRemoteClient.Services.KeyboardService
                 if (!ClipboardApis.EmptyClipboard())
                     return false;
 
-                IntPtr hGlobal = MemoryApis.GlobalAlloc((uint)ClipboardFormat.GMEM_MOVEABLE, (UIntPtr)data.Length);
+                IntPtr hGlobal = MemoryApis.GlobalAlloc((uint)WindowsClipboardFormat.GMEM_MOVEABLE, (UIntPtr)data.Length);
                 if (hGlobal == IntPtr.Zero)
                     return false;
 
@@ -104,7 +104,7 @@ namespace VRemoteClient.Services.KeyboardService
         }
         private static string ExtractUnicodeText()
         {
-            IntPtr hData = ClipboardApis.GetClipboardData((uint)ClipboardFormat.CF_UNICODETEXT);
+            IntPtr hData = ClipboardApis.GetClipboardData((uint)WindowsClipboardFormat.CF_UNICODETEXT);
             if (hData == IntPtr.Zero)
                 return string.Empty;
 
@@ -123,7 +123,7 @@ namespace VRemoteClient.Services.KeyboardService
         }
         private static string ExtractAnsiText()
         {
-            IntPtr hData = ClipboardApis.GetClipboardData((uint)ClipboardFormat.CF_TEXT);
+            IntPtr hData = ClipboardApis.GetClipboardData((uint)WindowsClipboardFormat.CF_TEXT);
             if (hData == IntPtr.Zero)
                 return string.Empty;
 
