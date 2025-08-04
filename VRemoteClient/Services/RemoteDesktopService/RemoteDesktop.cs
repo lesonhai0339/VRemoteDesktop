@@ -784,6 +784,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 {
                     try
                     {
+                        Cancel();
                         if (_commandTasks != null)
                         {
                             while (_commandTasks.TryDequeue(out var item))
