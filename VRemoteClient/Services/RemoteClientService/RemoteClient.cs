@@ -18,7 +18,7 @@ using VRemoteClient.Services.MouseService;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
 
-namespace VRemoteClient.Services.SocketService
+namespace VRemoteClient.Services.RemoteClientService
 {
     public class RemoteClient : IDisposable
     {
@@ -131,7 +131,6 @@ namespace VRemoteClient.Services.SocketService
                 {
                     try
                     {
-                        Console.WriteLine(task.Type);
                         switch (task.Type)
                         {
                             case RemoteType.Login:
