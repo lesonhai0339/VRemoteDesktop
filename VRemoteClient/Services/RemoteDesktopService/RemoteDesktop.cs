@@ -287,13 +287,21 @@ namespace VRemoteClient.Services.RemoteDesktopService
         }
         private object? DequeueTask()
         {
-            if (CommandTasks.Count > 0)
+            try
             {
-                return CommandTasks.TryDequeue(out var tasks) ? tasks : null;
+                if (CommandTasks.Count > 0)
+                {
+                    return CommandTasks.TryDequeue(out var tasks) ? tasks : null;
+                }
+                else
+                {
+                    return ScreenTasks.TryDequeue(out var tasks) ? tasks : null;
+                }
             }
-            else
+            catch(Exception ex)
             {
-                return ScreenTasks.TryDequeue(out var tasks) ? tasks : null;
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "DequeueTask error");
+                return null;
             }
         }
         public void AddWork(TaskObject task, DataType type = DataType.Command)
