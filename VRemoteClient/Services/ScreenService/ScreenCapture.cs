@@ -13,7 +13,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
-using static VRemoteClient.Utils.Libraries;
+using static VRemoteClient.Utils.Win32Apis;
 
 namespace VRemoteClient.Services.ScreenService
 {

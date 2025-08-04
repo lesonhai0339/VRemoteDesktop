@@ -9,8 +9,8 @@ using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
-using static VRemoteClient.Utils.Libraries;
-using static VRemoteClient.Utils.Libraries.HookApis;
+using static VRemoteClient.Utils.Win32Apis;
+using static VRemoteClient.Utils.Win32Apis.HookApis;
 
 namespace VRemoteClient.Services.KeyboardService
 {
@@ -143,7 +143,7 @@ namespace VRemoteClient.Services.KeyboardService
                             keyEventArgs.IsSynthetic = true;
 
                         KeyPressed?.Invoke(this, keyEventArgs);
-                        return Libraries.HookApis.CallNextHookEx(_hookID, nCode, wParam, lParam);
+                        return HookApis.CallNextHookEx(_hookID, nCode, wParam, lParam);
                     } 
                     //Handle keyboard events on form
                     if (WindowsHandle.Count > 0)

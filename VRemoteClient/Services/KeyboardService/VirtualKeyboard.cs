@@ -10,7 +10,7 @@ using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Utils;
 using static VRemoteClient.Models.Enums.KeyboardEnums;
-using static VRemoteClient.Utils.Libraries;
+using static VRemoteClient.Utils.Win32Apis;
 
 namespace VRemoteClient.Services.KeyboardService
 {
@@ -114,7 +114,7 @@ namespace VRemoteClient.Services.KeyboardService
                     ki = new KEYBDINPUT
                     {
                         wVk = (ushort)key,
-                        wScan = (ushort)Libraries.KeyboardApis.MapVirtualKeyA((uint)key, 0), //windows using scan code wScan 
+                        wScan = (ushort)KeyboardApis.MapVirtualKeyA((uint)key, 0), //windows using scan code wScan 
                         //wScan = 0,  //windows using virtual key code wVk 
                         dwFlags = keyState == KeyState.KeyDown ? 0 : KEYEVENTF_KEYUP,
                         time = 0,
@@ -122,7 +122,7 @@ namespace VRemoteClient.Services.KeyboardService
                     }
                 }
             };
-            uint status = Libraries.WindowApis.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+            uint status = WindowApis.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
             if (status > 0)
             {
                 if (keyState == KeyState.KeyDown)
@@ -151,12 +151,12 @@ namespace VRemoteClient.Services.KeyboardService
                         wScan = 0,
                         dwFlags = KEYEVENTF_KEYUP,
                         time = 0,
-                        dwExtraInfo = Libraries.WindowApis.GetMessageExtraInfo()
+                        dwExtraInfo = WindowApis.GetMessageExtraInfo()
                     }
                 }
             };
 
-            uint status = Libraries.WindowApis.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
+            uint status = WindowApis.SendInput((uint)inputs.Length, inputs, Marshal.SizeOf(typeof(INPUT)));
 
             return status > 0;
         }

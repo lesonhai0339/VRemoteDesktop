@@ -6,6 +6,7 @@ using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
+using static VRemoteClient.Utils.Win32Apis;
 namespace VRemoteClient.Services.KeyboardService
 {
     public static class VirtualClipboard
@@ -31,13 +32,13 @@ namespace VRemoteClient.Services.KeyboardService
         }
         public static string GetClipboardString()
         {
-            if (!Libraries.ClipboardApis.OpenClipboard(IntPtr.Zero))
+            if (!ClipboardApis.OpenClipboard(IntPtr.Zero))
             {
                 return string.Empty;
             }
             try
             {
-                if (Libraries.ClipboardApis.IsClipboardFormatAvailable((uint)ClipboardFormat.CF_UNICODETEXT))
+                if (ClipboardApis.IsClipboardFormatAvailable((uint)ClipboardFormat.CF_UNICODETEXT))
                 {
                     string data=  ExtractUnicodeText();
                     if (data.Length > 1000000)
@@ -50,7 +51,7 @@ namespace VRemoteClient.Services.KeyboardService
                         return data;
                     }
                 }
-                if (Libraries.ClipboardApis.IsClipboardFormatAvailable((uint)ClipboardFormat.CF_TEXT))
+                if (ClipboardApis.IsClipboardFormatAvailable((uint)ClipboardFormat.CF_TEXT))
                 {
                     string data = ExtractAnsiText();
                     if (data.Length > 1000000)
@@ -66,48 +67,48 @@ namespace VRemoteClient.Services.KeyboardService
             }
             finally
             {
-                Libraries.ClipboardApis.CloseClipboard();
+                ClipboardApis.CloseClipboard();
             }
             return string.Empty;
         }
         public static bool SetClipboard(byte[] data, uint format)
         {
-            if (!Libraries.ClipboardApis.OpenClipboard(IntPtr.Zero))
+            if (!ClipboardApis.OpenClipboard(IntPtr.Zero))
             {
                 return false;
             }
             try
             {
-                if (!Libraries.ClipboardApis.EmptyClipboard())
+                if (!ClipboardApis.EmptyClipboard())
                     return false;
 
-                IntPtr hGlobal = Libraries.MemoryApis.GlobalAlloc((uint)ClipboardFormat.GMEM_MOVEABLE, (UIntPtr)data.Length);
+                IntPtr hGlobal = MemoryApis.GlobalAlloc((uint)ClipboardFormat.GMEM_MOVEABLE, (UIntPtr)data.Length);
                 if (hGlobal == IntPtr.Zero)
                     return false;
 
-                IntPtr pGlobal = Libraries.MemoryApis.GlobalLock(hGlobal);
+                IntPtr pGlobal = MemoryApis.GlobalLock(hGlobal);
                 if (pGlobal == IntPtr.Zero)
                     return false;
 
                 Marshal.Copy(data, 0 , pGlobal, data.Length);
-                Libraries.MemoryApis.GlobalUnlock(hGlobal);
+                MemoryApis.GlobalUnlock(hGlobal);
 
-                IntPtr result = Libraries.ClipboardApis.SetClipboardData(format, hGlobal);
+                IntPtr result = ClipboardApis.SetClipboardData(format, hGlobal);
 
                 return result != IntPtr.Zero;
             }
             finally
             {
-                Libraries.ClipboardApis.CloseClipboard();
+                ClipboardApis.CloseClipboard();
             }
         }
         private static string ExtractUnicodeText()
         {
-            IntPtr hData = Libraries.ClipboardApis.GetClipboardData((uint)ClipboardFormat.CF_UNICODETEXT);
+            IntPtr hData = ClipboardApis.GetClipboardData((uint)ClipboardFormat.CF_UNICODETEXT);
             if (hData == IntPtr.Zero)
                 return string.Empty;
 
-            IntPtr pData = Libraries.MemoryApis.GlobalLock(hData);
+            IntPtr pData = MemoryApis.GlobalLock(hData);
             if (pData == IntPtr.Zero)
                 return string.Empty;
 
@@ -117,16 +118,16 @@ namespace VRemoteClient.Services.KeyboardService
             }
             finally
             {
-                Libraries.MemoryApis.GlobalUnlock(hData);
+                MemoryApis.GlobalUnlock(hData);
             }
         }
         private static string ExtractAnsiText()
         {
-            IntPtr hData = Libraries.ClipboardApis.GetClipboardData((uint)ClipboardFormat.CF_TEXT);
+            IntPtr hData = ClipboardApis.GetClipboardData((uint)ClipboardFormat.CF_TEXT);
             if (hData == IntPtr.Zero)
                 return string.Empty;
 
-            IntPtr pData = Libraries.MemoryApis.GlobalLock(hData);
+            IntPtr pData = MemoryApis.GlobalLock(hData);
             if (pData == IntPtr.Zero)
                 return string.Empty;
 
@@ -136,7 +137,7 @@ namespace VRemoteClient.Services.KeyboardService
             }
             finally
             {
-                Libraries.MemoryApis.GlobalUnlock(hData);
+                MemoryApis.GlobalUnlock(hData);
             }
         }
     }

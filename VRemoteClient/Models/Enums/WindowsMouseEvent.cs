@@ -5,6 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
+    [Flags]
     public enum WindowsMouseEvent: uint
     {
         MOUSEEVENTF_MOVE = 0x0001,

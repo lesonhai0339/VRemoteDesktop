@@ -11,7 +11,7 @@ using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
-using static VRemoteClient.Utils.Libraries;
+using static VRemoteClient.Utils.Win32Apis;
 
 namespace VRemoteClient.Services.MouseService
 {

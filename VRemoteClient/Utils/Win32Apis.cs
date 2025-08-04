@@ -1,14 +1,10 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Runtime.InteropServices;
-using System.Text;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ToolTip;
 
 namespace VRemoteClient.Utils
 {
-    public static class Libraries
+    public static class Win32Apis
     {
         //Keyboard Magic number, use in dwExtraInfo  of INPUT[] used to classify key pressed from USB or from virtual keyboard
         public const int WH_MOUSE_LL = 14;

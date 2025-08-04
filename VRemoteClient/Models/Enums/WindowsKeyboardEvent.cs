@@ -5,6 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
+    [Flags]
     public enum WindowsKeyboardEvent: int
     {
         WH_KEYBOARD_LL = 13,
