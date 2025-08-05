@@ -76,7 +76,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
             Task.Factory.StartNew(() =>
             {
                 ScreenHook = new GlobalScreenCapture(null, null);
-
             },TaskCreationOptions.LongRunning);
             if (!Worker.IsBusy)
             {

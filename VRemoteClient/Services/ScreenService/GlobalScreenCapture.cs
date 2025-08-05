@@ -21,7 +21,6 @@ namespace VRemoteClient.Services.ScreenService
     {
         void StartCapture();
         void StopCapture();
-        void Dispose();
         event EventHandler<CustomScreenEventArgs> ScreenEvent;
         bool IsCapturing { get; set; }
     }
