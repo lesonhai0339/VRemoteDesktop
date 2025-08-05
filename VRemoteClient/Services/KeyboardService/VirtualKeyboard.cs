@@ -8,8 +8,8 @@ using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
+using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
-using static VRemoteClient.Models.Enums.KeyboardEnums;
 using static VRemoteClient.Utils.Win32Apis;
 
 namespace VRemoteClient.Services.KeyboardService

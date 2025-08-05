@@ -18,7 +18,7 @@ using System.Collections.Concurrent;
 using System.ComponentModel;
 using VRemoteClient.Services.MouseService;
 using VRemoteClient.Services.RemoteClientService;
-using static VRemoteClient.Models.Enums.KeyboardEnums;
+using static VRemoteClient.Models.Enums.KeyState;
 
 namespace VRemoteClient.Services.RemoteDesktopService
 {
@@ -35,7 +35,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         private ClientInfo _ownerInfo;
 
         private GlobalKeyboardHook _globakKeyboardHook;
-        private GlobalScreenCapture _globakScreenHook;
+        private IGlobalScreenCapture _globakScreenHook;
         private RemoteClient _remoteClient;
         private ConnectionManager _connectionManager;
 
@@ -75,7 +75,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
             _connectionManager ??= new ConnectionManager();
             Task.Factory.StartNew(() =>
             {
-                ScreenHook = new GlobalScreenCapture();
+                ScreenHook = new GlobalScreenCapture(null, null);
 
             },TaskCreationOptions.LongRunning);
             if (!Worker.IsBusy)
@@ -122,7 +122,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 }
             }
         }
-        public GlobalScreenCapture ScreenHook
+        public IGlobalScreenCapture ScreenHook
         {
             get
             {
@@ -311,14 +311,14 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 if (ScreenTasks.Count >= 2)
                 {
                     // keep last frame and remove all previous frames
-                    var temp = new List<object>();
-                    while (ScreenTasks.TryDequeue(out var item) && temp.Count == 0)
+                    object? lastItem = null;
+                    while (ScreenTasks.TryDequeue(out var item))
                     {
-                        temp.Add(item);
+                        lastItem = item;
                     }
-                    foreach (var item in temp.Take(1))
+                    if (lastItem != null)
                     {
-                        ScreenTasks.Enqueue(item);
+                        ScreenTasks.Enqueue(lastItem);
                     }
                 }
                 ScreenTasks.Enqueue(task);
@@ -526,7 +526,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             try
             {
-                string data = Extensions.DataStringBuilder(new string[] { OwnerInfo.ToString() });
+                string data = Extensions.DataStringBuilder(new string[] { OwnerInfo.ToNetworkPacketString() });
                 byte[] dataBytes = Encoding.ASCII.GetBytes(data);
                 AddWork(new TaskObject
                 {

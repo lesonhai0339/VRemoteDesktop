@@ -92,7 +92,7 @@ namespace VRemoteClient.Services.MouseService
             }
             catch (Exception ex)
             {
-                return rectangle;
+                return new RectangleF(rectangle.X, rectangle.Y, rectangle.Width, rectangle.Height);
             }
         }
         public Point GetImagePointFromMouse(PictureBox pictureBox, int x, int y)
@@ -142,7 +142,7 @@ namespace VRemoteClient.Services.MouseService
                                           e.Button == MouseButtons.Middle ? WindowsMouseMessage.WM_MBUTTONDOWN :
                                           e.Button == MouseButtons.Right ? WindowsMouseMessage.WM_RBUTTONDOWN :
                                           WindowsMouseMessage.None;
-                    result =  ToString(width, height, button, MouseState.Down, e.X, e.Y);
+                    result = MouseEventToString(width, height, button, MouseState.Down, e.X, e.Y);
                     break;
 
                 case MouseEventType.DoubleClick:
@@ -150,29 +150,29 @@ namespace VRemoteClient.Services.MouseService
                                          e.Button == MouseButtons.Middle ? WindowsMouseMessage.WM_MBUTTONDBLCLK :
                                          e.Button == MouseButtons.Right ? WindowsMouseMessage.WM_RBUTTONDBLCLK :
                                          WindowsMouseMessage.None;
-                    result = ToString(width, height, dbButton, MouseState.Down, e.X, e.Y);
+                    result = MouseEventToString(width, height, dbButton, MouseState.Down, e.X, e.Y);
                     break;
                 case MouseEventType.TripleClick:
                     WindowsMouseMessage tbButton = WindowsMouseMessage.WM_BUTTONTRIPLECLICK;
-                    result = ToString(width, height, tbButton, MouseState.Down, e.X, e.Y);
+                    result = MouseEventToString(width, height, tbButton, MouseState.Down, e.X, e.Y);
                     break;
                 case MouseEventType.Wheel:
                     if (e.Delta > 0)
                     {
-                        result = ToString(width, height, WindowsMouseMessage.WM_MOUSEWHEEL, MouseState.Up, e.X, e.Y);
+                        result = MouseEventToString(width, height, WindowsMouseMessage.WM_MOUSEWHEEL, MouseState.Up, e.X, e.Y);
                     }
                     if (e.Delta < 0)
                     {
-                        result = ToString(width, height, WindowsMouseMessage.WM_MOUSEWHEEL, MouseState.Down, e.X, e.Y);
+                        result = MouseEventToString(width, height, WindowsMouseMessage.WM_MOUSEWHEEL, MouseState.Down, e.X, e.Y);
                     }
                     break;
 
                 case MouseEventType.Move:
-                    result = ToString(width, height, WindowsMouseMessage.WM_MOUSEMOVE, MouseState.Down, e.X, e.Y);
+                    result = MouseEventToString(width, height, WindowsMouseMessage.WM_MOUSEMOVE, MouseState.Down, e.X, e.Y);
                     break;
 
                 case MouseEventType.DragAndDrop:
-                    result = ToString(width, height, mouseMsg, mouseType, e.X, e.Y);
+                    result = MouseEventToString(width, height, mouseMsg, mouseType, e.X, e.Y);
                     break;
 
                 default:
@@ -181,7 +181,7 @@ namespace VRemoteClient.Services.MouseService
             }
             return result;
         }
-        public string ToString(int width, int height, WindowsMouseMessage button, MouseState action, int x, int y)
+        public string MouseEventToString(int width, int height, WindowsMouseMessage button, MouseState action, int x, int y)
         {
             return new StringBuilder()
                 .Append(width).Append("|")
@@ -206,7 +206,6 @@ namespace VRemoteClient.Services.MouseService
                 }
                 _disposed = true;
             }
-            _disposed = true;
         }
         #endregion
     }

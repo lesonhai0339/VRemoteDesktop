@@ -16,7 +16,7 @@ using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.KeyboardService;
 using VRemoteClient.Services.MouseService;
 using VRemoteClient.Utils;
-using static VRemoteClient.Models.Enums.KeyboardEnums;
+using static VRemoteClient.Models.Enums.KeyState;
 
 namespace VRemoteClient.Services.RemoteClientService
 {

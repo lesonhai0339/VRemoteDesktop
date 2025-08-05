@@ -5,9 +5,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
+using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.ConnectionService;
@@ -15,11 +17,18 @@ using VRemoteClient.Utils;
 
 namespace VRemoteClient.Services.ScreenService
 {
-    public class GlobalScreenCapture: IDisposable
+    public interface IGlobalScreenCapture: IDisposable
     {
-        private const int TIME_OUT = 10;
+        void StartCapture();
+        void StopCapture();
+        void Dispose();
+        event EventHandler<CustomScreenEventArgs> ScreenEvent;
+        bool IsCapturing { get; set; }
+    }
+    public class GlobalScreenCapture: IGlobalScreenCapture
+    {
         private const int CHUNK_SIZE = 8192;
-        private const int DEFAULT_FPS = 10;
+        private const int DEFAULT_FPS = 20;
         private readonly object _lock = new object(); // For thread safety. Can use ReadWriteLockSlim instead
 
         private volatile bool _isCapturing;
@@ -27,21 +36,21 @@ namespace VRemoteClient.Services.ScreenService
         private byte[] _buffer = new byte[20];
         private byte[] _dataSend;
 
-        private ScreenCapture _capture;
+        private IScreenCapture _capture;
+        private ScreenCaptureConfig _config;
         private BackgroundWorker _backgroundWorker;
         public event EventHandler<CustomScreenEventArgs> ScreenEvent;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
-        public GlobalScreenCapture()
+        public GlobalScreenCapture(ScreenCaptureConfig config, ScreenCapture screenCapture)
         {
-            var bounds = Screen.PrimaryScreen.Bounds;
-            int pixelCount = bounds.Width * bounds.Height;
-            int bufferSize = pixelCount > 3840000 ? 30 * 1024 * 1024 : 10 * 1024 * 1024; 
-
-            _dataSend = new byte[bufferSize];
-            _capture = new ScreenCapture(); 
-            
+            InitializeCapture(config, screenCapture);
+        }
+        private void InitializeCapture(ScreenCaptureConfig config, ScreenCapture screenCapture)
+        {
             IsCapturing = false;
-
+            _dataSend = new byte[1024 * 1024];
+            _config = config ?? new ScreenCaptureConfig();
+            _capture = screenCapture ?? new ScreenCapture(); 
             BackgroundWorker = new BackgroundWorker();
             BackgroundWorker.WorkerSupportsCancellation = true;
         }
@@ -106,12 +115,12 @@ namespace VRemoteClient.Services.ScreenService
                 var screens = _capture.GetScreen();
                 if (screens.Any())
                 {
-                    int totalSize = checked(screens.Sum(x => x.TotalSize));
+                    long totalSize = checked(screens.Sum(x => x.TotalSize));
                     ScreenType screenEnum = screens.Count == 1 && screens[0].IsFullScreen ? ScreenType.FULLSCREEN : ScreenType.REGIONSCREENS;
                     switch (screenEnum)
                     {
                         case ScreenType.FULLSCREEN:
-                            ScreenToChunks(screens[0]);
+                            ScreenToChunks(screens[0], totalSize);
                             break;
                         case ScreenType.REGIONSCREENS:
                             RegionsChangedToChunks(screens, totalSize);
@@ -129,43 +138,33 @@ namespace VRemoteClient.Services.ScreenService
             }
         }
         // Send full screen to sender at first connect
-        private void ScreenToChunks(ScreenRegion screen)
+        private void ScreenToChunks(ScreenRegion screen, long totalChunksSize)
         {
             try
             {
+                if(_dataSend.Length < totalChunksSize + 40)
+                {
+                    _dataSend = new byte[totalChunksSize + 40];
+                }
                 lock (_lock)
                 {
-                    byte[] screenCompressed = Extensions.CompressGzip(screen.Bytes);
-                    byte[] screenHashed = Encoding.ASCII.GetBytes(Extensions.SHAHash(screenCompressed));
-                    int dataLength = screenCompressed.Length + screenHashed.Length;
+                    byte[] screenCaptureCompressed = Extensions.CompressGzip(screen.Bytes);
+                    byte[] checksum = Encoding.ASCII.GetBytes(Extensions.SHAHash(screenCaptureCompressed));
+                    int dataLength = screenCaptureCompressed.Length + checksum.Length;
 
-                    //checksum
-                    Buffer.BlockCopy(screenHashed, 0, _dataSend, 0, screenHashed.Length);
-
-                    //data compressed
-                    Buffer.BlockCopy(screenCompressed, 0, _dataSend, screenHashed.Length, screenCompressed.Length);
-
-                    int numberOfChunk = (int)Math.Ceiling((double)dataLength / CHUNK_SIZE);
-
+                    _dataSend = ByteArrayUtils.Combine(checksum, screenCaptureCompressed);
+                    
                     CustomScreenEventArgs screenArgs = new CustomScreenEventArgs(
                         type: ResponseType.Screen,
                         totalSize: dataLength
                     );
-                    for (int i = 0; i < numberOfChunk; i++)
+
+                    var result = ByteArrayUtils.ByteArrayToListByteArray(_dataSend, dataLength, CHUNK_SIZE);
+                    if (result.Count > 0 )
                     {
-                        int offset = i * CHUNK_SIZE;
-                        int packetSize = Math.Min(CHUNK_SIZE, dataLength - i * CHUNK_SIZE);
-
-                        // Note: Cannot use a shared buffer here because Send() adds the task to a queue.
-                        // If a shared buffer is used, the next packet may overwrite the previous data,
-                        // causing all queued packets to contain the same (last) data.
-                        byte[] chunkData = new byte[packetSize];
-                        //data
-                        Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
-                        screenArgs.Data.Add(chunkData);
+                        screenArgs.Data = result;
+                        ScreenEvent?.Invoke(null, screenArgs);
                     }
-
-                    ScreenEvent?.Invoke(null, screenArgs);
                 }
             }
             catch (Exception ex)
@@ -174,49 +173,34 @@ namespace VRemoteClient.Services.ScreenService
             }
         }
         //Capture and send screen region change to sender
-        private void RegionsChangedToChunks(List<ScreenRegion> regions, int totalChunksSize)
+        private void RegionsChangedToChunks(List<ScreenRegion> regions, long totalChunksSize)
         {
             try
             {
+                if (_dataSend.Length < totalChunksSize + 40)
+                {
+                    _dataSend = new byte[totalChunksSize + 40];
+                }
                 lock (_lock)
                 {
-                    byte[] sourceChunks = MergeAllChunk(regions);
-                    byte[] chunksData = Extensions.CompressGzip(sourceChunks);
-                    byte[] chunksHashed = Encoding.ASCII.GetBytes(Extensions.SHAHash(chunksData)); //add hash to ensure data is correct
+                    byte[] mergedChangedRegions = ConvertChangedRegionsToByteArray(regions);
+                    byte[] changedRegionsCompressed = Extensions.CompressGzip(mergedChangedRegions);
+                    byte[] checksum = Encoding.ASCII.GetBytes(Extensions.SHAHash(changedRegionsCompressed)); //add hash to ensure data is correct
+                    
+                    int dataSendLength = changedRegionsCompressed.Length + checksum.Length;
 
-                    //headers always 5 bytes, 4 bytes for data length and 1 byte for command type, add more 40 bytes for hash string
-                    int numberOfChunk = (chunksData.Length + chunksHashed.Length + 8191) / 8192; // NumberPacketByTotalSIze(chunks.Length + 5); 
-
-                    int dataSendLength = chunksData.Length + chunksHashed.Length;
-
-                    //checksum
-                    Buffer.BlockCopy(chunksHashed, 0, _dataSend, 0, chunksHashed.Length);
-
-                    //data
-                    Buffer.BlockCopy(chunksData, 0, _dataSend, chunksHashed.Length, chunksData.Length);
+                    _dataSend = ByteArrayUtils.Combine(checksum, changedRegionsCompressed);
 
                     CustomScreenEventArgs chunksArgs = new CustomScreenEventArgs(
                        type: ResponseType.Chunks,
                        totalSize: dataSendLength
                     );
-                    //cut data to chunk(8192 bytes)  and send
-                    for (int i = 0; i < numberOfChunk; i++)
+                    var result = ByteArrayUtils.ByteArrayToListByteArray(_dataSend, dataSendLength, CHUNK_SIZE);
+                    if (result.Count > 0)
                     {
-                        int offset = i * CHUNK_SIZE;
-                        int remain = dataSendLength - offset;
-
-                        int packetSize = Math.Min(CHUNK_SIZE, remain);
-
-                        // Note: Cannot use a shared buffer here because Send() adds the task to a queue.
-                        // If a shared buffer is used, the next packet may overwrite the previous data,
-                        // causing all queued packets to contain the same (last) data.
-                        byte[] chunkData = new byte[packetSize];
-
-                        //data
-                        Buffer.BlockCopy(_dataSend, offset, chunkData, 0, packetSize);
-                        chunksArgs.Data.Add(chunkData);
+                        chunksArgs.Data = result;
+                        ScreenEvent?.Invoke(null, chunksArgs);
                     }
-                    ScreenEvent?.Invoke(null, chunksArgs);
                 }
             }
             catch (Exception ex)
@@ -224,35 +208,35 @@ namespace VRemoteClient.Services.ScreenService
                 Log.ForContext("FileName", "ScreenHook").Error(ex, "Chunks event error");
             }
         }
-        // Merge all chunks into a single byte array
-        private unsafe byte[] MergeAllChunk(List<ScreenRegion> blocks)
+        //private unsafe byte[] ConverChangedRegionsToByteArray(List<ScreenRegion> regions)
+        private byte[] ConvertChangedRegionsToByteArray(List<ScreenRegion> regions)
         {
             using (var ms = new MemoryStream())
             {
-                int count = blocks.Count;
+                int count = regions.Count;
 
                 for (int i = 0; i < count; i++)
                 {
 
-                    fixed (byte* p = _buffer)
-                    {
-                        int* pInt = (int*)p;
-                        pInt[0] = blocks[i].Bytes.Length; // Length of the chunk
-                        pInt[1] = blocks[i].Rectangle.X; // X coordinate of the rectangle
-                        pInt[2] = blocks[i].Rectangle.Y; // Y coordinate of the rectangle
-                        pInt[3] = blocks[i].Rectangle.Width; // Width of the rectangle
-                        pInt[4] = blocks[i].Rectangle.Height; // Height of the rectangle
+                    //fixed (byte* p = _buffer)
+                    //{
+                    //    int* pInt = (int*)p;
+                    //    pInt[0] = regions[i].Bytes.Length; // Length of the chunk
+                    //    pInt[1] = regions[i].Rectangle.X; // X coordinate of the rectangle
+                    //    pInt[2] = regions[i].Rectangle.Y; // Y coordinate of the rectangle
+                    //    pInt[3] = regions[i].Rectangle.Width; // Width of the rectangle
+                    //    pInt[4] = regions[i].Rectangle.Height; // Height of the rectangle
 
-                        //note: can write like this *(pInt + 1) = blocks[i].Rectangle.X; 
-                    }
-                    ms.Write(_buffer, 0, _buffer.Length); // Write the header
-                    ms.Write(blocks[i].Bytes, 0, blocks[i].Bytes.Length); // Write the chunk data
-                    //ms.Write(BitConverter.GetBytes(blocks[i].Bytes.Length), 0, 4);
-                    //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.X), 0, 4);
-                    //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Y), 0, 4);
-                    //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Width), 0, 4);
-                    //ms.Write(BitConverter.GetBytes(blocks[i].Rectangle.Height), 0, 4);
-                    //ms.Write(blocks[i].Bytes, 0, blocks[i].Bytes.Length);
+                    //    //note: can write like this *(pInt + 1) = blocks[i].Rectangle.X; 
+                    //}
+                    //ms.Write(_buffer, 0, _buffer.Length); // Write the header
+                    //ms.Write(regions[i].Bytes, 0, regions[i].Bytes.Length); // Write the chunk data
+                    ms.Write(BitConverter.GetBytes(regions[i].Bytes.Length), 0, 4);
+                    ms.Write(BitConverter.GetBytes(regions[i].Rectangle.X), 0, 4);
+                    ms.Write(BitConverter.GetBytes(regions[i].Rectangle.Y), 0, 4);
+                    ms.Write(BitConverter.GetBytes(regions[i].Rectangle.Width), 0, 4);
+                    ms.Write(BitConverter.GetBytes(regions[i].Rectangle.Height), 0, 4);
+                    ms.Write(regions[i].Bytes, 0, regions[i].Bytes.Length);
                 }
                 return ms.ToArray();
             }
@@ -284,6 +268,7 @@ namespace VRemoteClient.Services.ScreenService
                         _backgroundWorker.Dispose();
                     }
                 }
+                ScreenEvent = null;
                 _disposed = true;
             }
         }

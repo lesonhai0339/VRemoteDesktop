@@ -8,7 +8,7 @@ using System.Windows.Forms;
 using VRemoteClient.Models.CustomEvents;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Utils;
-using static VRemoteClient.Models.Enums.KeyboardEnums;
+using static VRemoteClient.Models.Enums.KeyState;
 using static VRemoteClient.Utils.Win32Apis;
 
 namespace VRemoteClient.Services.KeyboardService
@@ -19,7 +19,7 @@ namespace VRemoteClient.Services.KeyboardService
         private bool _disposed;
         private IntPtr _hookID;
         private HookApis.LowLevelProc _proc;
-        public HashSet<IntPtr> _windowsHandle; 
+        private HashSet<IntPtr> _windowsHandle; 
         public event EventHandler<CustomKeyMessageEventArgs> KeyPressed;
         public GlobalKeyboardHook() 
         {
@@ -81,6 +81,17 @@ namespace VRemoteClient.Services.KeyboardService
                 _hookID = IntPtr.Zero;
             }
         }
+        public string KeyboardEventTostring(IntPtr command, Keys modifier, Keys code, KeyState type)
+        {
+            return new StringBuilder()
+                    .Append((int)command)
+                    .Append("|")
+                    .Append((int)modifier)
+                    .Append("|")
+                    .Append((int)code)
+                    .Append("|")
+                    .Append((int)type).ToString();
+        }
         private bool IsHandleFocus(IntPtr handle)
         {
             return WindowApis.GetForegroundWindow() == handle;
@@ -122,7 +133,7 @@ namespace VRemoteClient.Services.KeyboardService
 
                     int vkCode = hookStruct.vkCode;
                     Keys key = (Keys)vkCode;
-                    KeyState keyState = wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYDOWN ? KeyState.KeyDown : KeyState.KeyUp;
+                    KeyState keyState = wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYDOWN ? KeyDown : KeyUp;
 
                     CustomKeyMessageEventArgs keyEventArgs;
 
@@ -181,17 +192,6 @@ namespace VRemoteClient.Services.KeyboardService
         private bool isLeftWindowKeyPressed()
         {
             return (KeyboardApis.GetAsyncKeyState((int)Keys.LWin) & 0x8000) != 0;
-        }
-        public string KeyboardEventTostring(IntPtr command, Keys modifier, Keys code, KeyState type)
-        {
-            return new StringBuilder()
-                    .Append((int)command)
-                    .Append("|")
-                    .Append((int)modifier)
-                    .Append("|")
-                    .Append((int)code)
-                    .Append("|")
-                    .Append((int)type).ToString();
         }
         ~GlobalKeyboardHook()
         {

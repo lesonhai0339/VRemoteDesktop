@@ -17,7 +17,13 @@ using static VRemoteClient.Utils.Win32Apis;
 
 namespace VRemoteClient.Services.ScreenService
 {
-    internal class ScreenCapture
+    public interface IScreenCapture : IDisposable
+    {
+        ScreenRegion GetCurrentScreen();
+        List<ScreenRegion> GetScreen();
+        void Renew();
+    }
+    public class ScreenCapture: IScreenCapture
     {
         private const int BLOCK_SIZE = 64; // Size of each block for change detection
         private bool _isDisposed = false;

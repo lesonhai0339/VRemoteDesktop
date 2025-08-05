@@ -184,7 +184,7 @@ namespace VRemoteClient.Services.MouseService
         /// <summary>
         /// Simulates a mouse wheel scroll event at a specified screen position.
         /// </summary>
-        public static bool MouseWheel(float scaleX, float scaleY, int x, int y, int wheelDelta)
+        private static bool MouseWheel(float scaleX, float scaleY, int x, int y, int wheelDelta)
         {
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);

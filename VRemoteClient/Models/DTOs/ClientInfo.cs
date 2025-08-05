@@ -31,7 +31,7 @@ namespace VRemoteClient.Models.Entities
         public string MinorVersion { get; set; }
         public string Ip { get; set; }
         public string Port { get; set; }
-        public override string ToString()
+        public string ToNetworkPacketString()
         {
             return string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}", Id, Password, ComputerName, Width, Height, MajorVersion, MinorVersion);
         }

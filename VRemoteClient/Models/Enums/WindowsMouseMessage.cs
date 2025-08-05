@@ -5,6 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
+    [Flags]
     public enum WindowsMouseMessage
     {
         None = 0x0000,

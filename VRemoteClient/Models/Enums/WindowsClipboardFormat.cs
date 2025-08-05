@@ -5,6 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
+    [Flags]
     public enum WindowsClipboardFormat : uint
     {
         CF_TEXT = 1,

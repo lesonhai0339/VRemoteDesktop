@@ -5,6 +5,7 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Security.Cryptography;
@@ -78,7 +79,6 @@ namespace VRemoteClient.Utils
                 return stream.ToArray();
             }
         }
-
         public static byte[] DecompressGzip(byte[] data)
         {
             using (MemoryStream input = new MemoryStream(data))
