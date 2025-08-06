@@ -88,6 +88,11 @@ namespace VRemoteClient
         }
         private string AddChatMessage(string userName, string data)
         {
+            if (fpnChat.InvokeRequired)
+            {
+                return (string)fpnChat.Invoke(new Func<string>(() => AddChatMessage(userName, data)));
+            }
+
             CustomRichTextBox tb = new CustomRichTextBox()
                 .SetMargin(5)
                 .Addcontent(userName, true)
