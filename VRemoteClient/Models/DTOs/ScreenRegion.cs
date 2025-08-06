@@ -13,13 +13,10 @@ namespace VRemoteClient.Models.Entities
         public byte[] Bytes { get; set; }
         public int TotalSize => Bytes?.Length ?? 0; // Total size of the captured bytes
 
-        ~ScreenRegion()
-        {
-            Dispose();
-        }
         public void Dispose()
         {
             Bytes = null;
+            GC.SuppressFinalize(this);
         }
     }
 }

@@ -151,18 +151,32 @@ namespace VRemoteClient.Services.ScreenService
                     byte[] checksum = Encoding.ASCII.GetBytes(Extensions.SHAHash(screenCaptureCompressed));
                     int dataLength = screenCaptureCompressed.Length + checksum.Length;
 
-                    _dataSend = ByteArrayUtils.Combine(checksum, screenCaptureCompressed);
+                    var combineResponse = ByteArrayUtils.Combine(checksum, screenCaptureCompressed);
+                    if (combineResponse.IsSuccess)
+                    {
+                        _dataSend = combineResponse.Data;
+                    }
+                    else
+                    {
+                        Log.ForContext("FileName", "ScreenHook").Error(combineResponse.Exception, "Error combining byte arrays");
+                        return;
+                    }
                     
                     CustomScreenEventArgs screenArgs = new CustomScreenEventArgs(
                         type: SocketDataType.Screen,
                         totalSize: dataLength
                     );
 
-                    var result = ByteArrayUtils.ByteArrayToListByteArray(_dataSend, dataLength, CHUNK_SIZE);
-                    if (result.Count > 0 )
+                    var byteArrayToListByteArrayResponse = ByteArrayUtils.ToListByteArray(_dataSend, dataLength, CHUNK_SIZE);
+                    if (byteArrayToListByteArrayResponse.IsSuccess)
                     {
-                        screenArgs.Data = result;
+                        screenArgs.Data = byteArrayToListByteArrayResponse.Data;
                         ScreenEvent?.Invoke(null, screenArgs);
+                    }
+                    else
+                    {
+                        Log.ForContext("FileName", "ScreenHook").Error(combineResponse.Exception, "Error byteArrayToListByteArrayResponse");
+                        return;
                     }
                 }
             }
@@ -188,17 +202,32 @@ namespace VRemoteClient.Services.ScreenService
                     
                     int dataSendLength = changedRegionsCompressed.Length + checksum.Length;
 
-                    _dataSend = ByteArrayUtils.Combine(checksum, changedRegionsCompressed);
+                    var combineResponse = ByteArrayUtils.Combine(checksum, changedRegionsCompressed);
+                    if (combineResponse.IsSuccess)
+                    {
+                        _dataSend = combineResponse.Data;
+                    }
+                    else
+                    {
+                        Log.ForContext("FileName", "ScreenHook").Error(combineResponse.Exception, "Error combining byte arrays");
+                        return;
+                    }
 
                     CustomScreenEventArgs chunksArgs = new CustomScreenEventArgs(
                        type: SocketDataType.Chunks,
                        totalSize: dataSendLength
                     );
-                    var result = ByteArrayUtils.ByteArrayToListByteArray(_dataSend, dataSendLength, CHUNK_SIZE);
-                    if (result.Count > 0)
+
+                    var byteArrayToListByteArrayResponse = ByteArrayUtils.ToListByteArray(_dataSend, dataSendLength, CHUNK_SIZE);
+                    if (byteArrayToListByteArrayResponse.IsSuccess)
                     {
-                        chunksArgs.Data = result;
+                        chunksArgs.Data = byteArrayToListByteArrayResponse.Data;
                         ScreenEvent?.Invoke(null, chunksArgs);
+                    }
+                    else
+                    {
+                        Log.ForContext("FileName", "ScreenHook").Error(combineResponse.Exception, "Error byteArrayToListByteArrayResponse");
+                        return;
                     }
                 }
             }

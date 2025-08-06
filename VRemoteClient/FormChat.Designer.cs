@@ -63,6 +63,7 @@ namespace VRemoteClient
             this.btnSendAttachment.TabIndex = 2;
             this.btnSendAttachment.UseMnemonic = false;
             this.btnSendAttachment.UseVisualStyleBackColor = true;
+            this.btnSendAttachment.Click += new System.EventHandler(this.btnSendAttachment_Click);
             // 
             // fpnChat
             // 

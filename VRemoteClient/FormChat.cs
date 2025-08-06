@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomLayouts;
+using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.RemoteDesktopService;
@@ -104,7 +105,7 @@ namespace VRemoteClient
         }
         private void button1_Click(object sender, EventArgs e)
         {
-            string userName = "Anonymous";
+            string userName = "Me";
             string data = this.txtChatContent.Text;
 
             var tb = AddChatMessage(userName, data);
@@ -119,6 +120,23 @@ namespace VRemoteClient
                 SessionId = _connectionInfo.SessionId,
                 IsSendHeader = true
             }, Models.Enums.DataType.Command);
+        }
+
+        private void btnSendAttachment_Click(object sender, EventArgs e)
+        {
+            using (var dialog= new OpenFileDialog())
+            {
+                DialogResult result = dialog.ShowDialog();
+                if(result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
+                {
+                    string seletecdPath = dialog.FileName;
+                    var response = Utils.ByteArrayUtils.FileToByteArray(seletecdPath);
+                    if (response.IsSuccess)
+                    {
+                    }
+                    MessageBox.Show(seletecdPath);
+                }
+            }
         }
     }
 }
