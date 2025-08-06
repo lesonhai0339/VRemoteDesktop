@@ -43,6 +43,7 @@ namespace VRemoteClient.Services.RemoteClientService
         public event Action<byte[]> MouseReceivedEvent;
         public event Action<byte[]> ClipboardReceivedEvent;
         public event Action<bool, string> P2PDisconnectedEvent;
+        public event Action<byte[]> ChatMessageEvent;
         public RemoteClient(ClientInfo me)
         {
             _isSocketConnected = false;
@@ -131,52 +132,55 @@ namespace VRemoteClient.Services.RemoteClientService
                     {
                         switch (task.Type)
                         {
-                            case ResponseType.Login:
+                            case SocketDataType.Login:
                                 LoginEvent?.Invoke(true);
                                 break;
-                            case ResponseType.P2PConnect:
+                            case SocketDataType.P2PConnect:
                                 IsP2PConnected = true;
                                 P2PConnectEvent?.Invoke(true, task.Data);
                                 break;
-                            case ResponseType.Disconnect:
+                            case SocketDataType.Disconnect:
                                 break;
-                            case ResponseType.Ping:
+                            case SocketDataType.Ping:
                                 break;
-                            case ResponseType.Pong:
+                            case SocketDataType.Pong:
                                 Console.WriteLine("Pong received from server");
                                 break;
-                            case ResponseType.Screen:
+                            case SocketDataType.Screen:
                                 ScreenEvent?.Invoke(task.Data);
                                 break;
-                            case ResponseType.Chunks:
+                            case SocketDataType.Chunks:
                                 ChunksEvent?.Invoke(task.Data);
                                 break;
-                            case ResponseType.ScreenOk:
+                            case SocketDataType.ScreenOk:
                                 ScreenSuccessEvent?.Invoke(true);
                                 break;
-                            case ResponseType.ChunksOk:
+                            case SocketDataType.ChunksOk:
                                 ChunksSuccessEvent?.Invoke(true);
                                 break;
-                            case ResponseType.Keyboard:
+                            case SocketDataType.Keyboard:
                                 KeyboardReceivedEvent?.Invoke(task.Data);
                                 break;
-                            case ResponseType.Mouse:
+                            case SocketDataType.Mouse:
                                 MouseReceivedEvent?.Invoke(task.Data);
                                 break;
-                            case ResponseType.Clipboard:
+                            case SocketDataType.Clipboard:
                                 ClipboardReceivedEvent?.Invoke(task.Data);
                                 break;
-                            case ResponseType.Error:
+                            case SocketDataType.Error:
                                 break;
-                            case ResponseType.LoginFailed:
+                            case SocketDataType.LoginFailed:
                                 LoginEvent?.Invoke(false);
                                 break;
-                            case ResponseType.P2PDisconnect:
+                            case SocketDataType.P2PDisconnect:
                                 IsP2PConnected = false;
                                 P2PDisconnectedEvent?.Invoke(true, task.SessionId);
                                 break;
-                            case ResponseType.P2PConnectFailed:
+                            case SocketDataType.P2PConnectFailed:
                                 P2PConnectEvent?.Invoke(false, task.Data);
+                                break;
+                            case SocketDataType.Message:
+                                ChatMessageEvent?.Invoke(task.Data);
                                 break;
                             default:
                                 break;
@@ -323,7 +327,7 @@ namespace VRemoteClient.Services.RemoteClientService
                 string sessionId = Encoding.ASCII.GetString(sessionIdBytes);
                 int length = BitConverter.ToInt32(bytes, 16);
 
-                ResponseType commandType = (ResponseType)bytes[20];
+                SocketDataType commandType = (SocketDataType)bytes[20];
 
                 byte[] data = new byte[bytes.Length - 20];
                 Buffer.BlockCopy(bytes, 20, data, 0, data.Length);

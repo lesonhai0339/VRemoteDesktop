@@ -36,6 +36,7 @@ namespace VRemoteServer.Utils
             ScreenOk = 0x0C,
             ChunksOk = 0x0D,
             Clipboard = 0x0E,
+            Message = 0x0F,
 
             LoginFailed = 0x90,
             P2PDisconnect = 0x91,

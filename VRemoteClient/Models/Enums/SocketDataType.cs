@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteClient.Models.Enums
 {
-    public enum ResponseType: byte
+    public enum SocketDataType: byte
     {
         None = 0x00,
         Login = 0x01,
@@ -21,6 +21,7 @@ namespace VRemoteClient.Models.Enums
         ScreenOk = 0x0C,
         ChunksOk = 0x0D,
         Clipboard = 0x0E,
+        Message = 0x0F,
 
         LoginFailed = 0x90,
         P2PDisconnect = 0x91,

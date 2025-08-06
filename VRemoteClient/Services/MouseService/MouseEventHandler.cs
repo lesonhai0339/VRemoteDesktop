@@ -44,7 +44,7 @@ namespace VRemoteClient.Services.MouseService
                 {
                     Task = new TaskObject
                     {
-                        TaskType = ResponseType.Mouse,
+                        TaskType = SocketDataType.Mouse,
                         SessionId = sessionId,
                         Data = Encoding.ASCII.GetBytes(mouseEventString)
                     }

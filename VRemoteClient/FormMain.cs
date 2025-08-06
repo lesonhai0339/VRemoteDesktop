@@ -15,6 +15,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
+using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.RemoteDesktopService;
 using VRemoteClient.Utils;
 
@@ -127,7 +128,7 @@ namespace VRemoteClient
                 g.FillEllipse(brush, 1, 1, pnStatus.Width - 2, pnStatus.Height - 2);
             }
         }
-        private void P2PConnectEvent(bool flag, ConnectionInfo? info)
+        private void P2PConnectEvent(ClientType type, bool flag, ConnectionInfo? info)
         {
             if (!flag)
             {
@@ -138,10 +139,21 @@ namespace VRemoteClient
                 if(info != null)
                 {
                     _resetEvent.Set();
-                    _connectionInfo = info;
+                    if(type == ClientType.SENDER)
+                    {
+                        _connectionInfo = info;
+                    }
+                    InitChatForm(RemoteDesktop, info);
                 }
             }
         }
+
+        private void InitChatForm(RemoteDesktop remoteDesktop, ConnectionInfo info)
+        {
+            FormChat frmChat = new FormChat(remoteDesktop, info);
+            frmChat.Show();
+        }
+
         private void ConnectServerEvent(bool flag)
         {
             if(!flag) MessageBox.Show("Kết nối đến máy chủ thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);

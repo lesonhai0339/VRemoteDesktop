@@ -175,7 +175,7 @@ namespace VRemoteClient
                 {
                     TaskObject disConnectTask = new TaskObject 
                     {
-                        TaskType = Models.Enums.ResponseType.P2PDisconnect,
+                        TaskType = Models.Enums.SocketDataType.P2PDisconnect,
                         SessionId = _connectionInfo.SessionId,
                         IsSendHeader = true
                     };
@@ -471,7 +471,7 @@ namespace VRemoteClient
 
             TryAddWork(new TaskObject
             {
-                TaskType = (e.Combination == KeyCombination.Copy) ? ResponseType.Clipboard : ResponseType.Keyboard,
+                TaskType = (e.Combination == KeyCombination.Copy) ? SocketDataType.Clipboard : SocketDataType.Keyboard,
                 SessionId = _connectionInfo.SessionId,
                 Data = Encoding.UTF8.GetBytes(keyCommandString)
             });
@@ -560,7 +560,7 @@ namespace VRemoteClient
 
                 TryAddWork(new TaskObject
                 {
-                    TaskType = ResponseType.ScreenOk
+                    TaskType = SocketDataType.ScreenOk
                 });
             }
             catch (Exception ex)
@@ -604,7 +604,7 @@ namespace VRemoteClient
 
                 TryAddWork(new TaskObject
                 {
-                    TaskType = Models.Enums.ResponseType.ChunksOk
+                    TaskType = Models.Enums.SocketDataType.ChunksOk
                 });
             }
             catch(Exception ex)

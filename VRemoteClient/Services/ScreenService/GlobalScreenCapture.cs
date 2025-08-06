@@ -154,7 +154,7 @@ namespace VRemoteClient.Services.ScreenService
                     _dataSend = ByteArrayUtils.Combine(checksum, screenCaptureCompressed);
                     
                     CustomScreenEventArgs screenArgs = new CustomScreenEventArgs(
-                        type: ResponseType.Screen,
+                        type: SocketDataType.Screen,
                         totalSize: dataLength
                     );
 
@@ -191,7 +191,7 @@ namespace VRemoteClient.Services.ScreenService
                     _dataSend = ByteArrayUtils.Combine(checksum, changedRegionsCompressed);
 
                     CustomScreenEventArgs chunksArgs = new CustomScreenEventArgs(
-                       type: ResponseType.Chunks,
+                       type: SocketDataType.Chunks,
                        totalSize: dataSendLength
                     );
                     var result = ByteArrayUtils.ByteArrayToListByteArray(_dataSend, dataSendLength, CHUNK_SIZE);

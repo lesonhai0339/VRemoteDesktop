@@ -48,7 +48,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
         public event Action<bool> ConnectServerEvent;
         public event Action<bool> LoginEvent;
-        public event Action<bool, ConnectionInfo> P2PConnectEvent;
+        public event Action<ClientType, bool, ConnectionInfo> P2PConnectEvent;
         public event Action<object, CustomKeyMessageEventArgs> KeyboardEvent;
         public event Action<byte[]> ScreenEvent;
         public event Action<byte[]> ChunksEvent;
@@ -172,6 +172,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                         _remoteClient.KeyboardReceivedEvent -= KeyboardReceivedEventHandler;
                         _remoteClient.P2PDisconnectedEvent -= P2PDisconnectedEventhandler;
                         _remoteClient.ClipboardReceivedEvent -= ClipboardReceivedEventHandler;
+                        _remoteClient.ChatMessageEvent -= ChatMessageEventHandler;
                     }
                     _remoteClient = value;
                     if (_remoteClient != null)
@@ -187,11 +188,15 @@ namespace VRemoteClient.Services.RemoteDesktopService
                         _remoteClient.KeyboardReceivedEvent += KeyboardReceivedEventHandler;
                         _remoteClient.P2PDisconnectedEvent += P2PDisconnectedEventhandler;
                         _remoteClient.ClipboardReceivedEvent += ClipboardReceivedEventHandler;
+                        _remoteClient.ChatMessageEvent += ChatMessageEventHandler;
 
                     }
                 }
             }
         }
+
+
+
         public BackgroundWorker Worker
         {
             get => _backgroundWorker;
@@ -478,7 +483,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
                 AddWork(new TaskObject
                 {
-                    TaskType = ResponseType.P2PConnect,
+                    TaskType = SocketDataType.P2PConnect,
                     Data = data
                 });
             }
@@ -529,7 +534,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 byte[] dataBytes = Encoding.ASCII.GetBytes(data);
                 AddWork(new TaskObject
                 {
-                    TaskType = ResponseType.Login,
+                    TaskType = SocketDataType.Login,
                     Data = dataBytes,
                     IsSendHeader = true
                 });
@@ -588,7 +593,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             if(!flag)
             {
-                P2PConnectEvent?.Invoke(false, null);
+                P2PConnectEvent?.Invoke(ClientType.NONE,false, null);
                 return;
             }               
             try
@@ -600,6 +605,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                     if (connectionInfo.Sender != null)
                     {
                         connectionInfo.Receiver = OwnerInfo;
+                        P2PConnectEvent?.Invoke(ClientType.RECEIVER, true, connectionInfo);
                         if (!ScreenHook.IsCapturing)
                         {
                             StartScreenHook();
@@ -608,7 +614,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                     else
                     {
                         connectionInfo.Sender = OwnerInfo;
-                        P2PConnectEvent?.Invoke(true, connectionInfo);
+                        P2PConnectEvent?.Invoke(ClientType.SENDER ,true, connectionInfo);
                     }
                 }
             }
@@ -700,7 +706,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 {
                     AddWork(new TaskObject
                     {
-                        TaskType = ResponseType.Clipboard,
+                        TaskType = SocketDataType.Clipboard,
                         SessionId = connection.SessionId,
                         Data = Encoding.UTF8.GetBytes(clipboard),
                     });
@@ -769,6 +775,13 @@ namespace VRemoteClient.Services.RemoteDesktopService
         private void ScreenSuccessEventHandler(bool flag)
         {
             
+        }
+        private void ChatMessageEventHandler(byte[] obj)
+        {
+            byte[] bytes = new byte[obj.Length - 1];
+            Buffer.BlockCopy(obj, 1, bytes, 0, obj.Length - 1);
+            string message = Encoding.UTF8.GetString(bytes);
+            Console.WriteLine("Message received: "+ message);
         }
         public void Dispose()
         {
@@ -846,7 +859,9 @@ namespace VRemoteClient.Services.RemoteDesktopService
                             _remoteClient.KeyboardReceivedEvent -= KeyboardReceivedEventHandler;
                             _remoteClient.P2PDisconnectedEvent -= P2PDisconnectedEventhandler;
                             _remoteClient.ClipboardReceivedEvent -= ClipboardReceivedEventHandler;
+                            _remoteClient.ChatMessageEvent -= ChatMessageEventHandler;
 
+                         
                             _remoteClient.Dispose();
                         }
                     }

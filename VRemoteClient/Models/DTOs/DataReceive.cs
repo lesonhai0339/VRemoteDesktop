@@ -8,7 +8,7 @@ namespace VRemoteClient.Models.DTOs
 {
     public class DataReceive
     {
-        public ResponseType Type { get; set; }
+        public SocketDataType Type { get; set; }
         public string SessionId { get; set; }
         public int Length { get; set; }
         public byte[] Data { get; set; }

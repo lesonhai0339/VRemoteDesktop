@@ -21,7 +21,7 @@ namespace VRemoteClient.Models.Entities
         {
         }
 
-        public ResponseType TaskType { get; set; } = ResponseType.None;
+        public SocketDataType TaskType { get; set; } = SocketDataType.None;
         public string SessionId { get; set; } = "0000000000000000";
         public byte[] Data { get; set; }= new byte[0];
         public int Length => Data?.Length ?? 0;
