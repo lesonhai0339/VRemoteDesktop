@@ -8,12 +8,14 @@ using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomLayouts;
 using VRemoteClient.Models.Entities;
+using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.RemoteDesktopService;
 
 namespace VRemoteClient
 {
     public partial class FormChat : Form
     {
+        private readonly object _lockObject = new object();
         private RemoteDesktop _remoteDesktop;
         private ConnectionInfo _connectionInfo;
         public FormChat(RemoteDesktop remoteDesktop, ConnectionInfo connectionInfo)
@@ -30,6 +32,39 @@ namespace VRemoteClient
             _remoteDesktop ??= remoteDesktop;
             _connectionInfo ??= connectionInfo;
         }
+        #region Properties
+        public RemoteDesktop RemoteDesktop
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _remoteDesktop;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    if (_remoteDesktop != null)
+                    {
+                        _remoteDesktop.ChatMessageEvent -= ChatMessageEventHandler;
+                    }
+                    _remoteDesktop = value;
+                    if(_remoteDesktop != null)
+                    {
+                        _remoteDesktop.ChatMessageEvent += ChatMessageEventHandler;
+                    }
+                }
+            }
+        }
+
+        private void ChatMessageEventHandler(byte[] obj)
+        {
+            string message = Encoding.UTF8.GetString(obj);
+            AddChatMessage("Sender", message);
+        }
+        #endregion
         private void ConfigDefaultFormPosition()
         {
             Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
@@ -51,13 +86,8 @@ namespace VRemoteClient
         {
             ConfigDefaultFormPosition();
         }
-
-        private void button1_Click(object sender, EventArgs e)
+        private string AddChatMessage(string userName, string data)
         {
-            string userName = "Anonymous";
-            string data = this.txtChatContent.Text;
-            Label lb = new Label();
-            lb.MaximumSize = new Size(); ;
             CustomRichTextBox tb = new CustomRichTextBox()
                 .SetMargin(5)
                 .Addcontent(userName, true)
@@ -65,11 +95,22 @@ namespace VRemoteClient
                 .Addcontent(data)
                 .SetAutoHeight(fpnChat.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 10);
             fpnChat.Controls.Add(tb);
+            return tb.Text;
+        }
+        private void button1_Click(object sender, EventArgs e)
+        {
+            string userName = "Anonymous";
+            string data = this.txtChatContent.Text;
 
+            var tb = AddChatMessage(userName, data);
+            AddWork(SocketDataType.Message, tb);
+        }
+        private void AddWork(SocketDataType type, string data)
+        {
             _remoteDesktop.AddWork(new TaskObject
             {
-                TaskType = Models.Enums.SocketDataType.Message,
-                Data = Encoding.UTF8.GetBytes(tb.Text),
+                TaskType = type,
+                Data = Encoding.UTF8.GetBytes(data),
                 SessionId = _connectionInfo.SessionId,
                 IsSendHeader = true
             }, Models.Enums.DataType.Command);

@@ -53,6 +53,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         public event Action<byte[]> ScreenEvent;
         public event Action<byte[]> ChunksEvent;
         public event Action<bool> P2PDisconnect;
+        public event Action<byte[]> ChatMessageEvent;
         public RemoteDesktop()
         {
             OwnerInfo = Extensions.InitInfo();
@@ -780,8 +781,8 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             byte[] bytes = new byte[obj.Length - 1];
             Buffer.BlockCopy(obj, 1, bytes, 0, obj.Length - 1);
-            string message = Encoding.UTF8.GetString(bytes);
-            Console.WriteLine("Message received: "+ message);
+
+            ChatMessageEvent?.Invoke(bytes);
         }
         public void Dispose()
         {
