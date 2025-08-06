@@ -22,6 +22,7 @@ namespace VRemoteClient.Models.Enums
         ChunksOk = 0x0D,
         Clipboard = 0x0E,
         Message = 0x0F,
+        FileTransfer = 0x10,
 
         LoginFailed = 0x90,
         P2PDisconnect = 0x91,

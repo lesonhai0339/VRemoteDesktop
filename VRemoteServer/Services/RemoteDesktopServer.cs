@@ -69,6 +69,7 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.ChunksOk:
                         case Enums.CommandType.Clipboard:
                         case Enums.CommandType.Message:
+                        case Enums.CommandType.FileTransfer:
                             await P2PCommand(task);
                             break;
                         case Enums.CommandType.P2PDisconnect:

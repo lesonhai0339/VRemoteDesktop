@@ -11,6 +11,7 @@ using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.RemoteDesktopService;
+using VRemoteClient.Utils;
 
 namespace VRemoteClient
 {
@@ -109,14 +110,14 @@ namespace VRemoteClient
             string data = this.txtChatContent.Text;
 
             var tb = AddChatMessage(userName, data);
-            AddWork(SocketDataType.Message, tb);
+            AddWork(SocketDataType.Message, Encoding.ASCII.GetBytes(tb));
         }
-        private void AddWork(SocketDataType type, string data)
+        private void AddWork(SocketDataType type, byte[] data)
         {
             _remoteDesktop.AddWork(new TaskObject
             {
                 TaskType = type,
-                Data = Encoding.UTF8.GetBytes(data),
+                Data = data,
                 SessionId = _connectionInfo.SessionId,
                 IsSendHeader = true
             }, Models.Enums.DataType.Command);
@@ -133,6 +134,14 @@ namespace VRemoteClient
                     var response = Utils.ByteArrayUtils.FileToByteArray(seletecdPath);
                     if (response.IsSuccess)
                     {
+                        byte[] compressed = Utils.Extensions.Compress(response.Data);
+                        string hashedString = Utils.Extensions.SHAHash(compressed);
+                        byte[] hashed = Encoding.ASCII.GetBytes(hashedString);
+                        var rsp = ByteArrayUtils.Combine(hashed, compressed);
+                        if (rsp.IsSuccess)
+                        {
+                            AddWork(SocketDataType.FileTransfer, rsp.Data);
+                        }
                     }
                     MessageBox.Show(seletecdPath);
                 }
