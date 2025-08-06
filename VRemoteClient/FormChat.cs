@@ -29,7 +29,7 @@ namespace VRemoteClient
         }
         private void Init(RemoteDesktop remoteDesktop, ConnectionInfo connectionInfo)
         {
-            _remoteDesktop ??= remoteDesktop;
+            RemoteDesktop ??= remoteDesktop;
             _connectionInfo ??= connectionInfo;
         }
         #region Properties
