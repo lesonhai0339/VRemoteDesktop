@@ -1,4 +1,6 @@
-﻿namespace VRemoteClient
+﻿using System;
+
+namespace VRemoteClient
 {
     partial class FormChat
     {
@@ -81,11 +83,13 @@
             this.Name = "FormChat";
             this.Text = "FormChat";
             this.Load += new System.EventHandler(this.FormChat_Load);
+            this.Shown += new System.EventHandler(this.FormChat_Shown);
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
 
+   
         #endregion
 
         private System.Windows.Forms.TextBox txtChatContent;

@@ -23,7 +23,7 @@ namespace VRemoteClient
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new FormChat());
+            Application.Run(new FormMain());
         }
     }
 }

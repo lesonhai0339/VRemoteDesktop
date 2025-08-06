@@ -46,6 +46,9 @@ namespace VRemoteClient
         }
         private void FormChat_Load(object sender, EventArgs e)
         {
+        }
+        private void FormChat_Shown(object sender, EventArgs e)
+        {
             ConfigDefaultFormPosition();
         }
 

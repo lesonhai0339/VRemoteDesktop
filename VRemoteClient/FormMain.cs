@@ -150,6 +150,12 @@ namespace VRemoteClient
 
         private void InitChatForm(RemoteDesktop remoteDesktop, ConnectionInfo info)
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => InitChatForm(remoteDesktop, info)));
+                return;
+            }
+
             FormChat frmChat = new FormChat(remoteDesktop, info);
             frmChat.Show();
         }
@@ -203,14 +209,24 @@ namespace VRemoteClient
                     Receiver = _connectionInfo.Receiver,
                     Sender = _connectionInfo.Sender
                 };
-                FormRemote frmRemote = new FormRemote(RemoteDesktop, info);
-                frmRemote.Show();
+                OpenControlForm(RemoteDesktop, info);
+
                 _connectionInfo = null;
             }
             else
             {
                 MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+        private void OpenControlForm(RemoteDesktop remote, ConnectionInfo info)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => OpenControlForm(remote, info)));
+                return;
+            }
+            FormRemote frmRemote = new FormRemote(remote, info);
+            frmRemote.Show();
         }
     }
 }
