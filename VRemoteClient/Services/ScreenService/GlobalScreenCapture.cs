@@ -151,33 +151,16 @@ namespace VRemoteClient.Services.ScreenService
                     byte[] checksum = Encoding.ASCII.GetBytes(StringBuilderUtils.SHAHash(screenCaptureCompressed));
                     int dataLength = screenCaptureCompressed.Length + checksum.Length;
 
-                    var combineResponse = ByteArrayUtils.Combine(checksum, screenCaptureCompressed);
-                    if (combineResponse.IsSuccess)
-                    {
-                        _dataSend = combineResponse.Data;
-                    }
-                    else
-                    {
-                        Log.ForContext("FileName", "ScreenHook").Error(combineResponse.Exception, "Error combining byte arrays");
-                        return;
-                    }
-                    
+                    var byteCombined = ByteArrayUtils.Combine(checksum, screenCaptureCompressed).GetResult();
+                    _dataSend = byteCombined;
                     CustomScreenEventArgs screenArgs = new CustomScreenEventArgs(
                         type: SocketDataType.Screen,
                         totalSize: dataLength
                     );
 
-                    var byteArrayToListByteArrayResponse = ByteArrayUtils.ToListByteArray(_dataSend, dataLength, CHUNK_SIZE);
-                    if (byteArrayToListByteArrayResponse.IsSuccess)
-                    {
-                        screenArgs.Data = byteArrayToListByteArrayResponse.Data;
-                        ScreenEvent?.Invoke(null, screenArgs);
-                    }
-                    else
-                    {
-                        Log.ForContext("FileName", "ScreenHook").Error(combineResponse.Exception, "Error byteArrayToListByteArrayResponse");
-                        return;
-                    }
+                    var byteArrayToListByteArray = ByteArrayUtils.ToListByteArray(_dataSend, dataLength, CHUNK_SIZE).GetResult();
+                    screenArgs.Data = byteArrayToListByteArray;
+                    ScreenEvent?.Invoke(null, screenArgs);
                 }
             }
             catch (Exception ex)
@@ -202,33 +185,18 @@ namespace VRemoteClient.Services.ScreenService
                     
                     int dataSendLength = changedRegionsCompressed.Length + checksum.Length;
 
-                    var combineResponse = ByteArrayUtils.Combine(checksum, changedRegionsCompressed);
-                    if (combineResponse.IsSuccess)
-                    {
-                        _dataSend = combineResponse.Data;
-                    }
-                    else
-                    {
-                        Log.ForContext("FileName", "ScreenHook").Error(combineResponse.Exception, "Error combining byte arrays");
-                        return;
-                    }
+                    var byteCombined = ByteArrayUtils.Combine(checksum, changedRegionsCompressed).GetResult(); ;
+                    _dataSend = byteCombined;
+
 
                     CustomScreenEventArgs chunksArgs = new CustomScreenEventArgs(
                        type: SocketDataType.Chunks,
                        totalSize: dataSendLength
                     );
 
-                    var byteArrayToListByteArrayResponse = ByteArrayUtils.ToListByteArray(_dataSend, dataSendLength, CHUNK_SIZE);
-                    if (byteArrayToListByteArrayResponse.IsSuccess)
-                    {
-                        chunksArgs.Data = byteArrayToListByteArrayResponse.Data;
-                        ScreenEvent?.Invoke(null, chunksArgs);
-                    }
-                    else
-                    {
-                        Log.ForContext("FileName", "ScreenHook").Error(combineResponse.Exception, "Error byteArrayToListByteArrayResponse");
-                        return;
-                    }
+                    var byteArrayToListByteArray = ByteArrayUtils.ToListByteArray(_dataSend, dataSendLength, CHUNK_SIZE).GetResult();
+                    chunksArgs.Data = byteArrayToListByteArray;
+                    ScreenEvent?.Invoke(null, chunksArgs);
                 }
             }
             catch (Exception ex)
