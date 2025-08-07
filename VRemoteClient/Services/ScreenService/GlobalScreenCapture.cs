@@ -147,8 +147,8 @@ namespace VRemoteClient.Services.ScreenService
                 }
                 lock (_lock)
                 {
-                    byte[] screenCaptureCompressed = Extensions.CompressGzip(screen.Bytes);
-                    byte[] checksum = Encoding.ASCII.GetBytes(Extensions.SHAHash(screenCaptureCompressed));
+                    byte[] screenCaptureCompressed = ByteArrayUtils.CompressGzip(screen.Bytes).GetResult();
+                    byte[] checksum = Encoding.ASCII.GetBytes(StringBuilderUtils.SHAHash(screenCaptureCompressed));
                     int dataLength = screenCaptureCompressed.Length + checksum.Length;
 
                     var combineResponse = ByteArrayUtils.Combine(checksum, screenCaptureCompressed);
@@ -197,8 +197,8 @@ namespace VRemoteClient.Services.ScreenService
                 lock (_lock)
                 {
                     byte[] mergedChangedRegions = ConvertChangedRegionsToByteArray(regions);
-                    byte[] changedRegionsCompressed = Extensions.CompressGzip(mergedChangedRegions);
-                    byte[] checksum = Encoding.ASCII.GetBytes(Extensions.SHAHash(changedRegionsCompressed)); //add hash to ensure data is correct
+                    byte[] changedRegionsCompressed = ByteArrayUtils.CompressGzip(mergedChangedRegions).GetResult();
+                    byte[] checksum = Encoding.ASCII.GetBytes(StringBuilderUtils.SHAHash(changedRegionsCompressed)); //add hash to ensure data is correct
                     
                     int dataSendLength = changedRegionsCompressed.Length + checksum.Length;
 

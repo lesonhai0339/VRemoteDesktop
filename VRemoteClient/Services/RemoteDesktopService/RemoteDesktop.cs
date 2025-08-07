@@ -56,7 +56,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         public event Action<byte[]> ChatMessageEvent;
         public RemoteDesktop()
         {
-            OwnerInfo = Extensions.InitInfo();
+            OwnerInfo = StringBuilderUtils.InitInfo();
 
             ScreenTasks = new ConcurrentQueue<object>();
             CommandTasks = new ConcurrentQueue<object>();
@@ -473,7 +473,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 string id = partnerId.Replace(" ", "");
                 string password = partnerPassword.Replace(" ", "");
 
-                string dataString = Extensions.DataStringBuilder(
+                string dataString = StringBuilderUtils.DataStringBuilder(
                     new string[] { 
                         OwnerInfo.Id,
                         id,
@@ -531,7 +531,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             try
             {
-                string data = Extensions.DataStringBuilder(new string[] { OwnerInfo.ToNetworkPacketString() });
+                string data = StringBuilderUtils.DataStringBuilder(new string[] { OwnerInfo.ToNetworkPacketString() });
                 byte[] dataBytes = Encoding.ASCII.GetBytes(data);
                 AddWork(new TaskObject
                 {

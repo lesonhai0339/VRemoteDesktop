@@ -7,7 +7,6 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomLayouts;
-using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.RemoteDesktopService;
@@ -130,20 +129,29 @@ namespace VRemoteClient
                 DialogResult result = dialog.ShowDialog();
                 if(result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
                 {
-                    string seletecdPath = dialog.FileName;
-                    var response = Utils.ByteArrayUtils.FileToByteArray(seletecdPath);
-                    if (response.IsSuccess)
+                    string selectedPath = dialog.FileName;
+                    try
                     {
-                        byte[] compressed = Utils.Extensions.Compress(response.Data);
-                        string hashedString = Utils.Extensions.SHAHash(compressed);
+                        var response = ByteArrayUtils.FileToByteArray(selectedPath).GetResult(); ;
+                        byte[] compressed = ByteArrayUtils.Compress(response).GetResult();
+                        string hashedString = StringBuilderUtils.SHAHash(compressed);
                         byte[] hashed = Encoding.ASCII.GetBytes(hashedString);
-                        var rsp = ByteArrayUtils.Combine(hashed, compressed);
-                        if (rsp.IsSuccess)
-                        {
-                            AddWork(SocketDataType.FileTransfer, rsp.Data);
-                        }
+                        var combined = ByteArrayUtils.Combine(hashed, compressed).GetResult();
+
+                        AddWork(SocketDataType.FileTransfer, combined);
                     }
-                    MessageBox.Show(seletecdPath);
+                    catch(InvalidOperationException ex)
+                    {
+                        MessageBox.Show($"Error: {ex.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Lỗi không xác định");
                 }
             }
         }

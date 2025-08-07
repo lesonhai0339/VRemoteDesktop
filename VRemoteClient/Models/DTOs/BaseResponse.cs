@@ -2,17 +2,11 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using VRemoteClient.Models.Enums;
 
 namespace VRemoteClient.Models.DTOs
 {
-    public enum ResponseStatus
-    {
-        Success,
-        Error,
-        NotFound,
-        Unauthorized,
-        BadRequest
-    }
+  
     public class BaseResponse<T>
     {
         public BaseResponse(ResponseStatus status, T data, string message = null, Exception ex = null)
@@ -24,7 +18,6 @@ namespace VRemoteClient.Models.DTOs
         }
 
         public ResponseStatus Status { get; set; }
-
         public T Data { get; set; }
         public string Message { get; set; }
         public Exception Exception { get; set; }

@@ -1,8 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.DTOs;
@@ -12,6 +17,230 @@ namespace VRemoteClient.Utils
 {
     public static class ByteArrayUtils
     {
+        public static BaseResponse<byte[]> BitmapToByteArray(Bitmap bitmap)
+        {
+            BitmapData bmpdata = null;
+
+            try
+            {
+                bmpdata = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
+                int stride = bmpdata.Stride;
+                int numbytes = bmpdata.Stride * bitmap.Height;
+                byte[] bytedata = new byte[numbytes];
+                IntPtr ptr = bmpdata.Scan0;
+
+                Marshal.Copy(ptr, bytedata, 0, numbytes);
+
+                return BaseResponse<byte[]>.Success(
+                       data: bytedata,
+                       message: nameof(BitmapToByteArray)
+                   );
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(BitmapToByteArray),
+                    ex: ex
+                );
+            }
+            finally
+            {
+                if (bmpdata != null)
+                    bitmap.UnlockBits(bmpdata);
+            }
+        }
+        public static BaseResponse<byte[]> RemoveFirstInSource(byte[] data, int cutLength)
+        {
+            if (cutLength < 0 || cutLength > data.Length)
+                throw new ArgumentOutOfRangeException(nameof(cutLength));
+            try
+            {
+                Array.Copy(data, cutLength, data, 0, data.Length - cutLength);
+                Array.Resize(ref data, data.Length - cutLength);
+                return BaseResponse<byte[]>.Success(
+                       data: data,
+                       message: nameof(RemoveFirstInSource)
+                   );
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(RemoveFirstInSource),
+                    ex: ex
+                );
+            }
+        }
+        public static BaseResponse<byte[]> RemoveFirstNew(byte[] data, int cutLength)
+        {
+            if (cutLength < 0 || cutLength > data.Length)
+                throw new ArgumentOutOfRangeException(nameof(cutLength));
+            try
+            {
+                byte[] newArray = new byte[data.Length - cutLength];
+
+                Buffer.BlockCopy(data, cutLength, newArray, 0, newArray.Length);
+                return BaseResponse<byte[]>.Success(
+                       data: newArray,
+                       message: nameof(RemoveFirstNew)
+                   );
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(RemoveFirstNew),
+                    ex: ex
+                );
+            }
+        }
+        public static BaseResponse<byte[]> AddPaddingToBytes(byte[] sourceByte, int length = 1025)
+        {
+            try
+            {
+                byte[] bytes = new byte[length];
+                int byteNeededToAdd = Math.Max(0, length - sourceByte.Length);
+                if (sourceByte.Length > length)
+                {
+                    return BaseResponse<byte[]>.Error(
+                        message: nameof(AddPaddingToBytes),
+                        ex: new ArgumentException("Data is bigger than buffer size", nameof(sourceByte))
+                    );
+                }
+                if (byteNeededToAdd == 0)
+                {
+                    return BaseResponse<byte[]>.Success(
+                       message: nameof(AddPaddingToBytes),
+                       data: sourceByte
+                    );
+                }
+                else
+                {
+                    Array.Copy(sourceByte, 0, bytes, 0, sourceByte.Length);
+                    // can use Array.Fill(bytes, (byte)0x20, sourceByte.Length, byteNeededToAdd); if using .net core  
+                    for (int i = 0; i < byteNeededToAdd; i++)
+                    {
+                        bytes[sourceByte.Length + i] = 0x20;
+                    }
+                }
+                return BaseResponse<byte[]>.Success(
+                    message: nameof(AddPaddingToBytes),
+                    data: bytes
+                );
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(AddPaddingToBytes),
+                    ex: ex
+                );
+            } 
+        }
+        public static BaseResponse<byte[]> Compress(byte[] data)
+        {
+            if (data == null || data.Length == 0)
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(Combine),
+                    ex: new ArgumentException("Data cannot be null or empty")
+                 );
+
+            try
+            {
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    using (DeflateStream dstream = new DeflateStream(stream, CompressionMode.Compress, true))
+                    {
+                        dstream.Write(data, 0, data.Length);
+                    }
+                    return BaseResponse<byte[]>.Success(
+                        data: stream.ToArray(),
+                        message: nameof(Compress)
+                    );
+                }
+            }
+            catch(Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(Compress),
+                    ex: ex
+                );
+            }
+        }
+        public static BaseResponse<byte[]> CompressGzip(byte[] data)
+        {
+            if (data == null || data.Length == 0)
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(Combine),
+                    ex: new ArgumentException("Data cannot be null or empty")
+                ); ;
+            try
+            {
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    using (var compressionStream = new GZipStream(stream, CompressionMode.Compress))
+                    {
+                        compressionStream.Write(data, 0, data.Length);
+                        compressionStream.Flush();
+                    }
+                    return BaseResponse<byte[]>.Success(
+                        data: stream.ToArray(),
+                        message: nameof(CompressGzip)
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(CompressGzip),
+                    ex: ex
+                );
+            }
+        }
+        public static BaseResponse<byte[]> Decompress(byte[] data)
+        {
+            try
+            {
+                MemoryStream input = new MemoryStream(data);
+                MemoryStream output = new MemoryStream();
+                using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress, true))
+                {
+                    dstream.CopyTo(output);
+                }
+                return BaseResponse<byte[]>.Success(
+                        data: output.ToArray(),
+                        message: nameof(Decompress)
+                    );
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(Decompress),
+                    ex: ex
+                );
+            }
+        }
+        public static BaseResponse<byte[]> DecompressGzip(byte[] data)
+        {
+           
+            try
+            {
+                using (MemoryStream input = new MemoryStream(data))
+                using (MemoryStream output = new MemoryStream())
+                using (var compressionStream = new GZipStream(input, CompressionMode.Decompress))
+                {
+                    compressionStream.CopyTo(output);
+                    return BaseResponse<byte[]>.Success(
+                        data: output.ToArray(),
+                        message: nameof(DecompressGzip)
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(DecompressGzip),
+                    ex: ex
+                );
+            }
+        }
         public static BaseResponse<byte[]> Combine(byte[] firstArray, byte[] secondArray)
         {
             try

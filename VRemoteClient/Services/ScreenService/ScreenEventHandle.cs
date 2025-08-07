@@ -24,11 +24,11 @@ namespace VRemoteClient.Services.ScreenService
                 var compressedData = new byte[compressedLength];
                 Buffer.BlockCopy(data, 40, compressedData, 0, compressedLength);
 
-                string screenHash = Extensions.SHAHash(compressedData);
+                string screenHash = StringBuilderUtils.SHAHash(compressedData);
 
                 if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    byte[] screenData = Extensions.DecompressGzip(compressedData);
+                    byte[] screenData = ByteArrayUtils.DecompressGzip(compressedData).GetResult();
                     return screenData;
                 }
             }
@@ -49,11 +49,11 @@ namespace VRemoteClient.Services.ScreenService
                 var compressedData = new byte[compressedLength];
                 Buffer.BlockCopy(data, 40, compressedData, 0, compressedLength);
 
-                string screenHash = Extensions.SHAHash(compressedData);
+                string screenHash = StringBuilderUtils.SHAHash(compressedData);
 
                 if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    byte[] chunksDecompressed = Extensions.DecompressGzip(compressedData);
+                    byte[] chunksDecompressed = ByteArrayUtils.DecompressGzip(compressedData).GetResult();
 
                     int offset = 0;
                     while (offset < chunksDecompressed.Length)
