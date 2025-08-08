@@ -21,6 +21,29 @@ namespace VRemoteClient.Utils
         private static string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         private static string digits = "0123456789";
         internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
+        public static string GenerateStringShortcut(string input, int maxLength = 20)
+        {
+            if (string.IsNullOrEmpty(input) || input.Length <= maxLength)
+                return input;
+
+            return input.Substring(0, maxLength - 3) + "...";
+        }
+        public static string GetFileSizeString(long size)
+        {
+            if (size < 1024)
+                return $"{size} Bytes";
+
+            if (size < 1024L * 1024)
+                return $"{size / 1024f:F2} KB";
+
+            if (size < 1024L * 1024 * 1024)
+                return $"{size / (1024f * 1024f):F2} MB";
+
+            if (size < 1024L * 1024 * 1024 * 1024)
+                return $"{size / (1024f * 1024f * 1024f):F2} GB";
+
+            return $"{size / (1024f * 1024f * 1024f * 1024f):F2} TB";
+        } 
         public static ClientInfo InitInfo()
         {
             var computerName = Environment.MachineName;

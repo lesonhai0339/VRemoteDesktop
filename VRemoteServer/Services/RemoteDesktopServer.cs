@@ -70,6 +70,8 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.Clipboard:
                         case Enums.CommandType.Message:
                         case Enums.CommandType.FileTransfer:
+                        case Enums.CommandType.RequestSendFile:
+                        case Enums.CommandType.AcceptSendFile:
                             await P2PCommand(task);
                             break;
                         case Enums.CommandType.P2PDisconnect:

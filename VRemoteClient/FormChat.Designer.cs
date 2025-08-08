@@ -39,9 +39,10 @@ namespace VRemoteClient
             // 
             // txtChatContent
             // 
+            this.txtChatContent.Font = new System.Drawing.Font("Arial", 9F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.txtChatContent.Location = new System.Drawing.Point(12, 355);
             this.txtChatContent.Name = "txtChatContent";
-            this.txtChatContent.Size = new System.Drawing.Size(208, 22);
+            this.txtChatContent.Size = new System.Drawing.Size(208, 25);
             this.txtChatContent.TabIndex = 0;
             // 
             // btnSend
@@ -71,6 +72,7 @@ namespace VRemoteClient
             this.fpnChat.Name = "fpnChat";
             this.fpnChat.Size = new System.Drawing.Size(331, 324);
             this.fpnChat.TabIndex = 3;
+            this.fpnChat.Paint += new System.Windows.Forms.PaintEventHandler(this.fpnChat_Paint);
             // 
             // FormChat
             // 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
@@ -11,6 +12,7 @@ using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.RemoteDesktopService;
 using VRemoteClient.Utils;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace VRemoteClient
 {
@@ -27,6 +29,7 @@ namespace VRemoteClient
             this.StartPosition = FormStartPosition.Manual;
             this.FormBorderStyle = FormBorderStyle.FixedToolWindow;
             this.BackColor = Color.White;
+
         }
         private void Init(RemoteDesktop remoteDesktop, ConnectionInfo connectionInfo)
         {
@@ -63,7 +66,7 @@ namespace VRemoteClient
         private void ChatMessageEventHandler(byte[] obj)
         {
             string message = Encoding.UTF8.GetString(obj);
-            AddChatMessage("Sender", message);
+            //AddChatMessage("Sender", message);
         }
         #endregion
         private void ConfigDefaultFormPosition()
@@ -79,6 +82,8 @@ namespace VRemoteClient
             fpnChat.WrapContents = false;
             fpnChat.AutoScroll = true;
             fpnChat.BorderStyle = BorderStyle.FixedSingle;
+            fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
+
         }
         private void FormChat_Load(object sender, EventArgs e)
         {
@@ -87,32 +92,30 @@ namespace VRemoteClient
         {
             ConfigDefaultFormPosition();
         }
-        private string AddChatMessage(string userName, string data)
-        {
-            if (fpnChat.InvokeRequired)
-            {
-                return (string)fpnChat.Invoke(new Func<string>(() => AddChatMessage(userName, data)));
-            }
-
-            CustomRichTextBox tb = new CustomRichTextBox()
-                .SetMargin(5)
-                .Addcontent(userName, true)
-                .Addcontent(DateTime.Now.ToString("( hh:mm:ss - dd/MM/yyyy ): "))
-                .Addcontent(data)
-                .SetAutoHeight(fpnChat.ClientSize.Width - SystemInformation.VerticalScrollBarWidth - 10);
-            fpnChat.Controls.Add(tb);
-            return tb.Text;
-        }
         private void button1_Click(object sender, EventArgs e)
         {
-            string userName = "Me";
-            string data = this.txtChatContent.Text;
+            //CustomMessage cs = new CustomMessage(ChatMessageType.TEXT, fpnChat.Size, this.txtChatContent.Text);
+           
+            TextTemplate cs = new TextTemplate("Tôi: ", this.txtChatContent.Text);
+            fpnChat.Controls.Add(cs);
 
-            var tb = AddChatMessage(userName, data);
-            AddWork(SocketDataType.Message, Encoding.ASCII.GetBytes(tb));
+
+            //string userName = "Me";
+            //string data = this.txtChatContent.Text;
+
+            //var tb = AddChatMessage(userName, data);
+            //AddWork(SocketDataType.Message, Encoding.ASCII.GetBytes(tb));
+        }
+        private void AddElementToLayout(Control control)
+        {
+            if (control != null)
+            {
+                fpnChat.Controls.Add(control);
+            }
         }
         private void AddWork(SocketDataType type, byte[] data)
         {
+            return;
             _remoteDesktop.AddWork(new TaskObject
             {
                 TaskType = type,
@@ -124,23 +127,36 @@ namespace VRemoteClient
 
         private void btnSendAttachment_Click(object sender, EventArgs e)
         {
-            using (var dialog= new OpenFileDialog())
+            using (var dialog = new OpenFileDialog())
             {
                 DialogResult result = dialog.ShowDialog();
-                if(result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
                 {
                     string selectedPath = dialog.FileName;
                     try
                     {
-                        var response = ByteArrayUtils.FileToByteArray(selectedPath).GetResult(); ;
-                        byte[] compressed = ByteArrayUtils.Compress(response).GetResult();
-                        string hashedString = StringBuilderUtils.SHAHash(compressed);
-                        byte[] hashed = Encoding.ASCII.GetBytes(hashedString);
-                        var combined = ByteArrayUtils.Combine(hashed, compressed).GetResult();
+                        string data = GetFileInfo(selectedPath);
 
-                        AddWork(SocketDataType.FileTransfer, combined);
+
+                        //var response = ByteArrayUtils.FileToByteArray(selectedPath).GetResult(); ;
+                        //byte[] compressed = ByteArrayUtils.Compress(response).GetResult();
+                        //string hashedString = StringBuilderUtils.SHAHash(compressed);
+                        //byte[] hashed = Encoding.ASCII.GetBytes(hashedString);
+                        //var combined = ByteArrayUtils.Combine(hashed, compressed).GetResult();
+
+                        //CustomMessage cs = new CustomMessage();
+                        //fpnChat.Controls.Add(cs);
+
+                        //var tb = AddChatMessage(userName, data);
+
+
+                        //AddWork(SocketDataType.RequestSendFile, Encoding.ASCII.GetBytes(data));
+
+                        CustomFileTemplate cs = new CustomFileTemplate();
+                        var table = cs.FilePrepareSendToPartner(selectedPath);
+                        fpnChat.Controls.Add(table);
                     }
-                    catch(InvalidOperationException ex)
+                    catch (InvalidOperationException ex)
                     {
                         MessageBox.Show($"Error: {ex.Message}");
                     }
@@ -154,6 +170,32 @@ namespace VRemoteClient
                     MessageBox.Show("Lỗi không xác định");
                 }
             }
+        }
+
+        private string GetFileInfo(string path)
+        {
+            FileInfo fileInfo = new FileInfo(path);
+            Icon icon = Icon.ExtractAssociatedIcon(path);
+
+            string base64Icon;
+            using (MemoryStream stream= new MemoryStream())
+            {
+                icon.Save(stream);
+                base64Icon = Convert.ToBase64String(stream.ToArray());
+
+            }
+            string fileName = fileInfo.Name.ToString();
+            string fileSize = fileInfo.Length.ToString();
+            return new StringBuilder()
+                .Append(fileName)
+                .Append("|")
+                .Append(fileSize)
+                .Append("|")
+                .Append(base64Icon).ToString();
+        }
+        private void fpnChat_Paint(object sender, PaintEventArgs e)
+        {
+
         }
     }
 }

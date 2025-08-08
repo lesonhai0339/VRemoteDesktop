@@ -23,6 +23,8 @@ namespace VRemoteClient.Models.Enums
         Clipboard = 0x0E,
         Message = 0x0F,
         FileTransfer = 0x10,
+        RequestSendFile = 0x11,
+        AcceptSendFile = 0x12,
 
         LoginFailed = 0x90,
         P2PDisconnect = 0x91,
