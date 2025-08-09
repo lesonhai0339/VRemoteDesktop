@@ -182,6 +182,12 @@ namespace VRemoteClient.Services.RemoteClientService
                             case SocketDataType.Message:
                                 ChatMessageEvent?.Invoke(task.Data);
                                 break;
+                            case SocketDataType.RequestSendFile:
+                                Console.WriteLine("Request to send file received");
+                                break;
+                            case SocketDataType.AcceptSendFile:
+                                Console.WriteLine("Request to receive file received");
+                                break;
                             case SocketDataType.FileTransfer:
                                 Console.WriteLine("File transfer received");
                                 break;

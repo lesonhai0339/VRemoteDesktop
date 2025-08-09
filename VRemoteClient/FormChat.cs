@@ -150,7 +150,8 @@ namespace VRemoteClient
                         //var tb = AddChatMessage(userName, data);
 
 
-                        //AddWork(SocketDataType.RequestSendFile, Encoding.ASCII.GetBytes(data));
+                        
+                        AddWork(SocketDataType.RequestSendFile, Encoding.ASCII.GetBytes(data));
 
                         CustomFileTemplate cs = new CustomFileTemplate();
                         var table = cs.FilePrepareSendToPartner(selectedPath);
