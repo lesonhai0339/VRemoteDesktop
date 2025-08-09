@@ -10,9 +10,11 @@ namespace VRemoteClient.Models.CustomLayouts
 {
     public class CustomFileTemplate: TableLayoutPanel
     {
-        public CustomFileTemplate()
+        private Action<bool> _acceptOrRejectFileReceive;
+        public CustomFileTemplate(Action<bool> callback)
         {
-            InitializeComponent(); 
+            InitializeComponent();
+            _acceptOrRejectFileReceive = callback;  
         }
         private void InitializeComponent()
         {
@@ -31,22 +33,27 @@ namespace VRemoteClient.Models.CustomLayouts
             this.ColumnStyles.Add(new RowStyle(SizeType.AutoSize));
 
         }
-        public Control FilePrepareSendToPartner(string path)
+        public Control ReceivedFileSentFromPartner(byte[] data)
         {
+            string dataString = Encoding.ASCII.GetString(data);
+            string[] array = Utils.StringBuilderUtils.StringToStringArrayWithSeparator(dataString);
 
-            FileInfo fileInfo = new FileInfo(path);
-            Icon icon = Icon.ExtractAssociatedIcon(path);
+            string tempFilePath = Path.Combine(Path.GetTempPath(), array[0]);
+            if(!File.Exists(tempFilePath))
+                File.WriteAllBytes(tempFilePath, new byte[0]);
+
+            Icon icon = Icon.ExtractAssociatedIcon(tempFilePath);
 
             PictureBox picturebox = new PictureBox();
             picturebox.Image = icon.ToBitmap();
 
             Label fileName = new Label
             {
-                Text = Utils.StringBuilderUtils.GenerateStringShortcut(fileInfo.Name),
+                Text = Utils.StringBuilderUtils.GenerateStringShortcut(array[0]),
                 AutoSize = true
             };
             Label fileSize = new Label();
-            fileSize.Text = Utils.StringBuilderUtils.GetFileSizeString(fileInfo.Length);
+            fileSize.Text = Utils.StringBuilderUtils.GetFileSizeString(long.Parse(array[1]));
 
             Button open = new Button
             {
@@ -61,6 +68,15 @@ namespace VRemoteClient.Models.CustomLayouts
                 Text = "Cancel",
                 BackColor = Color.White
             };
+            open.Click += (sender, e) => {
+                _acceptOrRejectFileReceive?.Invoke(true);
+            };
+
+            save.Click += (sender, e) => {
+                _acceptOrRejectFileReceive?.Invoke(false);
+            };
+
+
             this.Controls.Add(picturebox, 0, 0);
             this.SetRowSpan(picturebox, 2);
 
@@ -73,7 +89,7 @@ namespace VRemoteClient.Models.CustomLayouts
 
             return this;
         }
-        public Control ReceivedFileSentFromPartner(string path)
+        public Control FilePrepareSendToPartner(string path)
         {
             FileInfo fileInfo = new FileInfo(path);
             Icon icon = Icon.ExtractAssociatedIcon(path);

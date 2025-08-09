@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomLayouts;
@@ -53,16 +54,39 @@ namespace VRemoteClient
                     if (_remoteDesktop != null)
                     {
                         _remoteDesktop.ChatMessageEvent -= ChatMessageEventHandler;
+                        _remoteDesktop.SendFileEvent -= SendFileEventHandler;
                     }
                     _remoteDesktop = value;
                     if(_remoteDesktop != null)
                     {
                         _remoteDesktop.ChatMessageEvent += ChatMessageEventHandler;
+                        _remoteDesktop.SendFileEvent += SendFileEventHandler;
+
                     }
                 }
             }
         }
 
+        private void SendFileEventHandler(SendFileType type, byte[] arg2)
+        {
+            if(type == SendFileType.RequestSendFile)
+            {
+                CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
+                var table = cs.ReceivedFileSentFromPartner(arg2);
+                fpnChat.Controls.Add(table);
+            }
+        }
+        private void AcceptOrRejectFileSentByPartner(bool flag)
+        {
+            if(flag)
+            {
+
+            }
+            else
+            {
+
+            }
+        }
         private void ChatMessageEventHandler(byte[] obj)
         {
             string message = Encoding.UTF8.GetString(obj);
@@ -115,7 +139,6 @@ namespace VRemoteClient
         }
         private void AddWork(SocketDataType type, byte[] data)
         {
-            return;
             _remoteDesktop.AddWork(new TaskObject
             {
                 TaskType = type,
@@ -176,23 +199,12 @@ namespace VRemoteClient
         private string GetFileInfo(string path)
         {
             FileInfo fileInfo = new FileInfo(path);
-            Icon icon = Icon.ExtractAssociatedIcon(path);
-
-            string base64Icon;
-            using (MemoryStream stream= new MemoryStream())
-            {
-                icon.Save(stream);
-                base64Icon = Convert.ToBase64String(stream.ToArray());
-
-            }
             string fileName = fileInfo.Name.ToString();
             string fileSize = fileInfo.Length.ToString();
-            return new StringBuilder()
-                .Append(fileName)
-                .Append("|")
-                .Append(fileSize)
-                .Append("|")
-                .Append(base64Icon).ToString();
+            return StringBuilderUtils.StringBuilderWithSeparator(new string[]
+            {
+                fileName, fileSize
+            });
         }
         private void fpnChat_Paint(object sender, PaintEventArgs e)
         {

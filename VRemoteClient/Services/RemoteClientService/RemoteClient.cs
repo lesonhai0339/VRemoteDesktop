@@ -44,6 +44,7 @@ namespace VRemoteClient.Services.RemoteClientService
         public event Action<byte[]> ClipboardReceivedEvent;
         public event Action<bool, string> P2PDisconnectedEvent;
         public event Action<byte[]> ChatMessageEvent;
+        public event Action<SendFileType, byte[]> SendFileEvent;
         public RemoteClient(ClientInfo me)
         {
             _isSocketConnected = false;
@@ -183,12 +184,15 @@ namespace VRemoteClient.Services.RemoteClientService
                                 ChatMessageEvent?.Invoke(task.Data);
                                 break;
                             case SocketDataType.RequestSendFile:
+                                SendFileEvent?.Invoke(SendFileType.RequestSendFile, task.Data);
                                 Console.WriteLine("Request to send file received");
                                 break;
                             case SocketDataType.AcceptSendFile:
+                                SendFileEvent?.Invoke(SendFileType.AcceptSendFile, task.Data);
                                 Console.WriteLine("Request to receive file received");
                                 break;
                             case SocketDataType.FileTransfer:
+                                SendFileEvent?.Invoke(SendFileType.FileTransfer, task.Data);
                                 Console.WriteLine("File transfer received");
                                 break;
                             default:

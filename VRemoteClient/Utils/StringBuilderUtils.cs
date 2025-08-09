@@ -21,6 +21,28 @@ namespace VRemoteClient.Utils
         private static string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         private static string digits = "0123456789";
         internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
+        public static string[] StringToStringArrayWithSeparator(string input, string separator = "|")
+        {
+            if (string.IsNullOrEmpty(input))
+                return new string[0];
+
+            return input.Split(new[] { separator }, StringSplitOptions.RemoveEmptyEntries);
+        }
+        public static string StringBuilderWithSeparator(string[] array, string separator = "|")
+        {
+            if (array == null || array.Length == 0)
+                return string.Empty;
+
+            StringBuilder stringBuilder = new StringBuilder();
+            int length = array.Length;
+            for(int i= 0; i< length; i++)
+            {
+                if (i > 0)
+                    stringBuilder.Append(separator);
+                stringBuilder.Append(array[i]);
+            }
+            return stringBuilder.ToString();
+        }
         public static string GenerateStringShortcut(string input, int maxLength = 20)
         {
             if (string.IsNullOrEmpty(input) || input.Length <= maxLength)

@@ -54,6 +54,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         public event Action<byte[]> ChunksEvent;
         public event Action<bool> P2PDisconnect;
         public event Action<byte[]> ChatMessageEvent;
+        public event Action<SendFileType, byte[]> SendFileEvent;
         public RemoteDesktop()
         {
             OwnerInfo = StringBuilderUtils.InitInfo();
@@ -174,6 +175,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                         _remoteClient.P2PDisconnectedEvent -= P2PDisconnectedEventhandler;
                         _remoteClient.ClipboardReceivedEvent -= ClipboardReceivedEventHandler;
                         _remoteClient.ChatMessageEvent -= ChatMessageEventHandler;
+                        _remoteClient.SendFileEvent -= SendFileEventHandler;
                     }
                     _remoteClient = value;
                     if (_remoteClient != null)
@@ -190,13 +192,12 @@ namespace VRemoteClient.Services.RemoteDesktopService
                         _remoteClient.P2PDisconnectedEvent += P2PDisconnectedEventhandler;
                         _remoteClient.ClipboardReceivedEvent += ClipboardReceivedEventHandler;
                         _remoteClient.ChatMessageEvent += ChatMessageEventHandler;
+                        _remoteClient.SendFileEvent += SendFileEventHandler;
 
                     }
                 }
             }
         }
-
-
 
         public BackgroundWorker Worker
         {
@@ -784,6 +785,14 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
             ChatMessageEvent?.Invoke(bytes);
         }
+        private void SendFileEventHandler(SendFileType type, byte[] arg2)
+        {
+            byte[] bytes = new byte[arg2.Length - 1];
+            Buffer.BlockCopy(arg2, 1, bytes, 0, arg2.Length - 1);
+
+            SendFileEvent?.Invoke(type, bytes);
+        }
+
         public void Dispose()
         {
             Dispose(true);
