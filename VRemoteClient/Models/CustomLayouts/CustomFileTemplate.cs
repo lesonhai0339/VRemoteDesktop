@@ -4,7 +4,9 @@ using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
+using VRemoteClient.Models.DTOs;
 
 namespace VRemoteClient.Models.CustomLayouts
 {
@@ -19,7 +21,7 @@ namespace VRemoteClient.Models.CustomLayouts
         private Button _cancel;
         private string _sessionId;
         private string _tempFilePath;
-        private byte[] _tempFileData;
+        private FileData _fileData;
 
         private Action<bool, string> _acceptOrRejectFileReceive;
         public CustomFileTemplate(Action<bool, string> callback)
@@ -40,8 +42,8 @@ namespace VRemoteClient.Models.CustomLayouts
             this.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
             this.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
 
-            this.ColumnStyles.Add(new RowStyle(SizeType.AutoSize));
-            this.ColumnStyles.Add(new RowStyle(SizeType.AutoSize));
+            this.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            this.RowStyles.Add(new RowStyle(SizeType.AutoSize));
 
 
             _picturebox = new PictureBox();
@@ -57,26 +59,62 @@ namespace VRemoteClient.Models.CustomLayouts
             _open.Name = "btnOpen";
             _save.BackColor = Color.White;
             _save.Text = "Save";
-            _open.Name = "btnSave";
+            _save.Name = "btnSave";
             _cancel.BackColor = Color.White;
             _cancel.Text = "Cancel";
-            _open.Name = "btnCancel";
+            _cancel.Name = "btnCancel";
 
             _open.Click += ButtonEvent;
             _save.Click += ButtonEvent;
             _cancel.Click += ButtonEvent;
+
+            _progressBar = new ProgressBar();
+            _progressBar.Visible = false;
+            _progressBar.Minimum = 0;
+            _progressBar.Maximum = 100;
+            _progressBar.Step = 1;
+        }
+        private void CopyWithProgress()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(CopyWithProgress));
+                return;
+            }
+            // Display the ProgressBar control.
+            _progressBar.Visible = true;
+            // Set Minimum to 1 to represent the first file being copied.
+            _progressBar.Minimum = 1;
+            // Set Maximum to the total number of files to copy.
+            _progressBar.Maximum = 100;
+            // Set the initial value of the ProgressBar.
+            _progressBar.Value = 1;
+            // Set the Step property to a value of 1 to represent each file being copied.
+            _progressBar.Step = 1;
+
+            // Loop through all files to copy.
+            for (int x = 1; x <= 100; x++)
+            {
+                _progressBar.PerformStep();
+                Thread.Sleep(50);
+                Application.DoEvents();
+            }
         }
         public Control ReceivedFileSentFromPartner(string sessionId, byte[] data)
         {
             string dataString = Encoding.ASCII.GetString(data);
             string[] array = Utils.StringBuilderUtils.StringToStringArrayWithSeparator(dataString);
+
+            Icon icon = Utils.FileUtils.GetIconByFileName(array[0]);
+
             _sessionId = sessionId;
+            _fileData = new FileData
+            {
+                Filename = array[0],
+                FileSize = array[1],
+                FileExtension = Path.GetExtension(array[0]).TrimStart('.'),
+            };
 
-            string tempFilePath = Path.Combine(Path.GetTempPath(), array[0]);
-            if(!File.Exists(tempFilePath))
-                File.WriteAllBytes(tempFilePath, new byte[0]);
-
-            Icon icon = Icon.ExtractAssociatedIcon(tempFilePath);
 
             _picturebox.Image = icon.ToBitmap();
             _fileName.Text = Utils.StringBuilderUtils.GenerateStringShortcut(array[0]);
@@ -89,8 +127,8 @@ namespace VRemoteClient.Models.CustomLayouts
             this.Controls.Add(_fileName, 1, 0);
             this.Controls.Add(_fileSize, 1, 1);
 
-            this.Controls.Add(_open, 2, 0);
-            this.Controls.Add(_save, 2, 1);
+            this.Controls.Add(_save, 2, 0);
+            this.Controls.Add(_cancel, 2, 1);
 
             return this;
         }
@@ -98,22 +136,25 @@ namespace VRemoteClient.Models.CustomLayouts
         {
             if(sender is Button btn)
             {
-                if (string.IsNullOrEmpty(_sessionId))
+                if (string.IsNullOrEmpty(_sessionId) || _fileData == null)
                     return;
 
                 if(btn.Name == "btnSave")
                 {
-                    string filePath = Utils.FileUtils.OpenFileDialogAndSaveFile();
-                    if(!string.IsNullOrEmpty(filePath))
-                    {
-                        _tempFilePath = filePath;
-                        _acceptOrRejectFileReceive?.Invoke(true, _sessionId);
-                        RemoveControl(btn, _cancel);
-                    }
-                    else
-                    {
-                        MessageBox.Show("Please select a valid file path to save the received file.", "Invalid Path", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    }
+                    RemoveControl(btn, _cancel, _fileSize);
+                    this.Controls.Add(_progressBar, 1, 1);
+                    CopyWithProgress();
+                    //string? filePath = Utils.FileUtils.OpenFileDialogAndSaveFile(_fileData.Filename);
+                    //if(!string.IsNullOrEmpty(filePath))
+                    //{
+                    //    _fileData.FilePath = filePath;
+                    //    _acceptOrRejectFileReceive?.Invoke(true, _sessionId);
+                    //    RemoveControl(btn, _cancel);
+                    //}
+                    //else
+                    //{
+                    //    MessageBox.Show("Please select a valid file path to save the received file.", "Invalid Path", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    //}
                 }
                 else if(btn.Name == "btnCancel")
                 {
