@@ -75,6 +75,14 @@ namespace VRemoteClient
                 var table = cs.ReceivedFileSentFromPartner(sessionId, arg2);
                 AddElementToLayout(table);
             }
+            if(type == SendFileType.AcceptSendFile)
+            {
+
+            }
+            if (type == SendFileType.FileTransfer)
+            {
+                // Handle rejection logic here if needed
+            }
         }
         private void AcceptOrRejectFileSentByPartner(bool flag, string sessionId)
         {
