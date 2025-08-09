@@ -10,8 +10,8 @@ namespace VRemoteClient.Models.CustomLayouts
 {
     public class CustomFileTemplate: TableLayoutPanel
     {
-        private Action<bool> _acceptOrRejectFileReceive;
-        public CustomFileTemplate(Action<bool> callback)
+        private Action<bool, string> _acceptOrRejectFileReceive;
+        public CustomFileTemplate(Action<bool, string> callback)
         {
             InitializeComponent();
             _acceptOrRejectFileReceive = callback;  
@@ -33,7 +33,7 @@ namespace VRemoteClient.Models.CustomLayouts
             this.ColumnStyles.Add(new RowStyle(SizeType.AutoSize));
 
         }
-        public Control ReceivedFileSentFromPartner(byte[] data)
+        public Control ReceivedFileSentFromPartner(string sessionId, byte[] data)
         {
             string dataString = Encoding.ASCII.GetString(data);
             string[] array = Utils.StringBuilderUtils.StringToStringArrayWithSeparator(dataString);
@@ -69,11 +69,13 @@ namespace VRemoteClient.Models.CustomLayouts
                 BackColor = Color.White
             };
             open.Click += (sender, e) => {
-                _acceptOrRejectFileReceive?.Invoke(true);
+                _acceptOrRejectFileReceive?.Invoke(true, sessionId);
+                RemoveControl(save, open);
             };
 
             save.Click += (sender, e) => {
-                _acceptOrRejectFileReceive?.Invoke(false);
+                _acceptOrRejectFileReceive?.Invoke(false, sessionId);
+                RemoveControl(save, open);
             };
 
 
@@ -88,6 +90,14 @@ namespace VRemoteClient.Models.CustomLayouts
             this.Controls.Add(save, 2, 1);
 
             return this;
+        }
+        private void RemoveControl(params Control[] controls)
+        {
+           foreach(Control control in controls)
+            {
+                this.Controls.Remove(control);
+                control.Dispose();
+            }
         }
         public Control FilePrepareSendToPartner(string path)
         {

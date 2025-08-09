@@ -54,7 +54,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         public event Action<byte[]> ChunksEvent;
         public event Action<bool> P2PDisconnect;
         public event Action<byte[]> ChatMessageEvent;
-        public event Action<SendFileType, byte[]> SendFileEvent;
+        public event Action<SendFileType,string, byte[]> SendFileEvent;
         public RemoteDesktop()
         {
             OwnerInfo = StringBuilderUtils.InitInfo();
@@ -570,6 +570,18 @@ namespace VRemoteClient.Services.RemoteDesktopService
             }
         }
         #endregion
+        #region Callback
+        public void AcceptOrRejectFileSent(bool isAccept, string sessionID)
+        {
+            AddWork(new TaskObject
+            {
+                TaskType = SocketDataType.AcceptSendFile,
+                Data = new byte[0],
+                SessionId = sessionID,
+                IsSendHeader = true,
+            });
+        }
+        #endregion
         #region Events
         private void ConnectEventHandler()
         {
@@ -785,12 +797,12 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
             ChatMessageEvent?.Invoke(bytes);
         }
-        private void SendFileEventHandler(SendFileType type, byte[] arg2)
+        private void SendFileEventHandler(SendFileType type,string sessionId, byte[] arg2)
         {
             byte[] bytes = new byte[arg2.Length - 1];
             Buffer.BlockCopy(arg2, 1, bytes, 0, arg2.Length - 1);
 
-            SendFileEvent?.Invoke(type, bytes);
+            SendFileEvent?.Invoke(type, sessionId, bytes);
         }
 
         public void Dispose()

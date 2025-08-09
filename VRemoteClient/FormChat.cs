@@ -67,25 +67,18 @@ namespace VRemoteClient
             }
         }
 
-        private void SendFileEventHandler(SendFileType type, byte[] arg2)
+        private void SendFileEventHandler(SendFileType type,string sessionId, byte[] arg2)
         {
             if(type == SendFileType.RequestSendFile)
             {
                 CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
-                var table = cs.ReceivedFileSentFromPartner(arg2);
-                fpnChat.Controls.Add(table);
+                var table = cs.ReceivedFileSentFromPartner(sessionId, arg2);
+                AddElementToLayout(table);
             }
         }
-        private void AcceptOrRejectFileSentByPartner(bool flag)
+        private void AcceptOrRejectFileSentByPartner(bool flag, string sessionId)
         {
-            if(flag)
-            {
-
-            }
-            else
-            {
-
-            }
+            RemoteDesktop.AcceptOrRejectFileSent(flag, sessionId);
         }
         private void ChatMessageEventHandler(byte[] obj)
         {
@@ -121,7 +114,7 @@ namespace VRemoteClient
             //CustomMessage cs = new CustomMessage(ChatMessageType.TEXT, fpnChat.Size, this.txtChatContent.Text);
            
             TextTemplate cs = new TextTemplate("Tôi: ", this.txtChatContent.Text);
-            fpnChat.Controls.Add(cs);
+            AddElementToLayout(cs);
 
 
             //string userName = "Me";
@@ -132,6 +125,12 @@ namespace VRemoteClient
         }
         private void AddElementToLayout(Control control)
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<Control>(AddElementToLayout), control);
+                return;
+            }
+
             if (control != null)
             {
                 fpnChat.Controls.Add(control);
@@ -176,9 +175,9 @@ namespace VRemoteClient
                         
                         AddWork(SocketDataType.RequestSendFile, Encoding.ASCII.GetBytes(data));
 
-                        CustomFileTemplate cs = new CustomFileTemplate();
+                        CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
                         var table = cs.FilePrepareSendToPartner(selectedPath);
-                        fpnChat.Controls.Add(table);
+                        AddElementToLayout(table);
                     }
                     catch (InvalidOperationException ex)
                     {
