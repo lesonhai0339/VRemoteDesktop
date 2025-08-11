@@ -143,6 +143,8 @@ namespace VRemoteClient
             if (control != null)
             {
                 fpnChat.Controls.Add(control);
+                fpnChat.ScrollControlIntoView(control);
+
             }
         }
         private void AddWork(SocketDataType type, byte[] data)
