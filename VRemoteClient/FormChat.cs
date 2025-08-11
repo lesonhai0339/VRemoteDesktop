@@ -98,8 +98,8 @@ namespace VRemoteClient
         }
         private void ChatMessageEventHandler(byte[] obj)
         {
-            string message = Encoding.UTF8.GetString(obj);
-            //AddChatMessage("Sender", message);
+            string[] message = Encoding.UTF8.GetString(obj).Split('|');
+            AddChatMessage(message[0], message[1]);
         }
         #endregion
         private void ConfigDefaultFormPosition()
@@ -148,7 +148,6 @@ namespace VRemoteClient
         }
         private void AddWork(SocketDataType type, byte[] data)
         {
-            return;
             _remoteDesktop.AddWork(new TaskObject
             {
                 TaskType = type,
