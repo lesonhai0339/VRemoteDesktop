@@ -128,7 +128,6 @@ namespace VRemoteClient
         private void button1_Click(object sender, EventArgs e)
         {
             AddChatMessage("Tôi: ", txtChatContent.Text);
-
             string id = _connectionInfo.Me.Id;
             string data = Utils.StringBuilderUtils.StringBuilderWithSeparator("|", id, txtChatContent.Text);
             AddWork(SocketDataType.Message, Encoding.ASCII.GetBytes(data));
@@ -167,25 +166,10 @@ namespace VRemoteClient
                     try
                     {
                         string data = GetFileInfo(selectedPath);
-
-                        //var response = ByteArrayUtils.FileToByteArray(selectedPath).GetResult(); ;
-                        //byte[] compressed = ByteArrayUtils.Compress(response).GetResult();
-                        //string hashedString = StringBuilderUtils.SHAHash(compressed);
-                        //byte[] hashed = Encoding.ASCII.GetBytes(hashedString);
-                        //var combined = ByteArrayUtils.Combine(hashed, compressed).GetResult();
-
-                        //CustomMessage cs = new CustomMessage();
-                        //fpnChat.Controls.Add(cs);
-
-                        //var tb = AddChatMessage(userName, data);
-
                         var control = FilePrepareSendToPartner(selectedPath);
 
 
-                        //AddWork(SocketDataType.RequestSendFile, Encoding.ASCII.GetBytes(data));
-
-                        //CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
-                        //var table = cs.FilePrepareSendToPartner(selectedPath);
+                        AddWork(SocketDataType.RequestSendFile, Encoding.ASCII.GetBytes(data));
                         AddElementToLayout(control);
                     }
                     catch (InvalidOperationException ex)
@@ -205,7 +189,7 @@ namespace VRemoteClient
         }
         private void AddChatMessage(string userName, string data)
         {
-            CustomTableLayout table = new CustomTableLayout()
+            CustomTableLayout table = new CustomTableLayout(_connectionInfo.Partner.Id ,EventCallback)
               .SetColAndRow(1, 2)
               .SetStyle(new List<ColumnStyle>
               {
@@ -240,7 +224,7 @@ namespace VRemoteClient
 
             Icon icon = FileUtils.GetIconByFileName(array[0]);
 
-            CustomTableLayout table = new CustomTableLayout()
+            CustomTableLayout table = new CustomTableLayout(_connectionInfo.Partner.Id, EventCallback)
                .SetColAndRow(3, 2)
                .SetStyle(new List<ColumnStyle>
                {
@@ -274,7 +258,6 @@ namespace VRemoteClient
                 BackColor = Color.White
             };
 
-
             table.AddControl("fileIcon", fileIcon, 0, 0, true);
             table.AddControl("fileName", fileName, 1, 0);
             table.AddControl("fileSize", fileSize, 1, 1);
@@ -287,6 +270,10 @@ namespace VRemoteClient
 
             AddElementToLayout(table.Table);
         }
+        private void EventCallback(string id, object sender, EventArgs e)
+        {
+            MessageBox.Show("Event callback triggered with ID: " + id);
+        }
         public Control FilePrepareSendToPartner(string path)
         {
             FileInfo fileInfo = new FileInfo(path);
@@ -295,7 +282,7 @@ namespace VRemoteClient
             PictureBox picturebox = new PictureBox();
             picturebox.Image = icon.ToBitmap();
 
-            CustomTableLayout table = new CustomTableLayout()
+            CustomTableLayout table = new CustomTableLayout(_connectionInfo.Partner.Id, EventCallback)
                .SetColAndRow(3, 2)
                .SetStyle(new List<ColumnStyle>
                {

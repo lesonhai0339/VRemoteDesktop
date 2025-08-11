@@ -9,9 +9,13 @@ namespace VRemoteClient.Models.CustomLayouts
     public class CustomTableLayout: CustomUserControl
     {
         private TableLayoutPanel _table;
-        public CustomTableLayout()
+        private string _connectionId;
+        public Action<string, object, EventArgs> EventHandlerAction { get; set; }
+        public CustomTableLayout(string connectionId, Action<string, object, EventArgs> eventHandlerAction)
         {
             InitializeComponent();
+            _connectionId = connectionId;
+            EventHandlerAction = eventHandlerAction;
         }
 
         public TableLayoutPanel Table => _table;
@@ -58,19 +62,10 @@ namespace VRemoteClient.Models.CustomLayouts
         }
         public void EventHandler(object sender, EventArgs e)
         {
-            if(sender is Button btn)
+            if (EventHandlerAction != null)
             {
-                if(btn.Name == "btnSave")
-                {
-                    MessageBox.Show("Save button clicked", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                }
-                if(btn.Name == "btnCancel")
-                {
-                    MessageBox.Show("Cancel button clicked", "Info", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
-                }
+                EventHandlerAction(_connectionId,sender, e);
             }
-            //Todo: handler event
         }
         public void AddControl(string controlName, Control control, int colIndex, int rowIndex, bool isSetRowSpan = false)
         {
