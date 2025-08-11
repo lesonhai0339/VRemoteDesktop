@@ -29,6 +29,7 @@ namespace VRemoteClient
         private ManualResetEvent _resetEvent;
         private ConnectionInfo _connectionInfo;
         private RemoteDesktop _remoteDesktop;
+        private FormChat _frmChat;
         public FormMain()
         {
             InitializeComponent();
@@ -155,9 +156,16 @@ namespace VRemoteClient
                 this.Invoke(new Action(() => InitChatForm(remoteDesktop, info)));
                 return;
             }
+            if(_frmChat == null)
+            {
+                _frmChat = new FormChat(remoteDesktop, info);
+                _frmChat.Show();
+            }
+            else
+            {
+                _frmChat.AddNewChat(info);
+            }
 
-            FormChat frmChat = new FormChat(remoteDesktop, info);
-            frmChat.Show();
         }
 
         private void ConnectServerEvent(bool flag)

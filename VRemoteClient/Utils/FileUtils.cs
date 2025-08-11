@@ -12,6 +12,7 @@ namespace VRemoteClient.Utils
 {
     public static class FileUtils
     {
+        private static readonly object _lock = new object();
         private static string DefaultFilter =
                 "Text files (*.txt)|*.txt|" +
                 "Word documents (*.doc;*.docx)|*.doc;*.docx|" +
@@ -22,6 +23,30 @@ namespace VRemoteClient.Utils
                 "ZIP archives (*.zip)|*.zip|" +
                 "All files (*.*)|*.*";
 
+        public static void WriteToFile(string path, string content)
+        {
+
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(path));
+
+            if (string.IsNullOrWhiteSpace(content))
+                throw new ArgumentException("Content cannot be null or empty.", nameof(content));
+
+            lock (_lock)
+            {
+                try
+                {
+                    using (StreamWriter writer = new StreamWriter(path, true))
+                    {
+                        writer.Write(content);
+                    }
+                }
+                catch (IOException ex)
+                {
+                    throw new InvalidOperationException($"Failed to write to file: {path}", ex);
+                }
+            }
+        }
         public static Icon GetIconByFileName(string fileName)
         {
             if (string.IsNullOrEmpty(fileName))

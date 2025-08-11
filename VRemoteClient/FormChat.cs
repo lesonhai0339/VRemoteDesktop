@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -20,6 +21,8 @@ namespace VRemoteClient
     public partial class FormChat : Form
     {
         private readonly object _lockObject = new object();
+        private ConcurrentDictionary<string, ConnectionInfo> _currentChat;
+        private ConcurrentDictionary<string, List<Control>> _chatData;
         private RemoteDesktop _remoteDesktop;
         private ConnectionInfo _connectionInfo;
         public FormChat(RemoteDesktop remoteDesktop, ConnectionInfo connectionInfo)
@@ -36,6 +39,8 @@ namespace VRemoteClient
         {
             RemoteDesktop ??= remoteDesktop;
             _connectionInfo ??= connectionInfo;
+            _currentChat = new ConcurrentDictionary<string, ConnectionInfo>();
+            _chatData = new ConcurrentDictionary<string, List<Control>>();
         }
         #region Properties
         public RemoteDesktop RemoteDesktop
@@ -71,13 +76,31 @@ namespace VRemoteClient
         {
             if(type == SendFileType.RequestSendFile)
             {
-                CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
-                var table = cs.ReceivedFileSentFromPartner(sessionId, arg2);
+                CustomTableLayout table = new CustomTableLayout()
+                   .SetColAndRow(3, 2)
+                   .SetStyle(new List<ColumnStyle>
+                   {
+                        new ColumnStyle(SizeType.Percent, 20F),
+                        new ColumnStyle(SizeType.Percent, 50F),
+                        new ColumnStyle(SizeType.Percent, 30F),
+                   },
+                   new List<RowStyle>
+                   {
+                        new RowStyle(SizeType.AutoSize),
+                        new RowStyle(SizeType.AutoSize),
+                   });
+
+                //Button btnSave = new Button { Text = "Save", Name = "btnSave" };
+                //table.AddControl("btnSave", btnSave, 1, 0);
+                //table.RegisterEvent(btnSave, "Click", new EventHandler(table.EventHandler));
+
+
+                //CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
+                //var table = cs.ReceivedFileSentFromPartner(sessionId, arg2);
                 AddElementToLayout(table);
             }
             if(type == SendFileType.AcceptSendFile)
             {
-
             }
             if (type == SendFileType.FileTransfer)
             {
@@ -154,7 +177,6 @@ namespace VRemoteClient
                 IsSendHeader = true
             }, Models.Enums.DataType.Command);
         }
-
         private void btnSendAttachment_Click(object sender, EventArgs e)
         {
             using (var dialog = new OpenFileDialog())
@@ -202,7 +224,6 @@ namespace VRemoteClient
                 }
             }
         }
-
         private string GetFileInfo(string path)
         {
             FileInfo fileInfo = new FileInfo(path);
@@ -216,6 +237,18 @@ namespace VRemoteClient
         private void fpnChat_Paint(object sender, PaintEventArgs e)
         {
 
+        }
+        public bool AddNewChat(ConnectionInfo info)
+        {
+            if(!_currentChat.TryGetValue(info.SessionId, out var _))
+            {
+                _currentChat.TryAdd(info.SessionId, info);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     }
 }

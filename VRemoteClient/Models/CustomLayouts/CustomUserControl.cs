@@ -7,10 +7,10 @@ using System.Windows.Forms;
 
 namespace VRemoteClient.Models.CustomLayouts
 {
-    public abstract class CustomUserControl: UserControl
+    public class CustomUserControl: UserControl
     {
         private readonly object _lockObject = new object();
-        private ConcurrentDictionary<string, Control> _controlAdded;
+        protected ConcurrentDictionary<string, Control> _controlAdded;
         public CustomUserControl()
         {
             InitializeComponent();
@@ -33,26 +33,26 @@ namespace VRemoteClient.Models.CustomLayouts
             _controlAdded.TryAdd(control.Name, control);
             this.Controls.Add(control);
         }
-        public T? GetControl<T>(string controlName) where T : Control
+        public virtual T? GetControl<T>(string controlName) where T : Control
         {
             return _controlAdded.TryGetValue(controlName, out Control control) ? control as T : null;
         }
-        public IEnumerable<T> GetControlsOfType<T>() where T : Control
+        public virtual IEnumerable<T> GetControlsOfType<T>() where T : Control
         {
             return _controlAdded.Values.OfType<T>();
         }
-        public void RemoveControls(params string[] controlNames)
+        public virtual void RemoveControls(params string[] controlNames)
         {
             foreach (string name in controlNames)
                 RemoveControl(name);
         }
 
-        public void RemoveControls(params Control[] controls)
+        public virtual void RemoveControls(params Control[] controls)
         {
             foreach (Control control in controls)
                 RemoveControl(control);
         }
-        public void RemoveControl(Control control)
+        public virtual void RemoveControl(Control control)
         {
             lock (_lockObject)
             {
@@ -73,7 +73,7 @@ namespace VRemoteClient.Models.CustomLayouts
                 }
             }
         }
-        public void RemoveControl(string controlName)
+        public virtual void RemoveControl(string controlName)
         {
             lock (_lockObject)
             {
@@ -99,11 +99,13 @@ namespace VRemoteClient.Models.CustomLayouts
             // 
             // CustomUserControl
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
             this.Name = "CustomUserControl";
-            this.Size = new System.Drawing.Size(284, 261);
+            this.Size = new System.Drawing.Size(379, 321);
             this.ResumeLayout(false);
+
         }
     }
 }
