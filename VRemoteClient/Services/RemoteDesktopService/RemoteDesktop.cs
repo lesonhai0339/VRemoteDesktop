@@ -616,9 +616,9 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 if (connectionInfo != null)
                 {
                     _connectionManager.AddConnection(connectionInfo.SessionId, connectionInfo);
-                    if (connectionInfo.Sender != null)
+                    connectionInfo.Me = OwnerInfo;
+                    if (!connectionInfo.IsSender)
                     {
-                        connectionInfo.Receiver = OwnerInfo;
                         P2PConnectEvent?.Invoke(ClientType.RECEIVER, true, connectionInfo);
                         if (!ScreenHook.IsCapturing)
                         {
@@ -627,8 +627,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                     }
                     else
                     {
-                        connectionInfo.Sender = OwnerInfo;
-                        P2PConnectEvent?.Invoke(ClientType.SENDER ,true, connectionInfo);
+                        P2PConnectEvent?.Invoke(ClientType.SENDER, true, connectionInfo);
                     }
                 }
             }

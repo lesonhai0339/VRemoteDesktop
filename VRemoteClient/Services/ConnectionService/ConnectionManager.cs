@@ -48,15 +48,12 @@ namespace VRemoteClient.Services.ConnectionService
                     MajorVersion = dataEncoded[7],
                     MinorVersion = dataEncoded[8],
                 };
+                if (int.TryParse(dataEncoded[0], out int type) && (ClientType)type == ClientType.RECEIVER)
+                {
+                    connectionInfo.IsSender = true;
+                }
+                connectionInfo.Partner = info;
 
-                if (int.TryParse(dataEncoded[0], out int type) && (ClientType)type == ClientType.SENDER)
-                {
-                    connectionInfo.Sender = info;
-                }
-                else
-                {
-                    connectionInfo.Receiver = info;
-                }
                 return connectionInfo;
             }
             catch(Exception ex)

@@ -99,12 +99,19 @@ namespace VRemoteClient.Models.CustomLayouts
             // 
             // CustomUserControl
             // 
+            this.Dock = DockStyle.Fill;
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.Margin = new System.Windows.Forms.Padding(4, 4, 4, 4);
+            this.Margin = new System.Windows.Forms.Padding(4);
             this.Name = "CustomUserControl";
-            this.Size = new System.Drawing.Size(379, 321);
+            this.Size = new System.Drawing.Size(100, 100);
+            this.Load += new System.EventHandler(this.CustomUserControl_Load);
             this.ResumeLayout(false);
+
+        }
+
+        private void CustomUserControl_Load(object sender, EventArgs e)
+        {
 
         }
     }

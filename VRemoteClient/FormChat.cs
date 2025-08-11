@@ -10,6 +10,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomLayouts;
+using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
 using VRemoteClient.Services.RemoteDesktopService;
@@ -76,28 +77,11 @@ namespace VRemoteClient
         {
             if(type == SendFileType.RequestSendFile)
             {
-                CustomTableLayout table = new CustomTableLayout()
-                   .SetColAndRow(3, 2)
-                   .SetStyle(new List<ColumnStyle>
-                   {
-                        new ColumnStyle(SizeType.Percent, 20F),
-                        new ColumnStyle(SizeType.Percent, 50F),
-                        new ColumnStyle(SizeType.Percent, 30F),
-                   },
-                   new List<RowStyle>
-                   {
-                        new RowStyle(SizeType.AutoSize),
-                        new RowStyle(SizeType.AutoSize),
-                   });
-
-                //Button btnSave = new Button { Text = "Save", Name = "btnSave" };
-                //table.AddControl("btnSave", btnSave, 1, 0);
-                //table.RegisterEvent(btnSave, "Click", new EventHandler(table.EventHandler));
-
+                PartnerRequestSendFile(sessionId, arg2);
 
                 //CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
                 //var table = cs.ReceivedFileSentFromPartner(sessionId, arg2);
-                AddElementToLayout(table);
+                //AddElementToLayout(table.Table);
             }
             if(type == SendFileType.AcceptSendFile)
             {
@@ -107,6 +91,7 @@ namespace VRemoteClient
                 // Handle rejection logic here if needed
             }
         }
+     
         private void AcceptOrRejectFileSentByPartner(bool flag, string sessionId)
         {
             RemoteDesktop.AcceptOrRejectFileSent(flag, sessionId);
@@ -122,7 +107,7 @@ namespace VRemoteClient
             Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
 
             this.Location = new Point(
-                workingArea.Right - this.Width - 20,
+                workingArea.Right - this.Width,
                 workingArea.Bottom - this.Height - 120
             );
 
@@ -142,17 +127,11 @@ namespace VRemoteClient
         }
         private void button1_Click(object sender, EventArgs e)
         {
-            //CustomMessage cs = new CustomMessage(ChatMessageType.TEXT, fpnChat.Size, this.txtChatContent.Text);
-           
-            TextTemplate cs = new TextTemplate("Tôi: ", this.txtChatContent.Text);
-            AddElementToLayout(cs);
+            AddChatMessage("Tôi: ", txtChatContent.Text);
 
-
-            //string userName = "Me";
-            //string data = this.txtChatContent.Text;
-
-            //var tb = AddChatMessage(userName, data);
-            //AddWork(SocketDataType.Message, Encoding.ASCII.GetBytes(tb));
+            string id = _connectionInfo.Me.Id;
+            string data = Utils.StringBuilderUtils.StringBuilderWithSeparator("|", id, txtChatContent.Text);
+            AddWork(SocketDataType.Message, Encoding.ASCII.GetBytes(data));
         }
         private void AddElementToLayout(Control control)
         {
@@ -169,6 +148,7 @@ namespace VRemoteClient
         }
         private void AddWork(SocketDataType type, byte[] data)
         {
+            return;
             _remoteDesktop.AddWork(new TaskObject
             {
                 TaskType = type,
@@ -189,7 +169,6 @@ namespace VRemoteClient
                     {
                         string data = GetFileInfo(selectedPath);
 
-
                         //var response = ByteArrayUtils.FileToByteArray(selectedPath).GetResult(); ;
                         //byte[] compressed = ByteArrayUtils.Compress(response).GetResult();
                         //string hashedString = StringBuilderUtils.SHAHash(compressed);
@@ -201,13 +180,14 @@ namespace VRemoteClient
 
                         //var tb = AddChatMessage(userName, data);
 
+                        var control = FilePrepareSendToPartner(selectedPath);
 
-                        
-                        AddWork(SocketDataType.RequestSendFile, Encoding.ASCII.GetBytes(data));
 
-                        CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
-                        var table = cs.FilePrepareSendToPartner(selectedPath);
-                        AddElementToLayout(table);
+                        //AddWork(SocketDataType.RequestSendFile, Encoding.ASCII.GetBytes(data));
+
+                        //CustomFileTemplate cs = new CustomFileTemplate(AcceptOrRejectFileSentByPartner);
+                        //var table = cs.FilePrepareSendToPartner(selectedPath);
+                        AddElementToLayout(control);
                     }
                     catch (InvalidOperationException ex)
                     {
@@ -224,15 +204,146 @@ namespace VRemoteClient
                 }
             }
         }
+        private void AddChatMessage(string userName, string data)
+        {
+            CustomTableLayout table = new CustomTableLayout()
+              .SetColAndRow(1, 2)
+              .SetStyle(new List<ColumnStyle>
+              {
+                        new ColumnStyle(SizeType.Percent, 100F)
+              },
+              new List<RowStyle>
+              {
+                        new RowStyle(SizeType.AutoSize),
+                        new RowStyle(SizeType.AutoSize)
+              });
+
+            Label name = new Label
+            {
+                Text = userName,
+                Font = new Font("Arial", 10, FontStyle.Bold),
+            };
+            Label message = new Label
+            {
+                AutoSize = true,
+                Text = data,
+            };
+
+            table.AddControl("name", name, 0, 0);
+            table.AddControl("message", message, 0, 1);
+
+            AddElementToLayout(table.Table);
+        }
+        private void PartnerRequestSendFile(string sessionId, byte[] data)
+        {
+            string dataString = Encoding.ASCII.GetString(data);
+            string[] array = StringBuilderUtils.StringToStringArrayWithSeparator(dataString);
+
+            Icon icon = FileUtils.GetIconByFileName(array[0]);
+
+            CustomTableLayout table = new CustomTableLayout()
+               .SetColAndRow(3, 2)
+               .SetStyle(new List<ColumnStyle>
+               {
+                        new ColumnStyle(SizeType.Percent, 20F),
+                        new ColumnStyle(SizeType.Percent, 50F),
+                        new ColumnStyle(SizeType.Percent, 30F),
+               },
+               new List<RowStyle>
+               {
+                        new RowStyle(SizeType.AutoSize),
+                        new RowStyle(SizeType.AutoSize),
+               });
+
+            PictureBox fileIcon = new PictureBox { Image = icon.ToBitmap() };
+            Label fileName = new Label
+            {
+                AutoSize = true,
+                Text = StringBuilderUtils.GenerateStringShortcut(array[0], 50)
+            };
+            Label fileSize = new Label { Text = StringBuilderUtils.GetFileSizeString(long.Parse(array[1])) };
+            Button btnSave = new Button
+            {
+                Name = "btnSave",
+                Text = "Save",
+                BackColor = Color.White
+            };
+            Button btnCancel = new Button
+            {
+                Name = "btnCancel",
+                Text = "Cancel",
+                BackColor = Color.White
+            };
+
+
+            table.AddControl("fileIcon", fileIcon, 0, 0, true);
+            table.AddControl("fileName", fileName, 1, 0);
+            table.AddControl("fileSize", fileSize, 1, 1);
+            table.AddControl("btnSave", btnSave, 2, 0);
+            table.AddControl("btnCancel", btnCancel, 2, 1);
+
+
+            table.RegisterEvent(btnSave, "Click", new EventHandler(table.EventHandler));
+            table.RegisterEvent(btnCancel, "Click", new EventHandler(table.EventHandler));
+
+            AddElementToLayout(table.Table);
+        }
+        public Control FilePrepareSendToPartner(string path)
+        {
+            FileInfo fileInfo = new FileInfo(path);
+            Icon icon = Icon.ExtractAssociatedIcon(path);
+
+            PictureBox picturebox = new PictureBox();
+            picturebox.Image = icon.ToBitmap();
+
+            CustomTableLayout table = new CustomTableLayout()
+               .SetColAndRow(3, 2)
+               .SetStyle(new List<ColumnStyle>
+               {
+                        new ColumnStyle(SizeType.Percent, 30F),
+                        new ColumnStyle(SizeType.Percent, 50F),
+                        new ColumnStyle(SizeType.Percent, 20F),
+               },
+               new List<RowStyle>
+               {
+                        new RowStyle(SizeType.AutoSize),
+                        new RowStyle(SizeType.AutoSize),
+               });
+
+            PictureBox fileIcon = new PictureBox { Image = icon.ToBitmap() };
+            Label fileName = new Label
+            {
+                AutoSize = true,
+                Text = Utils.StringBuilderUtils.GenerateStringShortcut(fileInfo.Name, 50),
+            };
+            Label fileSize = new Label
+            {
+                Text = Utils.StringBuilderUtils.GetFileSizeString(fileInfo.Length)
+            };
+            string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "loading.gif");
+            PictureBox loading = new PictureBox
+            {
+                Image = Image.FromFile(Path.Combine(iconPath)),
+                SizeMode = PictureBoxSizeMode.StretchImage,
+                Size = new Size(30, 30)
+            };
+
+            table.AddControl("fileIcon", fileIcon, 0, 0, true);
+            table.AddControl("fileName", fileName, 1, 0);
+            table.AddControl("fileSize", fileSize, 1, 1);
+            table.AddControl("loading", loading, 2, 0, true);
+
+
+            AddElementToLayout(table.Table);
+
+            return table.Table;
+        }
         private string GetFileInfo(string path)
         {
             FileInfo fileInfo = new FileInfo(path);
             string fileName = fileInfo.Name.ToString();
             string fileSize = fileInfo.Length.ToString();
-            return StringBuilderUtils.StringBuilderWithSeparator(new string[]
-            {
-                fileName, fileSize
-            });
+            return StringBuilderUtils.StringBuilderWithSeparator("|", fileName, fileSize);
         }
         private void fpnChat_Paint(object sender, PaintEventArgs e)
         {

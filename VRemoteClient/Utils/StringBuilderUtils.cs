@@ -28,7 +28,7 @@ namespace VRemoteClient.Utils
 
             return input.Split(new[] { separator }, StringSplitOptions.RemoveEmptyEntries);
         }
-        public static string StringBuilderWithSeparator(string[] array, string separator = "|")
+        public static string StringBuilderWithSeparator(string separator = "|", params string[] array)
         {
             if (array == null || array.Length == 0)
                 return string.Empty;

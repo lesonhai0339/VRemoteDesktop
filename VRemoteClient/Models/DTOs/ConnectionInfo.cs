@@ -12,19 +12,22 @@ namespace VRemoteClient.Models.Entities
         {
             SessionId = sessionId;
         }
-        public ConnectionInfo(ClientInfo sender, ClientInfo receiver)
+        public ConnectionInfo(ClientInfo partner, ClientInfo me, bool isSender)
         {
-            Sender = sender;
-            Receiver = receiver;
+            Partner = partner;
+            Me = me;
+            IsSender = isSender;
         }
-        public ConnectionInfo(string sessionId, ClientInfo sender, ClientInfo receiver)
+        public ConnectionInfo(string sessionId, ClientInfo partner, ClientInfo me, bool isSender)
         {
             SessionId = sessionId;
-            Sender = sender;
-            Receiver = receiver;
+            Partner = partner;
+            Me = me;
+            IsSender = isSender;
         }
         public string SessionId { get; set; } = Guid.NewGuid().ToString("N").Substring(0, 16);
-        public ClientInfo Sender { get; set; }
-        public ClientInfo Receiver { get; set; }
+        public ClientInfo Me { get; set; }
+        public ClientInfo Partner { get; set; }
+        public bool IsSender { get; set; } = false;
     }
 }

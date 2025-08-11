@@ -214,8 +214,8 @@ namespace VRemoteClient
                 ConnectionInfo info = new ConnectionInfo()
                 {
                     SessionId = _connectionInfo.SessionId,
-                    Receiver = _connectionInfo.Receiver,
-                    Sender = _connectionInfo.Sender
+                    Me = _connectionInfo.Me,
+                    Partner = _connectionInfo.Partner
                 };
                 OpenControlForm(RemoteDesktop, info);
 

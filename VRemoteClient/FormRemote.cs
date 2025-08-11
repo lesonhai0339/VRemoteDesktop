@@ -61,7 +61,7 @@ namespace VRemoteClient
 
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
-            vPictureBox.Size = new Size(info.Receiver.Width, info.Receiver.Height);
+            vPictureBox.Size = new Size(info.Partner.Width, info.Partner.Height);
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 
@@ -78,7 +78,7 @@ namespace VRemoteClient
         }
         private void Init(RemoteDesktop remoteDesktop , ConnectionInfo info)
         {
-            if(remoteDesktop == null || info == null || info.Receiver == null || info.Sender == null)
+            if(remoteDesktop == null || info == null || info.Partner == null || info.Me == null)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error("Args are null");
                 MessageBox.Show("Xảy ra lỗi", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -88,7 +88,7 @@ namespace VRemoteClient
             RemoteDesktop ??= remoteDesktop;
             _connectionInfo ??= info;
             _screenEventHandle = new ScreenEventHandle();
-            this.Text = _connectionInfo.Receiver.Id.Trim();
+            this.Text = _connectionInfo.Partner.Id.Trim();
 
             MouseHook ??= new MouseHandler();
             RemoteDesktop.AddKeyboardHookByHandle(this.Handle);
