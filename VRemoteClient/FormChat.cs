@@ -34,7 +34,6 @@ namespace VRemoteClient
             this.StartPosition = FormStartPosition.Manual;
             this.FormBorderStyle = FormBorderStyle.FixedToolWindow;
             this.BackColor = Color.White;
-
         }
         private void Init(RemoteDesktop remoteDesktop, ConnectionInfo connectionInfo)
         {
@@ -42,6 +41,8 @@ namespace VRemoteClient
             _connectionInfo ??= connectionInfo;
             _currentChat = new ConcurrentDictionary<string, ConnectionInfo>();
             _chatData = new ConcurrentDictionary<string, List<Control>>();
+            _currentChat.TryAdd(_connectionInfo.SessionId, _connectionInfo);
+            ShowConnection();
         }
         #region Properties
         public RemoteDesktop RemoteDesktop
@@ -85,6 +86,8 @@ namespace VRemoteClient
             }
             if(type == SendFileType.AcceptSendFile)
             {
+                string id = Encoding.ASCII.GetString(arg2);
+                MessageBox.Show("Ok", "Ok send file, starting send: " + id);
             }
             if (type == SendFileType.FileTransfer)
             {
@@ -117,6 +120,11 @@ namespace VRemoteClient
             fpnChat.BorderStyle = BorderStyle.FixedSingle;
             fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
 
+
+            fpnNumberChatConnection.BorderStyle = BorderStyle.FixedSingle;
+            fpnNumberChatConnection.FlowDirection = FlowDirection.TopDown;
+            fpnNumberChatConnection.WrapContents = false;
+
         }
         private void FormChat_Load(object sender, EventArgs e)
         {
@@ -144,7 +152,6 @@ namespace VRemoteClient
             {
                 fpnChat.Controls.Add(control);
                 fpnChat.ScrollControlIntoView(control);
-
             }
         }
         private void AddWork(SocketDataType type, byte[] data)
@@ -193,7 +200,7 @@ namespace VRemoteClient
         {
             CustomTableLayout table = new CustomTableLayout(_connectionInfo.Partner.Id ,EventCallback)
               .SetColAndRow(1, 2)
-              .SetStyle(new List<ColumnStyle>
+              .SetColumAndRowStyle(new List<ColumnStyle>
               {
                         new ColumnStyle(SizeType.Percent, 100F)
               },
@@ -214,8 +221,8 @@ namespace VRemoteClient
                 Text = data,
             };
 
-            table.AddControl("name", name, 0, 0);
-            table.AddControl("message", message, 0, 1);
+            table.AddControl(nameof(name), name, 0, 0);
+            table.AddControl(nameof(message), message, 0, 1);
 
             AddElementToLayout(table.Table);
         }
@@ -228,7 +235,7 @@ namespace VRemoteClient
 
             CustomTableLayout table = new CustomTableLayout(_connectionInfo.Partner.Id, EventCallback)
                .SetColAndRow(3, 2)
-               .SetStyle(new List<ColumnStyle>
+               .SetColumAndRowStyle(new List<ColumnStyle>
                {
                         new ColumnStyle(SizeType.Percent, 20F),
                         new ColumnStyle(SizeType.Percent, 50F),
@@ -260,21 +267,27 @@ namespace VRemoteClient
                 BackColor = Color.White
             };
 
-            table.AddControl("fileIcon", fileIcon, 0, 0, true);
-            table.AddControl("fileName", fileName, 1, 0);
-            table.AddControl("fileSize", fileSize, 1, 1);
-            table.AddControl("btnSave", btnSave, 2, 0);
-            table.AddControl("btnCancel", btnCancel, 2, 1);
+            table.AddControl(nameof(fileIcon), fileIcon, 0, 0, true);
+            table.AddControl(nameof(fileName), fileName, 1, 0);
+            table.AddControl(nameof(fileSize), fileSize, 1, 1);
+            table.AddControl(nameof(btnSave), btnSave, 2, 0);
+            table.AddControl(nameof(btnCancel), btnCancel, 2, 1);
 
 
-            table.RegisterEvent(btnSave, "Click", new EventHandler(table.EventHandler));
-            table.RegisterEvent(btnCancel, "Click", new EventHandler(table.EventHandler));
+            table.RegisterEvent(btnSave, nameof(Click), new EventHandler(table.EventHandler));
+            table.RegisterEvent(btnCancel, nameof(Click), new EventHandler(table.EventHandler));
 
             AddElementToLayout(table.Table);
         }
         private void EventCallback(string id, object sender, EventArgs e)
         {
-            MessageBox.Show("Event callback triggered with ID: " + id);
+           if(sender is Button btn)
+            {
+                if(btn.Name == "btnSave")
+                {
+                    AddWork(SocketDataType.AcceptSendFile, Encoding.ASCII.GetBytes(id));
+                }
+            }
         }
         public Control FilePrepareSendToPartner(string path)
         {
@@ -286,7 +299,7 @@ namespace VRemoteClient
 
             CustomTableLayout table = new CustomTableLayout(_connectionInfo.Partner.Id, EventCallback)
                .SetColAndRow(3, 2)
-               .SetStyle(new List<ColumnStyle>
+               .SetColumAndRowStyle(new List<ColumnStyle>
                {
                         new ColumnStyle(SizeType.Percent, 30F),
                         new ColumnStyle(SizeType.Percent, 50F),
@@ -316,10 +329,10 @@ namespace VRemoteClient
                 Size = new Size(30, 30)
             };
 
-            table.AddControl("fileIcon", fileIcon, 0, 0, true);
-            table.AddControl("fileName", fileName, 1, 0);
-            table.AddControl("fileSize", fileSize, 1, 1);
-            table.AddControl("loading", loading, 2, 0, true);
+            table.AddControl(nameof(fileIcon), fileIcon, 0, 0, true);
+            table.AddControl(nameof(fileName), fileName, 1, 0);
+            table.AddControl(nameof(fileSize), fileSize, 1, 1);
+            table.AddControl(nameof(loading), loading, 2, 0, true);
 
 
             AddElementToLayout(table.Table);
@@ -348,6 +361,90 @@ namespace VRemoteClient
             {
                 return false;
             }
+        }
+        private void ShowConnection()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(ShowConnection));
+                return;
+            }
+
+            foreach(var chat in _currentChat)
+            {
+                CustomTableLayout table = new CustomTableLayout(_connectionInfo.Partner.Id, EventCallback)
+                .SetColAndRow(2, 1)
+                .SetStyles(
+                    new UIPropertyRegistration(nameof(BorderStyle), BorderStyle.FixedSingle),
+                    new UIPropertyRegistration(nameof(BackColor), Color.Yellow)
+                )
+                .SetColumAndRowStyle(
+                    new List<ColumnStyle>
+                    {
+                        new ColumnStyle(SizeType.Percent, 20F),
+                        new ColumnStyle(SizeType.Percent, 80F)
+                    },
+                    new List<RowStyle>
+                    {
+                        new RowStyle(SizeType.AutoSize),
+                    }
+                );
+               
+                Label lbChat = new Label
+                {
+                    Text = chat.Value.Partner.ComputerName,
+                    Name = chat.Value.SessionId,
+                    AutoSize = true
+                };
+                CustomPanel pnStatus = new CustomPanel();
+                pnStatus.Paint += pnStatus.CreateCircle;
+
+
+                lbChat.Click += ConnectionClickEventHandler;
+
+                table.AddControl(nameof(pnStatus), pnStatus, 0, 0);
+                table.AddControl(nameof(lbChat), lbChat, 1, 0);
+
+                table.RegisterEvents(
+                    new EventRegistration(pnStatus, nameof(MouseHover), new EventHandler((s, e) =>
+                    {
+                       table.SetStyle(nameof(BackColor), Color.LightBlue);
+                    })),
+                    new EventRegistration(pnStatus, nameof(MouseLeave), new EventHandler((s, e) =>
+                    {
+                        table.SetStyle(nameof(BackColor), Color.Yellow);
+                    })),
+
+
+                    new EventRegistration(lbChat, nameof(MouseHover), new EventHandler((s, e) =>
+                    {
+                        table.SetStyle(nameof(BackColor), Color.LightBlue);
+                    })),
+                    new EventRegistration(lbChat, nameof(MouseLeave), new EventHandler((s, e) =>
+                    {
+                        table.SetStyle(nameof(BackColor), Color.Yellow);
+                    })),
+
+
+
+                    new EventRegistration(table.Table, nameof(MouseHover), new EventHandler((s, e) =>
+                    {
+                         table.SetStyle(nameof(BackColor), Color.LightBlue);
+                    })),
+                    new EventRegistration(table.Table, nameof(MouseLeave), new EventHandler((s, e) =>
+                    {
+                        table.SetStyle(nameof(BackColor), Color.Yellow);
+                    }))
+
+                );
+
+                fpnNumberChatConnection.Controls.Add(table.Table);
+            }
+        }
+
+        private void ConnectionClickEventHandler(object sender, EventArgs e)
+        {
+            MessageBox.Show("Connection Clicked: " + ((Label)sender).Name);
         }
     }
 }

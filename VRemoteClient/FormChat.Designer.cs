@@ -35,6 +35,7 @@ namespace VRemoteClient
             this.btnSend = new System.Windows.Forms.Button();
             this.btnSendAttachment = new System.Windows.Forms.Button();
             this.fpnChat = new System.Windows.Forms.FlowLayoutPanel();
+            this.fpnNumberChatConnection = new System.Windows.Forms.FlowLayoutPanel();
             this.SuspendLayout();
             // 
             // txtChatContent
@@ -68,17 +69,25 @@ namespace VRemoteClient
             // 
             // fpnChat
             // 
-            this.fpnChat.Location = new System.Drawing.Point(12, 13);
+            this.fpnChat.Location = new System.Drawing.Point(12, 117);
             this.fpnChat.Name = "fpnChat";
-            this.fpnChat.Size = new System.Drawing.Size(331, 324);
+            this.fpnChat.Size = new System.Drawing.Size(331, 220);
             this.fpnChat.TabIndex = 3;
             this.fpnChat.Paint += new System.Windows.Forms.PaintEventHandler(this.fpnChat_Paint);
+            // 
+            // fpnNumberChatConnection
+            // 
+            this.fpnNumberChatConnection.Location = new System.Drawing.Point(13, 13);
+            this.fpnNumberChatConnection.Name = "fpnNumberChatConnection";
+            this.fpnNumberChatConnection.Size = new System.Drawing.Size(330, 98);
+            this.fpnNumberChatConnection.TabIndex = 4;
             // 
             // FormChat
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(355, 388);
+            this.Controls.Add(this.fpnNumberChatConnection);
             this.Controls.Add(this.fpnChat);
             this.Controls.Add(this.btnSendAttachment);
             this.Controls.Add(this.btnSend);
@@ -99,5 +108,6 @@ namespace VRemoteClient
         private System.Windows.Forms.Button btnSend;
         private System.Windows.Forms.Button btnSendAttachment;
         private System.Windows.Forms.FlowLayoutPanel fpnChat;
+        private System.Windows.Forms.FlowLayoutPanel fpnNumberChatConnection;
     }
 }
