@@ -113,18 +113,10 @@ namespace VRemoteClient
             }
             if (type == SendFileType.FileTransfer)
             {
-                string path = "";
                 int offset = BitConverter.ToInt32(arg2 , 0);
                 byte[] data = new byte[arg2.Length - 4];
                 Buffer.BlockCopy(arg2, 4, data, 0, arg2.Length - 4);
-                if (_savePath != null)
-                {
-                    path = _savePath;
-                }
-                else
-                {
-                    path = Path.Combine(Path.GetTempPath(), _tempFileName);
-                }
+                string path = Path.Combine(Path.GetTempPath(), _tempFileName);
                 Utils.FileUtils.WriteToFile(path, offset, data);
                 Log.ForContext("Filename", "FileSend").Info($"Receive chunk with {arg2.Length} from sender");
                 // Handle rejection logic here if needed
@@ -329,11 +321,6 @@ namespace VRemoteClient
             {
                 if(btn.Name == "btnSave")
                 {
-                    string saveFilePath = Utils.FileUtils.OpenFileDialogAndSaveFile(_tempFileName);
-                    if (!string.IsNullOrWhiteSpace(saveFilePath))
-                    {
-                        _savePath = saveFilePath;
-                    }
                     AddWork(SocketDataType.AcceptSendFile, Encoding.ASCII.GetBytes(RemoteDesktop.OwnerInfo.Id));
                 }
             }
