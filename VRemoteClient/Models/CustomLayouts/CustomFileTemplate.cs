@@ -111,7 +111,7 @@ namespace VRemoteClient.Models.CustomLayouts
             _fileData = new FileData
             {
                 Filename = array[0],
-                FileSize = array[1],
+                FileSize = long.Parse(array[1]),
                 FileExtension = Path.GetExtension(array[0]).TrimStart('.'),
             };
 

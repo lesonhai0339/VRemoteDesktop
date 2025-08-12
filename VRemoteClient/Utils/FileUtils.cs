@@ -23,6 +23,46 @@ namespace VRemoteClient.Utils
                 "ZIP archives (*.zip)|*.zip|" +
                 "All files (*.*)|*.*";
 
+        public static byte[] GetFileDataByOffset(string filePath, int offset, int size = 8192)
+        {
+            if (!File.Exists(filePath))
+                throw new ArgumentException(string.Format("Does not existed {0}", filePath));
+
+            if (offset < 0)
+                throw new ArgumentException("Offset cannot be neigative");
+
+            byte[] data = new byte[size];
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                fs.Seek(offset, SeekOrigin.Begin);
+                int bytesRead = fs.Read(data, 0, size);
+                if(bytesRead < size)
+                {
+                    Array.Resize(ref data, bytesRead);
+                }
+            }
+            return data.ToArray();
+        }
+        public static long CalculateChunkNumber(long dataSize, int chunkSize = 8192)
+        {
+            if (dataSize <= 0) 
+                return 0;
+
+            if (chunkSize <= 0)
+                throw new InvalidOperationException("Data size and chunk size must be positive");
+
+            return (dataSize + chunkSize - 1) / chunkSize; 
+        }
+        public static FileInfo GetFileInfo(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"File not found: {filePath}", filePath);
+
+            return new FileInfo(filePath);
+        }
         public static void WriteToFile(string path, string content)
         {
 
@@ -39,6 +79,31 @@ namespace VRemoteClient.Utils
                     using (StreamWriter writer = new StreamWriter(path, true))
                     {
                         writer.Write(content);
+                    }
+                }
+                catch (IOException ex)
+                {
+                    throw new InvalidOperationException($"Failed to write to file: {path}", ex);
+                }
+            }
+        }
+        public static void WriteToFile(string path,int offset, byte[] data)
+        {
+
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(path));
+
+            if (data == null)
+                throw new ArgumentException("data cannot be null.", nameof(data));
+
+            lock (_lock)
+            {
+                try
+                {
+                    using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Write))
+                    {
+                        fs.Seek(offset, SeekOrigin.Begin);
+                        fs.Write(data, 0, data.Length);
                     }
                 }
                 catch (IOException ex)

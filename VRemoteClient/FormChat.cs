@@ -21,11 +21,14 @@ namespace VRemoteClient
 {
     public partial class FormChat : Form
     {
+        private const int ChunkSize = 8192; // Size of each file chunk in bytes 
         private readonly object _lockObject = new object();
         private ConcurrentDictionary<string, ConnectionInfo> _currentChat;
         private ConcurrentDictionary<string, List<Control>> _chatData;
         private RemoteDesktop _remoteDesktop;
         private ConnectionInfo _connectionInfo;
+        private string _filePath = string.Empty;
+        private string _tempFileName = string.Empty;
         public FormChat(RemoteDesktop remoteDesktop, ConnectionInfo connectionInfo)
         {
             InitializeComponent();
@@ -88,9 +91,29 @@ namespace VRemoteClient
             {
                 string id = Encoding.ASCII.GetString(arg2);
                 MessageBox.Show("Ok", "Ok send file, starting send: " + id);
+                FileInfo fileInfo = FileUtils.GetFileInfo(_filePath);
+                long chunkNumber = FileUtils.CalculateChunkNumber(fileInfo.Length, ChunkSize);
+                int count = 0;
+                while(count < chunkNumber)
+                {
+                    int offset = count * ChunkSize;
+                    byte[] chunkData = FileUtils.GetFileDataByOffset(fileInfo.FullName, offset, ChunkSize);
+
+
+                    byte[] dataSend = new byte[chunkData.Length + 4]; //4 byte for offset
+                    Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
+                    Buffer.BlockCopy(chunkData, 0, dataSend, 4, chunkData.Length);
+                    AddWork(SocketDataType.FileTransfer, dataSend);
+                    Log.ForContext("FileName", "FileSend").Info($"Send chunk with {dataSend.Length}bytes to receiver");
+                    count++;
+                }
+
+
             }
             if (type == SendFileType.FileTransfer)
             {
+
+                Log.ForContext("Filename", "FileSend").Info($"Receive chunk with {arg2.Length} from sender");
                 // Handle rejection logic here if needed
             }
         }
@@ -172,6 +195,7 @@ namespace VRemoteClient
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
                 {
                     string selectedPath = dialog.FileName;
+                    _filePath = selectedPath;
                     try
                     {
                         string data = GetFileInfo(selectedPath);
@@ -248,6 +272,7 @@ namespace VRemoteClient
                });
 
             PictureBox fileIcon = new PictureBox { Image = icon.ToBitmap() };
+            _tempFileName = array[0];
             Label fileName = new Label
             {
                 AutoSize = true,
@@ -285,7 +310,7 @@ namespace VRemoteClient
             {
                 if(btn.Name == "btnSave")
                 {
-                    AddWork(SocketDataType.AcceptSendFile, Encoding.ASCII.GetBytes(id));
+                    AddWork(SocketDataType.AcceptSendFile, Encoding.ASCII.GetBytes(RemoteDesktop.OwnerInfo.Id));
                 }
             }
         }
@@ -441,7 +466,6 @@ namespace VRemoteClient
                 fpnNumberChatConnection.Controls.Add(table.Table);
             }
         }
-
         private void ConnectionClickEventHandler(object sender, EventArgs e)
         {
             MessageBox.Show("Connection Clicked: " + ((Label)sender).Name);
