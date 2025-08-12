@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.CustomLayouts;
@@ -22,6 +23,20 @@ namespace VRemoteClient.Utils
                 "Executable files (*.exe)|*.exe|" +
                 "ZIP archives (*.zip)|*.zip|" +
                 "All files (*.*)|*.*";
+        public static string CreateFileChecksum(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"File not found: {filePath}", filePath);
+
+            using (var stream = new BufferedStream(File.OpenRead(filePath), 1200000))
+            {
+                MD5 md5 = MD5.Create();
+                byte[] hash = md5.ComputeHash(stream);
+                return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
+            }
+        }
 
         public static byte[] GetFileDataByOffset(string filePath, int offset, int size = 8192)
         {

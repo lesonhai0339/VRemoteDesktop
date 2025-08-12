@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -29,6 +30,7 @@ namespace VRemoteClient
         private ConnectionInfo _connectionInfo;
         private string _filePath = string.Empty;
         private string _tempFileName = string.Empty;
+        private string _savePath = string.Empty;
         public FormChat(RemoteDesktop remoteDesktop, ConnectionInfo connectionInfo)
         {
             InitializeComponent();
@@ -90,7 +92,6 @@ namespace VRemoteClient
             if(type == SendFileType.AcceptSendFile)
             {
                 string id = Encoding.ASCII.GetString(arg2);
-                MessageBox.Show("Ok", "Ok send file, starting send: " + id);
                 FileInfo fileInfo = FileUtils.GetFileInfo(_filePath);
                 long chunkNumber = FileUtils.CalculateChunkNumber(fileInfo.Length, ChunkSize);
                 int count = 0;
@@ -202,6 +203,12 @@ namespace VRemoteClient
                     _filePath = selectedPath;
                     try
                     {
+                        //Stopwatch stopwatch = new Stopwatch();
+                        //stopwatch.Start();
+                        //string checkSum = FileUtils.CreateFileChecksum(selectedPath);
+                        //stopwatch.Stop();
+                        //MessageBox.Show("Elapsed time: " + stopwatch.Elapsed.TotalSeconds, "Ex");
+
                         string data = GetFileInfo(selectedPath);
                         var control = FilePrepareSendToPartner(selectedPath);
 
