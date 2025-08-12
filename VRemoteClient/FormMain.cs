@@ -92,7 +92,7 @@ namespace VRemoteClient
         private void FormMain_Shown(object sender, EventArgs e)
         {
             RemoteDesktop.ConnectToServer();
-           // PipeClient.RunPipe(new string[] { "spawnclient" });
+            // PipeClient.RunPipe(new string[] { "spawnclient" });
         }
         private void FormMain_Closing(object sender, FormClosingEventArgs e)
         {

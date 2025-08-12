@@ -66,24 +66,6 @@ namespace VRemoteClient.Utils
 
             return $"{size / (1024f * 1024f * 1024f * 1024f):F2} TB";
         } 
-        public static ClientInfo InitInfo()
-        {
-            var computerName = Environment.MachineName;
-            int width = Screen.PrimaryScreen.Bounds.Width;
-            int height = Screen.PrimaryScreen.Bounds.Height;
-            OperatingSystem os = Environment.OSVersion;
-            ClientInfo info = new ClientInfo
-            {
-                Id = RandomStringNumber(8),
-                Password = RandomStringNumber(4),
-                ComputerName = computerName,
-                Width = width,
-                Height = height,
-                MajorVersion = os.Version.Major.ToString(),
-                MinorVersion = os.Version.Minor.ToString()
-            };
-            return info;
-        }
         public static string SHAHash(byte[] data)
         {
             using (var sha= SHA1.Create())
