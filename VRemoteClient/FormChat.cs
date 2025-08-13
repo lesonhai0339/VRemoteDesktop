@@ -14,6 +14,7 @@ using VRemoteClient.Models.CustomLayouts;
 using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Services.ConnectionService;
 using VRemoteClient.Services.RemoteDesktopService;
 using VRemoteClient.Utils;
 
@@ -320,7 +321,7 @@ namespace VRemoteClient
             {
                 if(btn.Name == "btnSave")
                 {
-                    AddWork(SocketDataType.AcceptSendFile, Encoding.ASCII.GetBytes(RemoteDesktop.OwnerInfo.Id));
+                    AddWork(SocketDataType.AcceptSendFile, Encoding.ASCII.GetBytes(ConnectionManagerment.Me.Id));
                 }
             }
         }

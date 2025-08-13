@@ -1,5 +1,6 @@
 ﻿using Microsoft.Win32;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
@@ -16,7 +17,9 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Services.ConnectionService;
 using VRemoteClient.Services.RemoteDesktopService;
+using VRemoteClient.Services.SessionManagerment;
 using VRemoteClient.Utils;
 
 namespace VRemoteClient
@@ -24,12 +27,13 @@ namespace VRemoteClient
     public partial class FormMain : Form
     {
         private readonly object _lockObject = new object();
-
+        private ConcurrentDictionary<string, Form> _chatForm;
         private bool _isSocketConnected;
         private ManualResetEvent _resetEvent;
         private ConnectionInfo _connectionInfo;
         private RemoteDesktop _remoteDesktop;
         private FormChat _frmChat;
+        private FormManagement<Form> _formManager;
         public FormMain()
         {
             InitializeComponent();
@@ -39,8 +43,8 @@ namespace VRemoteClient
             //string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
             //this.Icon = new Icon(iconPath);
             this.MaximizeBox = false;
-            this.txtOwnerId.Text = RemoteDesktop.OwnerInfo.Id;
-            this.txtOwnerPassword.Text = RemoteDesktop.OwnerInfo.Password;
+            this.txtOwnerId.Text = ConnectionManagerment.Me.Id;
+            this.txtOwnerPassword.Text = ConnectionManagerment.Me.Password;
             txtPartnerPassword.UseSystemPasswordChar = true;
 
             _isSocketConnected = false;
@@ -50,6 +54,8 @@ namespace VRemoteClient
         {
             Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
             RemoteDesktop ??= new RemoteDesktop();
+            _chatForm = new ConcurrentDictionary<string, Form>();
+            _formManager = new FormManagement<Form>();  
         }
 
         #region Properties
@@ -156,6 +162,9 @@ namespace VRemoteClient
                 this.Invoke(new Action(() => InitChatForm(remoteDesktop, info)));
                 return;
             }
+            _formManager.GetOrAdd(info.SessionId ,_ => new FormChat(remoteDesktop, info));
+            _formManager.ShowForm(info.SessionId);
+            return;
             if(_frmChat == null)
             {
                 _frmChat = new FormChat(remoteDesktop, info);
@@ -217,7 +226,11 @@ namespace VRemoteClient
                     Me = _connectionInfo.Me,
                     Partner = _connectionInfo.Partner
                 };
-                OpenControlForm(RemoteDesktop, info);
+                _formManager.GetOrAdd(_connectionInfo.SessionId, _ => new FormRemote(RemoteDesktop, info));
+                _formManager.ShowForm(_connectionInfo.SessionId);
+
+
+                //OpenControlForm(RemoteDesktop, info);
 
                 _connectionInfo = null;
             }
