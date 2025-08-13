@@ -51,6 +51,8 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Enums\VMouseButtons.cs" />
+    <Compile Include="Enums\MouseEventType.cs" />
     <Compile Include="Enums\ScreenType.cs" />
     <Compile Include="Enums\SendFileType.cs" />
     <Compile Include="Enums\EncodingType.cs" />
@@ -58,15 +60,19 @@
     <Compile Include="Enums\KeyState.cs" />
     <Compile Include="Enums\MouseAction.cs" />
     <Compile Include="Enums\ResponseStatus.cs" />
+    <Compile Include="Enums\UISizeMode.cs" />
     <Compile Include="Enums\WindowsClipboardFormat.cs" />
     <Compile Include="Enums\WindowsKeyboardEvent.cs" />
     <Compile Include="Enums\WindowsMouseEvent.cs" />
     <Compile Include="Enums\WindowsMouseMessage.cs" />
     <Compile Include="Events\KeyEventArgs.cs" />
+    <Compile Include="Events\MouseEvent.cs" />
     <Compile Include="Events\ScreenEventArgs.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
+    <Compile Include="Models\MouseData.cs" />
+    <Compile Include="Models\TaskObject.cs" />
     <Compile Include="Models\BaseResponse.cs" />
     <Compile Include="Models\ByteArrayBuilder.cs" />
     <Compile Include="Models\Client.cs" />
@@ -84,6 +90,7 @@
     <Compile Include="Services\Keyboard\KeyboardHook.cs" />
     <Compile Include="Services\Keyboard\VirtualClipboard.cs" />
     <Compile Include="Services\Keyboard\VirtualKeyboard.cs" />
+    <Compile Include="Services\Mouse\MouseService.cs" />
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />

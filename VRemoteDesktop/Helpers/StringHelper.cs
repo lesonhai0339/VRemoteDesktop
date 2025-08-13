@@ -70,7 +70,7 @@ namespace VRemoteDesktop.Helpers
                 return stringBuilder.ToString();
             }
         }
-        public static string DataStringBuilder(string[] data)
+        public static string DataStringBuilder(params object[] data)
         {
             StringBuilder stringBuilder = new StringBuilder();
             for (int i = 0; i < data.Length; i++)
