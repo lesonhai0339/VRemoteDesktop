@@ -33,5 +33,11 @@ namespace VRemoteDesktop.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
         #endregion
+        #region Methods
+        public void Connect()
+        {
+
+        }
+        #endregion
     }
 }
