@@ -14,14 +14,14 @@ using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
-    public interface IScreenCaptureService : IDisposable
+    public interface IScreenCaptureServiceListener : IDisposable
     {
         void StartCapture();
         void StopCapture();
         event EventHandler<ScreenEventArgs> ScreenEvent;
         bool IsCapturing { get; set; }
     }
-    public class ScreenCaptureServiceListener : IScreenCaptureService
+    public class ScreenCaptureServiceListener : IScreenCaptureServiceListener
     {
         private const int CHUNK_SIZE = 8192;
         private const int DEFAULT_FPS = 20;

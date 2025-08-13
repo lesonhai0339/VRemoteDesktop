@@ -92,6 +92,7 @@
     <Compile Include="Services\Keyboard\VirtualKeyboard.cs" />
     <Compile Include="Services\Mouse\MouseService.cs" />
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureServiceListener.cs" />
@@ -99,6 +100,7 @@
     <Compile Include="Startup.cs" />
     <Compile Include="Utils\Logger.cs" />
     <Compile Include="Interop\Win32Apis.cs" />
+    <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="Views\FormMain.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -146,7 +148,6 @@
   <ItemGroup>
     <Folder Include="Layouts\" />
     <Folder Include="Resources\" />
-    <Folder Include="ViewModels\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
