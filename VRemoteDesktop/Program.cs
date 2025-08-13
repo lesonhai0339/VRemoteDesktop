@@ -15,7 +15,9 @@ namespace VRemoteDesktop
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+
+            Startup startup = new Startup();
+            startup.Run();
         }
     }
 }

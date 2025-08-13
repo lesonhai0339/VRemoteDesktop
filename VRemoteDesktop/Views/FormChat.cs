@@ -7,11 +7,11 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 
-namespace VRemoteDesktop
+namespace VRemoteDesktop.Views
 {
-    public partial class Form1 : Form
+    public partial class FormChat : Form
     {
-        public Form1()
+        public FormChat()
         {
             InitializeComponent();
         }
