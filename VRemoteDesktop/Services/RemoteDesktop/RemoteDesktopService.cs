@@ -10,6 +10,12 @@ using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.ScreenCapture;
+using VRemoteDesktop.Enums;
+using VRemoteDesktop.Models;
+using static VRemoteDesktop.Utils.Logger;
+using System.Configuration;
+using System.Drawing;
+using VRemoteDesktop.Events;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
 {
@@ -25,9 +31,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         private KeyboardHook _globakKeyboardHook;
         private IScreenCaptureServiceListener _globakScreenHook;
-        private TCPClient _remoteClient;
-        private ConnectionManager _connectionManager;
-        private ClientInfo _clientInfo;
+        private TCPClient.TCPClient _remoteClient;
 
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
@@ -37,8 +41,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         public event Action<bool> ConnectServerEvent;
         public event Action<bool> LoginEvent;
-        public event Action<ClientType, bool, ConnectionInfo> P2PConnectEvent;
-        public event Action<object, CustomKeyMessageEventArgs> KeyboardEvent;
+        public event Action<object, KeyEventArgs> KeyboardEvent;
         public event Action<byte[]> ScreenEvent;
         public event Action<byte[]> ChunksEvent;
         public event Action<bool> P2PDisconnect;
@@ -59,18 +62,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public void InitializeCompoment()
         {
-            _clientInfo = ConnectionManagerment.Me;
-            KeyboardHook ??= new GlobalKeyboardHook();
-            RemoteClient ??= new RemoteClient(_clientInfo);
-            _connectionManager ??= new ConnectionManager();
-            Task.Factory.StartNew(() =>
-            {
-                ScreenHook = new GlobalScreenCapture(null, null);
-            }, TaskCreationOptions.LongRunning);
-            if (!Worker.IsBusy)
-            {
-                Worker.RunWorkerAsync();
-            }
         }
         #region Properties
         public bool IsSocketConnected
@@ -78,57 +69,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             get => _isSocketConnectSuccess;
             private set => _isSocketConnectSuccess = value;
         }
-        public GlobalKeyboardHook KeyboardHook
-        {
-            get
-            {
-                lock (_lockProperties)
-                {
-                    return _globakKeyboardHook;
-                }
-            }
-            set
-            {
-                lock (_lockProperties)
-                {
-                    if (_globakKeyboardHook != null)
-                    {
-                        _globakKeyboardHook.KeyPressed -= KeyboardPressedEvent;
-                    }
-                    _globakKeyboardHook = value;
-                    if (_globakKeyboardHook != null)
-                    {
-                        _globakKeyboardHook.KeyPressed += KeyboardPressedEvent;
-                    }
-                }
-            }
-        }
-        public IGlobalScreenCapture ScreenHook
-        {
-            get
-            {
-                lock (_lockProperties)
-                {
-                    return _globakScreenHook;
-                }
-            }
-            set
-            {
-                lock (_lockProperties)
-                {
-                    if (_globakScreenHook != null)
-                    {
-                        _globakScreenHook.ScreenEvent -= ScreenHookEventHandler;
-                    }
-                    _globakScreenHook = value;
-                    if (_globakScreenHook != null)
-                    {
-                        _globakScreenHook.ScreenEvent += ScreenHookEventHandler;
-                    }
-                }
-            }
-        }
-        public RemoteClient RemoteClient
+        public TCPClient.TCPClient RemoteClient
         {
             get
             {
@@ -221,57 +162,57 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void DoWork(object sender, DoWorkEventArgs e)
         {
-            int count = 0;
-            while (!_cancellationToken.IsCancellationRequested)
-            {
-                if (count % 10 == 0)
-                {
-                    if (ScreenHook != null)
-                    {
-                        if (ScreenHook.IsCapturing && _connectionManager.NumberOfConnections == 0)
-                        {
-                            StopScreenHook();
-                        }
-                    }
-                    count = 0;
-                }
+            //int count = 0;
+            //while (!_cancellationToken.IsCancellationRequested)
+            //{
+            //    if (count % 10 == 0)
+            //    {
+            //        if (ScreenHook != null)
+            //        {
+            //            if (ScreenHook.IsCapturing && _connectionManager.NumberOfConnections == 0)
+            //            {
+            //                StopScreenHook();
+            //            }
+            //        }
+            //        count = 0;
+            //    }
 
-                var taskQueue = DequeueTask();
-                if (taskQueue != null)
-                {
-                    try
-                    {
-                        if (taskQueue is TaskObject task)
-                        {
-                            ProcessTask(task);
-                        }
-                        else if (taskQueue is TaskGroup taskGroup)
-                        {
-                            foreach (var t in taskGroup.Tasks)
-                            {
-                                if (CommandTasks.TryPeek(out _))
-                                {
-                                    break;
-                                }
-                                ProcessTask(t);
-                            }
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
-                    }
-                }
-                count++;
-                Thread.Sleep(5);
-            }
+            //    var taskQueue = DequeueTask();
+            //    if (taskQueue != null)
+            //    {
+            //        try
+            //        {
+            //            if (taskQueue is TaskObject task)
+            //            {
+            //                ProcessTask(task);
+            //            }
+            //            else if (taskQueue is TaskGroup taskGroup)
+            //            {
+            //                foreach (var t in taskGroup.Tasks)
+            //                {
+            //                    if (CommandTasks.TryPeek(out _))
+            //                    {
+            //                        break;
+            //                    }
+            //                    ProcessTask(t);
+            //                }
+            //            }
+            //        }
+            //        catch (Exception ex)
+            //        {
+            //            Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
+            //        }
+            //    }
+            //    count++;
+            //    Thread.Sleep(5);
+            //}
         }
         private void ProcessTask(TaskObject task)
         {
             byte[] data = TaskObjectToBytes(task);
             RemoteClient.Send(data);
         }
-        private object? DequeueTask()
+        private object DequeueTask()
         {
             try
             {
@@ -290,14 +231,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 return null;
             }
         }
-        public void AddWork(TaskObject task, DataType type = DataType.Command)
+        public void AddWork(TaskObject task, DataType type = DataType.None)
         {
             if (type == DataType.Screen)
             {
                 if (ScreenTasks.Count >= 2)
                 {
                     // keep last frame and remove all previous frames
-                    object? lastItem = null;
+                    object lastItem = null;
                     while (ScreenTasks.TryDequeue(out var item))
                     {
                         lastItem = item;
@@ -314,7 +255,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 CommandTasks.Enqueue(task);
             }
         }
-        public void AddWorkGroup(List<TaskObject> tasks, DataType type = DataType.Command)
+        public void AddWorkGroup(List<TaskObject> tasks, DataType type= DataType.None)
         {
             if (type == DataType.Screen)
             {
@@ -332,7 +273,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                KeyboardHook.Start((uint)Process.GetCurrentProcess().Id);
+                //KeyboardHook.Start((uint)Process.GetCurrentProcess().Id);
             }
             catch (Exception ex)
             {
@@ -346,7 +287,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                KeyboardHook.Stop();
+               //KeyboardHook.Stop();
             }
             catch (Exception ex)
             {
@@ -361,7 +302,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                KeyboardHook.AddHook(handle);
+                //KeyboardHook.AddHook(handle);
             }
             catch (Exception ex)
             {
@@ -376,7 +317,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                KeyboardHook.RemoveHook(handle);
+                //KeyboardHook.RemoveHook(handle);
             }
             catch (Exception ex)
             {
@@ -391,8 +332,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                ScreenHook.StartCapture();
-                ScreenHook.IsCapturing = true;
+                //ScreenHook.StartCapture();
+                //ScreenHook.IsCapturing = true;
             }
             catch (Exception ex)
             {
@@ -407,8 +348,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                ScreenHook.StopCapture();
-                ScreenHook.IsCapturing = false;
+                //ScreenHook.StopCapture();
+                //ScreenHook.IsCapturing = false;
             }
             catch (Exception ex)
             {
@@ -454,9 +395,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 string id = partnerId.Replace(" ", "");
                 string password = partnerPassword.Replace(" ", "");
 
-                string dataString = StringBuilderUtils.DataStringBuilder(
+                string dataString = Helpers.StringHelper.DataStringBuilder(
                     new string[] {
-                        _clientInfo.Id,
+                        Services.ConnectionManager.ConnectionManager.Me.Id,
                         id,
                         password
                     }
@@ -465,7 +406,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                 AddWork(new TaskObject
                 {
-                    TaskType = SocketDataType.P2PConnect,
+                    TaskType = DataType.P2PConnect,
                     Data = data
                 });
             }
@@ -476,7 +417,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public string FormatKeyboardInput(IntPtr command, Keys modifier, Keys code, KeyState type)
         {
-            return KeyboardHook.KeyboardEventTostring(command, modifier, code, type);
+            //return KeyboardHook.KeyboardEventTostring(command, modifier, code, type);
+            return "";
         }
         public string GetClipboard()
         {
@@ -495,7 +437,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             try
             {
                 string clipboard = VirtualClipboard.GetClipboardString();
-                return ByteArrayUtils.ConvertStringToByteArray(clipboard, EncodingType.ASCII).GetResult();
+                return Helpers.ByteArrayHelper.ConvertStringToByteArray(clipboard, EncodingType.ASCII).GetResult();
             }
             catch (Exception ex)
             {
@@ -525,11 +467,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                string data = StringBuilderUtils.DataStringBuilder(new string[] { _clientInfo.ToNetworkPacketString() });
+                string data = Helpers.StringHelper.DataStringBuilder(new string[] { Services.ConnectionManager.ConnectionManager.Me.ToNetworkPacketString() });
                 byte[] dataBytes = Encoding.ASCII.GetBytes(data);
                 AddWork(new TaskObject
                 {
-                    TaskType = SocketDataType.Login,
+                    TaskType = DataType.Login,
                     Data = dataBytes,
                     IsSendHeader = true
                 });
@@ -568,7 +510,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             AddWork(new TaskObject
             {
-                TaskType = SocketDataType.AcceptSendFile,
+                TaskType = DataType.AcceptSendFile,
                 Data = new byte[0],
                 SessionId = sessionID,
                 IsSendHeader = true,
@@ -598,36 +540,36 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         /// <exception cref="NotImplementedException"></exception>
         private void P2PConnectEventHandler(bool flag, byte[] data)
         {
-            if (!flag)
-            {
-                P2PConnectEvent?.Invoke(ClientType.NONE, false, null);
-                return;
-            }
-            try
-            {
-                ConnectionInfo connectionInfo = _connectionManager.ConvertFromBytes(data, 1, data.Length - 1);
-                if (connectionInfo != null)
-                {
-                    _connectionManager.AddConnection(connectionInfo.SessionId, connectionInfo);
-                    connectionInfo.Me = _clientInfo;
-                    if (!connectionInfo.IsSender)
-                    {
-                        P2PConnectEvent?.Invoke(ClientType.RECEIVER, true, connectionInfo);
-                        if (!ScreenHook.IsCapturing)
-                        {
-                            StartScreenHook();
-                        }
-                    }
-                    else
-                    {
-                        P2PConnectEvent?.Invoke(ClientType.SENDER, true, connectionInfo);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing P2P connection data");
-            }
+            //if (!flag)
+            //{
+            //    P2PConnectEvent?.Invoke(ClientType.NONE, false, null);
+            //    return;
+            //}
+            //try
+            //{
+            //    ConnectionInfo connectionInfo = _connectionManager.ConvertFromBytes(data, 1, data.Length - 1);
+            //    if (connectionInfo != null)
+            //    {
+            //        _connectionManager.AddConnection(connectionInfo.SessionId, connectionInfo);
+            //        connectionInfo.Me = _clientInfo;
+            //        if (!connectionInfo.IsSender)
+            //        {
+            //            P2PConnectEvent?.Invoke(ClientType.RECEIVER, true, connectionInfo);
+            //            if (!ScreenHook.IsCapturing)
+            //            {
+            //                StartScreenHook();
+            //            }
+            //        }
+            //        else
+            //        {
+            //            P2PConnectEvent?.Invoke(ClientType.SENDER, true, connectionInfo);
+            //        }
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing P2P connection data");
+            //}
         }
         private void P2PScreenEventHandler(byte[] data)
         {
@@ -643,23 +585,23 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void MouseReceivedEventHandler(byte[] obj)
         {
-            try
-            {
-                byte[] mouse = new byte[obj.Length - 1];
-                Buffer.BlockCopy(obj, 1, mouse, 0, obj.Length - 1);
+            //try
+            //{
+            //    byte[] mouse = new byte[obj.Length - 1];
+            //    Buffer.BlockCopy(obj, 1, mouse, 0, obj.Length - 1);
 
-                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, _clientInfo.Width, _clientInfo.Height);
+            //    var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, _clientInfo.Width, _clientInfo.Height);
 
-                bool flag = VirtualMouse.MouseEvent(mouseEvent);
-                if (!flag)
-                {
-                    Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing mouse data");
-            }
+            //    bool flag = VirtualMouse.MouseEvent(mouseEvent);
+            //    if (!flag)
+            //    {
+            //        Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
+            //    }
+            //}
+            //catch (Exception ex)
+            //{
+            //    Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing mouse data");
+            //}
         }
         private void KeyboardReceivedEventHandler(byte[] obj)
         {
@@ -680,49 +622,49 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void P2PDisconnectedEventhandler(bool flag, string sessionId)
         {
-            try
-            {
-                if (_connectionManager.NumberOfConnections > 0)
-                {
-                    bool f = _connectionManager.RemoveConnection(sessionId);
-                    if (!f)
-                        Log.ForContext("Filename", GetType().Name).Error("Cannot remove connection with sessionId " + sessionId);
-                }
-                P2PDisconnect?.Invoke(flag);
+            //try
+            //{
+            //    if (_connectionManager.NumberOfConnections > 0)
+            //    {
+            //        bool f = _connectionManager.RemoveConnection(sessionId);
+            //        if (!f)
+            //            Log.ForContext("Filename", GetType().Name).Error("Cannot remove connection with sessionId " + sessionId);
+            //    }
+            //    P2PDisconnect?.Invoke(flag);
 
-            }
-            finally
-            {
-                if (_connectionManager.NumberOfConnections == 0)
-                {
-                    StopScreenHook();
-                }
-            }
+            //}
+            //finally
+            //{
+            //    if (_connectionManager.NumberOfConnections == 0)
+            //    {
+            //        StopScreenHook();
+            //    }
+            //}
         }
-        private void KeyboardPressedEvent(object sender, CustomKeyMessageEventArgs e)
+        private void KeyboardPressedEvent(object sender, KeyEvent e)
         {
-            //'Receive' will send clipboard data to all connections when copy pressed globally (not from app forms)
-            if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
-            {
-                string clipboard = GetClipboard();
+            ////'Receive' will send clipboard data to all connections when copy pressed globally (not from app forms)
+            //if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
+            //{
+            //    string clipboard = GetClipboard();
 
-                if (string.IsNullOrEmpty(clipboard)) return;
+            //    if (string.IsNullOrEmpty(clipboard)) return;
 
-                foreach (var connection in _connectionManager.GetCurrentConnections())
-                {
-                    AddWork(new TaskObject
-                    {
-                        TaskType = SocketDataType.Clipboard,
-                        SessionId = connection.SessionId,
-                        Data = Encoding.UTF8.GetBytes(clipboard),
-                    });
-                }
-            }
+            //    foreach (var connection in _connectionManager.GetCurrentConnections())
+            //    {
+            //        AddWork(new TaskObject
+            //        {
+            //            TaskType = SocketDataType.Clipboard,
+            //            SessionId = connection.SessionId,
+            //            Data = Encoding.UTF8.GetBytes(clipboard),
+            //        });
+            //    }
+            //}
 
-            //'Sender' will send clipboard to receiver
-            KeyboardEvent?.Invoke(sender, e);
+            ////'Sender' will send clipboard to receiver
+            //KeyboardEvent?.Invoke(sender, e);
         }
-        private void ScreenHookEventHandler(object sender, CustomScreenEventArgs e)
+        private void ScreenHookEventHandler(object sender, ScreenEvent e)
         {
             try
             {
@@ -884,7 +826,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _remoteClient");
                     }
 
-                    _connectionManager.Clear();
                 }
             }
             _commandTasks = null;

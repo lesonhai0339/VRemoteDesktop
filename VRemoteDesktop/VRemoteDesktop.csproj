@@ -40,6 +40,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -65,13 +66,14 @@
     <Compile Include="Enums\WindowsKeyboardEvent.cs" />
     <Compile Include="Enums\WindowsMouseEvent.cs" />
     <Compile Include="Enums\WindowsMouseMessage.cs" />
-    <Compile Include="Events\KeyEventArgs.cs" />
+    <Compile Include="Events\KeyEvent.cs" />
     <Compile Include="Events\MouseEvent.cs" />
-    <Compile Include="Events\ScreenEventArgs.cs" />
+    <Compile Include="Events\ScreenEvent.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
     <Compile Include="Models\MouseData.cs" />
+    <Compile Include="Models\TaskGroup.cs" />
     <Compile Include="Models\TaskObject.cs" />
     <Compile Include="Models\BaseResponse.cs" />
     <Compile Include="Models\ByteArrayBuilder.cs" />

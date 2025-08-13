@@ -18,7 +18,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
     {
         void StartCapture();
         void StopCapture();
-        event EventHandler<ScreenEventArgs> ScreenEvent;
+        event EventHandler<ScreenEvent> ScreenEvent;
         bool IsCapturing { get; set; }
     }
     public class ScreenCaptureServiceListener : IScreenCaptureServiceListener
@@ -35,7 +35,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private IScreenCapture _capture;
         private ScreenCaptureConfig _config;
         private BackgroundWorker _backgroundWorker;
-        public event EventHandler<ScreenEventArgs> ScreenEvent;
+        public event EventHandler<ScreenEvent> ScreenEvent;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
         public ScreenCaptureServiceListener(ScreenCaptureConfig config, ScreenCapture screenCapture)
         {
@@ -150,7 +150,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     var byteCombined = ByteArrayHelper.Combine(checksum, screenCaptureCompressed).GetResult();
                     _dataSend = byteCombined;
-                    ScreenEventArgs screenArgs = new ScreenEventArgs(
+                    ScreenEvent screenArgs = new ScreenEvent(
                         type: DataType.Screen,
                         totalSize: dataLength
                     );
@@ -186,7 +186,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     _dataSend = byteCombined;
 
 
-                    ScreenEventArgs chunksArgs = new ScreenEventArgs(
+                    ScreenEvent chunksArgs = new ScreenEvent(
                        type: DataType.Chunks,
                        totalSize: dataSendLength
                     );

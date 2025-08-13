@@ -18,7 +18,7 @@ namespace VRemoteDesktop.Services.Keyboard
         private IntPtr _hookID;
         private HookApis.LowLevelProc _proc;
         private HashSet<IntPtr> _windowsHandle;
-        public event EventHandler<Events.KeyEventArgs> KeyPressed;
+        public event EventHandler<Events.KeyEvent> KeyPressed;
         public KeyboardHook()
         {
             _disposed = false;
@@ -133,12 +133,12 @@ namespace VRemoteDesktop.Services.Keyboard
                     Keys key = (Keys)vkCode;
                     KeyState keyState = wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYDOWN ? KeyState.KeyDown : KeyState.KeyUp;
 
-                    Events.KeyEventArgs keyEventArgs;
+                    Events.KeyEvent keyEventArgs;
 
                     //Copy event
                     if (IsControlPressed() && key == Keys.C)
                     {
-                        keyEventArgs = new Events.KeyEventArgs
+                        keyEventArgs = new Events.KeyEvent
                         {
                             Command = wParam,
                             Handle = IntPtr.Zero,
@@ -159,7 +159,7 @@ namespace VRemoteDesktop.Services.Keyboard
                         var focusedHandles = WindowsHandle.Where(x => IsHandleFocus(x)).ToList();
                         if (focusedHandles.Any())
                         {
-                            keyEventArgs = new Events.KeyEventArgs
+                            keyEventArgs = new Events.KeyEvent
                             {
                                 Command = wParam,
                                 Handle = focusedHandles.First(),

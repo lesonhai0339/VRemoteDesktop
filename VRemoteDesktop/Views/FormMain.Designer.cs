@@ -1,4 +1,7 @@
-﻿namespace VRemoteDesktop
+﻿using System;
+using System.Windows.Forms;
+
+namespace VRemoteDesktop
 {
     partial class FormMain
     {
@@ -94,6 +97,7 @@
             this.pnStatus.Name = "pnStatus";
             this.pnStatus.Size = new System.Drawing.Size(15, 15);
             this.pnStatus.TabIndex = 20;
+            this.pnStatus.Paint += new PaintEventHandler(pnStatus_Paint);
             // 
             // btnConnect
             // 
@@ -162,12 +166,14 @@
             this.txtOwnerId.Size = new System.Drawing.Size(150, 22);
             this.txtOwnerId.TabIndex = 16;
             this.txtOwnerId.TabStop = false;
+
             // 
             // FormMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(368, 218);
+            this.MaximizeBox = false;
             this.Controls.Add(this.label7);
             this.Controls.Add(this.label6);
             this.Controls.Add(this.label5);
@@ -184,10 +190,13 @@
             this.Name = "FormMain";
             this.Text = "FormMain";
             this.Load += new System.EventHandler(this.FormMain_Load);
+            this.Shown += new System.EventHandler(this.FormMain_Shown);
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
+
+
 
         #endregion
 

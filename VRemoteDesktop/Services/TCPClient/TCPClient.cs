@@ -2,13 +2,14 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Configuration;
 using System.Linq;
-using System.Net.Sockets;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
-using VRemoteDesktop.Models;
 using VRemoteDesktop.Enums;
+using VRemoteDesktop.Models;
 using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Services.TCPClient
@@ -209,10 +210,14 @@ namespace VRemoteDesktop.Services.TCPClient
         /// </summary>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-        public void Connect(string ip, int port)
+        public void Connect(string ip = "", int port = 0)
         {
             try
             {
+                ip = ConfigurationManager.AppSettings["RemoteServerIP"];
+                string p = ConfigurationManager.AppSettings["RemoteServerPort"];
+                port = int.Parse(p);
+
                 if (!Worker.IsBusy)
                 {
                     Worker.RunWorkerAsync();

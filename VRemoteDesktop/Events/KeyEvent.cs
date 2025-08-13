@@ -7,12 +7,12 @@ using VRemoteDesktop.Enums;
 
 namespace VRemoteDesktop.Events
 {
-    public class KeyEventArgs : EventArgs
+    public class KeyEvent : EventArgs
     {
-        public KeyEventArgs()
+        public KeyEvent()
         {
         }
-        public KeyEventArgs(IntPtr command, IntPtr handle, Keys keyCode, KeyState keyType, bool isSynthetic = false)
+        public KeyEvent(IntPtr command, IntPtr handle, Keys keyCode, KeyState keyType, bool isSynthetic = false)
         {
             Command = command;
             Handle = handle;
@@ -20,7 +20,7 @@ namespace VRemoteDesktop.Events
             KeyType = keyType;
             IsSynthetic = isSynthetic;
         }
-        public KeyEventArgs(IntPtr command, IntPtr handle, Keys keyModifier, Keys keyCode, bool isSynthetic = false)
+        public KeyEvent(IntPtr command, IntPtr handle, Keys keyModifier, Keys keyCode, bool isSynthetic = false)
         {
             Command = command;
             Handle = handle;
@@ -28,7 +28,7 @@ namespace VRemoteDesktop.Events
             KeyCode = keyCode;
             IsSynthetic = isSynthetic;
         }
-        public KeyEventArgs(IntPtr command, IntPtr handle, Keys keyModifier, Keys keyCode, KeyState keyType, bool isSynthetic = false)
+        public KeyEvent(IntPtr command, IntPtr handle, Keys keyModifier, Keys keyCode, KeyState keyType, bool isSynthetic = false)
         {
             Command = command;
             Handle = handle;
