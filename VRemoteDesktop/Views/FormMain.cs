@@ -19,19 +19,29 @@ namespace VRemoteDesktop
         public FormMain()
         {
             InitializeComponent();
-            _viewModel = new MainViewModel();
+            ViewModel = new MainViewModel();
             SetupBinding();
 
         }
+        #region Properties
+        public MainViewModel ViewModel
+        {
+            get => _viewModel;
+            set
+            {
+                _viewModel = value;
+            }
+        }
+        #endregion
         private void SetupBinding()
         {
-            txtOwnerId.DataBindings.Add("Text", _viewModel, "MyId",
+            txtOwnerId.DataBindings.Add("Text", ViewModel, "MyId",
                 false, DataSourceUpdateMode.OnPropertyChanged);
-            txtOwnerPassword.DataBindings.Add("Text", _viewModel, "MyPassword",
+            txtOwnerPassword.DataBindings.Add("Text", ViewModel, "MyPassword",
                false, DataSourceUpdateMode.OnPropertyChanged);
-            txtPartnerId.DataBindings.Add("Text", _viewModel, "PartnerId",
+            txtPartnerId.DataBindings.Add("Text", ViewModel, "PartnerId",
                 false, DataSourceUpdateMode.OnPropertyChanged);
-            txtPartnerPassword.DataBindings.Add("Text", _viewModel, "PartnerPassword",
+            txtPartnerPassword.DataBindings.Add("Text", ViewModel, "PartnerPassword",
                false, DataSourceUpdateMode.OnPropertyChanged);
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
@@ -48,7 +58,7 @@ namespace VRemoteDesktop
             Graphics g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            Color circleColor = _viewModel.IsConnected ? Color.Green : Color.Red;
+            Color circleColor = ViewModel.IsConnected ? Color.Green : Color.Red;
             using (SolidBrush brush = new SolidBrush(circleColor))
             {
                 g.FillEllipse(brush, 1, 1, pnStatus.Width - 2, pnStatus.Height - 2);
@@ -66,12 +76,40 @@ namespace VRemoteDesktop
 
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            _viewModel.Connect();
+            string partnetId = txtPartnerPassword.Text.Replace(" ", "");
+            string partnetPassword = txtPartnerPassword.Text.Replace(" ","");
+            if(!string.IsNullOrWhiteSpace(partnetId) && int.TryParse(partnetPassword, out int password))
+            {
+                P2PConnec(partnetId, password);
+            }
+            else
+            {
+                MessageBox.Show("Thông tin không hợp lệ", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         private void Connect()
         {
-            _viewModel.Connect();
+            ViewModel.Connect();
         }
-        
+        private void P2PConnec(string id, int password)
+        {
+            ViewModel.P2PConnect(id, password);
+        }
+        private void UpdateConnectionStatus()
+        {
+            Action action = () =>
+            {
+                lbStatus.Text = "Sẵn sàng";
+                pnStatus.Invalidate();
+            };
+            if (this.InvokeRequired)
+            {
+                this.Invoke(action);
+            }
+            else
+            {
+                action();
+            }
+        }
     }
 }

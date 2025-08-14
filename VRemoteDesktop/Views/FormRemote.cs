@@ -15,5 +15,10 @@ namespace VRemoteDesktop.Views
         {
             InitializeComponent();
         }
+
+        private void FormRemote_Load(object sender, EventArgs e)
+        {
+
+        }
     }
 }

@@ -5,30 +5,39 @@ using System.Configuration;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteDesktop.Events;
+using VRemoteDesktop.Helpers;
+using VRemoteDesktop.Models;
+using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.TCPClient;
+using VRemoteDesktop.Utils;
+using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
         private readonly object _lock = new object();
-        private TCPClient _tcpClient;
         private string _partnerId;
         private string _partnerPassword;
         private string _myId;
         private string _myPassword;
         private bool _isConnected;
-       
+        private Client _myInfo;
+        private TCPClient _tcpClient;
+        private Authentication _authentication;
         public MainViewModel()
         {
-            Client = new TCPClient();
-            MyId = Services.ConnectionManager.ConnectionManager.Me.Id;
-            MyPassword = Services.ConnectionManager.ConnectionManager.Me.Password;
+            TCPClient = new TCPClient();
+            Authentication = new Authentication(TCPClient);
+            _myInfo = Services.ConnectionManager.ConnectionManager.Me;
+            MyId = _myInfo.Id;
+            MyPassword = _myInfo.Password;
             IsConnected = false;
         }
 
         #region Properties
-        public TCPClient Client
+        public TCPClient TCPClient
         {
             get
             {
@@ -44,16 +53,26 @@ namespace VRemoteDesktop.ViewModels
                     if (_tcpClient != null)
                     {
                         _tcpClient.ConnectEvent -= ConnectEventHandler;
+                        _tcpClient.LoginEvent -= LoginEventHandler;
                     }
                     _tcpClient = value;
                     if (_tcpClient != null)
                     {
                         _tcpClient.ConnectEvent += ConnectEventHandler;
+                        _tcpClient.LoginEvent += LoginEventHandler;
+
                     }
                 }
             }
         }
 
+ 
+
+        public Authentication Authentication
+        {
+            get => _authentication;
+            set => _authentication = value;
+        }
 
         public string PartnerId
         {
@@ -104,14 +123,50 @@ namespace VRemoteDesktop.ViewModels
         #region Methods
         public void Connect()
         {
-            _tcpClient.Connect();
+            string ip = AppSettingHelper.Getvalue("RemoteServerIP");
+            string port = AppSettingHelper.Getvalue("RemoteServerPort");
+
+            if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
+            {
+                Log.ForContext("FileName", nameof(P2PConnect)).Error("Error at Connect");
+                return;
+            }
+            if(int.TryParse(port, out int validPort))
+            {
+                Authentication.Connect(ip, validPort);
+            }
+        }
+        public void Login()
+        {
+            Authentication.Login(_myInfo.ToNetworkPacketString());
+        }
+        public void P2PConnect(string ip, int port)
+        {
+            try
+            {
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", nameof(P2PConnect)).Error(ex, "Error at P2PConnect");
+            }
         }
         #endregion
         #region Events
-        private void ConnectEventHandler()
+        private void ConnectEventHandler(object sender, ConnectEventArgs e)
         {
-            IsConnected = true;
+            if (e.IsConnected)
+            {
+                Login();
+            }
         }
+        private void LoginEventHandler(object sender, LoginEventArgs e)
+        {
+            IsConnected = e.IsSuccess;
+        }
+
+
+
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName = null)
         {

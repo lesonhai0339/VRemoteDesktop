@@ -6,9 +6,12 @@ using System.Configuration;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using VRemoteDesktop.Enums;
+using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
 using static VRemoteDesktop.Utils.Logger;
 
@@ -26,8 +29,8 @@ namespace VRemoteDesktop.Services.TCPClient
         private BackgroundWorker _backgroundWorker;
         private CancellationTokenSource _cancellationToken;
 
-        public event Action ConnectEvent;
-        public event Action<bool> LoginEvent;
+        public event EventHandler<ConnectEventArgs> ConnectEvent;
+        public event EventHandler<LoginEventArgs> LoginEvent;
         public event Action<bool, byte[]> P2PConnectEvent;
         public event Action<byte[]> ScreenEvent;
         public event Action<byte[]> ChunksEvent;
@@ -71,7 +74,7 @@ namespace VRemoteDesktop.Services.TCPClient
         public Socket Socket
         {
             get => _socket;
-            private set
+            set
             {
                 //if (_socket != null)
                 //{
@@ -128,7 +131,7 @@ namespace VRemoteDesktop.Services.TCPClient
                         switch (task.Type)
                         {
                             case DataType.Login:
-                                LoginEvent?.Invoke(true);
+                                LoginEvent?.Invoke(this, new LoginEventArgs(true));
                                 break;
                             case DataType.P2PConnect:
                                 IsP2PConnected = true;
@@ -165,11 +168,11 @@ namespace VRemoteDesktop.Services.TCPClient
                             case DataType.Error:
                                 break;
                             case DataType.LoginFailed:
-                                LoginEvent?.Invoke(false);
+                                LoginEvent?.Invoke(this, new LoginEventArgs(false));
                                 break;
                             case DataType.P2PDisconnect:
                                 IsP2PConnected = false;
-                                P2PDisconnectedEvent?.Invoke(true, task.SessionId);
+                                P2PDisconnectedEvent?.Invoke(true, "");
                                 break;
                             case DataType.P2PConnectFailed:
                                 P2PConnectEvent?.Invoke(false, task.Data);
@@ -178,15 +181,15 @@ namespace VRemoteDesktop.Services.TCPClient
                                 ChatMessageEvent?.Invoke(task.Data);
                                 break;
                             case DataType.RequestSendFile:
-                                SendFileEvent?.Invoke(SendFileType.RequestSendFile, task.SessionId, task.Data);
+                                SendFileEvent?.Invoke(SendFileType.RequestSendFile, "", task.Data);
                                 Console.WriteLine("Request to send file received");
                                 break;
                             case DataType.AcceptSendFile:
-                                SendFileEvent?.Invoke(SendFileType.AcceptSendFile, task.SessionId, task.Data);
+                                SendFileEvent?.Invoke(SendFileType.AcceptSendFile, "", task.Data);
                                 Console.WriteLine("Request to receive file received");
                                 break;
                             case DataType.FileTransfer:
-                                SendFileEvent?.Invoke(SendFileType.FileTransfer, task.SessionId, task.Data);
+                                SendFileEvent?.Invoke(SendFileType.FileTransfer, "", task.Data);
                                 Console.WriteLine("File transfer received");
                                 break;
                             default:
@@ -201,6 +204,7 @@ namespace VRemoteDesktop.Services.TCPClient
                 Thread.Sleep(1);
             }
         }
+
         public void Cancel()
         {
             _cancellationToken.Cancel();
@@ -210,67 +214,34 @@ namespace VRemoteDesktop.Services.TCPClient
         /// </summary>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-        public void Connect(string ip = "", int port = 0)
-        {
-            try
-            {
-                ip = ConfigurationManager.AppSettings["RemoteServerIP"];
-                string p = ConfigurationManager.AppSettings["RemoteServerPort"];
-                port = int.Parse(p);
-
-                if (!Worker.IsBusy)
-                {
-                    Worker.RunWorkerAsync();
-                }
-                IPEndPoint remoteEP;
-                if (IPAddress.TryParse(ip, out IPAddress _))
-                {
-                    remoteEP = new IPEndPoint(IPAddress.Parse(ip), port);
-
-                    if (Socket == null)
-                    {
-                        Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                        Socket.NoDelay = true;
-                    }
-                    Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                    Socket.BeginConnect(remoteEP, new AsyncCallback(ConnectCallback), Socket);
-                }
-                else
-                {
-                    Log.ForContext("FileName", "RemoteClient").Error("Invalid IP address: {Ip}", ip);
-                }
-            }
-            catch (SocketException ex)
-            {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when connect to relay server");
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when connect to relay server");
-            }
-            finally
-            {
-
-            }
-        }
+       
         /// <summary>
         /// Callback method when the socket is connected to the remote server
         /// </summary>
         /// <param name="ar"></param>
-        private void ConnectCallback(IAsyncResult ar)
+        public void ConnectCallback(IAsyncResult ar)
         {
             try
-            {
+            { 
                 Socket.EndConnect(ar);
-                if (Socket.Connected)
+                if (!Socket.Connected)
                 {
-                    SocketConnected = true;
+                    ConnectEvent?.Invoke(this, new ConnectEventArgs(false));
+                    Log.ForContext("FileName", "RemoteClient").Error("Cannot connect to server");
+                    return;
                 }
-                ConnectEvent?.Invoke();
+
+                SocketConnected = true;
+                if (!Worker.IsBusy)
+                {
+                    Worker.RunWorkerAsync();
+                }
+                ConnectEvent?.Invoke(this, new ConnectEventArgs(true));
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
 
                 Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
+                Log.ForContext("FileName", "RemoteClient").Info("Connected to {RemoteEndPoint}, starting receive loop");
             }
             catch (SocketException ex)
             {
@@ -297,11 +268,11 @@ namespace VRemoteDesktop.Services.TCPClient
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
                     while (!_cancellationToken.Token.IsCancellationRequested)
                     {
-                        if (!(stateObject.ByteArrayBuilder.Length >= 20))
+                        if (!(stateObject.ByteArrayBuilder.Length >= 5))
                         {
                             break;
                         }
-                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(16, 4).ToArray(), 0);
+                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
                         if (!(stateObject.ByteArrayBuilder.Length >= length))
                         {
                             break;
@@ -333,20 +304,16 @@ namespace VRemoteDesktop.Services.TCPClient
         {
             try
             {
-                byte[] sessionIdBytes = new byte[16];
-                Buffer.BlockCopy(bytes, 0, sessionIdBytes, 0, 16);
-                string sessionId = Encoding.ASCII.GetString(sessionIdBytes);
-                int length = BitConverter.ToInt32(bytes, 16);
+                int length = BitConverter.ToInt32(bytes, 0);
 
-                DataType commandType = (DataType)bytes[20];
+                DataType commandType = (DataType)bytes[4];
 
-                byte[] data = new byte[bytes.Length - 20];
-                Buffer.BlockCopy(bytes, 20, data, 0, data.Length);
+                byte[] data = new byte[bytes.Length - 5];
+                Buffer.BlockCopy(bytes, 5, data, 0, data.Length);
 
                 Tasks.Enqueue(new DataReceive
                 {
                     Type = commandType,
-                    SessionId = sessionId,
                     Length = length,
                     Data = data
                 });
@@ -354,6 +321,47 @@ namespace VRemoteDesktop.Services.TCPClient
             catch (Exception ex)
             {
                 Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
+            }
+        }
+        private byte[] PrepareHeader(DataType type,byte[] data)
+        {
+            byte[] resultBytes = new byte[data.Length + 13];
+
+            Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 0, 4);
+
+            resultBytes[4] = (byte)type;
+            Buffer.BlockCopy(Encoding.ASCII.GetBytes("00000000"), 0, resultBytes, 5, 8);
+            Buffer.BlockCopy(data, 0, resultBytes, 13, data.Length);
+
+            return resultBytes;
+        }
+        public void Send(DataType type, byte[] data, bool isSendHeader = true)
+        {
+            try
+            {
+                if (isSendHeader)
+                {
+                    data = PrepareHeader(type, data);
+                }
+                Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
+                {
+                    try
+                    {
+                        Socket.EndSend(ar);
+                    }
+                    catch (SocketException ex)
+                    {
+                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                    }
+                }, null);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
             }
         }
         public void Send(byte[] data)

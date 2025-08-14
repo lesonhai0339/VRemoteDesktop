@@ -84,8 +84,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     if (_remoteClient != null)
                     {
-                        _remoteClient.ConnectEvent -= ConnectEventHandler;
-                        _remoteClient.LoginEvent -= LoginEventHandler;
                         _remoteClient.P2PConnectEvent -= P2PConnectEventHandler;
                         _remoteClient.ScreenEvent -= P2PScreenEventHandler;
                         _remoteClient.ChunksEvent -= P2PChunksEventHandler;
@@ -101,8 +99,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     _remoteClient = value;
                     if (_remoteClient != null)
                     {
-                        _remoteClient.ConnectEvent += ConnectEventHandler;
-                        _remoteClient.LoginEvent += LoginEventHandler;
                         _remoteClient.P2PConnectEvent += P2PConnectEventHandler;
                         _remoteClient.ScreenEvent += P2PScreenEventHandler;
                         _remoteClient.ChunksEvent += P2PChunksEventHandler;
@@ -371,7 +367,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     return;
                 }
 
-                RemoteClient.Connect(serverIp, port);
+                //RemoteClient.Connect(serverIp, port);
                 bool flag = _resetEvent.WaitOne(5000);
                 if (!flag)
                 {
@@ -805,7 +801,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     {
                         if (_remoteClient != null)
                         {
-                            _remoteClient.LoginEvent -= LoginEventHandler;
                             _remoteClient.P2PConnectEvent -= P2PConnectEventHandler;
                             _remoteClient.ScreenEvent -= P2PScreenEventHandler;
                             _remoteClient.ChunksEvent -= P2PChunksEventHandler;

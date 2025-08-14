@@ -66,12 +66,16 @@
     <Compile Include="Enums\WindowsKeyboardEvent.cs" />
     <Compile Include="Enums\WindowsMouseEvent.cs" />
     <Compile Include="Enums\WindowsMouseMessage.cs" />
+    <Compile Include="Events\ConnectEventArgs.cs" />
     <Compile Include="Events\KeyEvent.cs" />
+    <Compile Include="Events\LoginEventArgs.cs" />
     <Compile Include="Events\MouseEvent.cs" />
     <Compile Include="Events\ScreenEvent.cs" />
+    <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
+    <Compile Include="Models\ErrorResponse.cs" />
     <Compile Include="Models\MouseData.cs" />
     <Compile Include="Models\TaskGroup.cs" />
     <Compile Include="Models\TaskObject.cs" />
@@ -134,6 +138,9 @@
     </Compile>
     <EmbeddedResource Include="Views\FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Views\FormRemote.resx">
+      <DependentUpon>FormRemote.cs</DependentUpon>
     </EmbeddedResource>
     <None Include="Configs\App.config" />
     <None Include="Configs\app.manifest" />
