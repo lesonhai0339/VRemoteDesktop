@@ -215,7 +215,7 @@ namespace VRemoteServer.Services
                 IPEndPoint ep = task.Client.Socket.RemoteEndPoint as IPEndPoint;
 
                 var clientInfo = Encoding.ASCII.GetString(data).Replace(" ", "").Split('|');
-                if (clientInfo.Length != 7)
+                if (clientInfo.Length != 10)
                 {
                     await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);
                     Log.ForContext("FileName", "RemoteDesktopServer")
