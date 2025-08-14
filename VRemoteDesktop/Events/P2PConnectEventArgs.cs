@@ -2,13 +2,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
-using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.Events
 {
-    public class LoginEventArgs: EventArgs
+    public class P2PConnectEventArgs: EventArgs
     {
-        public LoginEventArgs(bool isSuccess, byte[] data)
+        public P2PConnectEventArgs(bool isSuccess, byte[] data)
         {
             IsSuccess = isSuccess;
             Data = data;

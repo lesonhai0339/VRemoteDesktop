@@ -9,8 +9,10 @@ using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Authentication;
+using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.TCPClient;
 using VRemoteDesktop.Utils;
+using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.ViewModels
@@ -23,14 +25,16 @@ namespace VRemoteDesktop.ViewModels
         private string _myId;
         private string _myPassword;
         private bool _isConnected;
-        private Client _myInfo;
+        private ClientInfo _myInfo;
         private TCPClient _tcpClient;
         private Authentication _authentication;
+        private ConnectionManager _connectionManager;
         public MainViewModel()
         {
             TCPClient = new TCPClient();
             Authentication = new Authentication(TCPClient);
-            _myInfo = Services.ConnectionManager.ConnectionManager.Me;
+            ConnectionManager = new ConnectionManager();
+            _myInfo = ConnectionManager.Me;
             MyId = _myInfo.Id;
             MyPassword = _myInfo.Password;
             IsConnected = false;
@@ -54,24 +58,42 @@ namespace VRemoteDesktop.ViewModels
                     {
                         _tcpClient.ConnectEvent -= ConnectEventHandler;
                         _tcpClient.LoginEvent -= LoginEventHandler;
+                        _tcpClient.P2PConnectEvent -= P2PConnectEventHandler;
                     }
                     _tcpClient = value;
                     if (_tcpClient != null)
                     {
                         _tcpClient.ConnectEvent += ConnectEventHandler;
                         _tcpClient.LoginEvent += LoginEventHandler;
+                        _tcpClient.P2PConnectEvent += P2PConnectEventHandler;
 
                     }
                 }
             }
         }
 
- 
 
         public Authentication Authentication
         {
             get => _authentication;
             set => _authentication = value;
+        }
+        public ConnectionManager ConnectionManager
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _connectionManager;
+                }
+            }
+            set
+            {
+                lock (_lock)
+                {
+                    _connectionManager = value;
+                }
+            }
         }
 
         public string PartnerId
@@ -138,12 +160,13 @@ namespace VRemoteDesktop.ViewModels
         }
         public void Login()
         {
-            Authentication.Login(_myInfo.ToNetworkPacketString());
+            Authentication.Login(_myInfo.ToNetworkString());
         }
-        public void P2PConnect(string ip, int port)
+        public void P2PConnect(string ip, string password)
         {
             try
             {
+                Authentication.P2PConnect(ip, password, _myInfo);
             }
             catch(Exception ex)
             {
@@ -162,9 +185,12 @@ namespace VRemoteDesktop.ViewModels
         private void LoginEventHandler(object sender, LoginEventArgs e)
         {
             IsConnected = e.IsSuccess;
+            ConnectionManager.UpdateMyInfo(e.Data);
         }
-
-
+        private void P2PConnectEventHandler(object sender, P2PConnectEventArgs e)
+        {
+            byte[] data = e.Data;
+        }
 
 
         public event PropertyChangedEventHandler PropertyChanged;

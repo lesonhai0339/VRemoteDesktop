@@ -31,7 +31,7 @@ namespace VRemoteDesktop.Services.TCPClient
 
         public event EventHandler<ConnectEventArgs> ConnectEvent;
         public event EventHandler<LoginEventArgs> LoginEvent;
-        public event Action<bool, byte[]> P2PConnectEvent;
+        public event EventHandler<P2PConnectEventArgs> P2PConnectEvent;
         public event Action<byte[]> ScreenEvent;
         public event Action<byte[]> ChunksEvent;
         public event Action<bool> ScreenSuccessEvent;
@@ -131,11 +131,11 @@ namespace VRemoteDesktop.Services.TCPClient
                         switch (task.Type)
                         {
                             case DataType.Login:
-                                LoginEvent?.Invoke(this, new LoginEventArgs(true));
+                                LoginEvent?.Invoke(this, new LoginEventArgs(true, task.Data));
                                 break;
                             case DataType.P2PConnect:
                                 IsP2PConnected = true;
-                                P2PConnectEvent?.Invoke(true, task.Data);
+                                P2PConnectEvent?.Invoke(this, new P2PConnectEventArgs(true, task.Data));
                                 break;
                             case DataType.Disconnect:
                                 break;
@@ -168,14 +168,14 @@ namespace VRemoteDesktop.Services.TCPClient
                             case DataType.Error:
                                 break;
                             case DataType.LoginFailed:
-                                LoginEvent?.Invoke(this, new LoginEventArgs(false));
+                                LoginEvent?.Invoke(this, new LoginEventArgs(false, task.Data));
                                 break;
                             case DataType.P2PDisconnect:
                                 IsP2PConnected = false;
                                 P2PDisconnectedEvent?.Invoke(true, "");
                                 break;
                             case DataType.P2PConnectFailed:
-                                P2PConnectEvent?.Invoke(false, task.Data);
+                                P2PConnectEvent?.Invoke(this, new P2PConnectEventArgs(false, task.Data));
                                 break;
                             case DataType.Message:
                                 ChatMessageEvent?.Invoke(task.Data);
@@ -323,25 +323,25 @@ namespace VRemoteDesktop.Services.TCPClient
                 Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
-        private byte[] PrepareHeader(DataType type,byte[] data)
+        private byte[] PrepareHeader(DataType type, string partnerId, byte[] data)
         {
             byte[] resultBytes = new byte[data.Length + 13];
 
             Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 0, 4);
 
             resultBytes[4] = (byte)type;
-            Buffer.BlockCopy(Encoding.ASCII.GetBytes("00000000"), 0, resultBytes, 5, 8);
+            Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, resultBytes, 5, 8);
             Buffer.BlockCopy(data, 0, resultBytes, 13, data.Length);
 
             return resultBytes;
         }
-        public void Send(DataType type, byte[] data, bool isSendHeader = true)
+        public void Send(DataType type, byte[] data,string partnerId = "00000000", bool isSendHeader = true)
         {
             try
             {
                 if (isSendHeader)
                 {
-                    data = PrepareHeader(type, data);
+                    data = PrepareHeader(type, partnerId, data);
                 }
                 Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
                 {

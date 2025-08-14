@@ -17,9 +17,9 @@ using static VRemoteServer.Utils.Enums;
 
 namespace VRemoteServer.Services
 {
-    public class RemoteDesktopServer: IDisposable
+    public class RemoteDesktopServer : IDisposable
     {
-        private ConcurrentDictionary<string ,ClientInfo> _clientsActing = new ConcurrentDictionary<string, ClientInfo>();
+        private ConcurrentDictionary<string, ClientInfo> _clientsActing = new ConcurrentDictionary<string, ClientInfo>();
         private Channel<RemoteTask> _taskChanel = Channel.CreateUnbounded<RemoteTask>();
         private ChannelWriter<RemoteTask> _taskWriter;
         private ChannelReader<RemoteTask> _taskReader;
@@ -36,7 +36,7 @@ namespace VRemoteServer.Services
         }
         private async Task DoWorkAsync(CancellationToken cancellation)
         {
-            await foreach(var task in _taskReader.ReadAllAsync(cancellation))
+            await foreach (var task in _taskReader.ReadAllAsync(cancellation))
             {
                 try
                 {
@@ -93,14 +93,14 @@ namespace VRemoteServer.Services
 
                 if (_clientsActing.TryGetValue(partnetId, out var client))
                 {
-                    int result = await Send(client.Client ,task.Data);
+                    int result = await Send(client.Client, task.Data);
                 }
                 else
                 {
                     //Todo
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteDesktopServer")
                                    .Error(ex, "P2PDisconnect error");
@@ -122,7 +122,7 @@ namespace VRemoteServer.Services
                 await Send(client.Client, task.Data);
             }
         }
-        public async Task<bool> ProcessDataCallback(string partnerId, Enums.CommandType commandType ,Client client, byte[] buffer)
+        public async Task<bool> ProcessDataCallback(string partnerId, Enums.CommandType commandType, Client client, byte[] buffer)
         {
             await Enqueue(new RemoteTask
             {
@@ -156,7 +156,7 @@ namespace VRemoteServer.Services
         {
             try
             {
-  
+
                 int response = await client.Socket.SendAsync(data, SocketFlags.None);
                 return response;
             }
@@ -172,22 +172,24 @@ namespace VRemoteServer.Services
             }
             return 0;
         }
-        private async Task<int> SendCommandAsync(Client client,Enums.CommandType commandType)
+        private async Task<int> SendCommandAsync(Client client, Enums.CommandType commandType, byte[] data)
         {
             try
             {
-                byte[] bytes = new byte[5];
+                byte[] bytes = new byte[data.Length + 5];
                 Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length), 0, bytes, 0, 4);
                 bytes[4] = (byte)commandType;
+                Buffer.BlockCopy(data, 0, bytes, 5, data.Length);
+
                 int response = await client.Socket.SendAsync(bytes, SocketFlags.None);
                 return response;
             }
-            catch(SocketException ex)
+            catch (SocketException ex)
             {
                 Log.ForContext("FileName", "RemoteDesktopServer")
                     .Error(ex, $"Error when send command to client: {client.IP}");
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteDesktopServer")
                     .Error(ex, "Unexpected error");
@@ -215,7 +217,7 @@ namespace VRemoteServer.Services
                 var clientInfo = Encoding.ASCII.GetString(data).Replace(" ", "").Split('|');
                 if (clientInfo.Length != 7)
                 {
-                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed);
+                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);
                     Log.ForContext("FileName", "RemoteDesktopServer")
                         .Error($"Invalid login data from client: {ep.Address}");
                 }
@@ -223,19 +225,19 @@ namespace VRemoteServer.Services
                 var isNullOrEmpty = clientInfo.All(x => x != null);
                 if (!isNullOrEmpty)
                 {
-                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed);
+                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);
                     Log.ForContext("FileName", "RemoteDesktopServer")
                         .Error($"Invalid login data from client: {ep.Address}");
                 }
                 if (clientInfo[0].Length != 8)
                 {
-                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed);
+                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);
                     Log.ForContext("FileName", "RemoteDesktopServer")
                         .Error($"Invalid login data from client: {ep.Address}");
                 }
                 if (clientInfo[1].Length != 4)
                 {
-                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed);
+                    await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);
                     Log.ForContext("FileName", "RemoteDesktopServer")
                         .Error($"Invalid login data from client: {ep.Address}");
                 }
@@ -255,9 +257,11 @@ namespace VRemoteServer.Services
                     Client = task.Client
                 };
                 _clientsActing.TryAdd(loginInfo.Id, loginInfo);
-                await SendCommandAsync(task.Client, Enums.CommandType.Login);
+
+                byte[] bytesInfo = Encoding.ASCII.GetBytes(loginInfo.PublicIP);
+                await SendCommandAsync(task.Client, Enums.CommandType.Login, bytesInfo);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteDesktopServer")
                        .Error(ex, "ProcessLogin error");
@@ -269,7 +273,7 @@ namespace VRemoteServer.Services
         }
         public async void ProcessPing(RemoteTask task)
         {
-            await SendCommandAsync(task.Client, Enums.CommandType.Pong);
+            await SendCommandAsync(task.Client, Enums.CommandType.Pong, new byte[0]);
             // Handle ping logic here
         }
         public void ProcessPong(Client client, byte[] data)
@@ -290,7 +294,7 @@ namespace VRemoteServer.Services
                     _clientsActing.TryRemove(a.Key, out _);
                 }
             }
-            catch (Exception ex) 
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteDesktopServer")
                        .Error(ex, "ClientDisconnectCallback error");

@@ -70,6 +70,7 @@
     <Compile Include="Events\KeyEvent.cs" />
     <Compile Include="Events\LoginEventArgs.cs" />
     <Compile Include="Events\MouseEvent.cs" />
+    <Compile Include="Events\P2PConnectEventArgs.cs" />
     <Compile Include="Events\ScreenEvent.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
@@ -81,7 +82,7 @@
     <Compile Include="Models\TaskObject.cs" />
     <Compile Include="Models\BaseResponse.cs" />
     <Compile Include="Models\ByteArrayBuilder.cs" />
-    <Compile Include="Models\Client.cs" />
+    <Compile Include="Models\ClientInfo.cs" />
     <Compile Include="Models\DataReceive.cs" />
     <Compile Include="Models\DataType.cs" />
     <Compile Include="Models\KeyboardReceived.cs" />

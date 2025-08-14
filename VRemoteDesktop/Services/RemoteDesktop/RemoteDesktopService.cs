@@ -84,32 +84,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     if (_remoteClient != null)
                     {
-                        _remoteClient.P2PConnectEvent -= P2PConnectEventHandler;
-                        _remoteClient.ScreenEvent -= P2PScreenEventHandler;
-                        _remoteClient.ChunksEvent -= P2PChunksEventHandler;
-                        _remoteClient.ScreenSuccessEvent -= ScreenSuccessEventHandler;
-                        _remoteClient.ChunksSuccessEvent -= ChunksSuccessEventHandler;
-                        _remoteClient.MouseReceivedEvent -= MouseReceivedEventHandler;
-                        _remoteClient.KeyboardReceivedEvent -= KeyboardReceivedEventHandler;
-                        _remoteClient.P2PDisconnectedEvent -= P2PDisconnectedEventhandler;
-                        _remoteClient.ClipboardReceivedEvent -= ClipboardReceivedEventHandler;
-                        _remoteClient.ChatMessageEvent -= ChatMessageEventHandler;
-                        _remoteClient.SendFileEvent -= SendFileEventHandler;
+
                     }
                     _remoteClient = value;
                     if (_remoteClient != null)
                     {
-                        _remoteClient.P2PConnectEvent += P2PConnectEventHandler;
-                        _remoteClient.ScreenEvent += P2PScreenEventHandler;
-                        _remoteClient.ChunksEvent += P2PChunksEventHandler;
-                        _remoteClient.ScreenSuccessEvent += ScreenSuccessEventHandler;
-                        _remoteClient.ChunksSuccessEvent += ChunksSuccessEventHandler;
-                        _remoteClient.MouseReceivedEvent += MouseReceivedEventHandler;
-                        _remoteClient.KeyboardReceivedEvent += KeyboardReceivedEventHandler;
-                        _remoteClient.P2PDisconnectedEvent += P2PDisconnectedEventhandler;
-                        _remoteClient.ClipboardReceivedEvent += ClipboardReceivedEventHandler;
-                        _remoteClient.ChatMessageEvent += ChatMessageEventHandler;
-                        _remoteClient.SendFileEvent += SendFileEventHandler;
+
 
                     }
                 }
@@ -386,30 +366,30 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public void InitP2PConnection(string partnerId, string partnerPassword)
         {
-            try
-            {
-                string id = partnerId.Replace(" ", "");
-                string password = partnerPassword.Replace(" ", "");
+            //try
+            //{
+            //    string id = partnerId.Replace(" ", "");
+            //    string password = partnerPassword.Replace(" ", "");
 
-                string dataString = Helpers.StringHelper.DataStringBuilder(
-                    new string[] {
-                        Services.ConnectionManager.ConnectionManager.Me.Id,
-                        id,
-                        password
-                    }
-                );
-                byte[] data = Encoding.ASCII.GetBytes(dataString);
+            //    string dataString = Helpers.StringHelper.DataStringBuilder(
+            //        new string[] {
+            //            Services.ConnectionManager.ConnectionManager.Me.Id,
+            //            id,
+            //            password
+            //        }
+            //    );
+            //    byte[] data = Encoding.ASCII.GetBytes(dataString);
 
-                AddWork(new TaskObject
-                {
-                    TaskType = DataType.P2PConnect,
-                    Data = data
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connection error");
-            }
+            //    AddWork(new TaskObject
+            //    {
+            //        TaskType = DataType.P2PConnect,
+            //        Data = data
+            //    });
+            //}
+            //catch (Exception ex)
+            //{
+            //    Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connection error");
+            //}
         }
         public string FormatKeyboardInput(IntPtr command, Keys modifier, Keys code, KeyState type)
         {
@@ -461,21 +441,21 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void Login()
         {
-            try
-            {
-                string data = Helpers.StringHelper.DataStringBuilder(new string[] { Services.ConnectionManager.ConnectionManager.Me.ToNetworkPacketString() });
-                byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-                AddWork(new TaskObject
-                {
-                    TaskType = DataType.Login,
-                    Data = dataBytes,
-                    IsSendHeader = true
-                });
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "Login error");
-            }
+            //try
+            //{
+            //    string data = Helpers.StringHelper.DataStringBuilder(new string[] { Services.ConnectionManager.ConnectionManager.Me.ToNetworkString() });
+            //    byte[] dataBytes = Encoding.ASCII.GetBytes(data);
+            //    AddWork(new TaskObject
+            //    {
+            //        TaskType = DataType.Login,
+            //        Data = dataBytes,
+            //        IsSendHeader = true
+            //    });
+            //}
+            //catch (Exception ex)
+            //{
+            //    Log.ForContext("Filename", GetType().Name).Error(ex, "Login error");
+            //}
         }
         private byte[] TaskObjectToBytes(TaskObject task)
         {
@@ -801,16 +781,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     {
                         if (_remoteClient != null)
                         {
-                            _remoteClient.P2PConnectEvent -= P2PConnectEventHandler;
-                            _remoteClient.ScreenEvent -= P2PScreenEventHandler;
-                            _remoteClient.ChunksEvent -= P2PChunksEventHandler;
-                            _remoteClient.ScreenSuccessEvent -= ScreenSuccessEventHandler;
-                            _remoteClient.ChunksSuccessEvent -= ChunksSuccessEventHandler;
-                            _remoteClient.MouseReceivedEvent -= MouseReceivedEventHandler;
-                            _remoteClient.KeyboardReceivedEvent -= KeyboardReceivedEventHandler;
-                            _remoteClient.P2PDisconnectedEvent -= P2PDisconnectedEventhandler;
-                            _remoteClient.ClipboardReceivedEvent -= ClipboardReceivedEventHandler;
-                            _remoteClient.ChatMessageEvent -= ChatMessageEventHandler;
+                          
 
 
                             _remoteClient.Dispose();

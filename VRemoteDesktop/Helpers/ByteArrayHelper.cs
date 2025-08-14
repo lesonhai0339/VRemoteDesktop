@@ -14,6 +14,31 @@ namespace VRemoteDesktop.Helpers
 {
     internal static class ByteArrayHelper
     {
+        public static BaseResponse<string> ConvertByteArrayToString(byte[] data, EncodingType encoding)
+        {
+            if (data == null || data.Length == 0)
+                return BaseResponse<string>.Error(
+                  message: nameof(ConvertStringToByteArray),
+                  ex: new ArgumentException("Data cannot be null or empty")
+                );
+
+            Encoding encoder = (encoding == EncodingType.ASCII) ? Encoding.ASCII :
+                (encoding == EncodingType.UTF8) ? Encoding.UTF8 :
+                null;
+
+            if (encoder != null)
+            {
+                return BaseResponse<string>.Success(
+                    data: encoder.GetString(data),
+                    message: nameof(ConvertStringToByteArray)
+                );
+            }
+
+            return BaseResponse<string>.Error(
+                   message: nameof(ConvertStringToByteArray),
+                   ex: new ArgumentException("Unexpected encoding type")
+            );
+        }
         public static BaseResponse<byte[]> ConvertStringToByteArray(string data, EncodingType encoding)
         {
             if (string.IsNullOrWhiteSpace(data))

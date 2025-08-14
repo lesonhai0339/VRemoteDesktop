@@ -10,7 +10,7 @@ namespace VRemoteServer.Models
     public class ClientInfo
     {
         public ClientInfo() { }
-        public ClientInfo(string id, string password, string computerName, int width, int height, string majorVersion, string minorVersion, string ip,string publicIP, string port, Client client)
+        public ClientInfo(string id, string password, string computerName, int width, int height, string majorVersion, string minorVersion, string ip, string publicIP, string port, Client client)
         {
             Id = id;
             Password = password;
@@ -36,9 +36,9 @@ namespace VRemoteServer.Models
         public string Port { get; set; }
         public string PublicIP { get; set; }
         public Client Client { get; set; }
-        public override string ToString()
+        public string ToNetworkString()
         {
-            return string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}", Id, Password, ComputerName, Width, Height, MajorVersion, MinorVersion);
+            return string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}", Id, Password, ComputerName, Width, Height, MajorVersion, MinorVersion, Ip, Port, PublicIP);
         }
     }
 }

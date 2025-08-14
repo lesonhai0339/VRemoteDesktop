@@ -9,6 +9,7 @@ using System.Threading;
 using VRemoteDesktop.Models;
 using System.Reflection;
 using static VRemoteDesktop.Utils.Logger;
+using VRemoteServer.Models;
 
 namespace VRemoteDesktop.Services.Authentication
 {
@@ -64,19 +65,21 @@ namespace VRemoteDesktop.Services.Authentication
         {
             byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
 
-            _tcpClient.Send(DataType.Login, encoder, true);
+            _tcpClient.Send(DataType.Login, encoder);
         }
-        internal void P2PConnect(string partnerId, int partnetPassword)
+        internal void P2PConnect(string partnerId, string partnetPassword, ClientInfo myInfo)
         {
-
+            string data = Helpers.StringHelper.StringBuilderWithSeparator("|",partnerId, partnetPassword.ToString(), myInfo.ToNetworkString());
+            byte[] dataBytes = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
+            _tcpClient.Send(DataType.P2PConnect, dataBytes, partnerId, true);
         }
-        public bool IsAuthenticated(string id, string password)
-        {
-            if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(password))
-                return false;
+        //public bool IsAuthenticated(string id, string password)
+        //{
+        //    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(password))
+        //        return false;
 
-            Client me = ConnectionManager.ConnectionManager.Me;
-            return me.Id == id && me.Password == password;
-        }
+        //    ClientInfo me = ConnectionManager.ConnectionManager.Me;
+        //    return me.Id == id && me.Password == password;
+        //}
     }
 }
