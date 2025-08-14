@@ -189,8 +189,7 @@ namespace VRemoteDesktop.ViewModels
         }
         private void P2PConnectEventHandler(object sender, P2PConnectEventArgs e)
         {
-            byte[] data = e.Data;
-            string x = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
+            string data = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
         }
 
 
