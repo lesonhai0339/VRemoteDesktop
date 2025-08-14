@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Utils;
@@ -15,7 +16,11 @@ namespace VRemoteClient
         [STAThread]
         static void Main()
         {
-            Logger.Config();
+            // normally windows will get scaled logical dimensions(incorrect). need to turn on DPI-Aware to get physical screen dimensions
+            // declare DPI aware to access the screen resolution. have been set in app.manifest. see https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-setprocessdpiaware
+            //Libraries.SetProcessDPIAware();
+            Log.ForContext("FileName", "Main").Info("Initialize Logging");
+
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new FormMain());

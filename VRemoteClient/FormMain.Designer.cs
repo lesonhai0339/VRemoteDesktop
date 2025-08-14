@@ -192,10 +192,13 @@ namespace VRemoteClient
             this.Text = "Form1";
             this.Load += new System.EventHandler(this.FormMain_Load);
             this.Shown += new System.EventHandler(this.FormMain_Shown);
+            this.FormClosing += new FormClosingEventHandler(this.FormMain_Closing);
             this.ResumeLayout(false);
             this.PerformLayout();
 
         }
+
+
 
         #endregion
 

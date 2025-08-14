@@ -146,12 +146,8 @@ _NCrunch*
 /Vinhhy_Remote_Desktop_Server/
 /Vinhhy-Remote-Desktop/
 /VRemoteDesktopServer/
-/VRemoteServer/Models/Client - Copy.cs
-/VRemoteServer/Services/RemoteDesktopServer - Copy.cs
-/VRemoteServer/Services/RemoteDesktopServer.cs
-/VRemoteServer/Services/RemoteDesktopServiceBackup.cs
-/VRemoteServer/Utils/Enums.cs
-/VRemoteServer/VRemoteServer.csproj
-/VRemoteServer/Models/Client.cs
-/VRemoteServer/Models/ClientInfo.cs
-/VRemoteServer/Models/RemoteTask.cs
+/VRemoteClient/app.config
+/Client/
+/Server/
+/dll/
+/VRemoteDesktop/

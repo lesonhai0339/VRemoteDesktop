@@ -1,76 +1,85 @@
-﻿using System;
+﻿using Microsoft.Win32;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Data;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteClient.Models.Entities;
-using VRemoteClient.Services;
-using static VRemoteClient.Services.RemoteClient;
+using VRemoteClient.Models.Enums;
+using VRemoteClient.Services.RemoteDesktopService;
+using VRemoteClient.Utils;
 
 namespace VRemoteClient
 {
     public partial class FormMain : Form
     {
+        private readonly object _lockObject = new object();
+
         private bool _isSocketConnected;
-        private bool _isP2PConnected;   
         private ManualResetEvent _resetEvent;
-        private ClientInfo _clientInfo;
-        private RemoteClient _remoteClient;
         private ConnectionInfo _connectionInfo;
+        private RemoteDesktop _remoteDesktop;
+        private FormChat _frmChat;
         public FormMain()
         {
             InitializeComponent();
+            Init();
+
+            this.Text = "VRemote";
+            //string iconPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Resources", "logo.ico");
+            //this.Icon = new Icon(iconPath);
+            this.MaximizeBox = false;
+            this.txtOwnerId.Text = RemoteDesktop.OwnerInfo.Id;
+            this.txtOwnerPassword.Text = RemoteDesktop.OwnerInfo.Password;
+            txtPartnerPassword.UseSystemPasswordChar = true;
 
             _isSocketConnected = false;
-            _isP2PConnected = false;
             _resetEvent = new ManualResetEvent(false);
-
-            Me = Utils.Extensions.InitInfo();
-            RemoteClient = new RemoteClient(Me);
-
-            this.Text = "VRemote - Vinhhy";
-            this.Icon = new Icon(@"Resources\logo.ico");
-            this.txtOwnerId.Text = Me.Id;
-            this.txtOwnerPassword.Text = Me.Password;
-
+        }
+        private void Init()
+        {
+            Process.GetCurrentProcess().PriorityClass = ProcessPriorityClass.High;
+            RemoteDesktop ??= new RemoteDesktop();
         }
 
         #region Properties
-        public ClientInfo Me
+        public RemoteDesktop RemoteDesktop
         {
-            get => _clientInfo;
-            private set
+            get
             {
-                _clientInfo = value;
+                lock (_lockObject)
+                {
+                    return _remoteDesktop;
+                }
             }
-        }
-        public RemoteClient RemoteClient
-        {
-            get => _remoteClient;
             set
             {
-                RemoteClient client= _remoteClient;
-                if(client != null)
+                lock (_lockObject)
                 {
-                    client.ConnectSckEventHandler -= SocketEvent;
-                    client.LoginEventHandler -= LoginCallback;
-                    client.P2PConnectEventHandler -= P2PConnectEvent;
-                }
-                _remoteClient = value;
-                client = _remoteClient;
-                if (client != null)
-                {
-                    client.ConnectSckEventHandler += SocketEvent;
-                    client.LoginEventHandler += LoginCallback;
-                    client.P2PConnectEventHandler += P2PConnectEvent;
+                    if (_remoteDesktop != null)
+                    {
+                        _remoteDesktop.LoginEvent -= LoginCallback;
+                        _remoteDesktop.ConnectServerEvent -= ConnectServerEvent;
+                        _remoteDesktop.P2PConnectEvent -= P2PConnectEvent;
+                    }
+                    _remoteDesktop = value;
+                    if (_remoteDesktop != null)
+                    {
+                        _remoteDesktop.LoginEvent += LoginCallback;
+                        _remoteDesktop.ConnectServerEvent += ConnectServerEvent;
+                        _remoteDesktop.P2PConnectEvent += P2PConnectEvent;
+
+                    }
                 }
             }
         }
@@ -82,48 +91,87 @@ namespace VRemoteClient
         }
         private void FormMain_Shown(object sender, EventArgs e)
         {
-            ConnectToServer();
+            RemoteDesktop.ConnectToServer();
+           // PipeClient.RunPipe(new string[] { "spawnclient" });
+        }
+        private void FormMain_Closing(object sender, FormClosingEventArgs e)
+        {
+            try
+            {
+                if (_remoteDesktop != null)
+                {
+                    _remoteDesktop.LoginEvent -= LoginCallback;
+                    _remoteDesktop.ConnectServerEvent -= ConnectServerEvent;
+                    _remoteDesktop.P2PConnectEvent -= P2PConnectEvent;
+                    _remoteDesktop.Dispose();
+                }
+            }
+            catch(Exception ex)
+            {
+                MessageBox.Show("Xảy ra lỗi "+ ex.Message, "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                _remoteDesktop = null;
+                _resetEvent?.Dispose();
+                _connectionInfo = null;
+
+            }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
         {
             Graphics g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            Color circleColor = RemoteClient.SocketConnected ? Color.Green : Color.Red;
+            Color circleColor = RemoteDesktop.IsSocketConnected ? Color.Green : Color.Red;
             using (SolidBrush brush = new SolidBrush(circleColor))
             {
                 g.FillEllipse(brush, 1, 1, pnStatus.Width - 2, pnStatus.Height - 2);
             }
         }
-        private void ConnectToServer()
-        {
-            string serverIp = ConfigurationManager.AppSettings["RemoteServerIP"];
-            string serverPort = ConfigurationManager.AppSettings["RemoteServerPort"];
-            var address = IPAddress.Parse(serverIp);
-            IPEndPoint remoteEP = new IPEndPoint(address, int.Parse(serverPort));
-            RemoteClient.Connect(serverIp, int.Parse(serverPort));
-        }
-        private void SocketEvent()
-        {
-            Login();
-        }
-        private void P2PConnectEvent(bool flag, ConnectionInfo? info)
+        private void P2PConnectEvent(ClientType type, bool flag, ConnectionInfo? info)
         {
             if (!flag)
             {
-                MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                _resetEvent.Set();
             }
             else
             {
                 if(info != null)
                 {
                     _resetEvent.Set();
-                    _isP2PConnected = true;
-                    _connectionInfo = info;
+                    if(type == ClientType.SENDER)
+                    {
+                        _connectionInfo = info;
+                    }
+                    InitChatForm(RemoteDesktop, info);
                 }
             }
         }
 
+        private void InitChatForm(RemoteDesktop remoteDesktop, ConnectionInfo info)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => InitChatForm(remoteDesktop, info)));
+                return;
+            }
+            if(_frmChat == null)
+            {
+                _frmChat = new FormChat(remoteDesktop, info);
+                _frmChat.Show();
+            }
+            else
+            {
+                _frmChat.AddNewChat(info);
+            }
+
+        }
+
+        private void ConnectServerEvent(bool flag)
+        {
+            if(!flag) MessageBox.Show("Kết nối đến máy chủ thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
         private void LoginCallback(bool flag)
         {
             if (flag)
@@ -146,37 +194,47 @@ namespace VRemoteClient
             else
             {
                 MessageBox.Show("Đăng nhập thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-           
-        }
-        private void Login()
-        {
-            string data = Utils.Extensions.DataStringBuilder(new string[] { Me.ToString() });
-            byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-            RemoteClient.Send(Models.Enums.CommandType.Login, dataBytes);
+            } 
         }
         #endregion
-
         private void btnConnect_Click(object sender, EventArgs e)
         {
+            _resetEvent.Reset();
+
             if (string.IsNullOrEmpty(txtPartnerId.Text) || string.IsNullOrEmpty(txtPartnerPassword.Text))
             {
                 MessageBox.Show("Vui lòng nhập ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
             }
-            string receiverInfo = Utils.Extensions.DataStringBuilder(new string[] { Me.Id, txtPartnerId.Text.Trim(), txtPartnerPassword.Text.Trim() });
-            byte[] dataBytes = Encoding.ASCII.GetBytes(receiverInfo);
-            RemoteClient.Send(Models.Enums.CommandType.P2PConnect, dataBytes);
-            _resetEvent.WaitOne(1000 * 10);
-            _resetEvent.Reset();
-            if (_isP2PConnected)
+            RemoteDesktop.InitP2PConnection(txtPartnerId.Text, txtPartnerPassword.Text);
+            
+            _resetEvent.WaitOne(5000);
+            if (_connectionInfo != null)
             {
-                FormRemote frmRemote = new FormRemote(RemoteClient, _connectionInfo);
-                frmRemote.Show();
+                ConnectionInfo info = new ConnectionInfo()
+                {
+                    SessionId = _connectionInfo.SessionId,
+                    Me = _connectionInfo.Me,
+                    Partner = _connectionInfo.Partner
+                };
+                OpenControlForm(RemoteDesktop, info);
+
+                _connectionInfo = null;
             }
             else
             {
-                MessageBox.Show($"Không thể kết nối đến {txtPartnerId.Text}", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            } 
+                MessageBox.Show("Kết nối P2P thất bại. Vui lòng kiểm tra lại ID và mật khẩu của người dùng cần kết nối.", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+        private void OpenControlForm(RemoteDesktop remote, ConnectionInfo info)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(() => OpenControlForm(remote, info)));
+                return;
+            }
+            FormRemote frmRemote = new FormRemote(remote, info);
+            frmRemote.Show();
         }
     }
 }

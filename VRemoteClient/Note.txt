@@ -1,0 +1,1 @@
+﻿- Cần chạy bộ gõ tiếng việt dưới quyền Admin(cùng quyền với chương trình) thì mới gõ được tiếng việt
