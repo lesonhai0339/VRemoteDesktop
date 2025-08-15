@@ -286,6 +286,13 @@ namespace VRemoteDesktop.ViewModels
         }
         private void ScreenHookEventHandler(object sender, ScreenEvent e)
         {
+            foreach(var connector in _connector)
+            {
+                Screen(e);
+            }
+        }
+        private void Screen(ScreenEvent e)
+        {
             try
             {
                 if (e.Data.Count == 0 || e.TotalSize == 0)
