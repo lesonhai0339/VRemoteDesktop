@@ -192,7 +192,13 @@ namespace VRemoteDesktop.ViewModels
         }
         private void P2PConnectEventHandler(object sender, P2PConnectEventArgs e)
         {
-            byte[] data = e.Data;
+            var result =  Authentication.P2PAuthentication(e.Data, _myInfo);
+            if (!result.IsLogged)
+                return;
+
+            TCPClient.Send(DataType.P2PAcceptConnect,new byte[0], result.ConnectorInfo.Id);
+                //Todo: logging failed
+            //Todo: add connector to dictionary, start send screen
         }
 
 

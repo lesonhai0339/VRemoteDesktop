@@ -24,7 +24,7 @@ namespace VRemoteServer.Utils
         {
             None = 0x00,
             Login = 0x01,
-            P2PConnect = 0x02,
+            P2PRequestConnect = 0x02,
             Disconnect = 0x03,
             Ping = 0x04,
             Pong = 0x05,
@@ -44,6 +44,7 @@ namespace VRemoteServer.Utils
             LoginFailed = 0x90,
             P2PDisconnect = 0x91,
             P2PConnectFailed = 0x92,
+            P2PAcceptConnect = 0x93
         }
     }
 }

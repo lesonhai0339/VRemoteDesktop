@@ -132,9 +132,11 @@ namespace VRemoteDesktop.Services.TCPClient
                             case DataType.Login:
                                 LoggedIn?.Invoke(this, new LoginEventArgs(true, task.Data));
                                 break;
-                            case DataType.P2PConnect:
-                                IsP2PConnected = true;
+                            case DataType.P2PRequestConnect:
                                 P2PConnected?.Invoke(this, new P2PConnectEventArgs(true, task.Data));
+                                break;
+                            case DataType.P2PAcceptConnect:
+                                Console.WriteLine("Accept connect");
                                 break;
                             case DataType.Disconnect:
                                 break;

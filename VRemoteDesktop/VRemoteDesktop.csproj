@@ -86,13 +86,14 @@
     <Compile Include="Helpers\StringHelper.cs" />
     <Compile Include="Models\ErrorResponse.cs" />
     <Compile Include="Models\MouseData.cs" />
+    <Compile Include="Models\P2PConnectionResponse.cs" />
     <Compile Include="Models\TaskGroup.cs" />
     <Compile Include="Models\TaskObject.cs" />
     <Compile Include="Models\BaseResponse.cs" />
     <Compile Include="Models\ByteArrayBuilder.cs" />
     <Compile Include="Models\ClientInfo.cs" />
     <Compile Include="Models\DataReceive.cs" />
-    <Compile Include="Models\DataType.cs" />
+    <Compile Include="Enums\DataType.cs" />
     <Compile Include="Models\KeyboardReceived.cs" />
     <Compile Include="Models\KeyboardState.cs" />
     <Compile Include="Models\MouseReceived.cs" />
