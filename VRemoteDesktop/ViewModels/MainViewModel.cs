@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
@@ -29,6 +30,7 @@ namespace VRemoteDesktop.ViewModels
         private TCPClient _tcpClient;
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
+        private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
         public MainViewModel()
         {
             TCPClient = new TCPClient();
@@ -38,6 +40,7 @@ namespace VRemoteDesktop.ViewModels
             MyId = _myInfo.Id;
             MyPassword = _myInfo.Password;
             IsConnected = false;
+            _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
         }
 
         #region Properties

@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.ViewModels;
+using VRemoteDesktop.Views;
 
 namespace VRemoteDesktop
 {
