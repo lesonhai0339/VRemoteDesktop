@@ -4,12 +4,15 @@ using System.Linq;
 using System.Text;
 using System.ComponentModel;
 using VRemoteServer.Models;
+using VRemoteDesktop.Enums;
 
 namespace VRemoteDesktop.ViewModels
 {
     public class RemoteViewModel : INotifyPropertyChanged
     {
         private ClientInfo _client;
+        public Action<byte[]> ScreenEvent;
+        public Action<byte[]> ScreenChunksEvent;
         public RemoteViewModel(ClientInfo client)
         {
             Client = client;
@@ -25,9 +28,16 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Methods
-        public void DataReceived(byte[] data)
+        public void DataReceived(ScreenType type, byte[] data)
         {
-
+            if(type == ScreenType.FULLSCREEN)
+            {
+                ScreenEvent?.Invoke(data);
+            }
+            if(type == ScreenType.REGIONSCREENS)
+            {
+                ScreenChunksEvent?.Invoke(data);
+            }
         }
         #endregion
         #region EventHandlers

@@ -84,7 +84,19 @@ namespace VRemoteDesktop.Views
             }
             set
             {
+                if(_remoteViewModel != null)
+                {
+                    _remoteViewModel.ScreenEvent -= ScreenEvent;
+                    _remoteViewModel.ScreenChunksEvent -= ChunksEvent;
+
+                }
                 _remoteViewModel = value;
+                if (_remoteViewModel != null)
+                {
+                    _remoteViewModel.ScreenEvent += ScreenEvent;
+                    _remoteViewModel.ScreenChunksEvent += ChunksEvent;
+
+                }
             }
         }
         #endregion

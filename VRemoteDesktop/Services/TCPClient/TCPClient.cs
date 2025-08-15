@@ -393,7 +393,6 @@ namespace VRemoteDesktop.Services.TCPClient
                 int num = Socket.EndReceive(ar);
                 if (num > 0)
                 {
-                    Console.WriteLine("Received: "+ num + " bytes");
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
                     while (!_cancellationToken.Token.IsCancellationRequested)
                     {
@@ -436,6 +435,8 @@ namespace VRemoteDesktop.Services.TCPClient
                 int length = BitConverter.ToInt32(bytes, 0);
 
                 DataType commandType = (DataType)bytes[4];
+
+                Console.WriteLine(length + " - " + commandType);
 
                 byte[] data = new byte[bytes.Length - 5];
                 Buffer.BlockCopy(bytes, 5, data, 0, data.Length);

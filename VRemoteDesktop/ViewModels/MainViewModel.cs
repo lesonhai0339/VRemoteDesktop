@@ -274,6 +274,12 @@ namespace VRemoteDesktop.ViewModels
         private void ScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
             string id = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, 8, Enums.EncodingType.ASCII).GetResult();
+            byte[] data = new byte[e.Data.Length - 8];
+            Buffer.BlockCopy(e.Data, 8, data, 0, e.Data.Length - 8);
+            if(_remoteViewModel.TryGetValue(id, out var a))
+            {
+                a.DataReceived(e.Type, data);
+            }
         }
         private void ScreenHookEventHandler(object sender, ScreenEvent e)
         {
