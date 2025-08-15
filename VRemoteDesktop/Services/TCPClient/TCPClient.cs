@@ -436,8 +436,6 @@ namespace VRemoteDesktop.Services.TCPClient
 
                 DataType commandType = (DataType)bytes[4];
 
-                Console.WriteLine(length + " - " + commandType);
-
                 byte[] data = new byte[bytes.Length - 5];
                 Buffer.BlockCopy(bytes, 5, data, 0, data.Length);
 

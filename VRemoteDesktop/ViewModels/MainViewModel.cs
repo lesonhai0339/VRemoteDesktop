@@ -100,6 +100,8 @@ namespace VRemoteDesktop.ViewModels
                         _tcpClient.P2PrequestConnect -= P2PRequestConnectEventHandler;
                         _tcpClient.P2PAcceptConnect -= P2PAcceptConnectEventHandler;
                         _tcpClient.ScreenReceived -= ScreenReceivedEventHandler;
+                        _tcpClient.RegionsScreenReceived -= ScreenReceivedEventHandler;
+
                     }
                     _tcpClient = value;
                     if (_tcpClient != null)
@@ -109,6 +111,7 @@ namespace VRemoteDesktop.ViewModels
                         _tcpClient.P2PrequestConnect += P2PRequestConnectEventHandler;
                         _tcpClient.P2PAcceptConnect += P2PAcceptConnectEventHandler;
                         _tcpClient.ScreenReceived += ScreenReceivedEventHandler;
+                        _tcpClient.RegionsScreenReceived += ScreenReceivedEventHandler;
 
                     }
                 }
@@ -273,9 +276,9 @@ namespace VRemoteDesktop.ViewModels
         }
         private void ScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
-            string id = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, 8, Enums.EncodingType.ASCII).GetResult();
-            byte[] data = new byte[e.Data.Length - 8];
-            Buffer.BlockCopy(e.Data, 8, data, 0, e.Data.Length - 8);
+            string id = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, 8, 8, Enums.EncodingType.ASCII).GetResult();
+            byte[] data = new byte[e.Data.Length - 16];
+            Buffer.BlockCopy(e.Data, 16, data, 0, e.Data.Length - 16);
             if(_remoteViewModel.TryGetValue(id, out var a))
             {
                 a.DataReceived(e.Type, data);
@@ -290,10 +293,11 @@ namespace VRemoteDesktop.ViewModels
                     Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
                     return;
                 }
-                byte[] screenHeader = new byte[13];
-                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 13), 0, screenHeader, 0, 4);
+                byte[] screenHeader = new byte[21];
+                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 0, 4);
                 screenHeader[4] = (byte)e.Type;
                 Buffer.BlockCopy(Encoding.ASCII.GetBytes(_connector.FirstOrDefault()), 0, screenHeader, 5, 8);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(MyId), 0, screenHeader, 13, 8);
 
                 List<TaskObject> tasks = new List<TaskObject>();
                 tasks.Add(new TaskObject
