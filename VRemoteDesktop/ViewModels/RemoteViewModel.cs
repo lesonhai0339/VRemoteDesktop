@@ -25,6 +25,10 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Methods
+        public void DataReceived(byte[] data)
+        {
+
+        }
         #endregion
         #region EventHandlers
         public event PropertyChangedEventHandler PropertyChanged;

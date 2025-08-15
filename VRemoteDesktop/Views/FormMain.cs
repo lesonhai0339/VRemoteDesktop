@@ -144,8 +144,17 @@ namespace VRemoteDesktop
         }
         private void ClientAcceptRequestRemoteEventHandler(ClientInfo info)
         {
+            OpenRemoteForm(info);
+        }
+        private void OpenRemoteForm(ClientInfo info)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<ClientInfo>(OpenRemoteForm), info);
+                return;
+            }
             FormRemote remoteForm = new FormRemote(info);
-            ViewModel.AddRemoteForm(remoteForm.Client.Id ,remoteForm.RemoteViewModel);
+            ViewModel.AddRemoteForm(remoteForm.Client.Id, remoteForm.RemoteViewModel);
             remoteForm.Show();
         }
     }

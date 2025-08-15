@@ -5,12 +5,14 @@ using System.ComponentModel;
 using System.Configuration;
 using System.Linq;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.TCPClient;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
@@ -31,6 +33,8 @@ namespace VRemoteDesktop.ViewModels
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
         private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
+        private ConcurrentBag<string> _connector;
+        private IScreenCaptureServiceListener _globakScreenHook;
 
         public Action<ClientInfo> ClientAcceptRequestRemote;
         public MainViewModel(TCPClient tcpClient, Authentication authentication, ConnectionManager connectionManager)
@@ -43,9 +47,39 @@ namespace VRemoteDesktop.ViewModels
             MyPassword = _myInfo.Password;
             IsConnected = false;
             _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
+            _connector = new ConcurrentBag<string>();
+            Task.Factory.StartNew(() =>
+            {
+                ScreenHook = new ScreenCaptureServiceListener(null, null);
+            }, TaskCreationOptions.LongRunning);
         }
 
         #region Properties
+        public IScreenCaptureServiceListener ScreenHook
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _globakScreenHook;
+                }
+            }
+            set
+            {
+                lock (_lock)
+                {
+                    if (_globakScreenHook != null)
+                    {
+                        _globakScreenHook.ScreenEvent -= ScreenHookEventHandler;
+                    }
+                    _globakScreenHook = value;
+                    if (_globakScreenHook != null)
+                    {
+                        _globakScreenHook.ScreenEvent += ScreenHookEventHandler;
+                    }
+                }
+            }
+        }
         public TCPClient TCPClient
         {
             get
@@ -65,7 +99,7 @@ namespace VRemoteDesktop.ViewModels
                         _tcpClient.LoggedIn -= LoginEventHandler;
                         _tcpClient.P2PrequestConnect -= P2PRequestConnectEventHandler;
                         _tcpClient.P2PAcceptConnect -= P2PAcceptConnectEventHandler;
-
+                        _tcpClient.ScreenReceived -= ScreenReceivedEventHandler;
                     }
                     _tcpClient = value;
                     if (_tcpClient != null)
@@ -74,13 +108,14 @@ namespace VRemoteDesktop.ViewModels
                         _tcpClient.LoggedIn += LoginEventHandler;
                         _tcpClient.P2PrequestConnect += P2PRequestConnectEventHandler;
                         _tcpClient.P2PAcceptConnect += P2PAcceptConnectEventHandler;
+                        _tcpClient.ScreenReceived += ScreenReceivedEventHandler;
 
                     }
                 }
             }
         }
 
-  
+
 
         public Authentication Authentication
         {
@@ -208,6 +243,9 @@ namespace VRemoteDesktop.ViewModels
 
             string me = _myInfo.ToNetworkString();
             byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(me, Enums.EncodingType.ASCII).GetResult();
+
+            _connector.Add(result.ConnectorInfo.Id);
+            ScreenHook.StartCapture();
             TCPClient.Send(DataType.P2PAcceptConnect, data, result.ConnectorInfo.Id);
                 //Todo: logging failed
             //Todo: add connector to dictionary, start send screen
@@ -220,18 +258,66 @@ namespace VRemoteDesktop.ViewModels
             string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
             ClientInfo connecter = new ClientInfo
             {
-                Id = stringArray[2],
-                Password = stringArray[3],
-                ComputerName = stringArray[4],
-                Width = int.Parse(stringArray[5]),
-                Height = int.Parse(stringArray[6]),
-                MajorVersion = stringArray[7],
-                MinorVersion = stringArray[8],
-                Ip = stringArray[9],
-                Port = stringArray[10],
-                PublicIP = stringArray[11],
+                Id = stringArray[0],
+                Password = stringArray[1],
+                ComputerName = stringArray[2],
+                Width = int.Parse(stringArray[3]),
+                Height = int.Parse(stringArray[4]),
+                MajorVersion = stringArray[5],
+                MinorVersion = stringArray[6],
+                Ip = stringArray[7],
+                Port = stringArray[8],
+                PublicIP = stringArray[9],
             };
             ClientAcceptRequestRemote?.Invoke(connecter);
+        }
+        private void ScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
+        {
+            string id = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, 8, Enums.EncodingType.ASCII).GetResult();
+        }
+        private void ScreenHookEventHandler(object sender, ScreenEvent e)
+        {
+            try
+            {
+                if (e.Data.Count == 0 || e.TotalSize == 0)
+                {
+                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    return;
+                }
+                byte[] screenHeader = new byte[13];
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(_connector.FirstOrDefault()), 0, screenHeader, 0, 8);
+                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 13), 0, screenHeader, 8, 4);
+                screenHeader[13] = (byte)e.Type;
+
+                List<TaskObject> tasks = new List<TaskObject>();
+                tasks.Add(new TaskObject
+                {
+                    TaskType = e.Type,
+                    Data = screenHeader,
+                    IsSendHeader = false
+                });
+
+                //data
+                for (int i = 0; i < e.Data.Count; i++)
+                {
+                    var task = new TaskObject
+                    {
+                        TaskType = e.Type,
+                        Data = e.Data[i],
+                        IsSendHeader = false
+                    };
+
+                    tasks.Add(task);
+                }
+                foreach(var task in tasks)
+                {
+                    TCPClient.Send(task.Data);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+            }
         }
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName = null)
