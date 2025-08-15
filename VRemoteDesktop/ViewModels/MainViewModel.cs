@@ -31,11 +31,11 @@ namespace VRemoteDesktop.ViewModels
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
         private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
-        public MainViewModel()
+        public MainViewModel(TCPClient tcpClient, Authentication authentication, ConnectionManager connectionManager)
         {
-            TCPClient = new TCPClient();
-            Authentication = new Authentication(TCPClient);
-            ConnectionManager = new ConnectionManager();
+            TCPClient = tcpClient;
+            Authentication = authentication;
+            ConnectionManager = connectionManager;
             _myInfo = ConnectionManager.Me;
             MyId = _myInfo.Id;
             MyPassword = _myInfo.Password;
@@ -61,20 +61,24 @@ namespace VRemoteDesktop.ViewModels
                     {
                         _tcpClient.Connected -= ConnectEventHandler;
                         _tcpClient.LoggedIn -= LoginEventHandler;
-                        _tcpClient.P2PConnected -= P2PConnectEventHandler;
+                        _tcpClient.P2PrequestConnect -= P2PRequestConnectEventHandler;
+                        _tcpClient.P2PAcceptConnect -= P2PAcceptConnectEventHandler;
+
                     }
                     _tcpClient = value;
                     if (_tcpClient != null)
                     {
                         _tcpClient.Connected += ConnectEventHandler;
                         _tcpClient.LoggedIn += LoginEventHandler;
-                        _tcpClient.P2PConnected += P2PConnectEventHandler;
+                        _tcpClient.P2PrequestConnect += P2PRequestConnectEventHandler;
+                        _tcpClient.P2PAcceptConnect += P2PAcceptConnectEventHandler;
 
                     }
                 }
             }
         }
 
+  
 
         public Authentication Authentication
         {
@@ -190,18 +194,24 @@ namespace VRemoteDesktop.ViewModels
             IsConnected = e.IsSuccess;
             ConnectionManager.UpdateMyInfo(e.Data);
         }
-        private void P2PConnectEventHandler(object sender, P2PConnectEventArgs e)
+        private void P2PRequestConnectEventHandler(object sender, P2PRequestConnectEventArgs e)
         {
             var result =  Authentication.P2PAuthentication(e.Data, _myInfo);
             if (!result.IsLogged)
                 return;
 
-            TCPClient.Send(DataType.P2PAcceptConnect,new byte[0], result.ConnectorInfo.Id);
+            string me = _myInfo.ToNetworkString();
+            byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(me, Enums.EncodingType.ASCII).GetResult();
+            TCPClient.Send(DataType.P2PAcceptConnect, data, result.ConnectorInfo.Id);
                 //Todo: logging failed
             //Todo: add connector to dictionary, start send screen
         }
 
 
+        private void P2PAcceptConnectEventHandler(object sender, P2PAcceptConnectEventArgs e)
+        {
+            string data = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
+        }
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName = null)
         {

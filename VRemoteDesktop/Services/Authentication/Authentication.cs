@@ -97,7 +97,7 @@ namespace VRemoteDesktop.Services.Authentication
                     PublicIP = stringArray[11],
                 };
 
-                return new P2PConnectionResponse(false, connecter); ;
+                return new P2PConnectionResponse(true, connecter); ;
             }
             catch(Exception ex)
             {

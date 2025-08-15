@@ -223,7 +223,7 @@ namespace VRemoteServer.Services
                         .Error($"Invalid login data from client: {ep.Address}");
                 }
 
-                var isNullOrEmpty = clientInfo.All(x => x != null);
+                var isNullOrEmpty = clientInfo.All(x => !string.IsNullOrWhiteSpace(x));
                 if (!isNullOrEmpty)
                 {
                     await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);

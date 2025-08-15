@@ -5,9 +5,9 @@ using System.Text;
 
 namespace VRemoteDesktop.Events
 {
-    public class P2PConnectEventArgs: EventArgs
+    public class P2PRequestConnectEventArgs : EventArgs
     {
-        public P2PConnectEventArgs(bool isSuccess, byte[] data)
+        public P2PRequestConnectEventArgs(bool isSuccess, byte[] data)
         {
             IsSuccess = isSuccess;
             Data = data;

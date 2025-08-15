@@ -7,6 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Services.Authentication;
+using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.TCPClient;
 using VRemoteDesktop.ViewModels;
 using VRemoteDesktop.Views;
 
@@ -15,12 +18,19 @@ namespace VRemoteDesktop
     public partial class FormMain : Form
     {
         private readonly object _object = new object();
+        private TCPClient _tcpClient;
+        private Authentication _authentication;
+        private ConnectionManager _connectionManager;
         private MainViewModel _viewModel;
+
         private ManualResetEvent _resetEvent;
         public FormMain()
         {
             InitializeComponent();
-            ViewModel = new MainViewModel();
+            _tcpClient = new TCPClient();
+            _authentication = new Authentication(_tcpClient);
+            _connectionManager = new ConnectionManager();
+            ViewModel = new MainViewModel(_tcpClient, _authentication, _connectionManager);
             SetupBinding();
 
         }

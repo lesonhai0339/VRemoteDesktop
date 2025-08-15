@@ -31,7 +31,8 @@ namespace VRemoteDesktop.Services.TCPClient
 
         public event EventHandler<ConnectEventArgs> Connected;
         public event EventHandler<LoginEventArgs> LoggedIn;
-        public event EventHandler<P2PConnectEventArgs> P2PConnected;
+        public event EventHandler<P2PRequestConnectEventArgs> P2PrequestConnect;
+        public event EventHandler<P2PAcceptConnectEventArgs> P2PAcceptConnect;
         public event EventHandler<P2PScreenEventArgs> ScreenReceived;
         public event EventHandler<P2PScreenEventArgs> RegionsScreenReceived;
         public event EventHandler<P2PScreenSendResponeEventArgs> SendScreenSucceeded;
@@ -133,10 +134,10 @@ namespace VRemoteDesktop.Services.TCPClient
                                 LoggedIn?.Invoke(this, new LoginEventArgs(true, task.Data));
                                 break;
                             case DataType.P2PRequestConnect:
-                                P2PConnected?.Invoke(this, new P2PConnectEventArgs(true, task.Data));
+                                P2PrequestConnect?.Invoke(this, new P2PRequestConnectEventArgs(true, task.Data));
                                 break;
                             case DataType.P2PAcceptConnect:
-                                Console.WriteLine("Accept connect");
+                                P2PAcceptConnect?.Invoke(this, new P2PAcceptConnectEventArgs(task.Data));
                                 break;
                             case DataType.Disconnect:
                                 break;
@@ -176,7 +177,7 @@ namespace VRemoteDesktop.Services.TCPClient
                                 P2PDisconnected?.Invoke(this, new P2PDisconnectEventArgs(true));
                                 break;
                             case DataType.P2PConnectFailed:
-                                P2PConnected?.Invoke(this, new P2PConnectEventArgs(false, task.Data));
+                                P2PrequestConnect?.Invoke(this, new P2PRequestConnectEventArgs(false, task.Data));
                                 break;
                             case DataType.Message:
                                 P2PChatMessageReceived?.Invoke(this, new P2PChatEventArgs(task.Data));
