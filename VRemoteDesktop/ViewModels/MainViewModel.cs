@@ -288,10 +288,10 @@ namespace VRemoteDesktop.ViewModels
         {
             foreach(var connector in _connector)
             {
-                Screen(e);
+                Screen(connector, e);
             }
         }
-        private void Screen(ScreenEvent e)
+        private void Screen(string partnerId, ScreenEvent e)
         {
             try
             {
@@ -303,7 +303,7 @@ namespace VRemoteDesktop.ViewModels
                 byte[] screenHeader = new byte[21];
                 Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 0, 4);
                 screenHeader[4] = (byte)e.Type;
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(_connector.FirstOrDefault()), 0, screenHeader, 5, 8);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, screenHeader, 5, 8);
                 Buffer.BlockCopy(Encoding.ASCII.GetBytes(MyId), 0, screenHeader, 13, 8);
 
                 List<TaskObject> tasks = new List<TaskObject>();
