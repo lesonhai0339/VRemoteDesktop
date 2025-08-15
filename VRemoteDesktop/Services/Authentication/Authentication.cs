@@ -71,7 +71,7 @@ namespace VRemoteDesktop.Services.Authentication
         {
             string data = Helpers.StringHelper.StringBuilderWithSeparator("|",partnerId, partnetPassword.ToString(), myInfo.ToNetworkString());
             byte[] dataBytes = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
-            _tcpClient.Send(DataType.P2PConnect, dataBytes, partnerId, true);
+            _tcpClient.Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
         public P2PConnectionResponse P2PAuthentication(byte[] bytes, ClientInfo myInfo)
         {
@@ -101,7 +101,7 @@ namespace VRemoteDesktop.Services.Authentication
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", nameof(P2PConnection)).Error(ex, "P2PConnection error");
+                Log.ForContext("FileName", nameof(P2PAuthentication)).Error(ex, "P2PConnection error");
                 return new P2PConnectionResponse(false, null); 
             }
         }
