@@ -285,9 +285,9 @@ namespace VRemoteDesktop.ViewModels
                     return;
                 }
                 byte[] screenHeader = new byte[13];
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(_connector.FirstOrDefault()), 0, screenHeader, 0, 8);
-                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 13), 0, screenHeader, 8, 4);
-                screenHeader[13] = (byte)e.Type;
+                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 13), 0, screenHeader, 0, 4);
+                screenHeader[4] = (byte)e.Type;
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(_connector.FirstOrDefault()), 0, screenHeader, 5, 8);
 
                 List<TaskObject> tasks = new List<TaskObject>();
                 tasks.Add(new TaskObject
