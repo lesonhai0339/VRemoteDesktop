@@ -59,16 +59,16 @@ namespace VRemoteDesktop.ViewModels
                 {
                     if (_tcpClient != null)
                     {
-                        _tcpClient.ConnectEvent -= ConnectEventHandler;
-                        _tcpClient.LoginEvent -= LoginEventHandler;
-                        _tcpClient.P2PConnectEvent -= P2PConnectEventHandler;
+                        _tcpClient.Connected -= ConnectEventHandler;
+                        _tcpClient.LoggedIn -= LoginEventHandler;
+                        _tcpClient.P2PConnected -= P2PConnectEventHandler;
                     }
                     _tcpClient = value;
                     if (_tcpClient != null)
                     {
-                        _tcpClient.ConnectEvent += ConnectEventHandler;
-                        _tcpClient.LoginEvent += LoginEventHandler;
-                        _tcpClient.P2PConnectEvent += P2PConnectEventHandler;
+                        _tcpClient.Connected += ConnectEventHandler;
+                        _tcpClient.LoggedIn += LoginEventHandler;
+                        _tcpClient.P2PConnected += P2PConnectEventHandler;
 
                     }
                 }
