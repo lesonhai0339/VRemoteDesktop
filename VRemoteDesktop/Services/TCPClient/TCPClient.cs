@@ -27,6 +27,8 @@ namespace VRemoteDesktop.Services.TCPClient
         private Socket _socket;
         private ConcurrentQueue<DataReceive> _tasks;
         private BackgroundWorker _backgroundWorker;
+        private BackgroundWorker _backgroundWorker2;
+
         private CancellationTokenSource _cancellationToken;
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
@@ -84,19 +86,19 @@ namespace VRemoteDesktop.Services.TCPClient
         }
         public BackgroundWorker Worker2
         {
-            get => _backgroundWorker;
+            get => _backgroundWorker2;
             set
             {
-                if (_backgroundWorker != null)
+                if (_backgroundWorker2 != null)
                 {
-                    _backgroundWorker.DoWork -= DoWork2;
+                    _backgroundWorker2.DoWork -= DoWork2;
                 }
 
-                _backgroundWorker = value;
+                _backgroundWorker2 = value;
 
-                if (_backgroundWorker != null)
+                if (_backgroundWorker2 != null)
                 {
-                    _backgroundWorker.DoWork += DoWork2;
+                    _backgroundWorker2.DoWork += DoWork2;
                 }
             }
         }
