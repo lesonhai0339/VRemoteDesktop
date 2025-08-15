@@ -12,12 +12,13 @@ using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.TCPClient;
 using VRemoteDesktop.ViewModels;
 using VRemoteDesktop.Views;
+using VRemoteServer.Models;
 
 namespace VRemoteDesktop
 {
     public partial class FormMain : Form
     {
-        private readonly object _object = new object();
+        private readonly object _lock = new object();
         private TCPClient _tcpClient;
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
@@ -37,12 +38,31 @@ namespace VRemoteDesktop
         #region Properties
         public MainViewModel ViewModel
         {
-            get => _viewModel;
+            get
+            {
+                lock (_lock)
+                {
+                    return _viewModel;
+                }
+            }
             set
             {
-                _viewModel = value;
+                lock (_lock)
+                {
+                    if(_viewModel != null)
+                    {
+                        _viewModel.ClientAcceptRequestRemote -= ClientAcceptRequestRemoteEventHandler;
+                    }
+                    _viewModel = value;
+                    if(_viewModel != null)
+                    {
+                        _viewModel.ClientAcceptRequestRemote += ClientAcceptRequestRemoteEventHandler;
+                    }
+                }
             }
         }
+
+
         #endregion
         private void SetupBinding()
         {
@@ -121,6 +141,12 @@ namespace VRemoteDesktop
             {
                 action();
             }
+        }
+        private void ClientAcceptRequestRemoteEventHandler(ClientInfo info)
+        {
+            FormRemote remoteForm = new FormRemote(info);
+            ViewModel.AddRemoteForm(remoteForm.Client.Id ,remoteForm.RemoteViewModel);
+            remoteForm.Show();
         }
     }
 }

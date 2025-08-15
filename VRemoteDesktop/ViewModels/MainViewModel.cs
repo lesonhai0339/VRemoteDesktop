@@ -31,6 +31,8 @@ namespace VRemoteDesktop.ViewModels
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
         private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
+
+        public Action<ClientInfo> ClientAcceptRequestRemote;
         public MainViewModel(TCPClient tcpClient, Authentication authentication, ConnectionManager connectionManager)
         {
             TCPClient = tcpClient;
@@ -150,6 +152,10 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Methods
+        public void AddRemoteForm(string id, RemoteViewModel remoteViewModel)
+        {
+            _remoteViewModel.TryAdd(id, remoteViewModel);
+        }
         public void Connect()
         {
             string ip = AppSettingHelper.Getvalue("RemoteServerIP");
@@ -210,7 +216,22 @@ namespace VRemoteDesktop.ViewModels
 
         private void P2PAcceptConnectEventHandler(object sender, P2PAcceptConnectEventArgs e)
         {
-            string data = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
+            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8 , e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
+            string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
+            ClientInfo connecter = new ClientInfo
+            {
+                Id = stringArray[2],
+                Password = stringArray[3],
+                ComputerName = stringArray[4],
+                Width = int.Parse(stringArray[5]),
+                Height = int.Parse(stringArray[6]),
+                MajorVersion = stringArray[7],
+                MinorVersion = stringArray[8],
+                Ip = stringArray[9],
+                Port = stringArray[10],
+                PublicIP = stringArray[11],
+            };
+            ClientAcceptRequestRemote?.Invoke(connecter);
         }
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName = null)
