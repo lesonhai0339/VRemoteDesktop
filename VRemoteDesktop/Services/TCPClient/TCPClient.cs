@@ -29,19 +29,18 @@ namespace VRemoteDesktop.Services.TCPClient
         private BackgroundWorker _backgroundWorker;
         private CancellationTokenSource _cancellationToken;
 
-        public event EventHandler<ConnectEventArgs> ConnectEvent;
-        public event EventHandler<LoginEventArgs> LoginEvent;
-        public event EventHandler<P2PConnectEventArgs> P2PConnectEvent;
-        public event Action<byte[]> ScreenEvent;
-        public event Action<byte[]> ChunksEvent;
-        public event Action<bool> ScreenSuccessEvent;
-        public event Action<bool> ChunksSuccessEvent;
-        public event Action<byte[]> KeyboardReceivedEvent;
-        public event Action<byte[]> MouseReceivedEvent;
-        public event Action<byte[]> ClipboardReceivedEvent;
-        public event Action<bool, string> P2PDisconnectedEvent;
-        public event Action<byte[]> ChatMessageEvent;
-        public event Action<SendFileType, string, byte[]> SendFileEvent;
+        public event EventHandler<ConnectEventArgs> Connected;
+        public event EventHandler<LoginEventArgs> LoggedIn;
+        public event EventHandler<P2PConnectEventArgs> P2PConnected;
+        public event EventHandler<P2PScreenEventArgs> ScreenReceived;
+        public event EventHandler<P2PScreenEventArgs> RegionsScreenReceived;
+        public event EventHandler<P2PScreenSendResponeEventArgs> SendScreenSucceeded;
+        public event EventHandler<P2PKeyboardEventArgs> KeyboardReceived;
+        public event EventHandler<P2PMouseEventArgs> MouseReceived;
+        public event EventHandler<P2PClipboardEventArgs> ClipboardReceived;
+        public event EventHandler<P2PDisconnectEventArgs> P2PDisconnected;
+        public event EventHandler<P2PChatEventArgs> P2PChatMessageReceived;
+        public event EventHandler<P2PFileSendEventArgs> P2PChatSendFileReceived;
         public TCPClient()
         {
             _isSocketConnected = false;
@@ -131,11 +130,13 @@ namespace VRemoteDesktop.Services.TCPClient
                         switch (task.Type)
                         {
                             case DataType.Login:
-                                LoginEvent?.Invoke(this, new LoginEventArgs(true, task.Data));
+                                LoggedIn?.Invoke(this, new LoginEventArgs(true, task.Data));
                                 break;
-                            case DataType.P2PConnect:
-                                IsP2PConnected = true;
-                                P2PConnectEvent?.Invoke(this, new P2PConnectEventArgs(true, task.Data));
+                            case DataType.P2PRequestConnect:
+                                P2PConnected?.Invoke(this, new P2PConnectEventArgs(true, task.Data));
+                                break;
+                            case DataType.P2PAcceptConnect:
+                                Console.WriteLine("Accept connect");
                                 break;
                             case DataType.Disconnect:
                                 break;
@@ -145,52 +146,49 @@ namespace VRemoteDesktop.Services.TCPClient
                                 Console.WriteLine("Pong received from server");
                                 break;
                             case DataType.Screen:
-                                ScreenEvent?.Invoke(task.Data);
+                                ScreenReceived?.Invoke(this, new P2PScreenEventArgs(ScreenType.FULLSCREEN, task.Data));
                                 break;
                             case DataType.Chunks:
-                                ChunksEvent?.Invoke(task.Data);
+                                RegionsScreenReceived?.Invoke(this, new P2PScreenEventArgs(ScreenType.REGIONSCREENS, task.Data));
                                 break;
                             case DataType.ScreenOk:
-                                ScreenSuccessEvent?.Invoke(true);
+                                SendScreenSucceeded?.Invoke(this, new P2PScreenSendResponeEventArgs(ScreenType.FULLSCREEN, true));
                                 break;
                             case DataType.ChunksOk:
-                                ChunksSuccessEvent?.Invoke(true);
+                                SendScreenSucceeded?.Invoke(this, new P2PScreenSendResponeEventArgs(ScreenType.REGIONSCREENS, true));
                                 break;
                             case DataType.Keyboard:
-                                KeyboardReceivedEvent?.Invoke(task.Data);
+                                KeyboardReceived?.Invoke(this,  new P2PKeyboardEventArgs(task.Data));
                                 break;
                             case DataType.Mouse:
-                                MouseReceivedEvent?.Invoke(task.Data);
+                                MouseReceived?.Invoke(this, new P2PMouseEventArgs(task.Data));
                                 break;
                             case DataType.Clipboard:
-                                ClipboardReceivedEvent?.Invoke(task.Data);
+                                ClipboardReceived?.Invoke(this, new P2PClipboardEventArgs(task.Data));
                                 break;
                             case DataType.Error:
                                 break;
                             case DataType.LoginFailed:
-                                LoginEvent?.Invoke(this, new LoginEventArgs(false, task.Data));
+                                LoggedIn?.Invoke(this, new LoginEventArgs(false, task.Data));
                                 break;
                             case DataType.P2PDisconnect:
                                 IsP2PConnected = false;
-                                P2PDisconnectedEvent?.Invoke(true, "");
+                                P2PDisconnected?.Invoke(this, new P2PDisconnectEventArgs(true));
                                 break;
                             case DataType.P2PConnectFailed:
-                                P2PConnectEvent?.Invoke(this, new P2PConnectEventArgs(false, task.Data));
+                                P2PConnected?.Invoke(this, new P2PConnectEventArgs(false, task.Data));
                                 break;
                             case DataType.Message:
-                                ChatMessageEvent?.Invoke(task.Data);
+                                P2PChatMessageReceived?.Invoke(this, new P2PChatEventArgs(task.Data));
                                 break;
                             case DataType.RequestSendFile:
-                                SendFileEvent?.Invoke(SendFileType.RequestSendFile, "", task.Data);
-                                Console.WriteLine("Request to send file received");
+                                P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.RequestSendFile, task.Data));
                                 break;
                             case DataType.AcceptSendFile:
-                                SendFileEvent?.Invoke(SendFileType.AcceptSendFile, "", task.Data);
-                                Console.WriteLine("Request to receive file received");
+                                P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.AcceptSendFile, task.Data));
                                 break;
                             case DataType.FileTransfer:
-                                SendFileEvent?.Invoke(SendFileType.FileTransfer, "", task.Data);
-                                Console.WriteLine("File transfer received");
+                                P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.FileTransfer, task.Data));
                                 break;
                             default:
                                 break;
@@ -226,7 +224,7 @@ namespace VRemoteDesktop.Services.TCPClient
                 Socket.EndConnect(ar);
                 if (!Socket.Connected)
                 {
-                    ConnectEvent?.Invoke(this, new ConnectEventArgs(false));
+                    Connected?.Invoke(this, new ConnectEventArgs(false));
                     Log.ForContext("FileName", "RemoteClient").Error("Cannot connect to server");
                     return;
                 }
@@ -236,7 +234,7 @@ namespace VRemoteDesktop.Services.TCPClient
                 {
                     Worker.RunWorkerAsync();
                 }
-                ConnectEvent?.Invoke(this, new ConnectEventArgs(true));
+                Connected?.Invoke(this, new ConnectEventArgs(true));
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
 

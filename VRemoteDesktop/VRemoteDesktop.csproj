@@ -70,7 +70,15 @@
     <Compile Include="Events\KeyEvent.cs" />
     <Compile Include="Events\LoginEventArgs.cs" />
     <Compile Include="Events\MouseEvent.cs" />
+    <Compile Include="Events\P2PChatEventArgs.cs" />
+    <Compile Include="Events\P2PClipboardEventArgs.cs" />
     <Compile Include="Events\P2PConnectEventArgs.cs" />
+    <Compile Include="Events\P2PDisconnectEventArgs.cs" />
+    <Compile Include="Events\P2PFileSendEventArgs.cs" />
+    <Compile Include="Events\P2PKeyboardEventArgs.cs" />
+    <Compile Include="Events\P2PMouseEventArgs.cs" />
+    <Compile Include="Events\P2PScreenEventArgs.cs" />
+    <Compile Include="Events\P2PScreenSendResponeEventArgs.cs" />
     <Compile Include="Events\ScreenEvent.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
@@ -78,13 +86,14 @@
     <Compile Include="Helpers\StringHelper.cs" />
     <Compile Include="Models\ErrorResponse.cs" />
     <Compile Include="Models\MouseData.cs" />
+    <Compile Include="Models\P2PConnectionResponse.cs" />
     <Compile Include="Models\TaskGroup.cs" />
     <Compile Include="Models\TaskObject.cs" />
     <Compile Include="Models\BaseResponse.cs" />
     <Compile Include="Models\ByteArrayBuilder.cs" />
     <Compile Include="Models\ClientInfo.cs" />
     <Compile Include="Models\DataReceive.cs" />
-    <Compile Include="Models\DataType.cs" />
+    <Compile Include="Enums\DataType.cs" />
     <Compile Include="Models\KeyboardReceived.cs" />
     <Compile Include="Models\KeyboardState.cs" />
     <Compile Include="Models\MouseReceived.cs" />
@@ -108,6 +117,7 @@
     <Compile Include="Utils\Logger.cs" />
     <Compile Include="Interop\Win32Apis.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
+    <Compile Include="ViewModels\RemoteViewModel.cs" />
     <Compile Include="Views\FormMain.cs">
       <SubType>Form</SubType>
     </Compile>

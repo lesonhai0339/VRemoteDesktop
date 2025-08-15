@@ -73,13 +73,37 @@ namespace VRemoteDesktop.Services.Authentication
             byte[] dataBytes = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
             _tcpClient.Send(DataType.P2PConnect, dataBytes, partnerId, true);
         }
-        //public bool IsAuthenticated(string id, string password)
-        //{
-        //    if (string.IsNullOrWhiteSpace(id) || string.IsNullOrWhiteSpace(password))
-        //        return false;
+        public P2PConnectionResponse P2PAuthentication(byte[] bytes, ClientInfo myInfo)
+        {
+            try
+            {
+                string data = Helpers.ByteArrayHelper.ConvertByteArrayToString(bytes, 8, bytes.Length - 8, Enums.EncodingType.ASCII).GetResult();
+                string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
+                bool flag = myInfo.Id == stringArray[0] && myInfo.Password == stringArray[1];
+                if (!flag)
+                    return new P2PConnectionResponse(false, null);
 
-        //    ClientInfo me = ConnectionManager.ConnectionManager.Me;
-        //    return me.Id == id && me.Password == password;
-        //}
+                ClientInfo connecter = new ClientInfo
+                {
+                    Id = stringArray[2],
+                    Password = stringArray[3],
+                    ComputerName = stringArray[4],
+                    Width = int.Parse(stringArray[5]),
+                    Height = int.Parse(stringArray[6]),
+                    MajorVersion = stringArray[7],
+                    MinorVersion = stringArray[8],
+                    Ip = stringArray[9],
+                    Port = stringArray[10],
+                    PublicIP = stringArray[11],
+                };
+
+                return new P2PConnectionResponse(false, connecter); ;
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", nameof(P2PConnection)).Error(ex, "P2PConnection error");
+                return new P2PConnectionResponse(false, null); 
+            }
+        }
     }
 }

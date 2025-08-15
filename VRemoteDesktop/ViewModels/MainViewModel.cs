@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
@@ -29,6 +30,7 @@ namespace VRemoteDesktop.ViewModels
         private TCPClient _tcpClient;
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
+        private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
         public MainViewModel()
         {
             TCPClient = new TCPClient();
@@ -38,6 +40,7 @@ namespace VRemoteDesktop.ViewModels
             MyId = _myInfo.Id;
             MyPassword = _myInfo.Password;
             IsConnected = false;
+            _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
         }
 
         #region Properties
@@ -56,16 +59,16 @@ namespace VRemoteDesktop.ViewModels
                 {
                     if (_tcpClient != null)
                     {
-                        _tcpClient.ConnectEvent -= ConnectEventHandler;
-                        _tcpClient.LoginEvent -= LoginEventHandler;
-                        _tcpClient.P2PConnectEvent -= P2PConnectEventHandler;
+                        _tcpClient.Connected -= ConnectEventHandler;
+                        _tcpClient.LoggedIn -= LoginEventHandler;
+                        _tcpClient.P2PConnected -= P2PConnectEventHandler;
                     }
                     _tcpClient = value;
                     if (_tcpClient != null)
                     {
-                        _tcpClient.ConnectEvent += ConnectEventHandler;
-                        _tcpClient.LoginEvent += LoginEventHandler;
-                        _tcpClient.P2PConnectEvent += P2PConnectEventHandler;
+                        _tcpClient.Connected += ConnectEventHandler;
+                        _tcpClient.LoggedIn += LoginEventHandler;
+                        _tcpClient.P2PConnected += P2PConnectEventHandler;
 
                     }
                 }
@@ -189,7 +192,13 @@ namespace VRemoteDesktop.ViewModels
         }
         private void P2PConnectEventHandler(object sender, P2PConnectEventArgs e)
         {
-            byte[] data = e.Data;
+            var result =  Authentication.P2PAuthentication(e.Data, _myInfo);
+            if (!result.IsLogged)
+                return;
+
+            TCPClient.Send(DataType.P2PAcceptConnect,new byte[0], result.ConnectorInfo.Id);
+                //Todo: logging failed
+            //Todo: add connector to dictionary, start send screen
         }
 
 

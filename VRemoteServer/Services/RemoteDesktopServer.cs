@@ -45,7 +45,8 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.Login:
                             await ProcessLogin(task);
                             break;
-                        case Enums.CommandType.P2PConnect:
+                        case Enums.CommandType.P2PRequestConnect:
+                        case Enums.CommandType.P2PAcceptConnect:
                             await ProcessP2PConnect(task);
                             break;
                         case Enums.CommandType.Disconnect:
