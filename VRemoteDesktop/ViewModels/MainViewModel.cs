@@ -309,10 +309,7 @@ namespace VRemoteDesktop.ViewModels
 
                     tasks.Add(task);
                 }
-                foreach(var task in tasks)
-                {
-                    TCPClient.Send(task.Data);
-                }
+                TCPClient.AddWorkGroup(tasks);
             }
             catch (Exception ex)
             {

@@ -28,6 +28,8 @@ namespace VRemoteDesktop.Services.TCPClient
         private ConcurrentQueue<DataReceive> _tasks;
         private BackgroundWorker _backgroundWorker;
         private CancellationTokenSource _cancellationToken;
+        private ConcurrentQueue<object> _screenTasks;
+        private ConcurrentQueue<object> _commandTasks;
 
         public event EventHandler<ConnectEventArgs> Connected;
         public event EventHandler<LoginEventArgs> LoggedIn;
@@ -44,6 +46,9 @@ namespace VRemoteDesktop.Services.TCPClient
         public event EventHandler<P2PFileSendEventArgs> P2PChatSendFileReceived;
         public TCPClient()
         {
+            ScreenTasks = new ConcurrentQueue<object>();
+            CommandTasks = new ConcurrentQueue<object>();
+
             _isSocketConnected = false;
             _isP2PConnected = false;
             _isDisposed = false;
@@ -52,8 +57,49 @@ namespace VRemoteDesktop.Services.TCPClient
             Tasks = new ConcurrentQueue<DataReceive>();
             Worker = new BackgroundWorker();
             Worker.WorkerSupportsCancellation = true;
+
+            Worker2 = new BackgroundWorker();
+            Worker2.WorkerSupportsCancellation = true;
+            if (!Worker2.IsBusy)
+            {
+                Worker2.RunWorkerAsync();
+            }
         }
         #region Properties
+        public ConcurrentQueue<object> ScreenTasks
+        {
+            get => _screenTasks;
+            private set
+            {
+                _screenTasks = value;
+            }
+        }
+        public ConcurrentQueue<object> CommandTasks
+        {
+            get => _commandTasks;
+            private set
+            {
+                _commandTasks = value;
+            }
+        }
+        public BackgroundWorker Worker2
+        {
+            get => _backgroundWorker;
+            set
+            {
+                if (_backgroundWorker != null)
+                {
+                    _backgroundWorker.DoWork -= DoWork2;
+                }
+
+                _backgroundWorker = value;
+
+                if (_backgroundWorker != null)
+                {
+                    _backgroundWorker.DoWork += DoWork2;
+                }
+            }
+        }
         public bool IsP2PConnected
         {
             get
@@ -203,6 +249,87 @@ namespace VRemoteDesktop.Services.TCPClient
                 Thread.Sleep(1);
             }
         }
+        private void DoWork2(object sender, DoWorkEventArgs e)
+        {
+            int count = 0;
+            while (!_cancellationToken.IsCancellationRequested)
+            {
+                
+
+                var taskQueue = DequeueTask();
+                if (taskQueue != null)
+                {
+                    try
+                    {
+                        if (taskQueue is TaskObject task)
+                        {
+                            ProcessTask(task);
+                        }
+                        else if (taskQueue is TaskGroup taskGroup)
+                        {
+                            foreach (var t in taskGroup.Tasks)
+                            {
+                                if (CommandTasks.TryPeek(out _))
+                                {
+                                    break;
+                                }
+                                ProcessTask(t);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
+                    }
+                }
+                count++;
+                Thread.Sleep(5);
+            }
+        }
+        private void ProcessTask(TaskObject task)
+        {
+            Send(task.Data);
+        }
+        private object DequeueTask()
+        {
+            try
+            {
+                if (CommandTasks.Count > 0)
+                {
+                    return CommandTasks.TryDequeue(out var tasks) ? tasks : null;
+                }
+                else
+                {
+                    return ScreenTasks.TryDequeue(out var tasks) ? tasks : null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "DequeueTask error");
+                return null;
+            }
+        }
+        public void AddWork(TaskObject task)
+        {
+            if (ScreenTasks.Count >= 2)
+            {
+                // keep last frame and remove all previous frames
+                object lastItem = null;
+                while (ScreenTasks.TryDequeue(out var item))
+                {
+                    lastItem = item;
+                }
+                if (lastItem != null)
+                {
+                    ScreenTasks.Enqueue(lastItem);
+                }
+            }
+            ScreenTasks.Enqueue(task);
+        }
+        public void AddWorkGroup(List<TaskObject> tasks)
+        {
+            ScreenTasks.Enqueue(new TaskGroup(tasks));
+        }
 
         public void Cancel()
         {
@@ -264,6 +391,7 @@ namespace VRemoteDesktop.Services.TCPClient
                 int num = Socket.EndReceive(ar);
                 if (num > 0)
                 {
+                    Console.WriteLine("Received: "+ num + " bytes");
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
                     while (!_cancellationToken.Token.IsCancellationRequested)
                     {
