@@ -286,9 +286,9 @@ namespace VRemoteDesktop.ViewModels
         }
         private void ScreenHookEventHandler(object sender, ScreenEvent e)
         {
-            foreach(var connector in _remoteViewModel)
+            foreach(var connector in _connector)
             {
-                Screen(connector.Key, e);
+                Screen(connector, e);
             }
         }
         private void Screen(string partnerId, ScreenEvent e)
