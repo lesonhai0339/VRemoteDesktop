@@ -150,7 +150,7 @@ namespace VRemoteDesktop.ViewModels
 
             if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
             {
-                Log.ForContext("FileName", nameof(P2PConnect)).Error("Error at Connect");
+                Log.ForContext("FileName", nameof(Connect)).Error("Error at Connect");
                 return;
             }
             if(int.TryParse(port, out int validPort))
