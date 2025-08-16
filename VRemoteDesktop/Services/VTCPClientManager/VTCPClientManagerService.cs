@@ -2,6 +2,8 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using VRemoteDesktop.Services.TCPClient;
 
@@ -10,13 +12,13 @@ namespace VRemoteDesktop.Services.VTCPClientManager
     public class VTCPClientManagerService
     {
         private readonly object _lock = new object();
-        private ConcurrentBag<TCPClient.TCPClient> _connections;
+        private ConcurrentDictionary<string , TCPClient.TCPClient> _connections;
         public VTCPClientManagerService()
         {
-            Connections = new ConcurrentBag<TCPClient.TCPClient>();
+            Connections = new ConcurrentDictionary<string, TCPClient.TCPClient>();
         }
         #region Properties
-        public ConcurrentBag<TCPClient.TCPClient> Connections
+        public ConcurrentDictionary<string, TCPClient.TCPClient> Connections
         {
             get
             {
@@ -33,23 +35,56 @@ namespace VRemoteDesktop.Services.VTCPClientManager
                 }
             }
         }
-        private void AddNewTCPClient(TCPClient.TCPClient client)
+        public void Add(string id, TCPClient.TCPClient client)
         {
             try
             {
-                Connections.Add(client);
+                Connections.TryAdd(id, client);
+                client.TCPClientResponse += TCPClientResponseEventHandler;
             }
             catch(Exception ex)
             {
 
             }
         }
-        public void Connect(string id, string password)
+        public void Remove(string id)
         {
-            TCPClient.TCPClient client = new TCPClient.TCPClient();
-            client.se
+            try
+            {
+                if (Connections.TryGetValue(id, out var client))
+                {
+                    client.TCPClientResponse -= TCPClientResponseEventHandler;
+                    Connections.TryRemove(id, out _);
+                }
+            }
+            catch (Exception ex)
+            {
 
+            }
         }
+
+        public TCPClient.TCPClient GetByKey(string id)
+        {
+            try
+            {
+                if(Connections.TryGetValue(id, out var client))
+                {
+                    return client;
+                }
+                return null;
+
+            }
+            catch (Exception ex)
+            {
+                return null;
+
+            }
+        }
+        private void TCPClientResponseEventHandler(object sender, EventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
         #endregion
     }
 }

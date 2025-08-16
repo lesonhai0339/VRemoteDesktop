@@ -14,6 +14,7 @@ using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.TCPClient;
+using VRemoteDesktop.Services.VTCPClientManager;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
@@ -29,7 +30,7 @@ namespace VRemoteDesktop.ViewModels
         private string _myPassword;
         private bool _isConnected;
         private ClientInfo _myInfo;
-        private TCPClient _tcpClient;
+        private VTCPClientManagerService _vtcpClientManagerService;
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
         private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
@@ -37,9 +38,9 @@ namespace VRemoteDesktop.ViewModels
         private IScreenCaptureServiceListener _globakScreenHook;
 
         public Action<ClientInfo> ClientAcceptRequestRemote;
-        public MainViewModel(TCPClient tcpClient, Authentication authentication, ConnectionManager connectionManager)
+        public MainViewModel(VTCPClientManagerService vtcpClientManagerService, Authentication authentication, ConnectionManager connectionManager)
         {
-            TCPClient = tcpClient;
+            VTCPClientManagerService = vtcpClientManagerService;
             Authentication = authentication;
             ConnectionManager = connectionManager;
             _myInfo = ConnectionManager.Me;
@@ -80,38 +81,26 @@ namespace VRemoteDesktop.ViewModels
                 }
             }
         }
-        public TCPClient TCPClient
+        public VTCPClientManagerService VTCPClientManagerService
         {
             get
             {
                 lock (_lock)
                 {
-                    return _tcpClient;
+                    return _vtcpClientManagerService;
                 }
             }
             set
             {
                 lock (_lock)
                 {
-                    if (_tcpClient != null)
+                    if (_vtcpClientManagerService != null)
                     {
-                        _tcpClient.Connected -= ConnectEventHandler;
-                        _tcpClient.LoggedIn -= LoginEventHandler;
-                        _tcpClient.P2PrequestConnect -= P2PRequestConnectEventHandler;
-                        _tcpClient.P2PAcceptConnect -= P2PAcceptConnectEventHandler;
-                        _tcpClient.ScreenReceived -= ScreenReceivedEventHandler;
-                        _tcpClient.RegionsScreenReceived -= ScreenReceivedEventHandler;
 
                     }
-                    _tcpClient = value;
-                    if (_tcpClient != null)
+                    _vtcpClientManagerService = value;
+                    if (_vtcpClientManagerService != null)
                     {
-                        _tcpClient.Connected += ConnectEventHandler;
-                        _tcpClient.LoggedIn += LoginEventHandler;
-                        _tcpClient.P2PrequestConnect += P2PRequestConnectEventHandler;
-                        _tcpClient.P2PAcceptConnect += P2PAcceptConnectEventHandler;
-                        _tcpClient.ScreenReceived += ScreenReceivedEventHandler;
-                        _tcpClient.RegionsScreenReceived += ScreenReceivedEventHandler;
 
                     }
                 }
@@ -206,7 +195,10 @@ namespace VRemoteDesktop.ViewModels
             }
             if(int.TryParse(port, out int validPort))
             {
-                Authentication.Connect(ip, validPort);
+                string clientId = Helpers.StringHelper.RandomStringNumber(8);
+                TCPClient client = new TCPClient(clientId);
+                VTCPClientManagerService.Add(clientId, client);
+                client.Connect(ip, validPort);
             }
         }
         public void Login()
@@ -250,7 +242,7 @@ namespace VRemoteDesktop.ViewModels
 
             _connector.Add(result.ConnectorInfo.Id);
             ScreenHook.StartCapture();
-            TCPClient.Send(DataType.P2PAcceptConnect, data, result.ConnectorInfo.Id);
+            //TCPClient.Send(DataType.P2PAcceptConnect, data, result.ConnectorInfo.Id);
                 //Todo: logging failed
             //Todo: add connector to dictionary, start send screen
         }
@@ -327,7 +319,7 @@ namespace VRemoteDesktop.ViewModels
 
                     tasks.Add(task);
                 }
-                TCPClient.AddWorkGroup(tasks);
+                //TCPClient.AddWorkGroup(tasks);
             }
             catch (Exception ex)
             {

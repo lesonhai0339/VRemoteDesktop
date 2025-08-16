@@ -23,6 +23,12 @@ namespace VRemoteDesktop.Services.TCPClient
         private bool _isP2PConnected;
         private bool _isDisposed;
         private object _lockObject = new object();
+        private string _socketId;
+        private string _myId;
+        private string _myPassword;
+        private string _partnerId;
+        private string _partnerPassword;
+
 
         private Socket _socket;
         private ConcurrentQueue<DataReceive> _tasks;
@@ -33,6 +39,8 @@ namespace VRemoteDesktop.Services.TCPClient
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
 
+
+        public event EventHandler<EventArgs> TCPClientResponse;
         public event EventHandler<ConnectEventArgs> Connected;
         public event EventHandler<LoginEventArgs> LoggedIn;
         public event EventHandler<P2PRequestConnectEventArgs> P2PrequestConnect;
@@ -46,7 +54,7 @@ namespace VRemoteDesktop.Services.TCPClient
         public event EventHandler<P2PDisconnectEventArgs> P2PDisconnected;
         public event EventHandler<P2PChatEventArgs> P2PChatMessageReceived;
         public event EventHandler<P2PFileSendEventArgs> P2PChatSendFileReceived;
-        public TCPClient()
+        public TCPClient(string socketId)
         {
             ScreenTasks = new ConcurrentQueue<object>();
             CommandTasks = new ConcurrentQueue<object>();
@@ -66,8 +74,30 @@ namespace VRemoteDesktop.Services.TCPClient
             {
                 Worker2.RunWorkerAsync();
             }
+
+            _socketId = socketId;
         }
         #region Properties
+        public string MyId
+        {
+            get => _myId;
+            set => _myId = value;
+        }
+        public string MyPassword
+        {
+            get => _myPassword;
+            set => _myPassword = value;
+        }
+        public string PartnerId
+        {
+            get => _partnerId;
+            set => _partnerId = value;
+        }
+        public string PartnerPassword
+        {
+            get => _partnerId;
+            set => _partnerId = value;
+        }
         public ConcurrentQueue<object> ScreenTasks
         {
             get => _screenTasks;
@@ -342,7 +372,47 @@ namespace VRemoteDesktop.Services.TCPClient
         /// </summary>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-       
+        public void Connect(string ip, int port)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(ip) || port <= 0)
+                {
+                    Log.ForContext("FileName", nameof(Connect)).Error("Invalidate argument at Connect method");
+                    return;
+                }
+
+                IPEndPoint remoteEP;
+                if (IPAddress.TryParse(ip, out IPAddress validIp))
+                {
+                    remoteEP = new IPEndPoint(validIp, port);
+
+                    if (Socket == null || !Socket.Connected)
+                    {
+                        Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        Socket.NoDelay = true;
+                    }
+                    Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                    Socket.BeginConnect(remoteEP, new AsyncCallback(ConnectCallback), Socket);
+                }
+                else
+                {
+                    Log.ForContext("FileName", nameof(Connect)).Error("Invalid IP address: {Ip}", ip);
+                }
+            }
+            catch (SocketException ex)
+            {
+                Log.ForContext("FileName", nameof(Connect)).Error(ex, "Error when connect to relay server");
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", nameof(Connect)).Error(ex, "Unexpected error when connect to relay server");
+            }
+            finally
+            {
+
+            }
+        }
         /// <summary>
         /// Callback method when the socket is connected to the remote server
         /// </summary>
@@ -367,7 +437,7 @@ namespace VRemoteDesktop.Services.TCPClient
                 Connected?.Invoke(this, new ConnectEventArgs(true));
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
-                stateObject.SckId = Helpers.StringHelper.RandomStringNumber(8);
+                stateObject.SckId = _socketId;
 
                 Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
                 Log.ForContext("FileName", "RemoteClient").Info("Connected to {RemoteEndPoint}, starting receive loop");

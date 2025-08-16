@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.TCPClient;
+using VRemoteDesktop.Services.VTCPClientManager;
 using VRemoteDesktop.ViewModels;
 using VRemoteDesktop.Views;
 using VRemoteServer.Models;
@@ -19,19 +20,19 @@ namespace VRemoteDesktop
     public partial class FormMain : Form
     {
         private readonly object _lock = new object();
-        private TCPClient _tcpClient;
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
         private MainViewModel _viewModel;
+        private VTCPClientManagerService _vtcpClientManagerService;
 
         private ManualResetEvent _resetEvent;
-        public FormMain()
+        public FormMain(VTCPClientManagerService vtcpClientManagerService)
         {
             InitializeComponent();
-            _tcpClient = new TCPClient();
-            _authentication = new Authentication(_tcpClient);
+            _authentication = new Authentication(null);
             _connectionManager = new ConnectionManager();
-            ViewModel = new MainViewModel(_tcpClient, _authentication, _connectionManager);
+            _vtcpClientManagerService = vtcpClientManagerService;
+            ViewModel = new MainViewModel(_vtcpClientManagerService, _authentication, _connectionManager);
             SetupBinding();
 
         }
