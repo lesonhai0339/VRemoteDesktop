@@ -117,8 +117,7 @@ namespace VRemoteServer.Services
         }
         private async Task P2PDataSend(RemoteTask task)
         {
-            string partnetId = Encoding.ASCII.GetString(task.Data, 5, 8);
-            if (_clientsActing.TryGetValue(partnetId, out var client))
+            if (_clientsActing.TryGetValue(task.PartnerId, out var client))
             {
                 await Send(client.Client, task.Data);
             }

@@ -367,6 +367,7 @@ namespace VRemoteDesktop.Services.TCPClient
                 Connected?.Invoke(this, new ConnectEventArgs(true));
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
+                stateObject.SckId = Helpers.StringHelper.RandomStringNumber(8);
 
                 Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
                 Log.ForContext("FileName", "RemoteClient").Info("Connected to {RemoteEndPoint}, starting receive loop");
@@ -393,6 +394,7 @@ namespace VRemoteDesktop.Services.TCPClient
                 int num = Socket.EndReceive(ar);
                 if (num > 0)
                 {
+                    Console.WriteLine($"Received {num} bytes from {stateObject.SckId}");
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
                     while (!_cancellationToken.Token.IsCancellationRequested)
                     {

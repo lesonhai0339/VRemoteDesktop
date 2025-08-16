@@ -217,6 +217,7 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
+                Connect();
                 Authentication.P2PConnect(ip, password, _myInfo);
             }
             catch(Exception ex)
