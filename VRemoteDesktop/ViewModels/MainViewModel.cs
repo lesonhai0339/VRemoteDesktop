@@ -239,9 +239,9 @@ namespace VRemoteDesktop.ViewModels
                 bool flag = _resetEvent.WaitOne(5000);
                 if (flag)
                 {
-                    string a = Helpers.StringHelper.StringBuilderWithSeparator("|", id, clientId, _myInfo.ToNetworkString());
+                    string a = Helpers.StringHelper.StringBuilderWithSeparator("|", id, password, _myInfo.ToNetworkString());
                     byte[] b = Helpers.ByteArrayHelper.ConvertStringToByteArray(a, Enums.EncodingType.ASCII).GetResult();
-                    client.Send(DataType.P2PDataSend, b, id, true);
+                    client.Send(DataType.P2PDataSend, b, clientId, true);
                 }
                 else
                 {
@@ -284,7 +284,7 @@ namespace VRemoteDesktop.ViewModels
             _resetEvent.Set();
         }
 
-        private void P2PAcceptConnectEventHandler(object sender, P2PAcceptConnectEventArgs e)
+        private void P2PDataSendEventHandler(object sender, P2PClientDataReceived e)
         {
             string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8 , e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
             string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
@@ -384,6 +384,9 @@ namespace VRemoteDesktop.ViewModels
                         break;
                     case DataType.P2PAcceptConnect:
                         PartnerAcceptP2PConnect(sender, e);
+                        break;
+                    case DataType.P2PDataSend:
+                        P2PDataSendEventHandler(sender, e);
                         break;
                     default:
                         break;
