@@ -260,7 +260,7 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Events
-        private void P2PRequestConnectEventHandler(object sender, P2PRequestConnectEventArgs e)
+        private void P2PRequestConnectEventHandler(object sender, P2PClientDataReceived e)
         {
             var client = InitNewconnection();
             client.Send(DataType.P2PAcceptConnect, e.Data);
@@ -376,6 +376,7 @@ namespace VRemoteDesktop.ViewModels
                         break;
                     case DataType.P2PRequestConnect:
                         Console.WriteLine("Request connect");
+                        P2PRequestConnectEventHandler(sender, e);
                         break;
                     default:
                         break;
