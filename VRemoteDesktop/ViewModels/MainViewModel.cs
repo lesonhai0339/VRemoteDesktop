@@ -277,17 +277,33 @@ namespace VRemoteDesktop.ViewModels
         {
             var id = Encoding.ASCII.GetString(e.Data);
             var client = InitNewconnection(id);
-            client.Send(DataType.P2PAcceptConnect, e.Data);
+            byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(_myInfo.ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
+            client.Send(DataType.P2PAcceptConnect, encoder , id, true);
         }
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
         {
+            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8, e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
+            string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
+            ClientInfo connecter = new ClientInfo
+            {
+                Id = stringArray[0],
+                Password = stringArray[1],
+                ComputerName = stringArray[2],
+                Width = int.Parse(stringArray[3]),
+                Height = int.Parse(stringArray[4]),
+                MajorVersion = stringArray[5],
+                MinorVersion = stringArray[6],
+                Ip = stringArray[7],
+                Port = stringArray[8],
+                PublicIP = stringArray[9],
+            };
+            ClientAcceptRequestRemote?.Invoke(connecter);
             _resetEvent.Set();
         }
 
         private void P2PDataSendEventHandler(object sender, P2PClientDataReceived e)
         {
-            ScreenHook.StartCapture();
-            //string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8 , e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
+            //string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8, e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
             //string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
             //ClientInfo connecter = new ClientInfo
             //{
@@ -303,6 +319,7 @@ namespace VRemoteDesktop.ViewModels
             //    PublicIP = stringArray[9],
             //};
             //ClientAcceptRequestRemote?.Invoke(connecter);
+            ScreenHook.StartCapture();
         }
         private void ScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
