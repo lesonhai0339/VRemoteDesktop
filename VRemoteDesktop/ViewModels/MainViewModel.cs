@@ -286,22 +286,23 @@ namespace VRemoteDesktop.ViewModels
 
         private void P2PDataSendEventHandler(object sender, P2PClientDataReceived e)
         {
-            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8 , e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
-            string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
-            ClientInfo connecter = new ClientInfo
-            {
-                Id = stringArray[0],
-                Password = stringArray[1],
-                ComputerName = stringArray[2],
-                Width = int.Parse(stringArray[3]),
-                Height = int.Parse(stringArray[4]),
-                MajorVersion = stringArray[5],
-                MinorVersion = stringArray[6],
-                Ip = stringArray[7],
-                Port = stringArray[8],
-                PublicIP = stringArray[9],
-            };
-            ClientAcceptRequestRemote?.Invoke(connecter);
+            ScreenHook.StartCapture();
+            //string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8 , e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
+            //string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
+            //ClientInfo connecter = new ClientInfo
+            //{
+            //    Id = stringArray[0],
+            //    Password = stringArray[1],
+            //    ComputerName = stringArray[2],
+            //    Width = int.Parse(stringArray[3]),
+            //    Height = int.Parse(stringArray[4]),
+            //    MajorVersion = stringArray[5],
+            //    MinorVersion = stringArray[6],
+            //    Ip = stringArray[7],
+            //    Port = stringArray[8],
+            //    PublicIP = stringArray[9],
+            //};
+            //ClientAcceptRequestRemote?.Invoke(connecter);
         }
         private void ScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
@@ -315,12 +316,12 @@ namespace VRemoteDesktop.ViewModels
         }
         private void ScreenHookEventHandler(object sender, ScreenEvent e)
         {
-            foreach(var connector in _connector)
+            foreach(var connection in VTCPClientManagerService.Connections)
             {
-                Screen(connector, e);
+                Screen(connection.Key, connection.Value, e);
             }
         }
-        private void Screen(string partnerId, ScreenEvent e)
+        private void Screen(string connectionId, TCPClient client, ScreenEvent e)
         {
             try
             {
@@ -329,11 +330,10 @@ namespace VRemoteDesktop.ViewModels
                     Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
                     return;
                 }
-                byte[] screenHeader = new byte[21];
-                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 0, 4);
+                byte[] screenHeader = new byte[13];
+                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 13), 0, screenHeader, 0, 4);
                 screenHeader[4] = (byte)e.Type;
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, screenHeader, 5, 8);
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(MyId), 0, screenHeader, 13, 8);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(connectionId), 0, screenHeader, 5, 8);
 
                 List<TaskObject> tasks = new List<TaskObject>();
                 tasks.Add(new TaskObject
@@ -355,7 +355,7 @@ namespace VRemoteDesktop.ViewModels
 
                     tasks.Add(task);
                 }
-                //TCPClient.AddWorkGroup(tasks);
+                client.AddWorkGroup(tasks);
             }
             catch (Exception ex)
             {

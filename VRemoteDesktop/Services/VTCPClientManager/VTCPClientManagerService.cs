@@ -84,6 +84,7 @@ namespace VRemoteDesktop.Services.VTCPClientManager
         }
         private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
         {
+            Console.WriteLine(e.Type);
             TCPClientReceivedEvent?.Invoke(sender, new P2PClientDataReceived(e.Type, e.Flag, e.Data));
         }
 
