@@ -75,6 +75,7 @@
     <Compile Include="Events\MouseEvent.cs" />
     <Compile Include="Events\P2PAcceptConnectEventArgs.cs" />
     <Compile Include="Events\P2PChatEventArgs.cs" />
+    <Compile Include="Events\P2PClientDataReceived.cs" />
     <Compile Include="Events\P2PClipboardEventArgs.cs" />
     <Compile Include="Events\P2PRequestConnectEventArgs.cs" />
     <Compile Include="Events\P2PDisconnectEventArgs.cs" />

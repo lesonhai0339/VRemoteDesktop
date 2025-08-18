@@ -4,7 +4,9 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteDesktop.Events;
@@ -24,11 +26,15 @@ namespace VRemoteDesktop.ViewModels
     public class MainViewModel : INotifyPropertyChanged
     {
         private readonly object _lock = new object();
+        private bool _isLogged = false;
+        private string _id;
         private string _partnerId;
         private string _partnerPassword;
         private string _myId;
         private string _myPassword;
         private bool _isConnected;
+
+        private ManualResetEvent _resetEvent;
         private ClientInfo _myInfo;
         private VTCPClientManagerService _vtcpClientManagerService;
         private Authentication _authentication;
@@ -47,14 +53,21 @@ namespace VRemoteDesktop.ViewModels
             MyId = _myInfo.Id;
             MyPassword = _myInfo.Password;
             IsConnected = false;
+            _resetEvent = new ManualResetEvent(false);
             _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
             _connector = new ConcurrentBag<string>();
+            Init();
             Task.Factory.StartNew(() =>
             {
                 ScreenHook = new ScreenCaptureServiceListener(null, null);
             }, TaskCreationOptions.LongRunning);
         }
-
+        private void Init()
+        {
+            _id = Helpers.StringHelper.RandomStringNumber(8);
+            TCPClient client = new TCPClient(_id);
+            VTCPClientManagerService.Add(_id, client);
+        }
         #region Properties
         public IScreenCaptureServiceListener ScreenHook
         {
@@ -96,12 +109,12 @@ namespace VRemoteDesktop.ViewModels
                 {
                     if (_vtcpClientManagerService != null)
                     {
-
+                        _vtcpClientManagerService.TCPClientReceivedEvent -= TCPClientManagerEventHandler;
                     }
                     _vtcpClientManagerService = value;
                     if (_vtcpClientManagerService != null)
                     {
-
+                        _vtcpClientManagerService.TCPClientReceivedEvent += TCPClientManagerEventHandler;
                     }
                 }
             }
@@ -183,65 +196,84 @@ namespace VRemoteDesktop.ViewModels
         {
             _remoteViewModel.TryAdd(id, remoteViewModel);
         }
-        public void Connect()
+        public void Connect(TCPClient client= null)
         {
             string ip = AppSettingHelper.Getvalue("RemoteServerIP");
             string port = AppSettingHelper.Getvalue("RemoteServerPort");
 
             if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
             {
-                Log.ForContext("FileName", nameof(P2PConnect)).Error("Error at Connect");
+                Log.ForContext("FileName", nameof(Connect)).Error("Error at Connect");
                 return;
             }
             if(int.TryParse(port, out int validPort))
             {
-                string clientId = Helpers.StringHelper.RandomStringNumber(8);
-                TCPClient client = new TCPClient(clientId);
-                VTCPClientManagerService.Add(clientId, client);
-                client.Connect(ip, validPort);
+                if(client == null)
+                {
+                    var clientx = VTCPClientManagerService.GetByKey(_id);
+                    clientx.Connect(ip, validPort);
+                }
+                else
+                {
+                    client.Connect(ip, validPort);
+                }
             }
         }
         public void Login()
         {
-            Authentication.Login(_myInfo.ToNetworkString());
+            byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(_myInfo.ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
+            var client = VTCPClientManagerService.GetByKey(_id);
+            client.Send(DataType.Login, encoder);
         }
-        public void P2PConnect(string ip, string password)
+        public void RequestP2PConnect(string id, string password)
         {
             try
             {
-                Connect();
-                Authentication.P2PConnect(ip, password, _myInfo);
+                var client = InitNewconnection();
+                string data = Helpers.StringHelper.StringBuilderWithSeparator("|",id);
+                byte[] dataBytes = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
+                client.Send(DataType.P2PRequestConnect, dataBytes, id, true);
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", nameof(P2PConnect)).Error(ex, "Error at P2PConnect");
+                Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
             }
+        }
+        private TCPClient InitNewconnection()
+        {
+            _resetEvent.Reset();
+            string clientId = Helpers.StringHelper.RandomStringNumber(8);
+            TCPClient client = new TCPClient(clientId);
+            VTCPClientManagerService.Add(clientId, client);
+            Connect(client);
+            bool flag = _resetEvent.WaitOne(5000);
+            if (flag)
+            {
+                return client;
+            }
+            else
+            {
+                VTCPClientManagerService.Remove(clientId);
+                return null;
+            }
+
         }
         #endregion
         #region Events
-        private void ConnectEventHandler(object sender, ConnectEventArgs e)
-        {
-            if (e.IsConnected)
-            {
-                Login();
-            }
-        }
-        private void LoginEventHandler(object sender, LoginEventArgs e)
-        {
-            IsConnected = e.IsSuccess;
-            ConnectionManager.UpdateMyInfo(e.Data);
-        }
         private void P2PRequestConnectEventHandler(object sender, P2PRequestConnectEventArgs e)
         {
-            var result =  Authentication.P2PAuthentication(e.Data, _myInfo);
-            if (!result.IsLogged)
-                return;
+            var client = InitNewconnection();
+            client.Send(DataType.P2PAcceptConnect, e.Data);
 
-            string me = _myInfo.ToNetworkString();
-            byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(me, Enums.EncodingType.ASCII).GetResult();
+            //var result =  Authentication.P2PAuthentication(e.Data, _myInfo);
+            //if (!result.IsLogged)
+            //    return;
 
-            _connector.Add(result.ConnectorInfo.Id);
-            ScreenHook.StartCapture();
+            //string me = _myInfo.ToNetworkString();
+            //byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(me, Enums.EncodingType.ASCII).GetResult();
+
+            //_connector.Add(result.ConnectorInfo.Id);
+            //ScreenHook.StartCapture();
             //TCPClient.Send(DataType.P2PAcceptConnect, data, result.ConnectorInfo.Id);
                 //Todo: logging failed
             //Todo: add connector to dictionary, start send screen
@@ -326,6 +358,55 @@ namespace VRemoteDesktop.ViewModels
                 Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
         }
+        private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
+        {
+            if(sender  is TCPClient client)
+            {
+                Console.WriteLine(client.SocketId);
+                switch (e.Type)
+                {
+                    case DataType.Connect:
+                        ConnectEventHandler(e.Flag);
+                        break;
+                    case DataType.Login:
+                        LoginEventHandler(e.Flag, e.Data);
+                        break;
+                    case DataType.LoginFailed:
+                        Console.WriteLine("LoginFailed");
+                        break;
+                    case DataType.P2PRequestConnect:
+                        Console.WriteLine("Request connect");
+                        break;
+                    default:
+                        break;
+                }
+
+            }
+        }
+        private void ConnectEventHandler(bool flag)
+        {
+            if (flag)
+            {
+                if (!_isLogged)
+                {
+                    _isLogged = true;
+                    Login();
+                }
+                else
+                {
+                    _resetEvent.Set();
+                }
+            }
+        }
+        private void LoginEventHandler(bool flag, byte[] data)
+        {
+            if (flag)
+            {
+                IsConnected = true;
+                ConnectionManager.UpdateMyInfo(data);
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName = null)
         {

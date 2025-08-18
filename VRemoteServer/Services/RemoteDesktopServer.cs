@@ -20,6 +20,7 @@ namespace VRemoteServer.Services
     public class RemoteDesktopServer : IDisposable
     {
         private ConcurrentDictionary<string, ClientInfo> _clientsActing = new ConcurrentDictionary<string, ClientInfo>();
+        private ConcurrentDictionary<string, ConnectionInfo> _connections = new ConcurrentDictionary<string, ConnectionInfo>();
         private Channel<RemoteTask> _taskChanel = Channel.CreateUnbounded<RemoteTask>();
         private ChannelWriter<RemoteTask> _taskWriter;
         private ChannelReader<RemoteTask> _taskReader;
@@ -55,13 +56,9 @@ namespace VRemoteServer.Services
                             ProcessPing(task);
                             break;
                         case Enums.CommandType.Pong:
-                            break;
                         case Enums.CommandType.Error:
-                            break;
                         case Enums.CommandType.Screen:
                         case Enums.CommandType.Chunks:
-                            await P2PDataSend(task);
-                            break;
                         case Enums.CommandType.Keyboard:
                         case Enums.CommandType.Mouse:
                         case Enums.CommandType.ScreenOk:
@@ -71,7 +68,7 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.FileTransfer:
                         case Enums.CommandType.RequestSendFile:
                         case Enums.CommandType.AcceptSendFile:
-                            await P2PCommand(task);
+                            await P2PDataSend(task);
                             break;
                         case Enums.CommandType.P2PDisconnect:
                             await ProcessP2PDisconnect(task);
@@ -109,8 +106,7 @@ namespace VRemoteServer.Services
         }
         private async Task P2PCommand(RemoteTask task)
         {
-            string partnetId = Encoding.ASCII.GetString(task.Data, 5, 8);
-            if (_clientsActing.TryGetValue(partnetId, out var client))
+            if (_clientsActing.TryGetValue(task.PartnerId, out var client))
             {
                 await Send(client.Client, task.Data);
             }
@@ -199,9 +195,11 @@ namespace VRemoteServer.Services
 
         public async Task ProcessP2PConnect(RemoteTask task)
         {
-            string partnetId = Encoding.ASCII.GetString(task.Data, 5, 8);
-            if (_clientsActing.TryGetValue(partnetId, out var client))
+            if (_clientsActing.TryGetValue(task.PartnerId, out var client))
             {
+                string connectionId = Utils.Extensions.RandomStringNumber(8);
+                ConnectionInfo connection = new ConnectionInfo(connectionId: connectionId, sender: task.Client);
+                _connections.TryAdd(connectionId, connection);
                 await Send(client.Client, task.Data);
             }
         }
@@ -215,7 +213,7 @@ namespace VRemoteServer.Services
                 IPEndPoint ep = task.Client.Socket.RemoteEndPoint as IPEndPoint;
 
                 var clientInfo = Encoding.ASCII.GetString(data).Replace(" ", "").Split('|');
-                if (clientInfo.Length != 10)
+                if (clientInfo.Length != 11)
                 {
                     await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);
                     Log.ForContext("FileName", "RemoteDesktopServer")
@@ -256,8 +254,8 @@ namespace VRemoteServer.Services
                     Port = ep.Port.ToString(),
                     Client = task.Client
                 };
-                _clientsActing.TryAdd(loginInfo.Id, loginInfo);
-
+                string id = clientInfo[10];
+                _clientsActing.TryAdd(id, loginInfo);
                 byte[] bytesInfo = Encoding.ASCII.GetBytes(loginInfo.PublicIP);
                 await SendCommandAsync(task.Client, Enums.CommandType.Login, bytesInfo);
             }

@@ -40,6 +40,7 @@ namespace VRemoteServer.Utils
             FileTransfer = 0x10,
             RequestSendFile = 0x11,
             AcceptSendFile = 0x12,
+            Connect = 0x13,
 
             LoginFailed = 0x90,
             P2PDisconnect = 0x91,

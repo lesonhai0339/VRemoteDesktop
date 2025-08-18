@@ -5,6 +5,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
+using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.TCPClient;
 
 namespace VRemoteDesktop.Services.VTCPClientManager
@@ -13,6 +14,7 @@ namespace VRemoteDesktop.Services.VTCPClientManager
     {
         private readonly object _lock = new object();
         private ConcurrentDictionary<string , TCPClient.TCPClient> _connections;
+        public EventHandler<P2PClientDataReceived> TCPClientReceivedEvent;
         public VTCPClientManagerService()
         {
             Connections = new ConcurrentDictionary<string, TCPClient.TCPClient>();
@@ -40,7 +42,7 @@ namespace VRemoteDesktop.Services.VTCPClientManager
             try
             {
                 Connections.TryAdd(id, client);
-                client.TCPClientResponse += TCPClientResponseEventHandler;
+                client.TCPClientReceived += TCPClientResponseEventHandler;
             }
             catch(Exception ex)
             {
@@ -53,7 +55,7 @@ namespace VRemoteDesktop.Services.VTCPClientManager
             {
                 if (Connections.TryGetValue(id, out var client))
                 {
-                    client.TCPClientResponse -= TCPClientResponseEventHandler;
+                    client.TCPClientReceived -= TCPClientResponseEventHandler;
                     Connections.TryRemove(id, out _);
                 }
             }
@@ -80,9 +82,9 @@ namespace VRemoteDesktop.Services.VTCPClientManager
 
             }
         }
-        private void TCPClientResponseEventHandler(object sender, EventArgs e)
+        private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
         {
-            throw new NotImplementedException();
+            TCPClientReceivedEvent?.Invoke(sender, new P2PClientDataReceived(e.Type, e.Flag, e.Data));
         }
 
         #endregion
