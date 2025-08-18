@@ -26,7 +26,7 @@ namespace VRemoteDesktop.Models
         RequestSendFile = 0x11,
         AcceptSendFile = 0x12,
         Connect = 0x13,
-
+        P2PDataSend = 0x14,
 
         LoginFailed = 0x90,
         P2PDisconnect = 0x91,

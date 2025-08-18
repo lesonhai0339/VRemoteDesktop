@@ -229,22 +229,35 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                var client = InitNewconnection();
-                string data = Helpers.StringHelper.StringBuilderWithSeparator("|",id);
+                string clientId = Helpers.StringHelper.RandomStringNumber(8);
+                var client = InitNewconnection(clientId);
+                string data = Helpers.StringHelper.StringBuilderWithSeparator("|",id, clientId);
                 byte[] dataBytes = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
+
+                _resetEvent.Reset();
                 client.Send(DataType.P2PRequestConnect, dataBytes, id, true);
+                bool flag = _resetEvent.WaitOne(5000);
+                if (flag)
+                {
+                    string a = Helpers.StringHelper.StringBuilderWithSeparator("|", id, clientId, _myInfo.ToNetworkString());
+                    byte[] b = Helpers.ByteArrayHelper.ConvertStringToByteArray(a, Enums.EncodingType.ASCII).GetResult();
+                    client.Send(DataType.P2PDataSend, b, id, true);
+                }
+                else
+                {
+
+                }
             }
             catch(Exception ex)
             {
                 Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
             }
         }
-        private TCPClient InitNewconnection()
+        private TCPClient InitNewconnection(string id)
         {
             _resetEvent.Reset();
-            string clientId = Helpers.StringHelper.RandomStringNumber(8);
-            TCPClient client = new TCPClient(clientId);
-            VTCPClientManagerService.Add(clientId, client);
+            TCPClient client = new TCPClient(id);
+            VTCPClientManagerService.Add(id, client);
             Connect(client);
             bool flag = _resetEvent.WaitOne(5000);
             if (flag)
@@ -253,7 +266,7 @@ namespace VRemoteDesktop.ViewModels
             }
             else
             {
-                VTCPClientManagerService.Remove(clientId);
+                VTCPClientManagerService.Remove(id);
                 return null;
             }
 
@@ -262,23 +275,14 @@ namespace VRemoteDesktop.ViewModels
         #region Events
         private void P2PRequestConnectEventHandler(object sender, P2PClientDataReceived e)
         {
-            var client = InitNewconnection();
+            var id = Encoding.ASCII.GetString(e.Data);
+            var client = InitNewconnection(id);
             client.Send(DataType.P2PAcceptConnect, e.Data);
-
-            //var result =  Authentication.P2PAuthentication(e.Data, _myInfo);
-            //if (!result.IsLogged)
-            //    return;
-
-            //string me = _myInfo.ToNetworkString();
-            //byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(me, Enums.EncodingType.ASCII).GetResult();
-
-            //_connector.Add(result.ConnectorInfo.Id);
-            //ScreenHook.StartCapture();
-            //TCPClient.Send(DataType.P2PAcceptConnect, data, result.ConnectorInfo.Id);
-                //Todo: logging failed
-            //Todo: add connector to dictionary, start send screen
         }
-
+        private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
+        {
+            _resetEvent.Set();
+        }
 
         private void P2PAcceptConnectEventHandler(object sender, P2PAcceptConnectEventArgs e)
         {
@@ -377,6 +381,9 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.P2PRequestConnect:
                         Console.WriteLine("Request connect");
                         P2PRequestConnectEventHandler(sender, e);
+                        break;
+                    case DataType.P2PAcceptConnect:
+                        PartnerAcceptP2PConnect(sender, e);
                         break;
                     default:
                         break;

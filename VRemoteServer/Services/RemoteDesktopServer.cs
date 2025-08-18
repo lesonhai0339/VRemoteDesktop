@@ -21,6 +21,7 @@ namespace VRemoteServer.Services
     {
         private ConcurrentDictionary<string, ClientInfo> _clientsActing = new ConcurrentDictionary<string, ClientInfo>();
         private ConcurrentDictionary<string, ConnectionInfo> _connections = new ConcurrentDictionary<string, ConnectionInfo>();
+
         private Channel<RemoteTask> _taskChanel = Channel.CreateUnbounded<RemoteTask>();
         private ChannelWriter<RemoteTask> _taskWriter;
         private ChannelReader<RemoteTask> _taskReader;
@@ -43,12 +44,19 @@ namespace VRemoteServer.Services
                 {
                     switch (task.CommandType)
                     {
+                        case Enums.CommandType.Connect:
+                            break;
                         case Enums.CommandType.Login:
                             await ProcessLogin(task);
                             break;
                         case Enums.CommandType.P2PRequestConnect:
+                            await ProcessP2PRequestConnect(task);
+                            break;
                         case Enums.CommandType.P2PAcceptConnect:
-                            await ProcessP2PConnect(task);
+                            await ProcessP2PAcceptConnect(task);
+                            break;
+                        case Enums.CommandType.P2PDataSend:
+                            await ProcessP2PDataSend(task);
                             break;
                         case Enums.CommandType.Disconnect:
                             break;
@@ -56,9 +64,13 @@ namespace VRemoteServer.Services
                             ProcessPing(task);
                             break;
                         case Enums.CommandType.Pong:
+                            break;
                         case Enums.CommandType.Error:
+                            break;
                         case Enums.CommandType.Screen:
                         case Enums.CommandType.Chunks:
+                            await P2PDataSend(task);
+                            break;
                         case Enums.CommandType.Keyboard:
                         case Enums.CommandType.Mouse:
                         case Enums.CommandType.ScreenOk:
@@ -68,7 +80,7 @@ namespace VRemoteServer.Services
                         case Enums.CommandType.FileTransfer:
                         case Enums.CommandType.RequestSendFile:
                         case Enums.CommandType.AcceptSendFile:
-                            await P2PDataSend(task);
+                            await P2PCommand(task);
                             break;
                         case Enums.CommandType.P2PDisconnect:
                             await ProcessP2PDisconnect(task);
@@ -83,6 +95,8 @@ namespace VRemoteServer.Services
                 }
             }
         }
+
+
         private async Task ProcessP2PDisconnect(RemoteTask task)
         {
             try
@@ -106,7 +120,8 @@ namespace VRemoteServer.Services
         }
         private async Task P2PCommand(RemoteTask task)
         {
-            if (_clientsActing.TryGetValue(task.PartnerId, out var client))
+            string partnetId = Encoding.ASCII.GetString(task.Data, 5, 8);
+            if (_clientsActing.TryGetValue(partnetId, out var client))
             {
                 await Send(client.Client, task.Data);
             }
@@ -192,15 +207,39 @@ namespace VRemoteServer.Services
             }
             return 0;
         }
+        private async Task ProcessP2PDataSend(RemoteTask task)
+        {
+            string id = Encoding.ASCII.GetString(task.Data, 13, 8);
+            if (_connections.TryGetValue(id, out var connection))
+            {
+                var client = (task.Client == connection.Sender) ? connection.Receiver : connection.Sender;
+                await SendCommandAsync(connection.Sender, Enums.CommandType.P2PAcceptConnect, Encoding.ASCII.GetBytes(id));
+            }
+        }
 
-        public async Task ProcessP2PConnect(RemoteTask task)
+        public async Task ProcessP2PAcceptConnect(RemoteTask task)
+        {
+            string id = Encoding.ASCII.GetString(task.Data, 13, 8);
+            if (_connections.TryGetValue(id, out var connection))
+            {
+                connection.Receiver = task.Client;
+                await SendCommandAsync(connection.Sender, Enums.CommandType.P2PAcceptConnect, Encoding.ASCII.GetBytes(id));
+            }
+        }
+
+
+        public async Task ProcessP2PRequestConnect(RemoteTask task)
         {
             if (_clientsActing.TryGetValue(task.PartnerId, out var client))
             {
-                string connectionId = Utils.Extensions.RandomStringNumber(8);
+                string connectionId = Encoding.ASCII.GetString(task.Data, 22, 8);
                 ConnectionInfo connection = new ConnectionInfo(connectionId: connectionId, sender: task.Client);
                 _connections.TryAdd(connectionId, connection);
-                await Send(client.Client, task.Data);
+                await SendCommandAsync(client.Client, Enums.CommandType.P2PRequestConnect, Encoding.ASCII.GetBytes(connectionId));
+            }
+            else
+            {
+                await SendCommandAsync(task.Client, Enums.CommandType.Error, Encoding.ASCII.GetBytes(nameof(ProcessP2PRequestConnect)));
             }
         }
         public async Task ProcessLogin(RemoteTask task)
@@ -213,14 +252,14 @@ namespace VRemoteServer.Services
                 IPEndPoint ep = task.Client.Socket.RemoteEndPoint as IPEndPoint;
 
                 var clientInfo = Encoding.ASCII.GetString(data).Replace(" ", "").Split('|');
-                if (clientInfo.Length != 11)
+                if (clientInfo.Length != 10)
                 {
                     await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);
                     Log.ForContext("FileName", "RemoteDesktopServer")
                         .Error($"Invalid login data from client: {ep.Address}");
                 }
 
-                var isNullOrEmpty = clientInfo.All(x => !string.IsNullOrWhiteSpace(x));
+                var isNullOrEmpty = clientInfo.All(x => x != null);
                 if (!isNullOrEmpty)
                 {
                     await SendCommandAsync(task.Client, Enums.CommandType.LoginFailed, new byte[0]);
@@ -254,8 +293,8 @@ namespace VRemoteServer.Services
                     Port = ep.Port.ToString(),
                     Client = task.Client
                 };
-                string id = clientInfo[10];
-                _clientsActing.TryAdd(id, loginInfo);
+                _clientsActing.TryAdd(loginInfo.Id, loginInfo);
+
                 byte[] bytesInfo = Encoding.ASCII.GetBytes(loginInfo.PublicIP);
                 await SendCommandAsync(task.Client, Enums.CommandType.Login, bytesInfo);
             }

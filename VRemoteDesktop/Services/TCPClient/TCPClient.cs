@@ -306,6 +306,9 @@ namespace VRemoteDesktop.Services.TCPClient
                                 TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.FileTransfer, true, task.Data));
 
                                 break;
+                            case DataType.P2PDataSend:
+                                Console.WriteLine("P2PDataSend");
+                                break;
                             default:
                                 break;
                         }
