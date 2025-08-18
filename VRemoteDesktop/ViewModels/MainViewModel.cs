@@ -282,7 +282,7 @@ namespace VRemoteDesktop.ViewModels
         }
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
         {
-            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8, e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
+            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 13, e.Data.Length - 13, Enums.EncodingType.ASCII).GetResult();
             string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
             ClientInfo connecter = new ClientInfo
             {
@@ -297,8 +297,8 @@ namespace VRemoteDesktop.ViewModels
                 Port = stringArray[8],
                 PublicIP = stringArray[9],
             };
-            ClientAcceptRequestRemote?.Invoke(connecter);
             _resetEvent.Set();
+            ClientAcceptRequestRemote?.Invoke(connecter);
         }
 
         private void P2PDataSendEventHandler(object sender, P2PClientDataReceived e)
@@ -321,7 +321,7 @@ namespace VRemoteDesktop.ViewModels
             //ClientAcceptRequestRemote?.Invoke(connecter);
             ScreenHook.StartCapture();
         }
-        private void ScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
+        private void ScreenReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
             string id = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, 8, 8, Enums.EncodingType.ASCII).GetResult();
             byte[] data = new byte[e.Data.Length - 16];
@@ -347,10 +347,12 @@ namespace VRemoteDesktop.ViewModels
                     Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
                     return;
                 }
-                byte[] screenHeader = new byte[13];
-                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 13), 0, screenHeader, 0, 4);
+                byte[] screenHeader = new byte[21];
+                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 0, 4);
                 screenHeader[4] = (byte)e.Type;
                 Buffer.BlockCopy(Encoding.ASCII.GetBytes(connectionId), 0, screenHeader, 5, 8);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(_myInfo.Id), 0, screenHeader, 13, 8);
+
 
                 List<TaskObject> tasks = new List<TaskObject>();
                 tasks.Add(new TaskObject
@@ -405,6 +407,10 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.P2PDataSend:
                         P2PDataSendEventHandler(sender, e);
                         break;
+                    case DataType.Chunks:
+                    case DataType.Screen:
+                        ScreenReceivedEventHandler(sender, e);
+                            break;
                     default:
                         break;
                 }

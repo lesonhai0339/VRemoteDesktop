@@ -5,6 +5,7 @@ using System.Text;
 using System.ComponentModel;
 using VRemoteServer.Models;
 using VRemoteDesktop.Enums;
+using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -28,13 +29,13 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Methods
-        public void DataReceived(ScreenType type, byte[] data)
+        public void DataReceived(DataType type, byte[] data)
         {
-            if(type == ScreenType.FULLSCREEN)
+            if(type == DataType.Screen)
             {
                 ScreenEvent?.Invoke(data);
             }
-            if(type == ScreenType.REGIONSCREENS)
+            if(type == DataType.Chunks)
             {
                 ScreenChunksEvent?.Invoke(data);
             }
