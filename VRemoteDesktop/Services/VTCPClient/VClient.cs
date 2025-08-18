@@ -12,12 +12,14 @@ using System.Threading;
 using System.Threading.Tasks;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
+using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
 
-namespace VRemoteDesktop.Services.TCPClient
+namespace VRemoteDesktop.Services.VTCPClient
 {
-    public class TCPClient : IDisposable
+    public class VClient : IDisposable
     {
         private bool _isSocketConnected;
         private bool _isP2PConnected;
@@ -56,7 +58,7 @@ namespace VRemoteDesktop.Services.TCPClient
         //public event EventHandler<P2PFileSendEventArgs> P2PChatSendFileReceived;
 
         public event EventHandler<P2PClientDataReceived> TCPClientReceived;
-        public TCPClient(string socketId)
+        public VClient(string socketId)
         {
             ScreenTasks = new ConcurrentQueue<object>();
             CommandTasks = new ConcurrentQueue<object>();
@@ -326,8 +328,6 @@ namespace VRemoteDesktop.Services.TCPClient
             int count = 0;
             while (!_cancellationToken.IsCancellationRequested)
             {
-                
-
                 var taskQueue = DequeueTask();
                 if (taskQueue != null)
                 {
@@ -492,6 +492,23 @@ namespace VRemoteDesktop.Services.TCPClient
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when connecting to remote server");
             }
+        }
+        public void Login(string data)
+        {
+            byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
+            Send(DataType.Login, encoder);
+        }
+        public void P2PHandshake(string partnerId)
+        {
+            string p2pHandShakeNetworkString = StringHelper.StringBuilderWithSeparator("|", partnerId, SocketId);
+            byte[] p2pHandShakeDataBytes = ByteArrayHelper.ConvertStringToByteArray(p2pHandShakeNetworkString, Enums.EncodingType.ASCII).GetResult();
+            Send(DataType.P2PRequestConnect, p2pHandShakeDataBytes, SocketId, true);
+        }
+        public void P2PInitConnection(string partnerId, string partnerPassword, string myInfo)
+        {
+            string p2pLoginNetworkString = StringHelper.StringBuilderWithSeparator("|", partnerId, partnerPassword, myInfo);
+            byte[] p2pLoginDataBytes = ByteArrayHelper.ConvertStringToByteArray(p2pLoginNetworkString, Enums.EncodingType.ASCII).GetResult();
+            Send(DataType.P2PDataSend, p2pLoginDataBytes, SocketId, true);
         }
         /// <summary>
         /// callback method when data is received from the remote server

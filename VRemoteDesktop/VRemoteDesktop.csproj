@@ -117,7 +117,7 @@
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureServiceListener.cs" />
-    <Compile Include="Services\TCPClient\TCPClient.cs" />
+    <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClientManager\VTCPClientManagerService.cs" />
     <Compile Include="Startup.cs" />
     <Compile Include="Utils\Logger.cs" />

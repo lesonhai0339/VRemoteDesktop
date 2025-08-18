@@ -144,25 +144,6 @@ namespace VRemoteServer.Services
             });
             return true;
         }
-        private async Task<int> SendDataAsync(Client client, byte[] data)
-        {
-            try
-            {
-                int response = await client.Socket.SendAsync(data, SocketFlags.None);
-                return response;
-            }
-            catch (SocketException ex)
-            {
-                Log.ForContext("FileName", "RemoteDesktopServer")
-                    .Error($"Error when send data to client: {client.IP}", ex.Message);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteDesktopServer")
-                    .Error("Unexpected error", ex.Message);
-            }
-            return 0;
-        }
         private async Task<int> Send(Client client, byte[] data)
         {
             try

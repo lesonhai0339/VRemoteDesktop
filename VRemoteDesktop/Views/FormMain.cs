@@ -9,7 +9,7 @@ using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
-using VRemoteDesktop.Services.TCPClient;
+using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Services.VTCPClientManager;
 using VRemoteDesktop.ViewModels;
 using VRemoteDesktop.Views;
@@ -24,12 +24,10 @@ namespace VRemoteDesktop
         private ConnectionManager _connectionManager;
         private MainViewModel _viewModel;
         private VTCPClientManagerService _vtcpClientManagerService;
-
-        private ManualResetEvent _resetEvent;
         public FormMain(VTCPClientManagerService vtcpClientManagerService)
         {
             InitializeComponent();
-            _authentication = new Authentication(null);
+            _authentication = new Authentication();
             _connectionManager = new ConnectionManager();
             _vtcpClientManagerService = vtcpClientManagerService;
             ViewModel = new MainViewModel(_vtcpClientManagerService, _authentication, _connectionManager);
@@ -125,7 +123,7 @@ namespace VRemoteDesktop
         }
         private void P2PConnec(string id, string password)
         {
-            ViewModel.RequestP2PConnect(id, password);
+            ViewModel.P2PHandshake(id, password);
         }
         private void UpdateConnectionStatus()
         {

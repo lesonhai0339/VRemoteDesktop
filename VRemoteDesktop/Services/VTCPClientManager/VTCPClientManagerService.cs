@@ -6,21 +6,21 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Text;
 using VRemoteDesktop.Events;
-using VRemoteDesktop.Services.TCPClient;
+using VRemoteDesktop.Services.VTCPClient;
 
 namespace VRemoteDesktop.Services.VTCPClientManager
 {
     public class VTCPClientManagerService
     {
         private readonly object _lock = new object();
-        private ConcurrentDictionary<string , TCPClient.TCPClient> _connections;
+        private ConcurrentDictionary<string , VClient> _connections;
         public EventHandler<P2PClientDataReceived> TCPClientReceivedEvent;
         public VTCPClientManagerService()
         {
-            Connections = new ConcurrentDictionary<string, TCPClient.TCPClient>();
+            Connections = new ConcurrentDictionary<string, VClient>();
         }
         #region Properties
-        public ConcurrentDictionary<string, TCPClient.TCPClient> Connections
+        public ConcurrentDictionary<string, VClient> Connections
         {
             get
             {
@@ -37,7 +37,7 @@ namespace VRemoteDesktop.Services.VTCPClientManager
                 }
             }
         }
-        public void Add(string id, TCPClient.TCPClient client)
+        public void Add(string id, VClient client)
         {
             try
             {
@@ -65,7 +65,7 @@ namespace VRemoteDesktop.Services.VTCPClientManager
             }
         }
 
-        public TCPClient.TCPClient GetByKey(string id)
+        public VClient GetByKey(string id)
         {
             try
             {
@@ -81,6 +81,12 @@ namespace VRemoteDesktop.Services.VTCPClientManager
                 return null;
 
             }
+        }
+        public VClient New(string id)
+        {
+            VClient client = new VClient(id);
+            Add(id, client);
+            return client;
         }
         private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
         {

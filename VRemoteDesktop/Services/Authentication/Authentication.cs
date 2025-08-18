@@ -10,17 +10,16 @@ using VRemoteDesktop.Models;
 using System.Reflection;
 using static VRemoteDesktop.Utils.Logger;
 using VRemoteServer.Models;
+using VRemoteDesktop.Services.VTCPClient;
 
 namespace VRemoteDesktop.Services.Authentication
 {
     public class Authentication
     {
-        private TCPClient.TCPClient _tcpClient;
-        public Authentication(TCPClient.TCPClient tcpClient)
+        public Authentication()
         {
-            _tcpClient = tcpClient;
         }
-        public void Connect(string ip, int port)
+        public void Connect(VClient client, string ip, int port)
         {
             try
             {
@@ -35,13 +34,13 @@ namespace VRemoteDesktop.Services.Authentication
                 {
                     remoteEP = new IPEndPoint(validIp, port);
 
-                    if ( _tcpClient.Socket == null || !_tcpClient.Socket.Connected)
+                    if (client.Socket == null || !client.Socket.Connected)
                     {
-                        _tcpClient.Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                        _tcpClient.Socket.NoDelay = true;
+                        client.Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                        client.Socket.NoDelay = true;
                     }
-                    _tcpClient.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                    _tcpClient.Socket.BeginConnect(remoteEP, new AsyncCallback(_tcpClient.ConnectCallback), _tcpClient.Socket);
+                    client.Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                    client.Socket.BeginConnect(remoteEP, new AsyncCallback(client.ConnectCallback), client.Socket);
                 }
                 else
                 {
@@ -61,17 +60,17 @@ namespace VRemoteDesktop.Services.Authentication
 
             }
         }
-        internal void Login(string data)
+        internal void Login(VClient client, string data)
         {
             byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
 
-            _tcpClient.Send(DataType.Login, encoder);
+            client.Send(DataType.Login, encoder);
         }
-        internal void P2PConnect(string partnerId, string partnetPassword, ClientInfo myInfo)
+        internal void P2PConnect(VClient client, string partnerId, string partnetPassword, ClientInfo myInfo)
         {
             string data = Helpers.StringHelper.StringBuilderWithSeparator("|",partnerId, partnetPassword.ToString(), myInfo.ToNetworkString());
             byte[] dataBytes = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
-            _tcpClient.Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
+            client.Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
         public P2PConnectionResponse P2PAuthentication(byte[] bytes, ClientInfo myInfo)
         {

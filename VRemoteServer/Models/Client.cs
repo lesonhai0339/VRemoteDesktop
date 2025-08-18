@@ -33,7 +33,7 @@ namespace VRemoteServer.Models
         private byte[] _remainingData;
         private int _dataExpected;
         private int _dataReceived;
-        private string _partnetId;
+        private string _partnerId;
 
         public Client(Socket socket, Action<Client> disconnectCallback, Func<string, CommandType, Client, byte[], Task<bool>> dataCallback)
         {
@@ -219,7 +219,7 @@ namespace VRemoteServer.Models
                         Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 13);
 
                         _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
-                        _partnetId = Encoding.ASCII.GetString(_currentHeader, 5, 8);
+                        _partnerId = Encoding.ASCII.GetString(_currentHeader, 5, 8);
                         _dataReceived = 0;
                     }
                     else
@@ -235,7 +235,7 @@ namespace VRemoteServer.Models
                     //command packet
                     if (_dataExpected == 0)
                     {
-                        await ProcessData(_partnetId,type, new byte[0]);
+                        await ProcessData(_partnerId, type, new byte[0]);
                         _dataExpected = 0;
                         _currentHeader = null;
                         bytesProcessed += 13;
@@ -255,7 +255,7 @@ namespace VRemoteServer.Models
                             bytesProcessed += dataNeedtoReceive;
 
 
-                            await ProcessData(_partnetId, type, bytes);
+                            await ProcessData(_partnerId, type, bytes);
                             if (_dataReceived >= _dataExpected)
                             {
                                 Console.WriteLine($"Complete {_dataExpected} - {_dataReceived} - {(Socket.RemoteEndPoint as IPEndPoint).Address.ToString()}");
@@ -263,7 +263,7 @@ namespace VRemoteServer.Models
                                 _dataExpected = 0;
                                 _dataReceived = 0;
                                 _currentHeader = null;
-                                _partnetId = null;
+                                _partnerId = null;
                             }
                         }
                     }

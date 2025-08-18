@@ -16,6 +16,7 @@ using static VRemoteDesktop.Utils.Logger;
 using System.Configuration;
 using System.Drawing;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Services.VTCPClient;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
 {
@@ -31,7 +32,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         private KeyboardHook _globakKeyboardHook;
         private IScreenCaptureServiceListener _globakScreenHook;
-        private TCPClient.TCPClient _remoteClient;
+        private VClient _remoteClient;
 
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
@@ -69,7 +70,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             get => _isSocketConnectSuccess;
             private set => _isSocketConnectSuccess = value;
         }
-        public TCPClient.TCPClient RemoteClient
+        public VClient RemoteClient
         {
             get
             {

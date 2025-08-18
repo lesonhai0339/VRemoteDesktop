@@ -15,7 +15,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.ScreenCapture;
-using VRemoteDesktop.Services.TCPClient;
+using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Services.VTCPClientManager;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
@@ -64,8 +64,8 @@ namespace VRemoteDesktop.ViewModels
         }
         private void Init()
         {
-            _id = Helpers.StringHelper.RandomStringNumber(8);
-            TCPClient client = new TCPClient(_id);
+            _id = StringHelper.RandomStringNumber(8);
+            VClient client = new VClient(_id);
             VTCPClientManagerService.Add(_id, client);
         }
         #region Properties
@@ -196,7 +196,7 @@ namespace VRemoteDesktop.ViewModels
         {
             _remoteViewModel.TryAdd(id, remoteViewModel);
         }
-        public void Connect(TCPClient client= null)
+        public void Connect(VClient client = null)
         {
             string ip = AppSettingHelper.Getvalue("RemoteServerIP");
             string port = AppSettingHelper.Getvalue("RemoteServerPort");
@@ -221,27 +221,23 @@ namespace VRemoteDesktop.ViewModels
         }
         public void Login()
         {
-            byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(_myInfo.ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
             var client = VTCPClientManagerService.GetByKey(_id);
-            client.Send(DataType.Login, encoder);
+            client.Login(_myInfo.ToNetworkString());
         }
-        public void RequestP2PConnect(string id, string password)
+        public void P2PHandshake(string id, string password)
         {
             try
             {
-                string clientId = Helpers.StringHelper.RandomStringNumber(8);
-                var client = InitNewconnection(clientId);
-                string data = Helpers.StringHelper.StringBuilderWithSeparator("|",id, clientId);
-                byte[] dataBytes = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
-
                 _resetEvent.Reset();
-                client.Send(DataType.P2PRequestConnect, dataBytes, id, true);
+
+                string connectionId = StringHelper.RandomStringNumber(8);
+                var newConnection = NewConnect(connectionId);
+                
+                newConnection.P2PHandshake(id);
                 bool flag = _resetEvent.WaitOne(5000);
                 if (flag)
                 {
-                    string a = Helpers.StringHelper.StringBuilderWithSeparator("|", id, password, _myInfo.ToNetworkString());
-                    byte[] b = Helpers.ByteArrayHelper.ConvertStringToByteArray(a, Enums.EncodingType.ASCII).GetResult();
-                    client.Send(DataType.P2PDataSend, b, clientId, true);
+                    newConnection.P2PInitConnection(id, password, _myInfo.ToNetworkString());
                 }
                 else
                 {
@@ -250,14 +246,13 @@ namespace VRemoteDesktop.ViewModels
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
+                Log.ForContext("FileName", nameof(P2PHandshake)).Error(ex, "Error at P2PConnect");
             }
         }
-        private TCPClient InitNewconnection(string id)
+        private VClient NewConnect(string id)
         {
             _resetEvent.Reset();
-            TCPClient client = new TCPClient(id);
-            VTCPClientManagerService.Add(id, client);
+            var client = VTCPClientManagerService.New(id);
             Connect(client);
             bool flag = _resetEvent.WaitOne(5000);
             if (flag)
@@ -276,7 +271,7 @@ namespace VRemoteDesktop.ViewModels
         private void P2PRequestConnectEventHandler(object sender, P2PClientDataReceived e)
         {
             var id = Encoding.ASCII.GetString(e.Data);
-            var client = InitNewconnection(id);
+            var client = NewConnect(id);
             byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(_myInfo.ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
             client.Send(DataType.P2PAcceptConnect, encoder , id, true);
         }
@@ -338,7 +333,7 @@ namespace VRemoteDesktop.ViewModels
                 Screen(connection.Key, connection.Value, e);
             }
         }
-        private void Screen(string connectionId, TCPClient client, ScreenEvent e)
+        private void Screen(string connectionId, VClient client, ScreenEvent e)
         {
             try
             {
@@ -383,7 +378,7 @@ namespace VRemoteDesktop.ViewModels
         }
         private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
         {
-            if(sender  is TCPClient client)
+            if(sender  is VClient client)
             {
                 Console.WriteLine(client.SocketId);
                 switch (e.Type)
