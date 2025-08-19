@@ -55,6 +55,7 @@ namespace VRemoteDesktop.ViewModels
             _resetEvent = new ManualResetEvent(false);
             _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
             Init();
+            _globalHook.ScreenCaptureChanged += ScreenHookEventHandler;
         }
         private void Init()
         {
@@ -193,7 +194,8 @@ namespace VRemoteDesktop.ViewModels
 
                 string connectionId = StringHelper.RandomStringNumber(8);
                 var newConnection = NewConnect(connectionId);
-                
+
+                _resetEvent.Reset();
                 newConnection.P2PHandshake(id);
                 bool flag = _resetEvent.WaitOne(5000);
                 if (flag)

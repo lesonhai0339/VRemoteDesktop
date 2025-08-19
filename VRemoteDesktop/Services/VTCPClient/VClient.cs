@@ -500,9 +500,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void P2PHandshake(string partnerId)
         {
-            string p2pHandShakeNetworkString = StringHelper.StringBuilderWithSeparator("|", partnerId, SocketId);
+            string p2pHandShakeNetworkString = StringHelper.StringBuilderWithSeparator("|", SocketId);
             byte[] p2pHandShakeDataBytes = ByteArrayHelper.ConvertStringToByteArray(p2pHandShakeNetworkString, Enums.EncodingType.ASCII).GetResult();
-            Send(DataType.P2PRequestConnect, p2pHandShakeDataBytes, SocketId, true);
+            Send(DataType.P2PRequestConnect, p2pHandShakeDataBytes, partnerId, true);
         }
         public void P2PInitConnection(string partnerId, string partnerPassword, string myInfo)
         {
