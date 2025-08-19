@@ -12,7 +12,7 @@ using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.ScreenCapture;
 using static VRemoteDesktop.Utils.Logger;
 
-namespace VRemoteDesktop.Services.System
+namespace VRemoteDesktop.Services.SystemService
 {
     public class GlobalHookService : IDisposable
     {

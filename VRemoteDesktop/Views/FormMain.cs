@@ -9,7 +9,7 @@ using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
-using VRemoteDesktop.Services.System;
+using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Services.VTCPClientManager;
 using VRemoteDesktop.ViewModels;

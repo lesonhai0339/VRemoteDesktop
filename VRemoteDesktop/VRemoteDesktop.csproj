@@ -117,7 +117,7 @@
     <Compile Include="Services\ScreenCapture\ScreenCaptureExtensions.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
-    <Compile Include="Services\System\GlobalHookService.cs" />
+    <Compile Include="Services\SystemService\GlobalHookService.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClientManager\VTCPClientManagerService.cs" />
     <Compile Include="Startup.cs" />

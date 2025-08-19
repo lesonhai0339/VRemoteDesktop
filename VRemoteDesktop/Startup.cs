@@ -5,7 +5,7 @@ using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.ScreenCapture;
-using VRemoteDesktop.Services.System;
+using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClientManager;
 
 namespace VRemoteDesktop
