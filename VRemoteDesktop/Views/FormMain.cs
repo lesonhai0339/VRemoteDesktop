@@ -24,12 +24,14 @@ namespace VRemoteDesktop
         private MainViewModel _viewModel;
         private GlobalHookService _globalHook;
         private VTCPClientManagerService _vtcpClientManagerService;
-        public FormMain(GlobalHookService globalHook ,VTCPClientManagerService vtcpClientManagerService)
+        private ConnectionManager _connectionManager;
+        public FormMain(GlobalHookService globalHook ,VTCPClientManagerService vtcpClientManagerService, ConnectionManager connectionManager)
         {
             InitializeComponent();
             _globalHook = globalHook;
             _vtcpClientManagerService = vtcpClientManagerService;
-            ViewModel = new MainViewModel(_globalHook, _vtcpClientManagerService);
+            _connectionManager = connectionManager;
+            ViewModel = new MainViewModel(_globalHook, _vtcpClientManagerService, _connectionManager);
             SetupBinding();
 
         }

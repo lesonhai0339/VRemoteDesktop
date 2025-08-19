@@ -39,23 +39,21 @@ namespace VRemoteDesktop.ViewModels
         private ClientInfo _myInfo;
         private GlobalHookService _globalHook;
         private VTCPClientManagerService _vtcpClientManagerService;
-        private Authentication _authentication;
         private ConnectionManager _connectionManager;
         private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
-        private ConcurrentBag<string> _connector;
-
         public Action<ClientInfo> ClientAcceptRequestRemote;
-        public MainViewModel(GlobalHookService globalHook,VTCPClientManagerService vtcpClientManagerService)
+        public MainViewModel(GlobalHookService globalHook,VTCPClientManagerService vtcpClientManagerService, ConnectionManager connectionManager)
         {
             _globalHook = globalHook;
             VTCPClientManagerService = vtcpClientManagerService;
+            _connectionManager = connectionManager;
+
             _myInfo = ConnectionManager.Me;
             MyId = _myInfo.Id;
             MyPassword = _myInfo.Password;
             IsConnected = false;
             _resetEvent = new ManualResetEvent(false);
             _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
-            _connector = new ConcurrentBag<string>();
             Init();
         }
         private void Init()
@@ -89,14 +87,6 @@ namespace VRemoteDesktop.ViewModels
                     }
                 }
             }
-        }
-
-
-
-        public Authentication Authentication
-        {
-            get => _authentication;
-            set => _authentication = value;
         }
         public ConnectionManager ConnectionManager
         {
