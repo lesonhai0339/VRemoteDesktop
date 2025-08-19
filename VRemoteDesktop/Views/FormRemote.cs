@@ -160,7 +160,11 @@ namespace VRemoteDesktop.Views
 
             if (_pendingClickArgs != null && !_isDrag && mouseType != MouseEventType.None)
             {
-
+                RemoteViewModel.ProcessMouseEvent(
+                   mouseType,
+                   vPictureBox,
+                   _pendingClickArgs
+               );
             }
             _pendingClickArgs = null;
             _pendingSender = null;
