@@ -380,10 +380,24 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.Clipboard:
                         ClipboardReceivedEventHandler(sender,e);
                         break;
+                    case DataType.P2PDisconnect:
+
+                        break;
                     default:
                         break;
                 }
 
+            }
+        }
+        private void ProcessP2PDisconnect(object sender, P2PClientDataReceived e)
+        {
+            if(sender is VClient client)
+            {
+                bool flag = VTCPClientManagerService.Remove(client.SocketId);
+                if (flag)
+                {
+                    Console.WriteLine("Client with Id: "+ client.SocketId + " disconnected");
+                }
             }
         }
         private void ClipboardReceivedEventHandler(object sender, P2PClientDataReceived e)
@@ -405,7 +419,7 @@ namespace VRemoteDesktop.ViewModels
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing keyboard data");
+                Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing keyboard data");
             }
         }
         private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)
@@ -420,12 +434,12 @@ namespace VRemoteDesktop.ViewModels
                 bool flag = VirtualMouse.MouseEvent(mouseEvent);
                 if (!flag)
                 {
-                    Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
+                    Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error("Mouse event failed");
                 }
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing mouse data");
+                Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing mouse data");
             }
         }
         private void ConnectEventHandler(bool flag)

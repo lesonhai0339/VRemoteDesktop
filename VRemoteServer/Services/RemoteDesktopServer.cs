@@ -120,17 +120,18 @@ namespace VRemoteServer.Services
         }
         private async Task P2PCommand(RemoteTask task)
         {
-            string partnetId = Encoding.ASCII.GetString(task.Data, 5, 8);
-            if (_clientsActing.TryGetValue(partnetId, out var client))
+            if (_connections.TryGetValue(task.PartnerId, out var connection))
             {
-                await Send(client.Client, task.Data);
+                var client = (task.Client == connection.Sender) ? connection.Receiver : connection.Sender;
+                await Send(client, task.Data);
             }
         }
         private async Task P2PDataSend(RemoteTask task)
         {
-            if (_clientsActing.TryGetValue(task.PartnerId, out var client))
+            if (_connections.TryGetValue(task.PartnerId, out var connection))
             {
-                await Send(client.Client, task.Data);
+                var client = (connection.Sender == task.Client) ? connection.Receiver : connection.Sender;
+                await Send(client, task.Data);
             }
         }
         public async Task<bool> ProcessDataCallback(string partnerId, Enums.CommandType commandType, Client client, byte[] buffer)
@@ -143,6 +144,25 @@ namespace VRemoteServer.Services
                 Data = buffer
             });
             return true;
+        }
+        private async Task<int> SendDataAsync(Client client, byte[] data)
+        {
+            try
+            {
+                int response = await client.Socket.SendAsync(data, SocketFlags.None);
+                return response;
+            }
+            catch (SocketException ex)
+            {
+                Log.ForContext("FileName", "RemoteDesktopServer")
+                    .Error($"Error when send data to client: {client.IP}", ex.Message);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteDesktopServer")
+                    .Error("Unexpected error", ex.Message);
+            }
+            return 0;
         }
         private async Task<int> Send(Client client, byte[] data)
         {
@@ -179,7 +199,7 @@ namespace VRemoteServer.Services
             catch (SocketException ex)
             {
                 Log.ForContext("FileName", "RemoteDesktopServer")
-                    .Error(ex, $"Error when send command to client: {client.IP}");
+                    .Error(ex, $"Error  when send command to client: {client.IP}");
             }
             catch (Exception ex)
             {
@@ -190,21 +210,20 @@ namespace VRemoteServer.Services
         }
         private async Task ProcessP2PDataSend(RemoteTask task)
         {
-            string id = Encoding.ASCII.GetString(task.Data, 13, 8);
+            string id = Encoding.ASCII.GetString(task.Data, 5, 8);
             if (_connections.TryGetValue(id, out var connection))
             {
                 var client = (task.Client == connection.Sender) ? connection.Receiver : connection.Sender;
-                await SendCommandAsync(connection.Sender, Enums.CommandType.P2PAcceptConnect, Encoding.ASCII.GetBytes(id));
+                await SendCommandAsync(client, Enums.CommandType.P2PDataSend, task.Data.Skip(13).ToArray());
             }
         }
 
         public async Task ProcessP2PAcceptConnect(RemoteTask task)
         {
-            string id = Encoding.ASCII.GetString(task.Data, 13, 8);
-            if (_connections.TryGetValue(id, out var connection))
+            if (_connections.TryGetValue(task.PartnerId, out var connection))
             {
                 connection.Receiver = task.Client;
-                await SendCommandAsync(connection.Sender, Enums.CommandType.P2PAcceptConnect, Encoding.ASCII.GetBytes(id));
+                await SendCommandAsync(connection.Sender, Enums.CommandType.P2PAcceptConnect, task.Data);
             }
         }
 
@@ -213,7 +232,7 @@ namespace VRemoteServer.Services
         {
             if (_clientsActing.TryGetValue(task.PartnerId, out var client))
             {
-                string connectionId = Encoding.ASCII.GetString(task.Data, 22, 8);
+                string connectionId = Encoding.ASCII.GetString(task.Data, 13, 8);
                 ConnectionInfo connection = new ConnectionInfo(connectionId: connectionId, sender: task.Client);
                 _connections.TryAdd(connectionId, connection);
                 await SendCommandAsync(client.Client, Enums.CommandType.P2PRequestConnect, Encoding.ASCII.GetBytes(connectionId));

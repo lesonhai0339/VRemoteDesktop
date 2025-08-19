@@ -49,20 +49,21 @@ namespace VRemoteDesktop.Services.VTCPClientManager
 
             }
         }
-        public void Remove(string id)
+        public bool Remove(string id)
         {
             try
             {
                 if (Connections.TryGetValue(id, out var client))
                 {
                     client.TCPClientReceived -= TCPClientResponseEventHandler;
-                    Connections.TryRemove(id, out _);
+                    return Connections.TryRemove(id, out _);
                 }
             }
             catch (Exception ex)
             {
-
+                return false;
             }
+            return false;
         }
 
         public VClient GetByKey(string id)
