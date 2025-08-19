@@ -330,6 +330,15 @@ namespace VRemoteServer.Services
                 {
                     _clientsActing.TryRemove(a.Key, out _);
                 }
+                foreach (var connection in _connections.ToArray())
+                {
+                    var partner = (connection.Value.Sender == client) ? connection.Value.Receiver : connection.Value.Sender;
+                    _ = await SendCommandAsync(partner, Enums.CommandType.P2PDisconnect, new byte[0]);
+                    if (connection.Value.Sender == client || connection.Value.Receiver == client)
+                    {
+                        _connections.TryRemove(connection.Key, out _);
+                    }
+                }
             }
             catch (Exception ex)
             {

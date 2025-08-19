@@ -215,105 +215,106 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     try
                     {
-                        switch (task.Type)
-                        {
-                            case DataType.Login:
-                                //LoggedIn?.Invoke(this, new LoginEventArgs(true, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Login, true, task.Data));
-                                break;
-                            case DataType.P2PRequestConnect:
-                                //P2PrequestConnect?.Invoke(this, new P2PRequestConnectEventArgs(true, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PRequestConnect, true, task.Data));
-                                break;
-                            case DataType.P2PAcceptConnect:
-                                //P2PAcceptConnect?.Invoke(this, new P2PAcceptConnectEventArgs(task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PAcceptConnect, true, task.Data));
-                                break;
-                            case DataType.Disconnect:
-                                break;
-                            case DataType.Ping:
-                                break;
-                            case DataType.Pong:
-                                Console.WriteLine("Pong received from server");
-                                break;
-                            case DataType.Screen:
-                                //ScreenReceived?.Invoke(this, new P2PScreenEventArgs(ScreenType.FULLSCREEN, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Screen, true, task.Data));
-                                break;
-                            case DataType.Chunks:
-                                //RegionsScreenReceived?.Invoke(this, new P2PScreenEventArgs(ScreenType.REGIONSCREENS, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Chunks, true, task.Data));
-                                break;
-                            case DataType.ScreenOk:
-                                //SendScreenSucceeded?.Invoke(this, new P2PScreenSendResponeEventArgs(ScreenType.FULLSCREEN, true));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.ScreenOk, true, task.Data));
+                        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                        //switch (task.Type)
+                        //{
+                        //    case DataType.Login:
+                        //        //LoggedIn?.Invoke(this, new LoginEventArgs(true, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Login, true, task.Data));
+                        //        break;
+                        //    case DataType.P2PRequestConnect:
+                        //        //P2PrequestConnect?.Invoke(this, new P2PRequestConnectEventArgs(true, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PRequestConnect, true, task.Data));
+                        //        break;
+                        //    case DataType.P2PAcceptConnect:
+                        //        //P2PAcceptConnect?.Invoke(this, new P2PAcceptConnectEventArgs(task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PAcceptConnect, true, task.Data));
+                        //        break;
+                        //    case DataType.Disconnect:
+                        //        break;
+                        //    case DataType.Ping:
+                        //        break;
+                        //    case DataType.Pong:
+                        //        Console.WriteLine("Pong received from server");
+                        //        break;
+                        //    case DataType.Screen:
+                        //        //ScreenReceived?.Invoke(this, new P2PScreenEventArgs(ScreenType.FULLSCREEN, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Screen, true, task.Data));
+                        //        break;
+                        //    case DataType.Chunks:
+                        //        //RegionsScreenReceived?.Invoke(this, new P2PScreenEventArgs(ScreenType.REGIONSCREENS, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Chunks, true, task.Data));
+                        //        break;
+                        //    case DataType.ScreenOk:
+                        //        //SendScreenSucceeded?.Invoke(this, new P2PScreenSendResponeEventArgs(ScreenType.FULLSCREEN, true));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.ScreenOk, true, task.Data));
 
-                                break;
-                            case DataType.ChunksOk:
-                                //SendScreenSucceeded?.Invoke(this, new P2PScreenSendResponeEventArgs(ScreenType.REGIONSCREENS, true));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.ChunksOk, true, task.Data));
+                        //        break;
+                        //    case DataType.ChunksOk:
+                        //        //SendScreenSucceeded?.Invoke(this, new P2PScreenSendResponeEventArgs(ScreenType.REGIONSCREENS, true));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.ChunksOk, true, task.Data));
 
-                                break;
-                            case DataType.Keyboard:
-                                //KeyboardReceived?.Invoke(this,  new P2PKeyboardEventArgs(task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Keyboard, true, task.Data));
+                        //        break;
+                        //    case DataType.Keyboard:
+                        //        //KeyboardReceived?.Invoke(this,  new P2PKeyboardEventArgs(task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Keyboard, true, task.Data));
 
-                                break;
-                            case DataType.Mouse:
-                                //MouseReceived?.Invoke(this, new P2PMouseEventArgs(task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Mouse, true, task.Data));
+                        //        break;
+                        //    case DataType.Mouse:
+                        //        //MouseReceived?.Invoke(this, new P2PMouseEventArgs(task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Mouse, true, task.Data));
 
-                                break;
-                            case DataType.Clipboard:
-                                //ClipboardReceived?.Invoke(this, new P2PClipboardEventArgs(task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Clipboard, true, task.Data));
+                        //        break;
+                        //    case DataType.Clipboard:
+                        //        //ClipboardReceived?.Invoke(this, new P2PClipboardEventArgs(task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Clipboard, true, task.Data));
 
-                                break;
-                            case DataType.Error:
-                                Console.WriteLine("Error: "+ Encoding.ASCII.GetString(task.Data));
-                                break;
-                            case DataType.LoginFailed:
-                                //LoggedIn?.Invoke(this, new LoginEventArgs(false, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.LoginFailed, true, task.Data));
+                        //        break;
+                        //    case DataType.Error:
+                        //        Console.WriteLine("Error: "+ Encoding.ASCII.GetString(task.Data));
+                        //        break;
+                        //    case DataType.LoginFailed:
+                        //        //LoggedIn?.Invoke(this, new LoginEventArgs(false, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.LoginFailed, true, task.Data));
 
-                                break;
-                            case DataType.P2PDisconnect:
-                                IsP2PConnected = false;
-                                //P2PDisconnected?.Invoke(this, new P2PDisconnectEventArgs(true));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PDisconnect, true, task.Data));
+                        //        break;
+                        //    case DataType.P2PDisconnect:
+                        //        IsP2PConnected = false;
+                        //        //P2PDisconnected?.Invoke(this, new P2PDisconnectEventArgs(true));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PDisconnect, true, task.Data));
 
-                                break;
-                            case DataType.P2PConnectFailed:
-                                //P2PrequestConnect?.Invoke(this, new P2PRequestConnectEventArgs(false, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PConnectFailed, true, task.Data));
+                        //        break;
+                        //    case DataType.P2PConnectFailed:
+                        //        //P2PrequestConnect?.Invoke(this, new P2PRequestConnectEventArgs(false, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PConnectFailed, true, task.Data));
 
-                                break;
-                            case DataType.Message:
-                               // P2PChatMessageReceived?.Invoke(this, new P2PChatEventArgs(task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Message, true, task.Data));
+                        //        break;
+                        //    case DataType.Message:
+                        //       // P2PChatMessageReceived?.Invoke(this, new P2PChatEventArgs(task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Message, true, task.Data));
 
-                                break;
-                            case DataType.RequestSendFile:
-                                //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.RequestSendFile, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.RequestSendFile, true, task.Data));
+                        //        break;
+                        //    case DataType.RequestSendFile:
+                        //        //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.RequestSendFile, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.RequestSendFile, true, task.Data));
 
-                                break;
-                            case DataType.AcceptSendFile:
-                                //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.AcceptSendFile, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.AcceptSendFile, true, task.Data));
+                        //        break;
+                        //    case DataType.AcceptSendFile:
+                        //        //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.AcceptSendFile, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.AcceptSendFile, true, task.Data));
 
-                                break;
-                            case DataType.FileTransfer:
-                                //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.FileTransfer, task.Data));
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.FileTransfer, true, task.Data));
+                        //        break;
+                        //    case DataType.FileTransfer:
+                        //        //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.FileTransfer, task.Data));
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.FileTransfer, true, task.Data));
 
-                                break;
-                            case DataType.P2PDataSend:
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PDataSend, true, task.Data));
-                                break;
-                            default:
-                                break;
-                        }
+                        //        break;
+                        //    case DataType.P2PDataSend:
+                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PDataSend, true, task.Data));
+                        //        break;
+                        //    default:
+                        //        break;
+                        //}
                     }
                     catch (Exception ex)
                     {

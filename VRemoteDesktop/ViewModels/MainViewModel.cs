@@ -381,7 +381,7 @@ namespace VRemoteDesktop.ViewModels
                         ClipboardReceivedEventHandler(sender,e);
                         break;
                     case DataType.P2PDisconnect:
-
+                        ProcessP2PDisconnect(sender, e);
                         break;
                     default:
                         break;
