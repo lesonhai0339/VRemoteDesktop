@@ -362,7 +362,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             if (task.IsSendHeader)
             {
-                Send(DataType.Mouse, task.Data, task.SessionId, true);
+                Send(task.TaskType, task.Data, task.SessionId, true);
             }
             else
             {
