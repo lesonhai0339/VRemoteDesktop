@@ -15,6 +15,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.ScreenCapture;
+using VRemoteDesktop.Services.System;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Services.VTCPClientManager;
 using VRemoteDesktop.Utils;
@@ -36,19 +37,18 @@ namespace VRemoteDesktop.ViewModels
 
         private ManualResetEvent _resetEvent;
         private ClientInfo _myInfo;
+        private GlobalHookService _globalHook;
         private VTCPClientManagerService _vtcpClientManagerService;
         private Authentication _authentication;
         private ConnectionManager _connectionManager;
         private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
         private ConcurrentBag<string> _connector;
-        private IScreenCaptureServiceListener _globakScreenHook;
 
         public Action<ClientInfo> ClientAcceptRequestRemote;
-        public MainViewModel(VTCPClientManagerService vtcpClientManagerService, Authentication authentication, ConnectionManager connectionManager)
+        public MainViewModel(GlobalHookService globalHook,VTCPClientManagerService vtcpClientManagerService)
         {
+            _globalHook = globalHook;
             VTCPClientManagerService = vtcpClientManagerService;
-            Authentication = authentication;
-            ConnectionManager = connectionManager;
             _myInfo = ConnectionManager.Me;
             MyId = _myInfo.Id;
             MyPassword = _myInfo.Password;
@@ -57,10 +57,6 @@ namespace VRemoteDesktop.ViewModels
             _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
             _connector = new ConcurrentBag<string>();
             Init();
-            Task.Factory.StartNew(() =>
-            {
-                ScreenHook = new ScreenCaptureServiceListener(null, null);
-            }, TaskCreationOptions.LongRunning);
         }
         private void Init()
         {
@@ -69,31 +65,6 @@ namespace VRemoteDesktop.ViewModels
             VTCPClientManagerService.Add(_id, client);
         }
         #region Properties
-        public IScreenCaptureServiceListener ScreenHook
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _globakScreenHook;
-                }
-            }
-            set
-            {
-                lock (_lock)
-                {
-                    if (_globakScreenHook != null)
-                    {
-                        _globakScreenHook.ScreenEvent -= ScreenHookEventHandler;
-                    }
-                    _globakScreenHook = value;
-                    if (_globakScreenHook != null)
-                    {
-                        _globakScreenHook.ScreenEvent += ScreenHookEventHandler;
-                    }
-                }
-            }
-        }
         public VTCPClientManagerService VTCPClientManagerService
         {
             get
@@ -314,7 +285,7 @@ namespace VRemoteDesktop.ViewModels
             //    PublicIP = stringArray[9],
             //};
             //ClientAcceptRequestRemote?.Invoke(connecter);
-            ScreenHook.StartCapture();
+            _globalHook.StartScreenCapture();
         }
         private void ScreenReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
@@ -326,14 +297,14 @@ namespace VRemoteDesktop.ViewModels
                 a.DataReceived(e.Type, data);
             }
         }
-        private void ScreenHookEventHandler(object sender, ScreenEvent e)
+        private void ScreenHookEventHandler(object sender, ScreenCaptureEventArgs e)
         {
             foreach(var connection in VTCPClientManagerService.Connections)
             {
                 Screen(connection.Key, connection.Value, e);
             }
         }
-        private void Screen(string connectionId, VClient client, ScreenEvent e)
+        private void Screen(string connectionId, VClient client, ScreenCaptureEventArgs e)
         {
             try
             {

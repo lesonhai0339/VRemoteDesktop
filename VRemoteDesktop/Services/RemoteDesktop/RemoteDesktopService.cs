@@ -30,7 +30,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private Thread _screenThread;
         private ManualResetEvent _resetEvent;
 
-        private KeyboardHook _globakKeyboardHook;
+        private KeyboardService _globakKeyboardHook;
         private IScreenCaptureServiceListener _globakScreenHook;
         private VClient _remoteClient;
 
@@ -618,7 +618,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             //    }
             //}
         }
-        private void KeyboardPressedEvent(object sender, KeyEvent e)
+        private void KeyboardPressedEvent(object sender, KeyboardEventArgs e)
         {
             ////'Receive' will send clipboard data to all connections when copy pressed globally (not from app forms)
             //if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
@@ -641,7 +641,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             ////'Sender' will send clipboard to receiver
             //KeyboardEvent?.Invoke(sender, e);
         }
-        private void ScreenHookEventHandler(object sender, ScreenEvent e)
+        private void ScreenHookEventHandler(object sender, ScreenCaptureEventArgs e)
         {
             try
             {

@@ -10,7 +10,7 @@ using VRemoteDesktop.Services.VTCPClient;
 
 namespace VRemoteDesktop.Services.VTCPClientManager
 {
-    public class VTCPClientManagerService
+    public class VTCPClientManagerService: IDisposable
     {
         private readonly object _lock = new object();
         private ConcurrentDictionary<string , VClient> _connections;
@@ -94,6 +94,18 @@ namespace VRemoteDesktop.Services.VTCPClientManager
             TCPClientReceivedEvent?.Invoke(sender, new P2PClientDataReceived(e.Type, e.Flag, e.Data));
         }
 
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _connections.Clear();
+            }
+        }
         #endregion
     }
 }

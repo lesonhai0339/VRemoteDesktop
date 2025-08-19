@@ -19,7 +19,7 @@ namespace VRemoteDesktop.Helpers
 
             return input.Split(new[] { separator }, StringSplitOptions.RemoveEmptyEntries);
         }
-        public static string StringBuilderWithSeparator(string separator = "|", params string[] array)
+        public static string StringBuilderWithSeparator(string separator = "|", params object[] array)
         {
             if (array == null || array.Length == 0)
                 return string.Empty;

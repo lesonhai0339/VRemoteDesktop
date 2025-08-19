@@ -495,7 +495,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void Login(string data)
         {
-            byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
+            byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
             Send(DataType.Login, encoder);
         }
         public void P2PHandshake(string partnerId)

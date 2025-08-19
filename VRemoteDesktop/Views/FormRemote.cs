@@ -25,7 +25,7 @@ namespace VRemoteDesktop.Views
         private ClientInfo _client;
         private RemoteViewModel _remoteViewModel;
         private MouseService _mouseService;
-        private ScreenCaptureService _screenService;
+        private ScreenCaptureExtensions _screenService;
 
         private bool _isDrag;
 
@@ -45,7 +45,7 @@ namespace VRemoteDesktop.Views
             Client = client;
             RemoteViewModel = new RemoteViewModel(Client);
             _mouseService = new MouseService();
-            _screenService = new ScreenCaptureService();
+            _screenService = new ScreenCaptureExtensions();
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);

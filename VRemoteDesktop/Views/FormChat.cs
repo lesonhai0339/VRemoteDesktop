@@ -18,7 +18,6 @@ namespace VRemoteDesktop.Views
 
         private void FormChat_Load(object sender, EventArgs e)
         {
-
         }
     }
 }

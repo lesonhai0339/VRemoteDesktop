@@ -6,15 +6,15 @@ using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.Events
 {
-    public class ScreenEvent : EventArgs
+    public class ScreenCaptureEventArgs : EventArgs
     {
-        public ScreenEvent() { }
-        public ScreenEvent(DataType type, int totalSize)
+        public ScreenCaptureEventArgs() { }
+        public ScreenCaptureEventArgs(DataType type, int totalSize)
         {
             Type = type;
             TotalSize = totalSize;
         }
-        public ScreenEvent(DataType type, List<byte[]> data, int totalSize)
+        public ScreenCaptureEventArgs(DataType type, List<byte[]> data, int totalSize)
         {
             Type = type;
             Data = data;
