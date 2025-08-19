@@ -52,10 +52,10 @@ namespace VRemoteDesktop.Views
             _vClient = vClient;
             _connectionInfo = connectionInfo;
             _mouseExtension = new MouseExtensions();
-            RemoteViewModel = new RemoteViewModel(_vClient, _connectionInfo, _mouseExtension);
             _screenService = new ScreenCaptureExtensions();
             _globalHook = globalHook;
             _globalHook.KeyboardReceived += KeyboardReceivedEventHandler;
+            RemoteViewModel = new RemoteViewModel(_vClient, _connectionInfo, _mouseExtension, _globalHook);
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
@@ -81,13 +81,22 @@ namespace VRemoteDesktop.Views
         }
         private void KeyboardReceivedEventHandler(object sender, KeyboardEventArgs e)
         {
-            if (e.Handle != this.Handle && Form.ActiveForm != this)
+            if (this.InvokeRequired)
             {
+                this.BeginInvoke(new Action<object, KeyboardEventArgs>(KeyboardReceivedEventHandler), sender, e);
                 return;
+            }
+            if (e.Combination == KeyCombination.Copy)
+            {
+                RemoteViewModel.GetClipboard(e);
             }
             else
             {
-                Console.WriteLine("Form keyboard receive: "+ e.KeyCode);
+                if (e.Handle != this.Handle && Form.ActiveForm != this)
+                {
+                    return;
+                }
+                RemoteViewModel.ProcessKeyboard(e);
             }
         }
         #region Properties

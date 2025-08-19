@@ -14,6 +14,7 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SystemService;
@@ -373,10 +374,38 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.Mouse:
                         MouseReceivedEventHandler(sender, e);
                         break;
+                    case DataType.Keyboard:
+                        KeyboardReceivedEventHandler(sender, e);
+                        break;
+                    case DataType.Clipboard:
+                        ClipboardReceivedEventHandler(sender,e);
+                        break;
                     default:
                         break;
                 }
 
+            }
+        }
+        private void ClipboardReceivedEventHandler(object sender, P2PClientDataReceived e)
+        {
+            var data = VirtualClipboard.DecodeClipboard(e.Data, 8, e.Data.Length - 8);
+            _globalHook.SetClipboard(data);
+        }
+        private void KeyboardReceivedEventHandler(object sender, P2PClientDataReceived e)
+        {
+            try
+            {
+                int length = e.Data.Length - 8;
+                byte[] keyboard = new byte[length];
+                Buffer.BlockCopy(e.Data, 8, keyboard, 0, length);
+
+                var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(keyboard);
+                VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
+
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing keyboard data");
             }
         }
         private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)

@@ -11,6 +11,8 @@ using System.Drawing;
 using System.Windows.Forms;
 using VRemoteDesktop.Services.Mouse;
 using static VRemoteDesktop.Utils.Logger;
+using VRemoteDesktop.Events;
+using VRemoteDesktop.Services.SystemService;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -19,14 +21,16 @@ namespace VRemoteDesktop.ViewModels
         private VClient _vClient;
         private ClientInfo _connectionInfo;
         private readonly IMouseExtensions _mouseExtension;
+        private readonly GlobalHookService _globalHook;
 
         public Action<byte[]> ScreenEvent;
         public Action<byte[]> ScreenChunksEvent;
-        public RemoteViewModel(VClient vClient, ClientInfo connectionInfo, IMouseExtensions mouseExtension)
+        public RemoteViewModel(VClient vClient, ClientInfo connectionInfo, IMouseExtensions mouseExtension, GlobalHookService globalHook)
         {
             _vClient = vClient;
             ConnectionInfo = connectionInfo;
             _mouseExtension = mouseExtension;
+            _globalHook = globalHook;
         }
         #region Properties
         public ClientInfo ConnectionInfo
@@ -54,6 +58,34 @@ namespace VRemoteDesktop.ViewModels
         {
             RectangleF displayRect = _mouseExtension.TransformImageToDisplay(source, img, rect);
             return displayRect;
+        }
+        public void GetClipboard(KeyboardEventArgs e)
+        {
+            string clipboard = _globalHook.GetClipboard();
+            if (string.IsNullOrEmpty(clipboard)) return;
+
+            _vClient.AddWork(new TaskObject
+            {
+                TaskType = DataType.Clipboard,
+                Data = Encoding.ASCII.GetBytes(clipboard),
+                IsSendHeader = true,
+                SessionId = _vClient.SocketId
+            });
+        }
+        public void ProcessKeyboard(KeyboardEventArgs e)
+        {
+            string keyboard = Helpers.StringHelper.StringBuilderWithSeparator("|",(int)e.Command, (int)e.KeyModifier, (int)e.KeyCode, (int)e.KeyType);
+
+            //return if data is empty
+            if (string.IsNullOrEmpty(keyboard)) return;
+
+            _vClient.AddWork(new TaskObject
+            {
+                TaskType = DataType.Keyboard,
+                Data = Encoding.ASCII.GetBytes(keyboard),
+                IsSendHeader = true,
+                SessionId = _vClient.SocketId
+            });
         }
         public void ProcessMouseEvent(
             MouseEventType mouseEvent,
