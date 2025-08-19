@@ -383,10 +383,10 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                byte[] mouse = new byte[e.Data.Length - 1];
-                Buffer.BlockCopy(e.Data, 1, mouse, 0, e.Data.Length - 1);
+                byte[] mouse = new byte[e.Data.Length - 8];
+                Buffer.BlockCopy(e.Data, 8, mouse, 0, e.Data.Length - 8);
 
-                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, 100, 100);
+                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, _myInfo.Width, _myInfo.Height);
 
                 bool flag = VirtualMouse.MouseEvent(mouseEvent);
                 if (!flag)
