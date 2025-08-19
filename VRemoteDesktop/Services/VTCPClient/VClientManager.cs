@@ -8,14 +8,14 @@ using System.Text;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.VTCPClient;
 
-namespace VRemoteDesktop.Services.VTCPClientManager
+namespace VRemoteDesktop.Services.VTCPClient
 {
-    public class VTCPClientManagerService: IDisposable
+    public class VClientManager: IDisposable
     {
         private readonly object _lock = new object();
         private ConcurrentDictionary<string , VClient> _connections;
-        public EventHandler<P2PClientDataReceived> TCPClientReceivedEvent;
-        public VTCPClientManagerService()
+        public EventHandler<P2PClientDataReceived> ClientDataReceived;
+        public VClientManager()
         {
             Connections = new ConcurrentDictionary<string, VClient>();
         }
@@ -91,8 +91,7 @@ namespace VRemoteDesktop.Services.VTCPClientManager
         }
         private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
         {
-            Console.WriteLine(e.Type);
-            TCPClientReceivedEvent?.Invoke(sender, new P2PClientDataReceived(e.Type, e.Flag, e.Data));
+            ClientDataReceived?.Invoke(sender, new P2PClientDataReceived(e.Type, e.Flag, e.Data));
         }
 
         public void Dispose()

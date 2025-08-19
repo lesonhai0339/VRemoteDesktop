@@ -13,18 +13,22 @@ using VRemoteServer.Models;
 
 namespace VRemoteDesktop.Services.ConnectionManager
 {
-    public class ConnectionManager
+    public interface IClientInfoManager
+    {
+        ClientInfo GetMyInfo();
+        string GetLocalIPAddress();
+        void UpdateMyInfo(byte[] publicIp);
+        void UpdateMyInfo(ClientInfo info);
+    }
+    public class ClientInfoManager: IClientInfoManager
     {
         private readonly object _lock = new object();
-        private ConcurrentDictionary<string, ClientInfo> _connections;
         private ClientInfo _me;
-        public ConnectionManager()
+        public ClientInfoManager()
         {
             Me = InitMyInfo();
-            _connections = new ConcurrentDictionary<string, ClientInfo>();
         }
         #region Properties
-        public int NumberOfConnections => _connections.Count;
         public ClientInfo Me
         {
             get
@@ -44,6 +48,10 @@ namespace VRemoteDesktop.Services.ConnectionManager
         }
         #endregion
         #region Methods
+        public ClientInfo GetMyInfo()
+        {
+            return Me;  
+        }
         private ClientInfo InitMyInfo()
         {
             var computerName = Environment.MachineName;
@@ -77,47 +85,29 @@ namespace VRemoteDesktop.Services.ConnectionManager
             }
             return "";
         }
-        public void UpdateMyInfo(byte[] data)
+        public void UpdateMyInfo(byte[] publicIp)
         {
-            string myPublicIP= Helpers.ByteArrayHelper.ConvertByteArrayToString(data, Enums.EncodingType.ASCII).GetResult();
-            Me.PublicIP = myPublicIP;
-        }
-        public bool AddConnection(string connectionId, ClientInfo client)
-        {
-            try
+            string myPublicIP= Helpers.ByteArrayHelper.ConvertByteArrayToString(publicIp, Enums.EncodingType.ASCII).GetResult();
+            lock (_lock)
             {
-                return _connections.TryAdd(connectionId, client);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", nameof(AddConnection))
-                    .Error(ex, "Failed to add connection " + connectionId);
-                return false;
+                _me.PublicIP = myPublicIP;
             }
         }
-        public bool RemoveConnection(string connectionId)
+        public void UpdateMyInfo(ClientInfo info)
         {
-            try
+            lock (_lock)
             {
-                return _connections.TryRemove(connectionId, out _);
+                _me.Id = info.Id ?? Me.Id;
+                _me.Password = info.Password ?? _me.Password;
+                _me.ComputerName = info.ComputerName ?? _me.ComputerName;
+                _me.Width = (info.Width != 0) ? info.Width : _me.Width;
+                _me.Height = (info.Height != 0) ? info.Height : _me.Height;
+                _me.MajorVersion = info.MajorVersion ?? _me.MajorVersion;
+                _me.MinorVersion = info.MinorVersion ?? _me.MinorVersion;
+                _me.Ip = info.Ip ?? _me.Ip;
+                _me.PublicIP = info.PublicIP ?? _me.PublicIP;
+                _me.Port = info.Port ?? _me.Port;
             }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", nameof(RemoveConnection))
-                    .Error(ex, "Failed to remove connection " + connectionId);
-                return false;
-            }
-        }
-        public List<ClientInfo> GetCurrentConnections()
-        {
-            return _connections.Values.ToList();
-        }
-        public bool ReceiveConnectionRequest(byte[] data)
-        {
-            //data should be have format: "type|myId|myPassword|partnerId|partnerLocalIP|partnerPublicIp|partnerListenerPort|partnerComputerName|partnerDisplayWidth|partnerDisplayHeight|partnerMajorVersion|partnerMinorVersion"
-            string[] connectionData = Encoding.ASCII.GetString(data).Split('|');
-
-            return true;
         }
         #endregion
     }

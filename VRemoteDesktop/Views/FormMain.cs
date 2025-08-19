@@ -10,9 +10,9 @@ using System.Windows.Forms;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
-using VRemoteDesktop.Services.VTCPClientManager;
 using VRemoteDesktop.ViewModels;
 using VRemoteDesktop.Views;
 using VRemoteServer.Models;
@@ -23,16 +23,12 @@ namespace VRemoteDesktop
     {
         private readonly object _lock = new object();
         private MainViewModel _viewModel;
-        private GlobalHookService _globalHook;
-        private VTCPClientManagerService _vtcpClientManagerService;
-        private ConnectionManager _connectionManager;
-        public FormMain(GlobalHookService globalHook ,VTCPClientManagerService vtcpClientManagerService, ConnectionManager connectionManager)
+        private readonly RemoteDesktopService _remoteDesktopService;
+        public FormMain(RemoteDesktopService remoteDesktopService)
         {
             InitializeComponent();
-            _globalHook = globalHook;
-            _vtcpClientManagerService = vtcpClientManagerService;
-            _connectionManager = connectionManager;
-            ViewModel = new MainViewModel(_globalHook, _vtcpClientManagerService, _connectionManager);
+            _remoteDesktopService = remoteDesktopService;
+            ViewModel = new MainViewModel(_remoteDesktopService);
             SetupBinding();
 
         }
@@ -71,10 +67,7 @@ namespace VRemoteDesktop
                 false, DataSourceUpdateMode.OnPropertyChanged);
             txtOwnerPassword.DataBindings.Add("Text", ViewModel, "MyPassword",
                false, DataSourceUpdateMode.OnPropertyChanged);
-            txtPartnerId.DataBindings.Add("Text", ViewModel, "PartnerId",
-                false, DataSourceUpdateMode.OnPropertyChanged);
-            txtPartnerPassword.DataBindings.Add("Text", ViewModel, "PartnerPassword",
-               false, DataSourceUpdateMode.OnPropertyChanged);
+
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
 
@@ -158,7 +151,7 @@ namespace VRemoteDesktop
                 this.Invoke(new Action<VClient,ClientInfo>(OpenRemoteForm), client, connectionInfo);
                 return;
             }
-            FormRemote remoteForm = new FormRemote(client, connectionInfo, _globalHook);
+            FormRemote remoteForm = new FormRemote(client, connectionInfo, _remoteDesktopService);
             ViewModel.AddRemoteForm(remoteForm.ConnectionInfo.Id, remoteForm.RemoteViewModel);
             remoteForm.Show();
         }

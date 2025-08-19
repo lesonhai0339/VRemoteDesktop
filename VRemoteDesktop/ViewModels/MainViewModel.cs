@@ -16,10 +16,10 @@ using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.Mouse;
+using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
-using VRemoteDesktop.Services.VTCPClientManager;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
@@ -38,95 +38,30 @@ namespace VRemoteDesktop.ViewModels
         private bool _isConnected;
 
         private ManualResetEvent _resetEvent;
-        private ClientInfo _myInfo;
-        private GlobalHookService _globalHook;
-        private VTCPClientManagerService _vtcpClientManagerService;
-        private ConnectionManager _connectionManager;
+
+        private readonly RemoteDesktopService _remoteDesktopService;
         private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
         public event EventHandler<ClientConnectionEventArgs> ClientAcceptRequestRemote;
-        public MainViewModel(GlobalHookService globalHook,VTCPClientManagerService vtcpClientManagerService, ConnectionManager connectionManager)
+        public MainViewModel(RemoteDesktopService remoteDesktopService)
         {
-            _globalHook = globalHook;
-            VTCPClientManagerService = vtcpClientManagerService;
-            _connectionManager = connectionManager;
-
-            _myInfo = ConnectionManager.Me;
-            MyId = _myInfo.Id;
-            MyPassword = _myInfo.Password;
             IsConnected = false;
             _resetEvent = new ManualResetEvent(false);
             _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
+
+            _remoteDesktopService = remoteDesktopService;
+            _remoteDesktopService.DataReceivedEvent += TCPClientManagerEventHandler;
+
+            MyId = _remoteDesktopService.GetMe().Id;
+            MyPassword = remoteDesktopService.GetMe().Password;
             Init();
-            _globalHook.ScreenCaptureChanged += ScreenHookEventHandler;
         }
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(8);
             VClient client = new VClient(_id);
-            VTCPClientManagerService.Add(_id, client);
+            _remoteDesktopService.AddClient(_id, client);
         }
         #region Properties
-        public VTCPClientManagerService VTCPClientManagerService
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _vtcpClientManagerService;
-                }
-            }
-            set
-            {
-                lock (_lock)
-                {
-                    if (_vtcpClientManagerService != null)
-                    {
-                        _vtcpClientManagerService.TCPClientReceivedEvent -= TCPClientManagerEventHandler;
-                    }
-                    _vtcpClientManagerService = value;
-                    if (_vtcpClientManagerService != null)
-                    {
-                        _vtcpClientManagerService.TCPClientReceivedEvent += TCPClientManagerEventHandler;
-                    }
-                }
-            }
-        }
-        public ConnectionManager ConnectionManager
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _connectionManager;
-                }
-            }
-            set
-            {
-                lock (_lock)
-                {
-                    _connectionManager = value;
-                }
-            }
-        }
-
-        public string PartnerId
-        {
-            get { return _partnerId; }
-            set
-            {
-                _partnerId = value;
-                OnPropertyChanged(nameof(PartnerId));
-            }
-        }
-        public string PartnerPassword
-        {
-            get { return _partnerPassword; }
-            set
-            {
-                _partnerPassword = value;
-                OnPropertyChanged(nameof(PartnerPassword));
-            }
-        }
         public string MyId
         {
             get { return _myId; }
@@ -174,7 +109,7 @@ namespace VRemoteDesktop.ViewModels
             {
                 if(client == null)
                 {
-                    var clientx = VTCPClientManagerService.GetByKey(_id);
+                    var clientx = _remoteDesktopService.GetClientById(_id);
                     clientx.Connect(ip, validPort);
                 }
                 else
@@ -185,8 +120,8 @@ namespace VRemoteDesktop.ViewModels
         }
         public void Login()
         {
-            var client = VTCPClientManagerService.GetByKey(_id);
-            client.Login(_myInfo.ToNetworkString());
+            var client = _remoteDesktopService.GetClientById(_id);
+            client.Login(_remoteDesktopService.GetMe().ToNetworkString());
         }
         public void P2PHandshake(string id, string password)
         {
@@ -202,7 +137,7 @@ namespace VRemoteDesktop.ViewModels
                 bool flag = _resetEvent.WaitOne(5000);
                 if (flag)
                 {
-                    newConnection.P2PInitConnection(id, password, _myInfo.ToNetworkString());
+                    newConnection.P2PInitConnection(id, password, _remoteDesktopService.GetMe().ToNetworkString());
                 }
                 else
                 {
@@ -217,7 +152,7 @@ namespace VRemoteDesktop.ViewModels
         private VClient NewConnect(string id)
         {
             _resetEvent.Reset();
-            var client = VTCPClientManagerService.New(id);
+            var client = _remoteDesktopService.NewClient(id);
             Connect(client);
             bool flag = _resetEvent.WaitOne(5000);
             if (flag)
@@ -226,7 +161,7 @@ namespace VRemoteDesktop.ViewModels
             }
             else
             {
-                VTCPClientManagerService.Remove(id);
+                _remoteDesktopService.RemoveClientById(id);
                 return null;
             }
 
@@ -237,7 +172,7 @@ namespace VRemoteDesktop.ViewModels
         {
             var id = Encoding.ASCII.GetString(e.Data);
             var client = NewConnect(id);
-            byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(_myInfo.ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
+            byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(_remoteDesktopService.GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
             client.Send(DataType.P2PAcceptConnect, encoder , id, true);
         }
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
@@ -279,7 +214,7 @@ namespace VRemoteDesktop.ViewModels
             //    PublicIP = stringArray[9],
             //};
             //ClientAcceptRequestRemote?.Invoke(connecter);
-            _globalHook.StartScreenCapture();
+            _remoteDesktopService.StartScreenCapture();
         }
         private void ScreenReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
@@ -293,7 +228,7 @@ namespace VRemoteDesktop.ViewModels
         }
         private void ScreenHookEventHandler(object sender, ScreenCaptureEventArgs e)
         {
-            foreach(var connection in VTCPClientManagerService.Connections)
+            foreach(var connection in _remoteDesktopService.GetClients())
             {
                 Screen(connection.Key, connection.Value, e);
             }
@@ -311,7 +246,7 @@ namespace VRemoteDesktop.ViewModels
                 Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 0, 4);
                 screenHeader[4] = (byte)e.Type;
                 Buffer.BlockCopy(Encoding.ASCII.GetBytes(connectionId), 0, screenHeader, 5, 8);
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(_myInfo.Id), 0, screenHeader, 13, 8);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(_remoteDesktopService.GetMe().Id), 0, screenHeader, 13, 8);
 
 
                 List<TaskObject> tasks = new List<TaskObject>();
@@ -345,7 +280,7 @@ namespace VRemoteDesktop.ViewModels
         {
             if(sender  is VClient client)
             {
-                Console.WriteLine(client.SocketId);
+                Console.WriteLine(client.SocketId + " - "+ e.Type);
                 switch (e.Type)
                 {
                     case DataType.Connect:
@@ -383,6 +318,9 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.P2PDisconnect:
                         ProcessP2PDisconnect(sender, e);
                         break;
+                    case DataType.Error:
+                        _resetEvent.Set();
+                        break;
                     default:
                         break;
                 }
@@ -393,17 +331,13 @@ namespace VRemoteDesktop.ViewModels
         {
             if(sender is VClient client)
             {
-                bool flag = VTCPClientManagerService.Remove(client.SocketId);
-                if (flag)
-                {
-                    Console.WriteLine("Client with Id: "+ client.SocketId + " disconnected");
-                }
+                _remoteDesktopService.RemoveClientById(client.SocketId);
             }
         }
         private void ClipboardReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
             var data = VirtualClipboard.DecodeClipboard(e.Data, 8, e.Data.Length - 8);
-            _globalHook.SetClipboard(data);
+            _remoteDesktopService.SetClipboard(data);
         }
         private void KeyboardReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
@@ -429,7 +363,8 @@ namespace VRemoteDesktop.ViewModels
                 byte[] mouse = new byte[e.Data.Length - 8];
                 Buffer.BlockCopy(e.Data, 8, mouse, 0, e.Data.Length - 8);
 
-                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, _myInfo.Width, _myInfo.Height);
+                var me = _remoteDesktopService.GetMe();
+                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, me.Width, me.Height);
 
                 bool flag = VirtualMouse.MouseEvent(mouseEvent);
                 if (!flag)
@@ -462,7 +397,7 @@ namespace VRemoteDesktop.ViewModels
             if (flag)
             {
                 IsConnected = true;
-                ConnectionManager.UpdateMyInfo(data);
+                _remoteDesktopService.UpdateMyInfo(data);
             }
         }
 

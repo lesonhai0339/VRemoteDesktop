@@ -12,6 +12,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Mouse;
+using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
@@ -30,7 +31,7 @@ namespace VRemoteDesktop.Views
         private VClient _vClient;
         private ClientInfo _connectionInfo;
         private RemoteViewModel _remoteViewModel;
-        private GlobalHookService _globalHook;
+        private RemoteDesktopService _remoteDesktopService;
 
         private readonly MouseExtensions _mouseExtension;
         private readonly ScreenCaptureExtensions _screenService;
@@ -46,16 +47,16 @@ namespace VRemoteDesktop.Views
         private MouseEventArgs _pendingClickArgs;
         private Control _pendingSender;
         private int _clickCount;
-        public FormRemote(VClient vClient, ClientInfo connectionInfo, GlobalHookService globalHook)
+        public FormRemote(VClient vClient, ClientInfo connectionInfo, RemoteDesktopService remoteDesktopService)
         {
             InitializeComponent();
             _vClient = vClient;
             _connectionInfo = connectionInfo;
             _mouseExtension = new MouseExtensions();
             _screenService = new ScreenCaptureExtensions();
-            _globalHook = globalHook;
-            _globalHook.KeyboardReceived += KeyboardReceivedEventHandler;
-            RemoteViewModel = new RemoteViewModel(_vClient, _connectionInfo, _mouseExtension, _globalHook);
+            _remoteDesktopService = remoteDesktopService;
+            _remoteDesktopService.KeyboardEvent += KeyboardReceivedEventHandler;
+            RemoteViewModel = new RemoteViewModel(_vClient, _connectionInfo, _mouseExtension, _remoteDesktopService);
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
@@ -134,7 +135,7 @@ namespace VRemoteDesktop.Views
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
-            _globalHook.AddKeyboardHook(this.Handle);
+            _remoteDesktopService.AddKeyboardListenerOnFormByHandle(this.Handle);
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {

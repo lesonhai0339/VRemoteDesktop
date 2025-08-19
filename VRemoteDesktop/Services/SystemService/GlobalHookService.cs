@@ -119,19 +119,6 @@ namespace VRemoteDesktop.Services.SystemService
                 return string.Empty;
             }
         }
-        public byte[] GetClipboardByteArray()
-        {
-            try
-            {
-                string clipboard = VirtualClipboard.GetClipboardString();
-                return Helpers.ByteArrayHelper.ConvertStringToByteArray(clipboard, EncodingType.ASCII).GetResult();
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "GetClipboard error");
-                return new byte[0];
-            }
-        }
         /// <summary>
         /// Default using CF_UNICODETEXT format then need to convert string data to UTF-16
         /// (like this: <c>byte[] formatted = Encoding.Unicode.GetBytes(<paramref name="data"/> + '\0');</c>)

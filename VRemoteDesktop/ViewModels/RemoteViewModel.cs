@@ -13,6 +13,7 @@ using VRemoteDesktop.Services.Mouse;
 using static VRemoteDesktop.Utils.Logger;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.SystemService;
+using VRemoteDesktop.Services.RemoteDesktop;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -21,16 +22,16 @@ namespace VRemoteDesktop.ViewModels
         private VClient _vClient;
         private ClientInfo _connectionInfo;
         private readonly IMouseExtensions _mouseExtension;
-        private readonly GlobalHookService _globalHook;
+        private readonly RemoteDesktopService _remoteDesktopService;
 
         public Action<byte[]> ScreenEvent;
         public Action<byte[]> ScreenChunksEvent;
-        public RemoteViewModel(VClient vClient, ClientInfo connectionInfo, IMouseExtensions mouseExtension, GlobalHookService globalHook)
+        public RemoteViewModel(VClient vClient, ClientInfo connectionInfo, IMouseExtensions mouseExtension, RemoteDesktopService remoteDesktopService)
         {
             _vClient = vClient;
             ConnectionInfo = connectionInfo;
             _mouseExtension = mouseExtension;
-            _globalHook = globalHook;
+            _remoteDesktopService = remoteDesktopService;
         }
         #region Properties
         public ClientInfo ConnectionInfo
@@ -61,7 +62,7 @@ namespace VRemoteDesktop.ViewModels
         }
         public void GetClipboard(KeyboardEventArgs e)
         {
-            string clipboard = _globalHook.GetClipboard();
+            string clipboard = _remoteDesktopService.GetClipboardString();
             if (string.IsNullOrEmpty(clipboard)) return;
 
             _vClient.AddWork(new TaskObject
