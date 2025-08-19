@@ -9,10 +9,15 @@ using System.Text;
 using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
+using VRemoteDesktop.Events;
+using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.ScreenCapture;
+using VRemoteDesktop.Services.SystemService;
+using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.ViewModels;
 using VRemoteServer.Models;
+using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Views
 {
@@ -22,13 +27,15 @@ namespace VRemoteDesktop.Views
         private readonly object _lockObject = new object();
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
-        private ClientInfo _client;
+        private VClient _vClient;
+        private ClientInfo _connectionInfo;
         private RemoteViewModel _remoteViewModel;
-        private MouseService _mouseService;
-        private ScreenCaptureExtensions _screenService;
+        private GlobalHookService _globalHook;
+
+        private readonly MouseExtensions _mouseExtension;
+        private readonly ScreenCaptureExtensions _screenService;
 
         private bool _isDrag;
-
         private Bitmap _curScreen;
         private Graphics _screenGraphics;
 
@@ -39,22 +46,25 @@ namespace VRemoteDesktop.Views
         private MouseEventArgs _pendingClickArgs;
         private Control _pendingSender;
         private int _clickCount;
-        public FormRemote(ClientInfo client)
+        public FormRemote(VClient vClient, ClientInfo connectionInfo, GlobalHookService globalHook)
         {
             InitializeComponent();
-            Client = client;
-            RemoteViewModel = new RemoteViewModel(Client);
-            _mouseService = new MouseService();
+            _vClient = vClient;
+            _connectionInfo = connectionInfo;
+            _mouseExtension = new MouseExtensions();
+            RemoteViewModel = new RemoteViewModel(_vClient, _connectionInfo, _mouseExtension);
             _screenService = new ScreenCaptureExtensions();
+            _globalHook = globalHook;
+            _globalHook.KeyboardReceived += KeyboardReceivedEventHandler;
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
 
             base.AutoScaleDimensions = new SizeF(6f, 13f);
-
+            this.Text = _connectionInfo.Id + " - "+ _connectionInfo.ComputerName;
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
-            vPictureBox.Size = new Size(Client.Width, Client.Height);
+            vPictureBox.Size = new Size(_connectionInfo.Width, _connectionInfo.Height);
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 
@@ -68,13 +78,22 @@ namespace VRemoteDesktop.Views
             int interval = Math.Min(200, SystemInformation.DoubleClickTime / 2);
             _clickTimer.Interval = interval;
             _clickTimer.Tick += ClickTimer_Tick;
-
+        }
+        private void KeyboardReceivedEventHandler(object sender, KeyboardEventArgs e)
+        {
+            if (e.Handle != this.Handle && Form.ActiveForm != this)
+            {
+                return;
+            }
+            else
+            {
+                Console.WriteLine("Form keyboard receive: "+ e.KeyCode);
+            }
         }
         #region Properties
-        public ClientInfo Client
+        public ClientInfo ConnectionInfo
         {
-            get => _client;
-            set => _client = value;
+            get => _connectionInfo;
         }
         public RemoteViewModel RemoteViewModel
         {
@@ -103,6 +122,10 @@ namespace VRemoteDesktop.Views
         private void FormRemote_Load(object sender, EventArgs e)
         {
 
+        }
+        private void FormRemote_Shown(object sender, EventArgs e)
+        {
+            _globalHook.AddKeyboardHook(this.Handle);
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {
@@ -145,10 +168,67 @@ namespace VRemoteDesktop.Views
         }
         private void MouseMoveEvent(object sender, MouseEventArgs e)
         {
+            try
+            {
+                //set delay
+                DateTime now = DateTime.Now;
+                if ((now - _lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
+                    return; // Skip this event
+                _lastMouseMoveTime = now;
+
+                bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;
+
+                MouseEventType mouseEvent = MouseEventType.DragAndDrop;
+                WindowsMouseMessage mouseMessage = WindowsMouseMessage.None;
+
+                if (isLeftButtonDown)
+                {
+                    if (!_isDrag)
+                    {
+                        mouseMessage = WindowsMouseMessage.DRAGDROP_MOUSEDOWN;
+                        _isDrag = true;
+                    }
+                    else
+                    {
+                        mouseMessage = WindowsMouseMessage.DRAGDROP_MOUSEMOVE;
+                    }
+                }
+                else
+                {
+                    if (!_isDrag)
+                    {
+                        mouseEvent = MouseEventType.Move;
+                        mouseMessage = WindowsMouseMessage.DRAGDROP_MOUSEUP;
+
+                    }
+                    else
+                    {
+                        mouseMessage = WindowsMouseMessage.DRAGDROP_MOUSEUP;
+                        _isDrag = false;
+                    }
+                }
+
+                RemoteViewModel.ProcessMouseEvent(
+                    mouseEvent,
+                    vPictureBox,
+                    e,
+                    mouseMessage,
+                    MouseAction.Down
+                );
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "MouseMove event error");
+            }
         }
 
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
+            RemoteViewModel.ProcessMouseEvent(
+                MouseEventType.Wheel,
+                vPictureBox,
+                e
+            );
         }
         #region Events
         private void InitializeGraphicsSettings()
@@ -167,8 +247,8 @@ namespace VRemoteDesktop.Views
         {
             try
             {
-                RectangleF displayRect = _mouseService.TransformImageToDisplay(vPictureBox.Size, vPictureBox.Image.Size, rectangle);
-                Rectangle rect = Rectangle.Round(displayRect);
+                RectangleF rectF = RemoteViewModel.TransformSize(vPictureBox.Size, vPictureBox.Image.Size, rectangle);
+                Rectangle rect = Rectangle.Round(rectF);
                 vPictureBox.Invalidate(rect);
             }
             catch (Exception ex)

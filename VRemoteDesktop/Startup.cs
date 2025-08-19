@@ -27,6 +27,7 @@ namespace VRemoteDesktop
             _globalhook = new GlobalHookService(keyboardhook, screenhook);
             _vtcpClientManagerService = new VTCPClientManagerService();
             _connectionManager = new ConnectionManager();
+            _globalhook.StartKeyboardListener();
         }
         public void Run()
         {

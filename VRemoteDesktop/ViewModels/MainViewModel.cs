@@ -14,6 +14,7 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
@@ -41,7 +42,7 @@ namespace VRemoteDesktop.ViewModels
         private VTCPClientManagerService _vtcpClientManagerService;
         private ConnectionManager _connectionManager;
         private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
-        public Action<ClientInfo> ClientAcceptRequestRemote;
+        public event EventHandler<ClientConnectionEventArgs> ClientAcceptRequestRemote;
         public MainViewModel(GlobalHookService globalHook,VTCPClientManagerService vtcpClientManagerService, ConnectionManager connectionManager)
         {
             _globalHook = globalHook;
@@ -256,7 +257,7 @@ namespace VRemoteDesktop.ViewModels
                 PublicIP = stringArray[9],
             };
             _resetEvent.Set();
-            ClientAcceptRequestRemote?.Invoke(connecter);
+            ClientAcceptRequestRemote?.Invoke(sender, new ClientConnectionEventArgs(connecter));
         }
 
         private void P2PDataSendEventHandler(object sender, P2PClientDataReceived e)
@@ -332,7 +333,7 @@ namespace VRemoteDesktop.ViewModels
 
                     tasks.Add(task);
                 }
-                client.AddWorkGroup(tasks);
+                client.AddWorkGroup(tasks, DataType.Screen);
             }
             catch (Exception ex)
             {
@@ -369,10 +370,33 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.Screen:
                         ScreenReceivedEventHandler(sender, e);
                             break;
+                    case DataType.Mouse:
+                        MouseReceivedEventHandler(sender, e);
+                        break;
                     default:
                         break;
                 }
 
+            }
+        }
+        private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)
+        {
+            try
+            {
+                byte[] mouse = new byte[e.Data.Length - 1];
+                Buffer.BlockCopy(e.Data, 1, mouse, 0, e.Data.Length - 1);
+
+                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, 100, 100);
+
+                bool flag = VirtualMouse.MouseEvent(mouseEvent);
+                if (!flag)
+                {
+                    Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing mouse data");
             }
         }
         private void ConnectEventHandler(bool flag)

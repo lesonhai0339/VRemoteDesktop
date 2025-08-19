@@ -11,52 +11,19 @@ using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Services.Mouse
 {
-    public class MouseService: IDisposable
+    public interface IMouseExtensions
+    {
+        RectangleF TransformImageToDisplay(Size sourceSize, Size imageSize, Rectangle rectangle);
+        Point GetImagePointFromMouse(UISizeMode mode,Size sourceSize,Size imageSize,int x,int y);
+        string MouseEventToString(MouseEventType mouseEvent,int width,int height,MouseData e,WindowsMouseMessage mouseMsg = WindowsMouseMessage.None,MouseAction mouseType = MouseAction.None);
+    }
+    public class MouseExtensions: IMouseExtensions,IDisposable
     {
         private bool _disposed = false;
-        public event EventHandler<MouseEvent> MouseTask;
-        public MouseService()
+        public MouseExtensions()
         {
+
         }
-        #region Methods 
-        //public void MouseEventToTask(
-        //    string sessionId, 
-        //    MouseEventType mouseEvent, 
-        //    PictureBox p, 
-        //    MouseEventArgs e, 
-        //    WindowsMouseMessage mouseMsg = WindowsMouseMessage.None, 
-        //    MouseAction mouseType = MouseAction.None)
-        //{
-        //    try
-        //    {
-        //        //check image nullable
-        //        if (p.Image == null) return;
-
-        //        //get actual mouse coordinate before send
-        //        Point adjustedPoint = GetImagePointFromMouse(p, e.X, e.Y);
-
-        //        var adjustedMouseEventArgs = new MouseData((VMouseButtons)e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
-
-        //        string mouseEventString = MouseEventToString(mouseEvent, p.Image.Width, p.Image.Height, adjustedMouseEventArgs, mouseMsg, mouseType);
-
-        //        if (string.IsNullOrEmpty(mouseEventString))
-        //            return;
-
-        //        MouseTask?.Invoke(this, new MouseEvent
-        //        {
-        //            Task = new TaskObject
-        //            {
-        //                TaskType = DataType.Mouse,
-        //                SessionId = sessionId,
-        //                Data = Encoding.ASCII.GetBytes(mouseEventString)
-        //            }
-        //        });
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Log.ForContext("FileName", "FormRemote").Error(ex, "MouseEvents error");
-        //    }
-        //}
         /// <summary>
         /// Calculates the scaled rectangle coordinates for display in PictureBox,
         /// based on the original image rectangle, assuming PictureBox.SizeMode = Zoom.
@@ -202,11 +169,9 @@ namespace VRemoteDesktop.Services.Mouse
             {
                 if (disposing)
                 {
-                    MouseTask = null;
                 }
                 _disposed = true;
             }
         }
-        #endregion
     }
 }

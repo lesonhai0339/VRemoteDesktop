@@ -6,25 +6,35 @@ using System.ComponentModel;
 using VRemoteServer.Models;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Services.VTCPClient;
+using System.Drawing;
+using System.Windows.Forms;
+using VRemoteDesktop.Services.Mouse;
+using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.ViewModels
 {
     public class RemoteViewModel : INotifyPropertyChanged
     {
-        private ClientInfo _client;
+        private VClient _vClient;
+        private ClientInfo _connectionInfo;
+        private readonly IMouseExtensions _mouseExtension;
+
         public Action<byte[]> ScreenEvent;
         public Action<byte[]> ScreenChunksEvent;
-        public RemoteViewModel(ClientInfo client)
+        public RemoteViewModel(VClient vClient, ClientInfo connectionInfo, IMouseExtensions mouseExtension)
         {
-            Client = client;
+            _vClient = vClient;
+            ConnectionInfo = connectionInfo;
+            _mouseExtension = mouseExtension;
         }
         #region Properties
-        public ClientInfo Client
+        public ClientInfo ConnectionInfo
         {
-            get => _client;
+            get => _connectionInfo;
             private set
             {
-                _client = value;
+                _connectionInfo = value;
             }
         }
         #endregion
@@ -38,6 +48,46 @@ namespace VRemoteDesktop.ViewModels
             if(type == DataType.Chunks)
             {
                 ScreenChunksEvent?.Invoke(data);
+            }
+        }
+        public RectangleF TransformSize(Size source, Size img, Rectangle rect)
+        {
+            RectangleF displayRect = _mouseExtension.TransformImageToDisplay(source, img, rect);
+            return displayRect;
+        }
+        public void ProcessMouseEvent(
+            MouseEventType mouseEvent,
+            PictureBox p,
+            MouseEventArgs e,
+            WindowsMouseMessage mouseMsg = WindowsMouseMessage.None,
+            MouseAction mouseType = MouseAction.None)
+        {
+            try
+            {
+                //check image nullable
+                if (p.Image == null) return;
+
+                //get actual mouse coordinate before send
+                Point adjustedPoint = _mouseExtension.GetImagePointFromMouse(UISizeMode.Zoom, p.Size,p.Image.Size, e.X, e.Y);
+
+                var adjustedMouseEventArgs = new MouseData((VMouseButtons)e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
+
+                string mouseEventString = _mouseExtension.MouseEventToString(mouseEvent, p.Image.Width, p.Image.Height, adjustedMouseEventArgs, mouseMsg, mouseType);
+
+                if (string.IsNullOrEmpty(mouseEventString))
+                    return;
+
+                _vClient.AddWork(new TaskObject
+                {
+                    TaskType = DataType.Mouse,
+                    Data = Encoding.ASCII.GetBytes(mouseEventString),
+                    IsSendHeader = true,
+                    SessionId = _vClient.SocketId
+                });            
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "FormRemote").Error(ex, "MouseEvents error");
             }
         }
         #endregion

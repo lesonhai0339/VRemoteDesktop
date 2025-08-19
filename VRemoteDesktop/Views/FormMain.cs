@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.Authentication;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.SystemService;
@@ -142,19 +143,23 @@ namespace VRemoteDesktop
                 action();
             }
         }
-        private void ClientAcceptRequestRemoteEventHandler(ClientInfo info)
+        private void ClientAcceptRequestRemoteEventHandler(object sender ,ClientConnectionEventArgs e)
         {
-            OpenRemoteForm(info);
+            if(sender is VClient vClient)
+            {
+                OpenRemoteForm(vClient, e.ConnectionInfo);
+
+            }
         }
-        private void OpenRemoteForm(ClientInfo info)
+        private void OpenRemoteForm(VClient client, ClientInfo connectionInfo)
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action<ClientInfo>(OpenRemoteForm), info);
+                this.Invoke(new Action<VClient,ClientInfo>(OpenRemoteForm), client, connectionInfo);
                 return;
             }
-            FormRemote remoteForm = new FormRemote(info);
-            ViewModel.AddRemoteForm(remoteForm.Client.Id, remoteForm.RemoteViewModel);
+            FormRemote remoteForm = new FormRemote(client, connectionInfo, _globalHook);
+            ViewModel.AddRemoteForm(remoteForm.ConnectionInfo.Id, remoteForm.RemoteViewModel);
             remoteForm.Show();
         }
     }

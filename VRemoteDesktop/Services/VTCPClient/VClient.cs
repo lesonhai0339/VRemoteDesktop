@@ -360,7 +360,14 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void ProcessTask(TaskObject task)
         {
-            Send(task.Data);
+            if (task.IsSendHeader)
+            {
+                Send(DataType.Mouse, task.Data, task.SessionId, true);
+            }
+            else
+            {
+                Send(task.Data);
+            }
         }
         private object DequeueTask()
         {
@@ -395,12 +402,23 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     ScreenTasks.Enqueue(lastItem);
                 }
+                ScreenTasks.Enqueue(task);
             }
-            ScreenTasks.Enqueue(task);
+            else
+            {
+                CommandTasks.Enqueue(task);
+            }
         }
-        public void AddWorkGroup(List<TaskObject> tasks)
+        public void AddWorkGroup(List<TaskObject> tasks, DataType type = DataType.None)
         {
-            ScreenTasks.Enqueue(new TaskGroup(tasks));
+            if (type == DataType.Screen || type == DataType.Chunks)
+            {
+                ScreenTasks.Enqueue(new TaskGroup(tasks));
+            }
+            else
+            {
+                CommandTasks.Enqueue(new TaskGroup(tasks));
+            }
         }
 
         public void Cancel()

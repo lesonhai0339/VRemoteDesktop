@@ -69,6 +69,7 @@
     <Compile Include="Enums\WindowsKeyboardEvent.cs" />
     <Compile Include="Enums\WindowsMouseEvent.cs" />
     <Compile Include="Enums\WindowsMouseMessage.cs" />
+    <Compile Include="Events\ClientConnectionEventArgs.cs" />
     <Compile Include="Events\ConnectEventArgs.cs" />
     <Compile Include="Events\KeyboardEventArgs.cs" />
     <Compile Include="Events\LoginEventArgs.cs" />
@@ -111,7 +112,7 @@
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
     <Compile Include="Services\Keyboard\VirtualClipboard.cs" />
     <Compile Include="Services\Keyboard\VirtualKeyboard.cs" />
-    <Compile Include="Services\Mouse\MouseService.cs" />
+    <Compile Include="Services\Mouse\MouseExtensions.cs" />
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureExtensions.cs" />
