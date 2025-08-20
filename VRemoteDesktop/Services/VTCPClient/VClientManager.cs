@@ -101,6 +101,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void ScreenUpdate(ScreenCaptureEventArgs e)
         {
+            if (_connections.Count < 2) return;
             foreach(var connection in _connections)
             {
                 connection.Value.SendScreen(e.Type, e.Data, e.TotalSize);

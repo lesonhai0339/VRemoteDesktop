@@ -645,7 +645,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void ProcessScreenReceived(DataReceive e)
         {
-            string id1 = Encoding.ASCII.GetString(e.Data, 0, 8);
+            //ignore socket id(8 first bytes)
             byte[] screen = new byte[e.Data.Length - 8];
             Buffer.BlockCopy(e.Data, 8, screen, 0, e.Data.Length - 8);
 
