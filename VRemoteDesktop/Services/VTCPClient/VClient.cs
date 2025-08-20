@@ -540,9 +540,10 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private byte[] GenerateP2PHeader(DataType type, int dataSize , byte[] socketId)
         {
-            byte[] header = new byte[dataSize + socketId.Length + 5];// 5 bytes more 4 for size and 1 for type
+            int totalSize = dataSize + SocketId.Length + 5; // 5 bytes added are 4 for totalSize and 1 for type
+            byte[] header = new byte[5 + SocketId.Length];
 
-            Buffer.BlockCopy(BitConverter.GetBytes(header.Length), 0, header, 0, 4);
+            Buffer.BlockCopy(BitConverter.GetBytes(totalSize), 0, header, 0, 4);
 
             header[4] = (byte)type;
             Buffer.BlockCopy(socketId, 0, header, 5, 8);
@@ -645,9 +646,8 @@ namespace VRemoteDesktop.Services.VTCPClient
         private void ProcessScreenReceived(DataReceive e)
         {
             string id1 = Encoding.ASCII.GetString(e.Data, 0, 8);
-            string id2 = Encoding.ASCII.GetString(e.Data, 8, 8);
-            byte[] screen = new byte[e.Data.Length - 16];
-            Buffer.BlockCopy(e.Data, 16, screen, 0, e.Data.Length - 16);
+            byte[] screen = new byte[e.Data.Length - 8];
+            Buffer.BlockCopy(e.Data, 8, screen, 0, e.Data.Length - 8);
 
             ScreenType type = (e.Type == DataType.Screen) ? ScreenType.FULLSCREEN : ScreenType.REGIONSCREENS;
             P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(type, screen));
