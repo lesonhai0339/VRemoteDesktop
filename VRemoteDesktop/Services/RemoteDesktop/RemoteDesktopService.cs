@@ -132,11 +132,16 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             return _vClientManager.Connections;
         }
+        private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)
+        {
+            _vClientManager.ScreenUpdate(e);
+        }
         #endregion
         #region Events
         private void ScreenCaptureEventHandler(object sender, ScreenCaptureEventArgs e)
         {
-            ScreenCaptureEvent?.Invoke(sender, e);
+            //ScreenCaptureEvent?.Invoke(sender, e);
+            SendScreenChangedToClient(sender, e);
         }
         private void KeyboardEventHandler(object sender, KeyboardEventArgs e)
         {

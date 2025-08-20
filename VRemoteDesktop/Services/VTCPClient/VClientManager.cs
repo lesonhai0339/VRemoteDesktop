@@ -99,6 +99,13 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             ClientDataReceived?.Invoke(sender, e);
         }
+        public void ScreenUpdate(ScreenCaptureEventArgs e)
+        {
+            foreach(var connection in _connections)
+            {
+                connection.Value.SendScreen(e.Type, e.Data, e.TotalSize);
+            }
+        }
         public void Dispose()
         {
             Dispose(true);

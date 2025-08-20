@@ -14,6 +14,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.ViewModels;
 using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
@@ -537,6 +538,17 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             return resultBytes;
         }
+        private byte[] GenerateP2PHeader(DataType type, int dataSize , byte[] socketId)
+        {
+            byte[] header = new byte[dataSize + socketId.Length + 5];// 5 bytes more 4 for size and 1 for type
+
+            Buffer.BlockCopy(BitConverter.GetBytes(header.Length), 0, header, 0, 4);
+
+            header[4] = (byte)type;
+            Buffer.BlockCopy(socketId, 0, header, 5, 8);
+
+            return header;
+        }
         public void Send(DataType type, byte[] data,string partnerId = "00000000", bool isSendHeader = true)
         {
             try
@@ -591,8 +603,49 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
             }
         }
+        public void SendScreen(DataType type, List<byte[]> data, int totalSize)
+        {
+            try
+            {
+                if (data.Count == 0 || totalSize == 0)
+                {
+                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    return;
+                }
+                byte[] socketId = Encoding.ASCII.GetBytes(SocketId);
+                var header = GenerateP2PHeader(type, totalSize, socketId);
+
+                List<TaskObject> tasks = new List<TaskObject>();
+                tasks.Add(new TaskObject
+                {
+                    TaskType = type,
+                    Data = header,
+                    IsSendHeader = false
+                });
+
+                //data
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var task = new TaskObject
+                    {
+                        TaskType = type,
+                        Data = data[i],
+                        IsSendHeader = false
+                    };
+
+                    tasks.Add(task);
+                }
+                AddWorkGroup(tasks, DataType.Screen);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+            }
+        }
         private void ProcessScreenReceived(DataReceive e)
         {
+            string id1 = Encoding.ASCII.GetString(e.Data, 0, 8);
+            string id2 = Encoding.ASCII.GetString(e.Data, 8, 8);
             byte[] screen = new byte[e.Data.Length - 16];
             Buffer.BlockCopy(e.Data, 16, screen, 0, e.Data.Length - 16);
 
