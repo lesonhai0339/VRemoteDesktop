@@ -32,7 +32,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         private string _myPassword;
         private string _partnerId;
         private string _partnerPassword;
-
+        private VClientType _clientType;
 
         private Socket _socket;
         private BlockingCollection<DataReceive> _tasks;
@@ -47,7 +47,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
         public event EventHandler<P2PClientDataReceived> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
-        public VClient(string socketId)
+        public VClient(string socketId, VClientType clientType)
         {
             ScreenTasks = new ConcurrentQueue<object>();
             CommandTasks = new ConcurrentQueue<object>();
@@ -70,8 +70,19 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
 
             _socketId = socketId;
+            _clientType = clientType;
         }
         #region Properties
+        public VClientType ClientType 
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _clientType;
+                }
+            }
+        }
         public string SocketId
         {
             get => _socketId;

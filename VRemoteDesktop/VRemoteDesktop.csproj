@@ -55,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Enums\VClientType.cs" />
     <Compile Include="Enums\VMouseButtons.cs" />
     <Compile Include="Enums\MouseEventType.cs" />
     <Compile Include="Enums\ScreenType.cs" />

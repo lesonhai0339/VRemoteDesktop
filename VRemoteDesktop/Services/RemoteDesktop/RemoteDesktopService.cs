@@ -123,9 +123,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var client = _vClientManager.GetByKey(id);
             return client;
         }
-        public VClient NewClient(string id)
+        public VClient NewClient(string id, VClientType type)
         {
-            var newClient = _vClientManager.New(id);
+            var newClient = _vClientManager.New(id, type);
             return newClient;
         }
         public ConcurrentDictionary<string, VClient> GetClients()

@@ -8,6 +8,7 @@ using System.Reflection;
 using System.Security.Policy;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
@@ -88,9 +89,9 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             }
         }
-        public VClient New(string id)
+        public VClient New(string id, VClientType type)
         {
-            VClient client = new VClient(id);
+            VClient client = new VClient(id, type);
             Add(id, client);
             return client;
         }
@@ -101,10 +102,10 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void ScreenUpdate(ScreenCaptureEventArgs e)
         {
-            if (_connections.Count < 2) return;
             foreach(var connection in _connections)
             {
-                connection.Value.SendScreen(e.Type, e.Data, e.TotalSize);
+                if(connection.Value.ClientType == VClientType.Receiver)
+                    connection.Value.SendScreen(e.Type, e.Data, e.TotalSize);
             }
         }
         public void Dispose()

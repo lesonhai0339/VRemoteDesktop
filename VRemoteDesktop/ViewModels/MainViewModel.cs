@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
@@ -56,7 +57,7 @@ namespace VRemoteDesktop.ViewModels
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(8);
-            VClient client = new VClient(_id);
+            VClient client = new VClient(_id, Enums.VClientType.Sender);
             _remoteDesktopService.AddClient(_id, client);
         }
         #region Properties
@@ -124,7 +125,7 @@ namespace VRemoteDesktop.ViewModels
                 _resetEvent.Reset();
 
                 string connectionId = StringHelper.RandomStringNumber(8);
-                var newConnection = NewConnect(connectionId);
+                var newConnection = NewConnect(connectionId, VClientType.Sender);
 
                 _resetEvent.Reset();
                 newConnection.P2PHandshake(id);
@@ -143,10 +144,10 @@ namespace VRemoteDesktop.ViewModels
                 Log.ForContext("FileName", nameof(P2PHandshake)).Error(ex, "Error at P2PConnect");
             }
         }
-        private VClient NewConnect(string id)
+        private VClient NewConnect(string id, VClientType type)
         {
             _resetEvent.Reset();
-            var client = _remoteDesktopService.NewClient(id);
+            var client = _remoteDesktopService.NewClient(id, type);
             Connect(client);
             bool flag = _resetEvent.WaitOne(5000);
             if (flag)
@@ -165,7 +166,7 @@ namespace VRemoteDesktop.ViewModels
         private void P2PRequestConnectEventHandler(object sender, P2PClientDataReceived e)
         {
             var id = Encoding.ASCII.GetString(e.Data);
-            var client = NewConnect(id);
+            var client = NewConnect(id, VClientType.Receiver);
             byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(_remoteDesktopService.GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
             client.Send(DataType.P2PAcceptConnect, encoder , id, true);
         }
