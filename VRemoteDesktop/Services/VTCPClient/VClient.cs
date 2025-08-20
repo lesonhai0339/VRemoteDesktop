@@ -14,6 +14,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.ViewModels;
 using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
 
@@ -33,31 +34,18 @@ namespace VRemoteDesktop.Services.VTCPClient
 
 
         private Socket _socket;
-        private ConcurrentQueue<DataReceive> _tasks;
-        private BackgroundWorker _backgroundWorker;
+        private BlockingCollection<DataReceive> _tasks;
+        private BackgroundWorker _receiveBackgroundWorker;
         private BackgroundWorker _backgroundWorker2;
 
-        private CancellationTokenSource _cancellationToken;
+        private CancellationTokenSource _cts;
+        private CancellationToken _cancellationToken;
+
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
 
-
-        //public event EventHandler<EventArgs> TCPClientResponse;
-        //public event EventHandler<ConnectEventArgs> Connected;
-        //public event EventHandler<LoginEventArgs> LoggedIn;
-        //public event EventHandler<P2PRequestConnectEventArgs> P2PrequestConnect;
-        //public event EventHandler<P2PAcceptConnectEventArgs> P2PAcceptConnect;
-        //public event EventHandler<P2PScreenEventArgs> ScreenReceived;
-        //public event EventHandler<P2PScreenEventArgs> RegionsScreenReceived;
-        //public event EventHandler<P2PScreenSendResponeEventArgs> SendScreenSucceeded;
-        //public event EventHandler<P2PKeyboardEventArgs> KeyboardReceived;
-        //public event EventHandler<P2PMouseEventArgs> MouseReceived;
-        //public event EventHandler<P2PClipboardEventArgs> ClipboardReceived;
-        //public event EventHandler<P2PDisconnectEventArgs> P2PDisconnected;
-        //public event EventHandler<P2PChatEventArgs> P2PChatMessageReceived;
-        //public event EventHandler<P2PFileSendEventArgs> P2PChatSendFileReceived;
-
         public event EventHandler<P2PClientDataReceived> TCPClientReceived;
+        public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public VClient(string socketId)
         {
             ScreenTasks = new ConcurrentQueue<object>();
@@ -66,11 +54,12 @@ namespace VRemoteDesktop.Services.VTCPClient
             _isSocketConnected = false;
             _isP2PConnected = false;
             _isDisposed = false;
-            _cancellationToken = new CancellationTokenSource();
+            _cts = new CancellationTokenSource();
+            _cancellationToken = _cts.Token;
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
-            Tasks = new ConcurrentQueue<DataReceive>();
-            Worker = new BackgroundWorker();
-            Worker.WorkerSupportsCancellation = true;
+            Tasks = new BlockingCollection<DataReceive>();
+            ReceivedWorker = new BackgroundWorker();
+            ReceivedWorker.WorkerSupportsCancellation = true;
 
             Worker2 = new BackgroundWorker();
             Worker2.WorkerSupportsCancellation = true;
@@ -179,25 +168,25 @@ namespace VRemoteDesktop.Services.VTCPClient
                 _isSocketConnected = value;
             }
         }
-        public BackgroundWorker Worker
+        public BackgroundWorker ReceivedWorker
         {
-            get => _backgroundWorker;
+            get => _receiveBackgroundWorker;
             set
             {
-                if (_backgroundWorker != null)
+                if (_receiveBackgroundWorker != null)
                 {
-                    _backgroundWorker.DoWork -= DoWork;
+                    _receiveBackgroundWorker.DoWork -= DataReceivedWork;
                 }
 
-                _backgroundWorker = value;
+                _receiveBackgroundWorker = value;
 
-                if (_backgroundWorker != null)
+                if (_receiveBackgroundWorker != null)
                 {
-                    _backgroundWorker.DoWork += DoWork;
+                    _receiveBackgroundWorker.DoWork += DataReceivedWork;
                 }
             }
         }
-        public ConcurrentQueue<DataReceive> Tasks
+        public BlockingCollection<DataReceive> Tasks
         {
             get => _tasks;
             private set
@@ -207,121 +196,56 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         #endregion
         #region Methods
-        private void DoWork(object sender, DoWorkEventArgs e)
+        private void DataReceivedWork(object sender, DoWorkEventArgs e)
         {
-            while (!_cancellationToken.IsCancellationRequested)
+            try
             {
-                if (Tasks.TryDequeue(out var task))
+                foreach (var task in Tasks.GetConsumingEnumerable(_cancellationToken))
                 {
                     try
                     {
-                        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
-                        //switch (task.Type)
-                        //{
-                        //    case DataType.Login:
-                        //        //LoggedIn?.Invoke(this, new LoginEventArgs(true, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Login, true, task.Data));
-                        //        break;
-                        //    case DataType.P2PRequestConnect:
-                        //        //P2PrequestConnect?.Invoke(this, new P2PRequestConnectEventArgs(true, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PRequestConnect, true, task.Data));
-                        //        break;
-                        //    case DataType.P2PAcceptConnect:
-                        //        //P2PAcceptConnect?.Invoke(this, new P2PAcceptConnectEventArgs(task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PAcceptConnect, true, task.Data));
-                        //        break;
-                        //    case DataType.Disconnect:
-                        //        break;
-                        //    case DataType.Ping:
-                        //        break;
-                        //    case DataType.Pong:
-                        //        Console.WriteLine("Pong received from server");
-                        //        break;
-                        //    case DataType.Screen:
-                        //        //ScreenReceived?.Invoke(this, new P2PScreenEventArgs(ScreenType.FULLSCREEN, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Screen, true, task.Data));
-                        //        break;
-                        //    case DataType.Chunks:
-                        //        //RegionsScreenReceived?.Invoke(this, new P2PScreenEventArgs(ScreenType.REGIONSCREENS, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Chunks, true, task.Data));
-                        //        break;
-                        //    case DataType.ScreenOk:
-                        //        //SendScreenSucceeded?.Invoke(this, new P2PScreenSendResponeEventArgs(ScreenType.FULLSCREEN, true));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.ScreenOk, true, task.Data));
-
-                        //        break;
-                        //    case DataType.ChunksOk:
-                        //        //SendScreenSucceeded?.Invoke(this, new P2PScreenSendResponeEventArgs(ScreenType.REGIONSCREENS, true));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.ChunksOk, true, task.Data));
-
-                        //        break;
-                        //    case DataType.Keyboard:
-                        //        //KeyboardReceived?.Invoke(this,  new P2PKeyboardEventArgs(task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Keyboard, true, task.Data));
-
-                        //        break;
-                        //    case DataType.Mouse:
-                        //        //MouseReceived?.Invoke(this, new P2PMouseEventArgs(task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Mouse, true, task.Data));
-
-                        //        break;
-                        //    case DataType.Clipboard:
-                        //        //ClipboardReceived?.Invoke(this, new P2PClipboardEventArgs(task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Clipboard, true, task.Data));
-
-                        //        break;
-                        //    case DataType.Error:
-                        //        Console.WriteLine("Error: "+ Encoding.ASCII.GetString(task.Data));
-                        //        break;
-                        //    case DataType.LoginFailed:
-                        //        //LoggedIn?.Invoke(this, new LoginEventArgs(false, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.LoginFailed, true, task.Data));
-
-                        //        break;
-                        //    case DataType.P2PDisconnect:
-                        //        IsP2PConnected = false;
-                        //        //P2PDisconnected?.Invoke(this, new P2PDisconnectEventArgs(true));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PDisconnect, true, task.Data));
-
-                        //        break;
-                        //    case DataType.P2PConnectFailed:
-                        //        //P2PrequestConnect?.Invoke(this, new P2PRequestConnectEventArgs(false, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PConnectFailed, true, task.Data));
-
-                        //        break;
-                        //    case DataType.Message:
-                        //       // P2PChatMessageReceived?.Invoke(this, new P2PChatEventArgs(task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Message, true, task.Data));
-
-                        //        break;
-                        //    case DataType.RequestSendFile:
-                        //        //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.RequestSendFile, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.RequestSendFile, true, task.Data));
-
-                        //        break;
-                        //    case DataType.AcceptSendFile:
-                        //        //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.AcceptSendFile, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.AcceptSendFile, true, task.Data));
-
-                        //        break;
-                        //    case DataType.FileTransfer:
-                        //        //P2PChatSendFileReceived?.Invoke(this, new P2PFileSendEventArgs(SendFileType.FileTransfer, task.Data));
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.FileTransfer, true, task.Data));
-
-                        //        break;
-                        //    case DataType.P2PDataSend:
-                        //        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.P2PDataSend, true, task.Data));
-                        //        break;
-                        //    default:
-                        //        break;
-                        //}
+                        switch (task.Type)
+                        {
+                            case DataType.Screen:
+                            case DataType.Chunks:
+                                ProcessScreenReceived(task);
+                                break;
+                            case DataType.Connect:
+                            case DataType.Login:
+                            case DataType.LoginFailed:
+                            case DataType.Disconnect:
+                            case DataType.Ping:
+                            case DataType.Pong:
+                            case DataType.Error:
+                            case DataType.P2PRequestConnect:
+                            case DataType.P2PAcceptConnect:
+                            case DataType.P2PDataSend:
+                            case DataType.P2PDisconnect:
+                            case DataType.P2PConnectFailed:
+                            case DataType.ScreenOk:
+                            case DataType.ChunksOk:
+                            case DataType.Keyboard:
+                            case DataType.Mouse:
+                            case DataType.Clipboard:
+                            case DataType.Message:
+                            case DataType.FileTransfer:
+                            case DataType.RequestSendFile:
+                            case DataType.AcceptSendFile:
+                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                                break;
+                            default:
+                                break;
+                        }
                     }
                     catch (Exception ex)
                     {
                         Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
                     }
                 }
-                Thread.Sleep(1);
+            }
+            catch(OperationCanceledException ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
             }
         }
         private void DoWork2(object sender, DoWorkEventArgs e)
@@ -424,7 +348,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
         public void Cancel()
         {
-            _cancellationToken.Cancel();
+            _cts.Cancel();
         }
         /// <summary>
         /// Connect to remote server with default IP and port
@@ -490,9 +414,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                 }
 
                 SocketConnected = true;
-                if (!Worker.IsBusy)
+                if (!ReceivedWorker.IsBusy)
                 {
-                    Worker.RunWorkerAsync();
+                    ReceivedWorker.RunWorkerAsync();
                 }
                 //Connected?.Invoke(this, new ConnectEventArgs(true));
                 TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Connect, true, new byte[0]));
@@ -544,7 +468,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     Console.WriteLine($"Received {num} bytes from {stateObject.SckId}");
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
-                    while (!_cancellationToken.Token.IsCancellationRequested)
+                    while (!_cancellationToken.IsCancellationRequested)
                     {
                         if (!(stateObject.ByteArrayBuilder.Length >= 5))
                         {
@@ -589,7 +513,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 byte[] data = new byte[bytes.Length - 5];
                 Buffer.BlockCopy(bytes, 5, data, 0, data.Length);
 
-                Tasks.Enqueue(new DataReceive
+                Tasks.Add(new DataReceive
                 {
                     Type = commandType,
                     Length = length,
@@ -667,6 +591,14 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
             }
         }
+        private void ProcessScreenReceived(DataReceive e)
+        {
+            byte[] screen = new byte[e.Data.Length - 16];
+            Buffer.BlockCopy(e.Data, 16, screen, 0, e.Data.Length - 16);
+
+            ScreenType type = (e.Type == DataType.Screen) ? ScreenType.FULLSCREEN : ScreenType.REGIONSCREENS;
+            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(type, screen));
+        }
         public void Dispose()
         {
             Dispose(true);
@@ -678,27 +610,28 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 if (disposing)
                 {
-                    if (_cancellationToken != null)
+                    if (_cts != null)
                     {
                         try
                         {
-                            _cancellationToken.Cancel();
-                            _cancellationToken.Dispose();
+                            _cts.Cancel();
+                            _cts.Dispose();
+                            _cts = null;
                         }
                         catch (ObjectDisposedException)
                         {
                         }
                     }
                     //background worker
-                    Worker.CancelAsync();
+                    ReceivedWorker.CancelAsync();
 
-                    Worker.DoWork -= DoWork;
-                    _backgroundWorker.Dispose();
+                    ReceivedWorker.DoWork -= DataReceivedWork;
+                    _receiveBackgroundWorker.Dispose();
 
                     //queue
                     if (Tasks != null)
                     {
-                        while (Tasks.TryDequeue(out var item))
+                        foreach(var item in Tasks.GetConsumingEnumerable())
                         {
                             if (item is IDisposable disposableItem)
                             {

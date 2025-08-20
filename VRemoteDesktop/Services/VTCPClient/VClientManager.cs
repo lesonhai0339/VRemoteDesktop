@@ -2,11 +2,16 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Security.Policy;
 using System.Text;
+using System.Windows.Forms;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
@@ -91,9 +96,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
         {
-            ClientDataReceived?.Invoke(sender, new P2PClientDataReceived(e.Type, e.Flag, e.Data));
-        }
 
+            ClientDataReceived?.Invoke(sender, e);
+        }
         public void Dispose()
         {
             Dispose(true);

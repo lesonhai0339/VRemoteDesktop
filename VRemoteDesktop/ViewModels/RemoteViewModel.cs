@@ -17,10 +17,10 @@ using VRemoteDesktop.Services.RemoteDesktop;
 
 namespace VRemoteDesktop.ViewModels
 {
-    public class RemoteViewModel : INotifyPropertyChanged
+    public class RemoteViewModel : INotifyPropertyChanged, IDisposable
     {
-        private VClient _vClient;
         private ClientInfo _connectionInfo;
+        private readonly VClient _vClient;
         private readonly IMouseExtensions _mouseExtension;
         private readonly RemoteDesktopService _remoteDesktopService;
 
@@ -32,6 +32,8 @@ namespace VRemoteDesktop.ViewModels
             ConnectionInfo = connectionInfo;
             _mouseExtension = mouseExtension;
             _remoteDesktopService = remoteDesktopService;
+
+            _vClient.P2PScreenReceived += P2PScreenReceivedEventHandler;
         }
         #region Properties
         public ClientInfo ConnectionInfo
@@ -44,15 +46,15 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Methods
-        public void DataReceived(DataType type, byte[] data)
+        public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
-            if(type == DataType.Screen)
+            if(e.Type == ScreenType.FULLSCREEN)
             {
-                ScreenEvent?.Invoke(data);
+                ScreenEvent?.Invoke(e.Data);
             }
-            if(type == DataType.Chunks)
+            if(e.Type == ScreenType.REGIONSCREENS)
             {
-                ScreenChunksEvent?.Invoke(data);
+                ScreenChunksEvent?.Invoke(e.Data);
             }
         }
         public RectangleF TransformSize(Size source, Size img, Rectangle rect)
@@ -106,7 +108,6 @@ namespace VRemoteDesktop.ViewModels
                 var adjustedMouseEventArgs = new MouseData((VMouseButtons)e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
 
                 string mouseEventString = _mouseExtension.MouseEventToString(mouseEvent, p.Image.Width, p.Image.Height, adjustedMouseEventArgs, mouseMsg, mouseType);
-
                 if (string.IsNullOrEmpty(mouseEventString))
                     return;
 
@@ -130,6 +131,23 @@ namespace VRemoteDesktop.ViewModels
         protected virtual void OnPropertyChanged(string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if(_vClient != null)
+                {
+                    _vClient.P2PScreenReceived -= P2PScreenReceivedEventHandler;
+                    _vClient.Dispose();
+                }
+            }
         }
         #endregion
     }

@@ -103,10 +103,20 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public void AddClient(string id, VClient client)
         {
             _vClientManager.Add(id, client);
+            if(_vClientManager.Connections.Count > 0)
+            {
+                StartKeyboardListener();
+                //StartScreenCapture();
+            }
         }
         public void RemoveClientById(string id)
         {
             _vClientManager.Remove(id);
+            if (_vClientManager.Connections.Count == 0)
+            {
+                StopKeyboardListener();
+                //StopScreenCapture();
+            }
         }
         public VClient GetClientById(string id)
         {

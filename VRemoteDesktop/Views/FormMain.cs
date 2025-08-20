@@ -152,7 +152,6 @@ namespace VRemoteDesktop
                 return;
             }
             FormRemote remoteForm = new FormRemote(client, connectionInfo, _remoteDesktopService);
-            ViewModel.AddRemoteForm(remoteForm.ConnectionInfo.Id, remoteForm.RemoteViewModel);
             remoteForm.Show();
         }
     }

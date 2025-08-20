@@ -40,13 +40,11 @@ namespace VRemoteDesktop.ViewModels
         private ManualResetEvent _resetEvent;
 
         private readonly RemoteDesktopService _remoteDesktopService;
-        private ConcurrentDictionary<string, RemoteViewModel> _remoteViewModel;
         public event EventHandler<ClientConnectionEventArgs> ClientAcceptRequestRemote;
         public MainViewModel(RemoteDesktopService remoteDesktopService)
         {
             IsConnected = false;
             _resetEvent = new ManualResetEvent(false);
-            _remoteViewModel = new ConcurrentDictionary<string, RemoteViewModel>();
 
             _remoteDesktopService = remoteDesktopService;
             _remoteDesktopService.DataReceivedEvent += TCPClientManagerEventHandler;
@@ -91,10 +89,6 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Methods
-        public void AddRemoteForm(string id, RemoteViewModel remoteViewModel)
-        {
-            _remoteViewModel.TryAdd(id, remoteViewModel);
-        }
         public void Connect(VClient client = null)
         {
             string ip = AppSettingHelper.Getvalue("RemoteServerIP");
@@ -215,17 +209,7 @@ namespace VRemoteDesktop.ViewModels
             //};
             //ClientAcceptRequestRemote?.Invoke(connecter);
             _remoteDesktopService.StartScreenCapture();
-        }
-        private void ScreenReceivedEventHandler(object sender, P2PClientDataReceived e)
-        {
-            string id = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, 8, 8, Enums.EncodingType.ASCII).GetResult();
-            byte[] data = new byte[e.Data.Length - 16];
-            Buffer.BlockCopy(e.Data, 16, data, 0, e.Data.Length - 16);
-            if(_remoteViewModel.TryGetValue(id, out var a))
-            {
-                a.DataReceived(e.Type, data);
-            }
-        }
+        }    
         private void ScreenHookEventHandler(object sender, ScreenCaptureEventArgs e)
         {
             foreach(var connection in _remoteDesktopService.GetClients())
@@ -302,10 +286,6 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.P2PDataSend:
                         P2PDataSendEventHandler(sender, e);
                         break;
-                    case DataType.Chunks:
-                    case DataType.Screen:
-                        ScreenReceivedEventHandler(sender, e);
-                            break;
                     case DataType.Mouse:
                         MouseReceivedEventHandler(sender, e);
                         break;

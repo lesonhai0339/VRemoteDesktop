@@ -41,7 +41,7 @@ namespace VRemoteDesktop.Services.Mouse
             int receiverScreenWidth = width;
             int receiverScreenHeight = height;
             WindowsMouseMessage button = (WindowsMouseMessage)Enum.Parse(typeof(WindowsMouseMessage), mouseData[2]);
-            MouseAction action = (MouseAction)Enum.Parse(typeof(WindowsMouseMessage), mouseData[2]);
+            MouseAction action = (MouseAction)Enum.Parse(typeof(MouseAction), mouseData[3]);
             int mouseX = int.Parse(mouseData[4]);
             int mouseY = int.Parse(mouseData[5]);
 
