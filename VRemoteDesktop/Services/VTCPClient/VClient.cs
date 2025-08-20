@@ -479,7 +479,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 int num = Socket.EndReceive(ar);
                 if (num > 0)
                 {
-                    Console.WriteLine($"Received {num} bytes from {stateObject.SckId}");
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
                     while (!_cancellationToken.IsCancellationRequested)
                     {

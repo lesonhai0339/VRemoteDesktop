@@ -223,7 +223,7 @@ namespace VRemoteServer.Services
             if (_connections.TryGetValue(task.PartnerId, out var connection))
             {
                 connection.Receiver = task.Client;
-                await SendCommandAsync(connection.Sender, Enums.CommandType.P2PAcceptConnect, task.Data);
+                await Send(connection.Sender, task.Data);
             }
         }
 

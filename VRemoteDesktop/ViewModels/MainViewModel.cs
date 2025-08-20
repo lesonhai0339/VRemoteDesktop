@@ -172,7 +172,7 @@ namespace VRemoteDesktop.ViewModels
         }
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
         {
-            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 13, e.Data.Length - 13, Enums.EncodingType.ASCII).GetResult();
+            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
             string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
             ClientInfo connecter = new ClientInfo
             {
