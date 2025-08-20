@@ -29,7 +29,6 @@ namespace VRemoteDesktop.Views
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
         private VClient _vClient;
-        private ClientInfo _connectionInfo;
         private RemoteViewModel _remoteViewModel;
         private RemoteDesktopService _remoteDesktopService;
 
@@ -47,25 +46,24 @@ namespace VRemoteDesktop.Views
         private MouseEventArgs _pendingClickArgs;
         private Control _pendingSender;
         private int _clickCount;
-        public FormRemote(VClient vClient, ClientInfo connectionInfo, RemoteDesktopService remoteDesktopService)
+        public FormRemote(VClient vClient, RemoteDesktopService remoteDesktopService)
         {
             InitializeComponent();
             _vClient = vClient;
-            _connectionInfo = connectionInfo;
             _mouseExtension = new MouseExtensions();
             _screenService = new ScreenCaptureExtensions();
             _remoteDesktopService = remoteDesktopService;
             _remoteDesktopService.KeyboardEvent += KeyboardReceivedEventHandler;
-            RemoteViewModel = new RemoteViewModel(_vClient, _connectionInfo, _mouseExtension, _remoteDesktopService);
+            RemoteViewModel = new RemoteViewModel(_vClient, _mouseExtension, _remoteDesktopService);
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
 
             base.AutoScaleDimensions = new SizeF(6f, 13f);
-            this.Text = _connectionInfo.Id + " - "+ _connectionInfo.ComputerName;
+            this.Text = _vClient.Partner.Id + " - "+ _vClient.Partner.ComputerName;
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
-            vPictureBox.Size = new Size(_connectionInfo.Width, _connectionInfo.Height);
+            vPictureBox.Size = new Size(_vClient.Partner.Width, _vClient.Partner.Height);
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 
@@ -101,10 +99,6 @@ namespace VRemoteDesktop.Views
             }
         }
         #region Properties
-        public ClientInfo ConnectionInfo
-        {
-            get => _connectionInfo;
-        }
         public RemoteViewModel RemoteViewModel
         {
             get

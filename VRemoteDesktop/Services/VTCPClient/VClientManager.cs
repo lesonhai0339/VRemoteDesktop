@@ -95,18 +95,25 @@ namespace VRemoteDesktop.Services.VTCPClient
             Add(id, client);
             return client;
         }
+        public void AcceptP2PConnect(string myInfo, byte[] data)
+        {
+            string connectionId = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, EncodingType.ASCII).GetResult();
+            var newClient = New(connectionId, VClientType.Receiver);
+            newClient.P2PAcceptConnect(myInfo);
+        }
+        public void ScreenUpdate(ScreenCaptureEventArgs e)
+        {
+            foreach (var connection in _connections)
+            {
+                if (connection.Value.ClientType == VClientType.Receiver)
+                    connection.Value.SendScreen(e.Type, e.Data, e.TotalSize);
+            }
+        }
         private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
         {
             ClientDataReceived?.Invoke(sender, e);
         }
-        public void ScreenUpdate(ScreenCaptureEventArgs e)
-        {
-            foreach(var connection in _connections)
-            {
-                if(connection.Value.ClientType == VClientType.Receiver)
-                    connection.Value.SendScreen(e.Type, e.Data, e.TotalSize);
-            }
-        }
+
         public void Dispose()
         {
             Dispose(true);

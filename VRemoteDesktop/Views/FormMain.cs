@@ -136,22 +136,22 @@ namespace VRemoteDesktop
                 action();
             }
         }
-        private void ClientAcceptRequestRemoteEventHandler(object sender ,ClientConnectionEventArgs e)
+        private void ClientAcceptRequestRemoteEventHandler(object sender ,EventArgs e)
         {
             if(sender is VClient vClient)
             {
-                OpenRemoteForm(vClient, e.ConnectionInfo);
+                OpenRemoteForm(vClient);
 
             }
         }
-        private void OpenRemoteForm(VClient client, ClientInfo connectionInfo)
+        private void OpenRemoteForm(VClient client)
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action<VClient,ClientInfo>(OpenRemoteForm), client, connectionInfo);
+                this.Invoke(new Action<VClient>(OpenRemoteForm), client);
                 return;
             }
-            FormRemote remoteForm = new FormRemote(client, connectionInfo, _remoteDesktopService);
+            FormRemote remoteForm = new FormRemote(client, _remoteDesktopService);
             remoteForm.Show();
         }
     }

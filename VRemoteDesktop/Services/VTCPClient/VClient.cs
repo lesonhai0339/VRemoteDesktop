@@ -34,6 +34,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         private string _partnerId;
         private string _partnerPassword;
         private VClientType _clientType;
+        private ClientInfo _partnerInfo;
 
         private Socket _socket;
         private BlockingCollection<DataReceive> _tasks;
@@ -72,8 +73,26 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             _socketId = socketId;
             _clientType = clientType;
+            Partner = null;
         }
         #region Properties
+        public ClientInfo Partner
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _partnerInfo;
+                }
+            }
+            private set
+            {
+                lock (_lockObject)
+                {
+                    _partnerInfo = value;
+                }
+            }
+        }
         public VClientType ClientType 
         {
             get
@@ -223,6 +242,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                             case DataType.Chunks:
                                 P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                                 break;
+                            case DataType.P2PAcceptConnect:
+                                ProcessP2PConnectAccepted(task.Data);
+                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
+                                break;
                             case DataType.Connect:
                             case DataType.Login:
                             case DataType.LoginFailed:
@@ -231,7 +254,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                             case DataType.Pong:
                             case DataType.Error:
                             case DataType.P2PRequestConnect:
-                            case DataType.P2PAcceptConnect:
                             case DataType.P2PDataSend:
                             case DataType.P2PDisconnect:
                             case DataType.P2PConnectFailed:
@@ -466,6 +488,75 @@ namespace VRemoteDesktop.Services.VTCPClient
             byte[] p2pLoginDataBytes = ByteArrayHelper.ConvertStringToByteArray(p2pLoginNetworkString, Enums.EncodingType.ASCII).GetResult();
             Send(DataType.P2PDataSend, p2pLoginDataBytes, SocketId, true);
         }
+        public void P2PAcceptConnect(string data)
+        {
+            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(data, EncodingType.ASCII).GetResult();
+            Send(DataType.P2PAcceptConnect, dataBytes, SocketId, true);
+        }
+        private void ProcessP2PConnectAccepted(byte[] dataReceived)
+        {
+            try
+            {
+                string data = ByteArrayHelper.ConvertByteArrayToString(dataReceived, EncodingType.ASCII).GetResult();
+                string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
+                ClientInfo partnerInfo = new ClientInfo
+                {
+                    Id = stringArray[0],
+                    Password = stringArray[1],
+                    ComputerName = stringArray[2],
+                    Width = int.Parse(stringArray[3]),
+                    Height = int.Parse(stringArray[4]),
+                    MajorVersion = stringArray[5],
+                    MinorVersion = stringArray[6],
+                    Ip = stringArray[7],
+                    Port = stringArray[8],
+                    PublicIP = stringArray[9],
+                };
+                Partner = partnerInfo;
+            }
+            catch (Exception ex) 
+            {
+            }
+        }
+        public void SendScreen(DataType type, List<byte[]> data, int totalSize)
+        {
+            try
+            {
+                if (data.Count == 0 || totalSize == 0)
+                {
+                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    return;
+                }
+                byte[] socketId = Encoding.ASCII.GetBytes(SocketId);
+                var header = GenerateP2PHeader(type, totalSize, socketId);
+
+                List<TaskObject> tasks = new List<TaskObject>();
+                tasks.Add(new TaskObject
+                {
+                    TaskType = type,
+                    Data = header,
+                    IsSendHeader = false
+                });
+
+                //data
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var task = new TaskObject
+                    {
+                        TaskType = type,
+                        Data = data[i],
+                        IsSendHeader = false
+                    };
+
+                    tasks.Add(task);
+                }
+                AddWorkGroup(tasks, DataType.Screen);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+            }
+        }
         /// <summary>
         /// callback method when data is received from the remote server
         /// </summary>
@@ -615,45 +706,6 @@ namespace VRemoteDesktop.Services.VTCPClient
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
-            }
-        }
-        public void SendScreen(DataType type, List<byte[]> data, int totalSize)
-        {
-            try
-            {
-                if (data.Count == 0 || totalSize == 0)
-                {
-                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
-                    return;
-                }
-                byte[] socketId = Encoding.ASCII.GetBytes(SocketId);
-                var header = GenerateP2PHeader(type, totalSize, socketId);
-
-                List<TaskObject> tasks = new List<TaskObject>();
-                tasks.Add(new TaskObject
-                {
-                    TaskType = type,
-                    Data = header,
-                    IsSendHeader = false
-                });
-
-                //data
-                for (int i = 0; i < data.Count; i++)
-                {
-                    var task = new TaskObject
-                    {
-                        TaskType = type,
-                        Data = data[i],
-                        IsSendHeader = false
-                    };
-
-                    tasks.Add(task);
-                }
-                AddWorkGroup(tasks, DataType.Screen);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
         }
         public void Dispose()

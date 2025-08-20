@@ -41,7 +41,7 @@ namespace VRemoteDesktop.ViewModels
         private ManualResetEvent _resetEvent;
 
         private readonly RemoteDesktopService _remoteDesktopService;
-        public event EventHandler<ClientConnectionEventArgs> ClientAcceptRequestRemote;
+        public event EventHandler<EventArgs> ClientAcceptRequestRemote;
         public MainViewModel(RemoteDesktopService remoteDesktopService)
         {
             IsConnected = false;
@@ -163,32 +163,25 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Events
-        private void P2PRequestConnectEventHandler(object sender, P2PClientDataReceived e)
-        {
-            var id = Encoding.ASCII.GetString(e.Data);
-            var client = NewConnect(id, VClientType.Receiver);
-            byte[] encoder = Helpers.ByteArrayHelper.ConvertStringToByteArray(_remoteDesktopService.GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
-            client.Send(DataType.P2PAcceptConnect, encoder , id, true);
-        }
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
         {
-            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
-            string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
-            ClientInfo connecter = new ClientInfo
-            {
-                Id = stringArray[0],
-                Password = stringArray[1],
-                ComputerName = stringArray[2],
-                Width = int.Parse(stringArray[3]),
-                Height = int.Parse(stringArray[4]),
-                MajorVersion = stringArray[5],
-                MinorVersion = stringArray[6],
-                Ip = stringArray[7],
-                Port = stringArray[8],
-                PublicIP = stringArray[9],
-            };
+            //string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
+            //string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
+            //ClientInfo connecter = new ClientInfo
+            //{
+            //    Id = stringArray[0],
+            //    Password = stringArray[1],
+            //    ComputerName = stringArray[2],
+            //    Width = int.Parse(stringArray[3]),
+            //    Height = int.Parse(stringArray[4]),
+            //    MajorVersion = stringArray[5],
+            //    MinorVersion = stringArray[6],
+            //    Ip = stringArray[7],
+            //    Port = stringArray[8],
+            //    PublicIP = stringArray[9],
+            //};
             _resetEvent.Set();
-            ClientAcceptRequestRemote?.Invoke(sender, new ClientConnectionEventArgs(connecter));
+            ClientAcceptRequestRemote?.Invoke(sender, new EventArgs());
         }
 
         private void P2PDataSendEventHandler(object sender, P2PClientDataReceived e)
@@ -225,10 +218,6 @@ namespace VRemoteDesktop.ViewModels
                         break;
                     case DataType.LoginFailed:
                         Console.WriteLine("LoginFailed");
-                        break;
-                    case DataType.P2PRequestConnect:
-                        Console.WriteLine("Request connect");
-                        P2PRequestConnectEventHandler(sender, e);
                         break;
                     case DataType.P2PAcceptConnect:
                         PartnerAcceptP2PConnect(sender, e);

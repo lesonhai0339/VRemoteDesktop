@@ -137,6 +137,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             return _vClientManager.Connections;
         }
+        private void P2PRequestConnectHandler(object sender, P2PClientDataReceived e)
+        {
+            _vClientManager.AcceptP2PConnect(_clientInfo.GetMyInfo().ToNetworkString(), e.Data);
+        }
         private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)
         {
             _vClientManager.ScreenUpdate(e);
@@ -157,6 +161,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 case DataType.Clipboard:
                     SetClipboard(e.Data);
+                    break;
+                case DataType.P2PRequestConnect:
+                    P2PRequestConnectHandler(sender, e);
                     break;
                 default:
                     DataReceivedEvent?.Invoke(sender, e);

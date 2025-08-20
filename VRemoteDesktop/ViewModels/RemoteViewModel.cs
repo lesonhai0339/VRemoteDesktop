@@ -19,31 +19,21 @@ namespace VRemoteDesktop.ViewModels
 {
     public class RemoteViewModel : INotifyPropertyChanged, IDisposable
     {
-        private ClientInfo _connectionInfo;
         private readonly VClient _vClient;
         private readonly IMouseExtensions _mouseExtension;
         private readonly RemoteDesktopService _remoteDesktopService;
 
         public Action<byte[]> ScreenEvent;
         public Action<byte[]> ScreenChunksEvent;
-        public RemoteViewModel(VClient vClient, ClientInfo connectionInfo, IMouseExtensions mouseExtension, RemoteDesktopService remoteDesktopService)
+        public RemoteViewModel(VClient vClient, IMouseExtensions mouseExtension, RemoteDesktopService remoteDesktopService)
         {
             _vClient = vClient;
-            ConnectionInfo = connectionInfo;
             _mouseExtension = mouseExtension;
             _remoteDesktopService = remoteDesktopService;
 
             _vClient.P2PScreenReceived += P2PScreenReceivedEventHandler;
         }
         #region Properties
-        public ClientInfo ConnectionInfo
-        {
-            get => _connectionInfo;
-            private set
-            {
-                _connectionInfo = value;
-            }
-        }
         #endregion
         #region Methods
         public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
