@@ -211,61 +211,10 @@ namespace VRemoteDesktop.ViewModels
             //ClientAcceptRequestRemote?.Invoke(connecter);
             _remoteDesktopService.StartScreenCapture();
         }    
-        private void ScreenHookEventHandler(object sender, ScreenCaptureEventArgs e)
-        {
-            foreach(var connection in _remoteDesktopService.GetClients())
-            {
-                Screen(connection.Key, connection.Value, e);
-            }
-        }
-        private void Screen(string connectionId, VClient client, ScreenCaptureEventArgs e)
-        {
-            try
-            {
-                if (e.Data.Count == 0 || e.TotalSize == 0)
-                {
-                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
-                    return;
-                }
-                byte[] screenHeader = new byte[21];
-                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 0, 4);
-                screenHeader[4] = (byte)e.Type;
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(connectionId), 0, screenHeader, 5, 8);
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(_remoteDesktopService.GetMe().Id), 0, screenHeader, 13, 8);
-
-
-                List<TaskObject> tasks = new List<TaskObject>();
-                tasks.Add(new TaskObject
-                {
-                    TaskType = e.Type,
-                    Data = screenHeader,
-                    IsSendHeader = false
-                });
-
-                //data
-                for (int i = 0; i < e.Data.Count; i++)
-                {
-                    var task = new TaskObject
-                    {
-                        TaskType = e.Type,
-                        Data = e.Data[i],
-                        IsSendHeader = false
-                    };
-
-                    tasks.Add(task);
-                }
-                client.AddWorkGroup(tasks, DataType.Screen);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
-            }
-        }
         private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
         {
             if(sender  is VClient client)
             {
-                Console.WriteLine(client.SocketId + " - "+ e.Type);
                 switch (e.Type)
                 {
                     case DataType.Connect:
@@ -293,9 +242,6 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.Keyboard:
                         KeyboardReceivedEventHandler(sender, e);
                         break;
-                    case DataType.Clipboard:
-                        ClipboardReceivedEventHandler(sender,e);
-                        break;
                     case DataType.P2PDisconnect:
                         ProcessP2PDisconnect(sender, e);
                         break;
@@ -305,7 +251,6 @@ namespace VRemoteDesktop.ViewModels
                     default:
                         break;
                 }
-
             }
         }
         private void ProcessP2PDisconnect(object sender, P2PClientDataReceived e)
@@ -315,20 +260,11 @@ namespace VRemoteDesktop.ViewModels
                 _remoteDesktopService.RemoveClientById(client.SocketId);
             }
         }
-        private void ClipboardReceivedEventHandler(object sender, P2PClientDataReceived e)
-        {
-            var data = VirtualClipboard.DecodeClipboard(e.Data, 8, e.Data.Length - 8);
-            _remoteDesktopService.SetClipboard(data);
-        }
         private void KeyboardReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
             try
             {
-                int length = e.Data.Length - 8;
-                byte[] keyboard = new byte[length];
-                Buffer.BlockCopy(e.Data, 8, keyboard, 0, length);
-
-                var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(keyboard);
+                var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(e.Data);
                 VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
 
             }
@@ -341,11 +277,8 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                byte[] mouse = new byte[e.Data.Length - 8];
-                Buffer.BlockCopy(e.Data, 8, mouse, 0, e.Data.Length - 8);
-
                 var me = _remoteDesktopService.GetMe();
-                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, me.Width, me.Height);
+                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(e.Data, me.Width, me.Height);
 
                 bool flag = VirtualMouse.MouseEvent(mouseEvent);
                 if (!flag)

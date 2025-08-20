@@ -137,6 +137,20 @@ namespace VRemoteDesktop.Services.SystemService
                 return false;
             }
         }
+        public bool SetClipboard(byte[] data, int index, int length)
+        {
+            try
+            {
+                byte[] clipboardData = new byte[length];
+                Buffer.BlockCopy(data, index, clipboardData, 0, length);
+                return VirtualClipboard.SetClipboard(clipboardData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("Filename", GetType().Name).Error(ex, "SetClipboard error");
+                return false;
+            }
+        }
         #endregion
         #region Screen
         public void StartScreenCapture()

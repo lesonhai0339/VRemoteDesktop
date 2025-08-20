@@ -34,10 +34,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly GlobalHookService _globalHook;
         private readonly VClientManager _vClientManager;
 
-        public event EventHandler<ScreenCaptureEventArgs> ScreenCaptureEvent;
         public event EventHandler<KeyboardEventArgs> KeyboardEvent;
         public event EventHandler<P2PClientDataReceived> DataReceivedEvent;
-
         public RemoteDesktopService(GlobalHookService globalHook, VClientManager vClientManager, IClientInfoManager clientInfo)
         {
             _disposed = false;
@@ -92,6 +90,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             bool isSucceeded = _globalHook.SetClipboard(data);
             return isSucceeded;
         }
+        public bool SetClipboard(byte[] data, int index, int length)
+        {
+            bool isSucceeded = _globalHook.SetClipboard(data, index, length);
+            return isSucceeded;
+        }
         public void StartScreenCapture()
         {
             _globalHook.StartScreenCapture();
@@ -106,7 +109,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if(_vClientManager.Connections.Count > 0)
             {
                 StartKeyboardListener();
-                //StartScreenCapture();
+                bool hasReceiver = _vClientManager.Connections.Any(x => x.Value.ClientType == VClientType.Receiver);
+                if(hasReceiver)
+                    StartScreenCapture();
             }
         }
         public void RemoveClientById(string id)
@@ -140,7 +145,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #region Events
         private void ScreenCaptureEventHandler(object sender, ScreenCaptureEventArgs e)
         {
-            //ScreenCaptureEvent?.Invoke(sender, e);
             SendScreenChangedToClient(sender, e);
         }
         private void KeyboardEventHandler(object sender, KeyboardEventArgs e)
@@ -149,7 +153,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void ClientDataReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
-            DataReceivedEvent?.Invoke(sender, e);
+            switch (e.Type)
+            {
+                case DataType.Clipboard:
+                    SetClipboard(e.Data);
+                    break;
+                default:
+                    DataReceivedEvent?.Invoke(sender, e);
+                    break;
+            }
         }
         #endregion
         public void Dispose()
@@ -178,5 +190,4 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
         }
     }
-
 }

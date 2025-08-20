@@ -97,7 +97,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
         {
-
             ClientDataReceived?.Invoke(sender, e);
         }
         public void ScreenUpdate(ScreenCaptureEventArgs e)

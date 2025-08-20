@@ -10,6 +10,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
@@ -220,7 +221,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             case DataType.Screen:
                             case DataType.Chunks:
-                                ProcessScreenReceived(task);
+                                P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                                 break;
                             case DataType.Connect:
                             case DataType.Login:
@@ -522,8 +523,10 @@ namespace VRemoteDesktop.Services.VTCPClient
 
                 DataType commandType = (DataType)bytes[4];
 
-                byte[] data = new byte[bytes.Length - 5];
-                Buffer.BlockCopy(bytes, 5, data, 0, data.Length);
+                string socketId = BitConverter.ToString(bytes, 5, 8);
+
+                byte[] data = new byte[bytes.Length - 13];
+                Buffer.BlockCopy(bytes, 13, data, 0, data.Length);
 
                 Tasks.Add(new DataReceive
                 {
@@ -653,15 +656,6 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
-        }
-        private void ProcessScreenReceived(DataReceive e)
-        {
-            //ignore socket id(8 first bytes)
-            byte[] screen = new byte[e.Data.Length - 8];
-            Buffer.BlockCopy(e.Data, 8, screen, 0, e.Data.Length - 8);
-
-            ScreenType type = (e.Type == DataType.Screen) ? ScreenType.FULLSCREEN : ScreenType.REGIONSCREENS;
-            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(type, screen));
         }
         public void Dispose()
         {

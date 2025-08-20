@@ -48,11 +48,11 @@ namespace VRemoteDesktop.ViewModels
         #region Methods
         public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
-            if(e.Type == ScreenType.FULLSCREEN)
+            if(e.Type == DataType.Screen)
             {
                 ScreenEvent?.Invoke(e.Data);
             }
-            if(e.Type == ScreenType.REGIONSCREENS)
+            if(e.Type == DataType.Chunks)
             {
                 ScreenChunksEvent?.Invoke(e.Data);
             }
