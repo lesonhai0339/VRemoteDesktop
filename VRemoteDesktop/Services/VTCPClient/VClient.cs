@@ -238,45 +238,30 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     try
                     {
-                        switch (task.Type)
+                        if (task.Type == DataType.Screen || task.Type == DataType.Chunks)
                         {
-                            case DataType.Screen:
-                            case DataType.Chunks:
-                                P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
-                                break;
-                            case DataType.P2PAcceptConnect:
-                                Console.WriteLine("Partner accepted");
-                                ProcessP2PConnectAccepted(task.Data);
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
-                                break;
-                            case DataType.P2PRejectConnect:
-                                Console.WriteLine("Client Reject request to p2p connection");
-                                break;
-                            case DataType.Connect:
-                            case DataType.Login:
-                            case DataType.LoginFailed:
-                            case DataType.Disconnect:
-                            case DataType.Ping:
-                            case DataType.Pong:
-                            case DataType.Error:
-                            case DataType.P2PRequestConnect:
-                            case DataType.P2PDataSend:
-                            case DataType.P2PDisconnect:
-                            case DataType.P2PConnectFailed:
-                            case DataType.ScreenOk:
-                            case DataType.ChunksOk:
-                            case DataType.Keyboard:
-                            case DataType.Mouse:
-                            case DataType.Clipboard:
-                            case DataType.Message:
-                            case DataType.FileTransfer:
-                            case DataType.RequestSendFile:
-                            case DataType.AcceptSendFile:
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
-                                break;
-                            default:
-                                break;
+                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
+                            while ((Tasks.TryTake(out var t))
+                                && t.Type == DataType.Screen 
+                                || t.Type == DataType.Chunks);
                         }
+                        else
+                        {
+                            switch (task.Type)
+                            {
+                                case DataType.P2PAcceptConnect:
+                                    Console.WriteLine("Partner accepted");
+                                    ProcessP2PConnectAccepted(task.Data);
+                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
+                                    break;
+                                case DataType.P2PRejectConnect:
+                                    Console.WriteLine("Client Reject request to p2p connection");
+                                    break;
+                                default:
+                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                                    break;
+                            }
+                        }        
                     }
                     catch (Exception ex)
                     {

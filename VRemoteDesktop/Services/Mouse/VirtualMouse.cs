@@ -35,6 +35,7 @@ namespace VRemoteDesktop.Services.Mouse
             if (mouseData.Length != 6)
             {
                 Log.ForContext("FileName", "MouseHook").Error("Number of elements not exaclly");
+                throw new ArgumentException("Invalid arguments exception");
             }
             int senderSceenWidth = int.Parse(mouseData[0]);
             int senderScreenHeight = int.Parse(mouseData[1]);
