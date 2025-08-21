@@ -123,71 +123,31 @@ namespace VRemoteDesktop.ViewModels
             try
             {
                 _resetEvent.Reset();
-
                 string connectionId = StringHelper.RandomStringNumber(8);
-                var newConnection = NewConnect(connectionId, VClientType.Sender);
-
+                var newConnection = _remoteDesktopService.NewClient(connectionId, VClientType.Sender);
+                Connect(newConnection);
                 _resetEvent.Reset();
                 newConnection.P2PConnect(id, password, _remoteDesktopService.GetMe().ToNetworkString());
                 bool flag = _resetEvent.WaitOne(5000);
-                if (flag)
-                {
-                    newConnection.P2PInitConnection(id, password, _remoteDesktopService.GetMe().ToNetworkString());
-                }
-                else
-                {
-
-                }
+               
             }
             catch(Exception ex)
             {
                 Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
             }
         }
-        private VClient NewConnect(string id, VClientType type)
-        {
-            _resetEvent.Reset();
-            var client = _remoteDesktopService.NewClient(id, type);
-            Connect(client);
-            bool flag = _resetEvent.WaitOne(5000);
-            if (flag)
-            {
-                return client;
-            }
-            else
-            {
-                _remoteDesktopService.RemoveClientById(id);
-                return null;
-            }
-
-        }
         #endregion
         #region Events
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
         {
+            Console.WriteLine("Call");
             _resetEvent.Set();
             ClientAcceptRequestRemote?.Invoke(sender, new EventArgs());
         }
 
         private void P2PDataSendEventHandler(object sender, P2PClientDataReceived e)
         {
-            //string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, 8, e.Data.Length - 8, Enums.EncodingType.ASCII).GetResult();
-            //string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
-            //ClientInfo connecter = new ClientInfo
-            //{
-            //    Id = stringArray[0],
-            //    Password = stringArray[1],
-            //    ComputerName = stringArray[2],
-            //    Width = int.Parse(stringArray[3]),
-            //    Height = int.Parse(stringArray[4]),
-            //    MajorVersion = stringArray[5],
-            //    MinorVersion = stringArray[6],
-            //    Ip = stringArray[7],
-            //    Port = stringArray[8],
-            //    PublicIP = stringArray[9],
-            //};
-            //ClientAcceptRequestRemote?.Invoke(connecter);
-            _remoteDesktopService.StartScreenCapture();
+            //_remoteDesktopService.StartScreenCapture();
         }    
         private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
         {
@@ -240,7 +200,6 @@ namespace VRemoteDesktop.ViewModels
             {
                 var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(e.Data);
                 VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
-
             }
             catch (Exception ex)
             {

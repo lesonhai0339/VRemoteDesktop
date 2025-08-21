@@ -150,6 +150,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 //P2P request connect succeeeded
                 _vClientManager.AcceptP2PConnect(_clientInfo.GetMyInfo(), partnerInfo, connectionId);
+                StartScreenCapture();
             }
             else
             {

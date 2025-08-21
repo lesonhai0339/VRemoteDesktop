@@ -245,6 +245,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                                 P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                                 break;
                             case DataType.P2PAcceptConnect:
+                                Console.WriteLine("Partner accepted");
                                 ProcessP2PConnectAccepted(task.Data);
                                 TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
                                 break;
@@ -259,6 +260,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                             case DataType.Pong:
                             case DataType.Error:
                             case DataType.P2PRequestConnect:
+                                Console.WriteLine("P2PRequest connet");
+                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                                break;
                             case DataType.P2PDataSend:
                             case DataType.P2PDisconnect:
                             case DataType.P2PConnectFailed:
@@ -493,12 +497,6 @@ namespace VRemoteDesktop.Services.VTCPClient
             string dataString = StringHelper.StringBuilderWithSeparator("|", SocketId, partnerId, partnerPassword, myInfo);
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
             Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
-        }
-        public void P2PInitConnection(string partnerId, string partnerPassword, string myInfo)
-        {
-            string p2pLoginNetworkString = StringHelper.StringBuilderWithSeparator("|", partnerId, partnerPassword, myInfo);
-            byte[] p2pLoginDataBytes = ByteArrayHelper.ConvertStringToByteArray(p2pLoginNetworkString, Enums.EncodingType.ASCII).GetResult();
-            Send(DataType.P2PDataSend, p2pLoginDataBytes, SocketId, true);
         }
         public void RespondToP2PConnectRequest(DataType type, string data)
         {
