@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Reflection;
@@ -10,16 +11,18 @@ using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
+using VRemoteServer.Models;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
-    public class VClientManager: IDisposable
+    public class VClientManager : IDisposable
     {
         private readonly object _lock = new object();
-        private ConcurrentDictionary<string , VClient> _connections;
+        private ConcurrentDictionary<string, VClient> _connections;
         public EventHandler<P2PClientDataReceived> ClientDataReceived;
         public VClientManager()
         {
@@ -37,7 +40,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             private set
             {
-                lock(_lock)
+                lock (_lock)
                 {
                     _connections = value;
                 }
@@ -50,7 +53,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Connections.TryAdd(id, client);
                 client.TCPClientReceived += TCPClientResponseEventHandler;
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
 
             }
@@ -76,7 +79,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
-                if(Connections.TryGetValue(id, out var client))
+                if (Connections.TryGetValue(id, out var client))
                 {
                     return client;
                 }
@@ -95,11 +98,19 @@ namespace VRemoteDesktop.Services.VTCPClient
             Add(id, client);
             return client;
         }
-        public void AcceptP2PConnect(string myInfo, byte[] data)
+        public void AcceptP2PConnect(ClientInfo myInfo, ClientInfo partnerInfo, string connectionId)
         {
-            string connectionId = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, EncodingType.ASCII).GetResult();
             var newClient = New(connectionId, VClientType.Receiver);
-            newClient.P2PAcceptConnect(myInfo);
+            newClient.UpdatePartnerInfo(partnerInfo);
+            newClient.RespondToP2PConnectRequest(DataType.P2PAcceptConnect, myInfo.ToNetworkString());
+        }
+        public void RejectP2PConnect(object sender ,byte[] data)
+        {
+            if(sender is VClient client)
+            {
+                string connectionId = ByteArrayHelper.ConvertByteArrayToString(data, 0, 8, EncodingType.ASCII).GetResult();
+                client.RespondToP2PConnectRequest(DataType.P2PRejectConnect, connectionId);
+            }
         }
         public void ScreenUpdate(ScreenCaptureEventArgs e)
         {

@@ -31,6 +31,7 @@ namespace VRemoteDesktop.Models
         LoginFailed = 0x90,
         P2PDisconnect = 0x91,
         P2PConnectFailed = 0x92,
-        P2PAcceptConnect = 0x93
+        P2PAcceptConnect = 0x93,
+        P2PRejectConnect = 0x94
     }
 }

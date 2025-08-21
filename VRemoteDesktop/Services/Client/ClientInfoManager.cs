@@ -19,7 +19,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
         string GetLocalIPAddress();
         void UpdateMyInfo(byte[] publicIp);
         void UpdateMyInfo(ClientInfo info);
-        bool IsAuthenticated(byte[] bytes);
+        bool IsAuthenticated(byte[] bytes, out ClientInfo clientInfo, out string connectionId);
     }
     public class ClientInfoManager: IClientInfoManager
     {
@@ -110,13 +110,39 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 _me.Port = info.Port ?? _me.Port;
             }
         }
-        public bool IsAuthenticated(byte[] bytes)
+        public bool IsAuthenticated(byte[] bytes, out ClientInfo clientInfo, out string connectionId)
         {
+            clientInfo = null;
+            connectionId = null;
+
             string dataString = ByteArrayHelper.ConvertByteArrayToString(bytes, Enums.EncodingType.ASCII).GetResult();
+            if (string.IsNullOrEmpty(dataString))
+                return false;
+
             string[] data = StringHelper.StringToStringArrayWithSeparator(dataString);
+            if (data.Length != 13)
+                return false;
 
             bool isIdAndPasswordCorrect = string.Compare(data[1], Me.Id) == 0 && string.Compare(data[2], Me.Password) == 0;
-            return isIdAndPasswordCorrect;
+            if (!isIdAndPasswordCorrect)
+                return false;
+
+            connectionId = data[0];
+            clientInfo = new ClientInfo
+            {
+                Id = data[3],
+                Password = data[4],
+                ComputerName = data[5],
+                Width = int.TryParse(data[6], out int width) ? width : 0,
+                Height = int.TryParse(data[7], out int height) ? height : 0,
+                MajorVersion = data[8],
+                MinorVersion = data[9],
+                Ip = data[10],
+                Port = data[11],
+                PublicIP = data[12],
+            };
+
+            return true;
         }
         #endregion
     }

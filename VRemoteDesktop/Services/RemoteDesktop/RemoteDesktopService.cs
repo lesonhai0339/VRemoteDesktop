@@ -139,13 +139,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void P2PRequestConnectHandler(object sender, P2PClientDataReceived e)
         {
-            if (_clientInfo.IsAuthenticated(e.Data))
+            if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
             {
-                _vClientManager.AcceptP2PConnect(_clientInfo.GetMyInfo().ToNetworkString(), e.Data);
+                //P2P request connect succeeeded
+                _vClientManager.AcceptP2PConnect(_clientInfo.GetMyInfo(), partnerInfo, connectionId);
             }
             else
             {
-                //authenticate failed
+                //P2P request connect failed
+                _vClientManager.RejectP2PConnect(sender, e.Data);
             }
         }
         private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)

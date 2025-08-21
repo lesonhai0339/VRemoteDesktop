@@ -246,6 +246,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                                 ProcessP2PConnectAccepted(task.Data);
                                 TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
                                 break;
+                            case DataType.P2PRejectConnect:
+                                Console.WriteLine("Client Reject request to p2p connection");
+                                break;
                             case DataType.Connect:
                             case DataType.Login:
                             case DataType.LoginFailed:
@@ -471,6 +474,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when connecting to remote server");
             }
         }
+        public void UpdatePartnerInfo(ClientInfo partnerInfo)
+        {
+            Partner = partnerInfo;
+        }
         public void Login(string data)
         {
             byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
@@ -488,10 +495,10 @@ namespace VRemoteDesktop.Services.VTCPClient
             byte[] p2pLoginDataBytes = ByteArrayHelper.ConvertStringToByteArray(p2pLoginNetworkString, Enums.EncodingType.ASCII).GetResult();
             Send(DataType.P2PDataSend, p2pLoginDataBytes, SocketId, true);
         }
-        public void P2PAcceptConnect(string data)
+        public void RespondToP2PConnectRequest(DataType type, string data)
         {
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(data, EncodingType.ASCII).GetResult();
-            Send(DataType.P2PAcceptConnect, dataBytes, SocketId, true);
+            Send(type, dataBytes, SocketId, true);
         }
         private void ProcessP2PConnectAccepted(byte[] dataReceived)
         {

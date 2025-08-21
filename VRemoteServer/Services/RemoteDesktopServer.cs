@@ -54,7 +54,10 @@ namespace VRemoteServer.Services
                             await ProcessP2PRequestConnect(task);
                             break;
                         case Enums.CommandType.P2PAcceptConnect:
-                            await ProcessP2PAcceptConnect(task);
+                            await ProcessRespondP2PRequestConnect(task);
+                            break;
+                        case Enums.CommandType.P2PRejectConnect:
+                            await ProcessRespondP2PRequestConnect(task);
                             break;
                         case Enums.CommandType.P2PDataSend:
                             await ProcessP2PDataSend(task);
@@ -220,13 +223,32 @@ namespace VRemoteServer.Services
             }
         }
 
-        public async Task ProcessP2PAcceptConnect(RemoteTask task)
+        public async Task ProcessRespondP2PRequestConnect(RemoteTask task)
         {
-            if (_connections.TryGetValue(task.PartnerId, out var connection))
+            if (task.CommandType == Enums.CommandType.P2PAcceptConnect)
             {
-                connection.Receiver = task.Client;
-                await Send(connection.Sender, task.Data);
+                if (_connections.TryGetValue(task.PartnerId, out var connection))
+                {
+                    connection.Receiver = task.Client;
+                    await Send(connection.Sender, task.Data);
+                }
             }
+            else
+            {
+                string connectionId = Encoding.ASCII.GetString(task.Data);
+                try
+                {
+                    if (_connections.TryGetValue(connectionId, out var connection))
+                    {
+                        await SendCommandAsync(connection.Sender, connectionId, Enums.CommandType.P2PRejectConnect, new byte[0]);
+                    }
+                }
+                finally
+                {
+                    _connections.TryRemove(connectionId, out _);
+                }
+            }
+
         }
 
 
@@ -237,7 +259,7 @@ namespace VRemoteServer.Services
                 string connectionId = Encoding.ASCII.GetString(task.Data, 13, 8);
                 ConnectionInfo connection = new ConnectionInfo(connectionId: connectionId, sender: task.Client);
                 _connections.TryAdd(connectionId, connection);
-                await SendCommandAsync(client.Client, task.PartnerId, Enums.CommandType.P2PRequestConnect, Encoding.ASCII.GetBytes(connectionId));
+                await Send(client.Client, task.Data);
             }
             else
             {
