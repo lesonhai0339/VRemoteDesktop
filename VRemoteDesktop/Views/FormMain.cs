@@ -118,7 +118,7 @@ namespace VRemoteDesktop
         }
         private void P2PConnec(string id, string password)
         {
-            ViewModel.P2PHandshake(id, password);
+            ViewModel.RequestP2PConnect(id, password);
         }
         private void UpdateConnectionStatus()
         {

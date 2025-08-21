@@ -476,11 +476,11 @@ namespace VRemoteDesktop.Services.VTCPClient
             byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
             Send(DataType.Login, encoder);
         }
-        public void P2PHandshake(string partnerId)
+        public void P2PConnect(string partnerId, string partnerPassword, string myInfo)
         {
-            string p2pHandShakeNetworkString = StringHelper.StringBuilderWithSeparator("|", SocketId);
-            byte[] p2pHandShakeDataBytes = ByteArrayHelper.ConvertStringToByteArray(p2pHandShakeNetworkString, Enums.EncodingType.ASCII).GetResult();
-            Send(DataType.P2PRequestConnect, p2pHandShakeDataBytes, partnerId, true);
+            string dataString = StringHelper.StringBuilderWithSeparator("|", SocketId, partnerId, partnerPassword, myInfo);
+            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
+            Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
         public void P2PInitConnection(string partnerId, string partnerPassword, string myInfo)
         {

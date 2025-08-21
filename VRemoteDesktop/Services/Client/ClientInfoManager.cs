@@ -19,6 +19,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
         string GetLocalIPAddress();
         void UpdateMyInfo(byte[] publicIp);
         void UpdateMyInfo(ClientInfo info);
+        bool IsAuthenticated(byte[] bytes);
     }
     public class ClientInfoManager: IClientInfoManager
     {
@@ -108,6 +109,14 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 _me.PublicIP = info.PublicIP ?? _me.PublicIP;
                 _me.Port = info.Port ?? _me.Port;
             }
+        }
+        public bool IsAuthenticated(byte[] bytes)
+        {
+            string dataString = ByteArrayHelper.ConvertByteArrayToString(bytes, Enums.EncodingType.ASCII).GetResult();
+            string[] data = StringHelper.StringToStringArrayWithSeparator(dataString);
+
+            bool isIdAndPasswordCorrect = string.Compare(data[1], Me.Id) == 0 && string.Compare(data[2], Me.Password) == 0;
+            return isIdAndPasswordCorrect;
         }
         #endregion
     }

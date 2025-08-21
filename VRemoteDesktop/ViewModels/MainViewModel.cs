@@ -118,7 +118,7 @@ namespace VRemoteDesktop.ViewModels
             var client = _remoteDesktopService.GetClientById(_id);
             client.Login(_remoteDesktopService.GetMe().ToNetworkString());
         }
-        public void P2PHandshake(string id, string password)
+        public void RequestP2PConnect(string id, string password)
         {
             try
             {
@@ -128,7 +128,7 @@ namespace VRemoteDesktop.ViewModels
                 var newConnection = NewConnect(connectionId, VClientType.Sender);
 
                 _resetEvent.Reset();
-                newConnection.P2PHandshake(id);
+                newConnection.P2PConnect(id, password, _remoteDesktopService.GetMe().ToNetworkString());
                 bool flag = _resetEvent.WaitOne(5000);
                 if (flag)
                 {
@@ -141,7 +141,7 @@ namespace VRemoteDesktop.ViewModels
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", nameof(P2PHandshake)).Error(ex, "Error at P2PConnect");
+                Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
             }
         }
         private VClient NewConnect(string id, VClientType type)
@@ -165,21 +165,6 @@ namespace VRemoteDesktop.ViewModels
         #region Events
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
         {
-            //string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
-            //string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
-            //ClientInfo connecter = new ClientInfo
-            //{
-            //    Id = stringArray[0],
-            //    Password = stringArray[1],
-            //    ComputerName = stringArray[2],
-            //    Width = int.Parse(stringArray[3]),
-            //    Height = int.Parse(stringArray[4]),
-            //    MajorVersion = stringArray[5],
-            //    MinorVersion = stringArray[6],
-            //    Ip = stringArray[7],
-            //    Port = stringArray[8],
-            //    PublicIP = stringArray[9],
-            //};
             _resetEvent.Set();
             ClientAcceptRequestRemote?.Invoke(sender, new EventArgs());
         }

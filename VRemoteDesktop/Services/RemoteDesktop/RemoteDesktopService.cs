@@ -139,7 +139,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void P2PRequestConnectHandler(object sender, P2PClientDataReceived e)
         {
-            _vClientManager.AcceptP2PConnect(_clientInfo.GetMyInfo().ToNetworkString(), e.Data);
+            if (_clientInfo.IsAuthenticated(e.Data))
+            {
+                _vClientManager.AcceptP2PConnect(_clientInfo.GetMyInfo().ToNetworkString(), e.Data);
+            }
+            else
+            {
+                //authenticate failed
+            }
         }
         private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)
         {
