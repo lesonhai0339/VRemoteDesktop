@@ -131,6 +131,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public VClient NewClient(string id, VClientType type)
         {
             var newClient = _vClientManager.New(id, type);
+            if (_vClientManager.Connections.Count > 0)
+            {
+                StartKeyboardListener();
+                bool hasReceiver = _vClientManager.Connections.Any(x => x.Value.ClientType == VClientType.Receiver);
+                if (hasReceiver)
+                    StartScreenCapture();
+            }
             return newClient;
         }
         public ConcurrentDictionary<string, VClient> GetClients()

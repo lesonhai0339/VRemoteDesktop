@@ -41,6 +41,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         private BackgroundWorker _receiveBackgroundWorker;
         private BackgroundWorker _backgroundWorker2;
 
+        private ManualResetEvent _resetEvent;
         private CancellationTokenSource _cts;
         private CancellationToken _cancellationToken;
 
@@ -73,6 +74,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             _socketId = socketId;
             _clientType = clientType;
+            _resetEvent = new ManualResetEvent(false);
             Partner = null;
         }
         #region Properties
@@ -397,6 +399,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
+                _resetEvent.Reset();
                 if (string.IsNullOrWhiteSpace(ip) || port <= 0)
                 {
                     Log.ForContext("FileName", nameof(Connect)).Error("Invalidate argument at Connect method");
@@ -415,6 +418,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     }
                     Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
                     Socket.BeginConnect(remoteEP, new AsyncCallback(ConnectCallback), Socket);
+                    _resetEvent.WaitOne(5000);
                 }
                 else
                 {
@@ -441,7 +445,8 @@ namespace VRemoteDesktop.Services.VTCPClient
         public void ConnectCallback(IAsyncResult ar)
         {
             try
-            { 
+            {
+                _resetEvent.Set();
                 Socket.EndConnect(ar);
                 if (!Socket.Connected)
                 {

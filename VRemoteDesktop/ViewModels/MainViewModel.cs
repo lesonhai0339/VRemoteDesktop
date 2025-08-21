@@ -57,7 +57,7 @@ namespace VRemoteDesktop.ViewModels
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(8);
-            VClient client = new VClient(_id, Enums.VClientType.Sender);
+            VClient client = _remoteDesktopService.NewClient(_id, Enums.VClientType.Sender);
             _remoteDesktopService.AddClient(_id, client);
         }
         #region Properties

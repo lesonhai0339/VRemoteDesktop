@@ -8,6 +8,7 @@ using System.Net.Sockets;
 using System.Reflection;
 using System.Security.Policy;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
@@ -21,7 +22,10 @@ namespace VRemoteDesktop.Services.VTCPClient
 {
     public class VClientManager : IDisposable
     {
+        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.Getvalue("RemoteServerIP");
+        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.Getvalue("RemoteServerPort");
         private readonly object _lock = new object();
+
         private ConcurrentDictionary<string, VClient> _connections;
         public EventHandler<P2PClientDataReceived> ClientDataReceived;
         public VClientManager()
@@ -101,6 +105,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         public void AcceptP2PConnect(ClientInfo myInfo, ClientInfo partnerInfo, string connectionId)
         {
             var newClient = New(connectionId, VClientType.Receiver);
+            newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
             newClient.UpdatePartnerInfo(partnerInfo);
             newClient.RespondToP2PConnectRequest(DataType.P2PAcceptConnect, myInfo.ToNetworkString());
         }
