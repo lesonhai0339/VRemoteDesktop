@@ -18,6 +18,7 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.Keyboard;
+using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
@@ -80,20 +81,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public string GetClipboardString()
         {
-            string clipboard = _globalHook.GetClipboard();
-            if(!string.IsNullOrEmpty(clipboard))
-                return clipboard;
-            return null;
+            return _globalHook.GetClipboard(); ;
         }
         public bool SetClipboard(byte[] data)
         {
-            bool isSucceeded = _globalHook.SetClipboard(data);
-            return isSucceeded;
+            return _globalHook.SetClipboard(data); ;
         }
         public bool SetClipboard(byte[] data, int index, int length)
         {
-            bool isSucceeded = _globalHook.SetClipboard(data, index, length);
-            return isSucceeded;
+            return _globalHook.SetClipboard(data, index, length); ;
         }
         public void StartScreenCapture()
         {
@@ -103,24 +99,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             _globalHook.StopScreenCapture();
         }
-        public void AddClient(string id, VClient client)
-        {
-            _vClientManager.Add(id, client);
-            if(_vClientManager.Connections.Count > 0)
-            {
-                StartKeyboardListener();
-                bool hasReceiver = _vClientManager.Connections.Any(x => x.Value.ClientType == VClientType.Receiver);
-                if(hasReceiver)
-                    StartScreenCapture();
-            }
-        }
         public void RemoveClientById(string id)
         {
             _vClientManager.Remove(id);
             if (_vClientManager.Connections.Count == 0)
             {
                 StopKeyboardListener();
-                //StopScreenCapture();
+
+                if (!_vClientManager.HasClientOfType(VClientType.Receiver))
+                    StopScreenCapture();
             }
         }
         public VClient GetClientById(string id)
@@ -134,8 +121,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (_vClientManager.Connections.Count > 0)
             {
                 StartKeyboardListener();
-                bool hasReceiver = _vClientManager.Connections.Any(x => x.Value.ClientType == VClientType.Receiver);
-                if (hasReceiver)
+
+                if (_vClientManager.HasClientOfType(VClientType.Receiver))
                     StartScreenCapture();
             }
             return newClient;
@@ -150,7 +137,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 //P2P request connect succeeeded
                 _vClientManager.AcceptP2PConnect(_clientInfo.GetMyInfo(), partnerInfo, connectionId);
-                StartScreenCapture();
+
+                if (_vClientManager.HasClientOfType(VClientType.Receiver))
+                    StartScreenCapture();
             }
             else
             {
@@ -161,6 +150,42 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)
         {
             _vClientManager.ScreenUpdate(e);
+        }
+        private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)
+        {
+            try
+            {
+                var me = GetMe();
+                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(e.Data, me.Width, me.Height);
+                bool flag = VirtualMouse.MouseEvent(mouseEvent);
+                if (!flag)
+                {
+                    Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error("Mouse event failed");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing mouse data");
+            }
+        }
+        private void KeyboardReceivedEventHandler(object sender, P2PClientDataReceived e)
+        {
+            try
+            {
+                var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(e.Data);
+                VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", nameof(KeyboardReceivedEventHandler)).Error(ex, "Error processing keyboard data");
+            }
+        }
+        private void ProcessP2PDisconnect(object sender, P2PClientDataReceived e)
+        {
+            if (sender is VClient client)
+            {
+                RemoveClientById(client.SocketId);
+            }
         }
         #endregion
         #region Events
@@ -181,6 +206,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
                 case DataType.P2PRequestConnect:
                     P2PRequestConnectHandler(sender, e);
+                    break;
+                case DataType.Mouse:
+                    MouseReceivedEventHandler(sender, e);
+                    break;
+                case DataType.Keyboard:
+                    KeyboardReceivedEventHandler(sender, e);
+                    break;
+                case DataType.P2PDisconnect:
+                    ProcessP2PDisconnect(sender, e);
                     break;
                 default:
                     DataReceivedEvent?.Invoke(sender, e);

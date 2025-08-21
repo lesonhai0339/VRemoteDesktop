@@ -17,6 +17,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteServer.Models;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
+using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
@@ -24,90 +25,75 @@ namespace VRemoteDesktop.Services.VTCPClient
     {
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.Getvalue("RemoteServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.Getvalue("RemoteServerPort");
-        private readonly object _lock = new object();
 
-        private ConcurrentDictionary<string, VClient> _connections;
+        private readonly ConcurrentDictionary<string, VClient> _connections;
         public EventHandler<P2PClientDataReceived> ClientDataReceived;
         public VClientManager()
         {
-            Connections = new ConcurrentDictionary<string, VClient>();
+            _connections = new ConcurrentDictionary<string, VClient>();
         }
-        #region Properties
-        public ConcurrentDictionary<string, VClient> Connections
+        public ConcurrentDictionary<string, VClient> Connections => _connections;
+        public bool HasClientOfType(VClientType type)
         {
-            get
+            foreach(var connection in _connections)
             {
-                lock (_lock)
-                {
-                    return _connections;
-                }
+                if(connection.Value.ClientType == type)
+                    return true;
             }
-            private set
-            {
-                lock (_lock)
-                {
-                    _connections = value;
-                }
-            }
+            return false;
         }
         public void Add(string id, VClient client)
         {
-            try
+            if (!_connections.TryAdd(id, client))
             {
-                Connections.TryAdd(id, client);
-                client.TCPClientReceived += TCPClientResponseEventHandler;
+                (client as IDisposable)?.Dispose();
+                throw new InvalidOperationException(string.Format("Client with Id:{0} already exists", id));
             }
-            catch (Exception ex)
-            {
-
-            }
+            client.TCPClientReceived += TCPClientResponseEventHandler;
         }
         public bool Remove(string id)
         {
-            try
+            if (_connections.TryRemove(id, out var client))
             {
-                if (Connections.TryGetValue(id, out var client))
-                {
-                    client.TCPClientReceived -= TCPClientResponseEventHandler;
-                    return Connections.TryRemove(id, out _);
-                }
+                client.TCPClientReceived -= TCPClientResponseEventHandler;
+                (client as IDisposable)?.Dispose();
+                return true;
             }
-            catch (Exception ex)
-            {
-                return false;
-            }
-            return false;
+            throw new InvalidOperationException(string.Format("Cannot remove connection with Id:{0}", id));
         }
 
         public VClient GetByKey(string id)
         {
-            try
+            if (_connections.TryGetValue(id, out var client))
             {
-                if (Connections.TryGetValue(id, out var client))
-                {
-                    return client;
-                }
-                return null;
-
+                return client;
             }
-            catch (Exception ex)
-            {
-                return null;
-
-            }
+            throw new InvalidOperationException(string.Format("Connection with Id:{0} does not exists", id));
         }
         public VClient New(string id, VClientType type)
         {
+            if(_connections.TryGetValue(id, out var existed))
+            {
+                return existed;
+            }
+
             VClient client = new VClient(id, type);
             Add(id, client);
             return client;
         }
         public void AcceptP2PConnect(ClientInfo myInfo, ClientInfo partnerInfo, string connectionId)
         {
-            var newClient = New(connectionId, VClientType.Receiver);
-            newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
-            newClient.UpdatePartnerInfo(partnerInfo);
-            newClient.RespondToP2PConnectRequest(DataType.P2PAcceptConnect, myInfo.ToNetworkString());
+            try
+            {
+                var newClient = New(connectionId, VClientType.Receiver);
+                newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+                newClient.UpdatePartnerInfo(partnerInfo);
+                newClient.RespondToP2PConnectRequest(DataType.P2PAcceptConnect, myInfo.ToNetworkString());
+            }
+            catch(Exception ex)
+            {
+                throw new Exception("AcceptP2PConnect", ex);
+            }
         }
         public void RejectP2PConnect(object sender ,byte[] data)
         {
@@ -115,6 +101,10 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 string connectionId = ByteArrayHelper.ConvertByteArrayToString(data, 0, 8, EncodingType.ASCII).GetResult();
                 client.RespondToP2PConnectRequest(DataType.P2PRejectConnect, connectionId);
+            }
+            else
+            {
+                throw new ArgumentException(string.Format("Invalid arguments"));
             }
         }
         public void ScreenUpdate(ScreenCaptureEventArgs e)
@@ -142,6 +132,5 @@ namespace VRemoteDesktop.Services.VTCPClient
                 _connections.Clear();
             }
         }
-        #endregion
     }
 }

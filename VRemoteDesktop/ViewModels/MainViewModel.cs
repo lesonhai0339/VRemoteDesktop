@@ -57,8 +57,7 @@ namespace VRemoteDesktop.ViewModels
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(8);
-            VClient client = _remoteDesktopService.NewClient(_id, Enums.VClientType.Sender);
-            _remoteDesktopService.AddClient(_id, client);
+            _remoteDesktopService.NewClient(_id, VClientType.None);
         }
         #region Properties
         public string MyId
@@ -122,14 +121,15 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                _resetEvent.Reset();
                 string connectionId = StringHelper.RandomStringNumber(8);
                 var newConnection = _remoteDesktopService.NewClient(connectionId, VClientType.Sender);
+                if (newConnection == null)
+                {
+                    MessageBox.Show("Không thể thiết lập kết nối", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return;
+                }
                 Connect(newConnection);
-                _resetEvent.Reset();
-                newConnection.P2PConnect(id, password, _remoteDesktopService.GetMe().ToNetworkString());
-                bool flag = _resetEvent.WaitOne(5000);
-               
+                newConnection.P2PConnect(id, password, _remoteDesktopService.GetMe().ToNetworkString());               
             }
             catch(Exception ex)
             {
@@ -140,15 +140,9 @@ namespace VRemoteDesktop.ViewModels
         #region Events
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
         {
-            Console.WriteLine("Call");
             _resetEvent.Set();
             ClientAcceptRequestRemote?.Invoke(sender, new EventArgs());
-        }
-
-        private void P2PDataSendEventHandler(object sender, P2PClientDataReceived e)
-        {
-            //_remoteDesktopService.StartScreenCapture();
-        }    
+        }   
         private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
         {
             if(sender  is VClient client)
@@ -167,61 +161,12 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.P2PAcceptConnect:
                         PartnerAcceptP2PConnect(sender, e);
                         break;
-                    case DataType.P2PDataSend:
-                        P2PDataSendEventHandler(sender, e);
-                        break;
-                    case DataType.Mouse:
-                        MouseReceivedEventHandler(sender, e);
-                        break;
-                    case DataType.Keyboard:
-                        KeyboardReceivedEventHandler(sender, e);
-                        break;
-                    case DataType.P2PDisconnect:
-                        ProcessP2PDisconnect(sender, e);
-                        break;
                     case DataType.Error:
                         _resetEvent.Set();
                         break;
                     default:
                         break;
                 }
-            }
-        }
-        private void ProcessP2PDisconnect(object sender, P2PClientDataReceived e)
-        {
-            if(sender is VClient client)
-            {
-                _remoteDesktopService.RemoveClientById(client.SocketId);
-            }
-        }
-        private void KeyboardReceivedEventHandler(object sender, P2PClientDataReceived e)
-        {
-            try
-            {
-                var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(e.Data);
-                VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing keyboard data");
-            }
-        }
-        private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)
-        {
-            try
-            {
-                var me = _remoteDesktopService.GetMe();
-                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(e.Data, me.Width, me.Height);
-
-                bool flag = VirtualMouse.MouseEvent(mouseEvent);
-                if (!flag)
-                {
-                    Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error("Mouse event failed");
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing mouse data");
             }
         }
         private void ConnectEventHandler(bool flag)

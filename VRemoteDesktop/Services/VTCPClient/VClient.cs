@@ -260,9 +260,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                             case DataType.Pong:
                             case DataType.Error:
                             case DataType.P2PRequestConnect:
-                                Console.WriteLine("P2PRequest connet");
-                                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
-                                break;
                             case DataType.P2PDataSend:
                             case DataType.P2PDisconnect:
                             case DataType.P2PConnectFailed:
@@ -494,6 +491,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void P2PConnect(string partnerId, string partnerPassword, string myInfo)
         {
+            Console.WriteLine("Request connect");
             string dataString = StringHelper.StringBuilderWithSeparator("|", SocketId, partnerId, partnerPassword, myInfo);
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
             Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);

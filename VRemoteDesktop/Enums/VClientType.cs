@@ -7,6 +7,7 @@ namespace VRemoteDesktop.Enums
 {
     public enum VClientType
     {
+        None,
         Sender,
         Receiver
     }
