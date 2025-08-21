@@ -49,6 +49,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
             _globalHook.KeyboardReceived += KeyboardEventHandler;
             _vClientManager.ClientDataReceived += ClientDataReceivedEventHandler;
+            StartKeyboardListener();
+
         }
 
         #region Properties
@@ -104,8 +106,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _vClientManager.Remove(id);
             if (_vClientManager.Connections.Count == 0)
             {
-                StopKeyboardListener();
-
                 if (!_vClientManager.HasClientOfType(VClientType.Receiver))
                     StopScreenCapture();
             }
@@ -120,8 +120,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var newClient = _vClientManager.New(id, type);
             if (_vClientManager.Connections.Count > 0)
             {
-                StartKeyboardListener();
-
                 if (_vClientManager.HasClientOfType(VClientType.Receiver))
                     StartScreenCapture();
             }
@@ -233,6 +231,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if (disposing)
                 {
+                    StopKeyboardListener();
                     if(_globalHook != null)
                     {
                         _globalHook.ScreenCaptureChanged -= ScreenCaptureEventHandler;
