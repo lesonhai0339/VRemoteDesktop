@@ -54,7 +54,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             _cts = new CancellationTokenSource();
             _cancellationToken = _cts.Token;
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
-            Tasks = new BlockingCollection<DataReceive>();
+            Tasks = new BlockingCollection<DataReceive>(boundedCapacity: 10);
             ReceivedWorker = new BackgroundWorker();
             ReceivedWorker.WorkerSupportsCancellation = true;
 
@@ -525,7 +525,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 byte[] data = new byte[bytes.Length - 13];
                 Buffer.BlockCopy(bytes, 13, data, 0, data.Length);
 
-                Tasks.Add(new DataReceive
+                Tasks.TryAdd(new DataReceive
                 {
                     Type = commandType,
                     Length = length,
@@ -537,60 +537,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
-        private byte[] PrepareHeader(DataType type, string partnerId, byte[] data)
-        {
-            byte[] resultBytes = new byte[data.Length + 13];
-
-            Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 0, 4);
-
-            resultBytes[4] = (byte)type;
-            Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, resultBytes, 5, 8);
-            Buffer.BlockCopy(data, 0, resultBytes, 13, data.Length);
-
-            return resultBytes;
-        }
-        private byte[] GenerateP2PHeader(DataType type, int dataSize, byte[] socketId)
-        {
-            int totalSize = dataSize + SocketId.Length + 5; // 5 bytes added are 4 for totalSize and 1 for type
-            byte[] header = new byte[5 + SocketId.Length];
-
-            Buffer.BlockCopy(BitConverter.GetBytes(totalSize), 0, header, 0, 4);
-
-            header[4] = (byte)type;
-            Buffer.BlockCopy(socketId, 0, header, 5, 8);
-
-            return header;
-        }
-        public void Send(DataType type, byte[] data, string partnerId = "00000000", bool isSendHeader = true)
-        {
-            try
-            {
-                if (isSendHeader)
-                {
-                    data = PrepareHeader(type, partnerId, data);
-                }
-                Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
-                {
-                    try
-                    {
-                        Socket.EndSend(ar);
-                    }
-                    catch (SocketException ex)
-                    {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-                    }
-                }, null);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
-            }
-        }
-
         public void Send(DataType type, ListByteArray list, int totalSize)
         {
             try
@@ -632,6 +578,58 @@ namespace VRemoteDesktop.Services.VTCPClient
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
+            }
+        }
+
+        public void SendListByteArray(List<byte[]> list)
+        {
+            for (int i = 0; i < list.Count; i++)
+            {
+                SckState test = new SckState
+                {
+                    Data = list[i],
+                    Remained = list[i].Length,
+                    Sent = 0,
+                    Timeout = DateTime.Now
+                };
+
+            }
+        }
+        private void Send1(SckState t)
+        {
+            try
+            {
+                Socket.BeginSend(t.Data, t.Sent, t.Remained, SocketFlags.None, SendCallback, t);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
+            }
+        }
+        private void SendCallback(IAsyncResult ar)
+        {
+            var state = (SckState)ar.AsyncState;
+            try
+            {
+                int num =  Socket.EndSend(ar);
+
+                if(num <= 0)
+                {
+                    //TODO: handle error here
+                }
+
+                state.Sent += num;
+                state.Remained -= num;
+
+                if(state.Remained > 0)
+                {
+                    Send1(state);
+                }
+
+            }
+            catch(Exception ex)
+            {
+                //TODO: handle error here
             }
         }
         public void Dispose()

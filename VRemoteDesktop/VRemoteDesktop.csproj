@@ -111,6 +111,7 @@
     <Compile Include="Models\ScreenCaptureConfig.cs" />
     <Compile Include="Models\ScreenRegion.cs" />
     <Compile Include="Models\StateObject.cs" />
+    <Compile Include="Models\SckState.cs" />
     <Compile Include="Services\Authentication\Authentication.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
