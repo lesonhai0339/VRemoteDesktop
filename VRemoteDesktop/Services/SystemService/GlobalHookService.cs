@@ -129,8 +129,11 @@ namespace VRemoteDesktop.Services.SystemService
         {
             try
             {
-                var bytes = Encoding.Unicode.GetBytes(data + "\0");
-                return VirtualClipboard.SetClipboard(bytes, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
+                string text = Encoding.UTF8.GetString(data);
+
+                byte[] unicodeData = Encoding.Unicode.GetBytes(text + '\0');
+
+                return VirtualClipboard.SetClipboard(data, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
             }
             catch (Exception ex)
             {
