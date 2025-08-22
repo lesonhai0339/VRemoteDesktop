@@ -238,12 +238,19 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     try
                     {
+                      
                         if (task.Type == DataType.Screen || task.Type == DataType.Chunks)
                         {
-                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
-                            while ((Tasks.TryTake(out var t))
-                                && t.Type == DataType.Screen 
-                                || t.Type == DataType.Chunks);
+                            var lastTask = task;
+
+                            while (Tasks.TryTake(out var t, 0) 
+                                && t!= null 
+                                && (t.Type == DataType.Screen || t.Type == DataType.Chunks))
+                            {
+                                lastTask = t;
+                            }
+
+                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(lastTask.Type, lastTask.Data));
                         }
                         else
                         {

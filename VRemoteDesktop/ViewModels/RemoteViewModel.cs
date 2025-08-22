@@ -60,7 +60,7 @@ namespace VRemoteDesktop.ViewModels
             _vClient.AddWork(new TaskObject
             {
                 TaskType = DataType.Clipboard,
-                Data = Encoding.ASCII.GetBytes(clipboard),
+                Data = Encoding.UTF8.GetBytes(clipboard),
                 IsSendHeader = true,
                 SessionId = _vClient.SocketId
             });
