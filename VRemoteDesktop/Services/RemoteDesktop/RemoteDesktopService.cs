@@ -53,6 +53,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         }
 
+
+
         #region Properties
         public bool Disposed => _disposed;
         #endregion
@@ -153,13 +155,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                var me = GetMe();
-                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(e.Data, me.Width, me.Height);
-                bool flag = VirtualMouse.MouseEvent(mouseEvent);
-                if (!flag)
-                {
-                    Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error("Mouse event failed");
-                }
+                _globalHook.MouseReceivedEventHandler(GetMe().Width, GetMe().Height, e.Data);
             }
             catch (Exception ex)
             {
@@ -170,8 +166,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(e.Data);
-                VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
+                _globalHook.KeyboardReceivedEventHandler(e.Data);
             }
             catch (Exception ex)
             {
@@ -193,7 +188,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void KeyboardEventHandler(object sender, KeyboardEventArgs e)
         {
-            KeyboardEvent?.Invoke(sender, e);
+            if (_globalHook.CheckClipboard(e, out var data, out var type))
+            {
+                _vClientManager.Send(type, data);
+            }
+            else
+            {
+                KeyboardEvent?.Invoke(sender, e);
+            }
         }
         private void ClientDataReceivedEventHandler(object sender, P2PClientDataReceived e)
         {

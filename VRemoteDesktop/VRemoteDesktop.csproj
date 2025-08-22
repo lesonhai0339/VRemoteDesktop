@@ -112,7 +112,6 @@
     <Compile Include="Models\StateObject.cs" />
     <Compile Include="Services\Authentication\Authentication.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
-    <Compile Include="Services\FormManager\FormManager.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
     <Compile Include="Services\Keyboard\VirtualClipboard.cs" />
     <Compile Include="Services\Keyboard\VirtualKeyboard.cs" />
@@ -123,6 +122,7 @@
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
+    <Compile Include="Services\VTCPClient\P2PConnectionManager.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClient\VClientManager.cs" />
     <Compile Include="Startup.cs" />

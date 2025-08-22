@@ -9,6 +9,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Keyboard;
+using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.ScreenCapture;
 using static VRemoteDesktop.Utils.Logger;
 
@@ -106,6 +107,32 @@ namespace VRemoteDesktop.Services.SystemService
             {
 
             }
+        }
+        public bool CheckClipboard(KeyboardEventArgs e, out byte[] clipboardBytes, out DataType type)
+        {
+            clipboardBytes = null;
+            type = DataType.None;
+            if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
+            {
+                type = DataType.Clipboard;
+                clipboardBytes = Encoding.UTF8.GetBytes(GetClipboard());
+                return true;
+            }
+            return false;
+        }
+        public void MouseReceivedEventHandler(int width, int height, byte[] data)
+        {
+            var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(data, width, height);
+            bool flag = VirtualMouse.MouseEvent(mouseEvent);
+            if (!flag)
+            {
+                throw new Exception("Failed handler mouse event");
+            }
+        }
+        public void KeyboardReceivedEventHandler(byte[] data)
+        {
+            var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(data);
+            VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
         }
         public string GetClipboard()
         {

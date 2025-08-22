@@ -25,7 +25,6 @@ namespace VRemoteDesktop.Services.VTCPClient
     {
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.Getvalue("RemoteServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.Getvalue("RemoteServerPort");
-
         private readonly ConcurrentDictionary<string, VClient> _connections;
         public EventHandler<P2PClientDataReceived> ClientDataReceived;
         public VClientManager()
@@ -81,6 +80,10 @@ namespace VRemoteDesktop.Services.VTCPClient
             Add(id, client);
             return client;
         }
+        private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
+        {
+            ClientDataReceived?.Invoke(sender, e);
+        }
         public void AcceptP2PConnect(ClientInfo myInfo, ClientInfo partnerInfo, string connectionId)
         {
             try
@@ -90,14 +93,14 @@ namespace VRemoteDesktop.Services.VTCPClient
                 newClient.UpdatePartnerInfo(partnerInfo);
                 newClient.RespondToP2PConnectRequest(DataType.P2PAcceptConnect, myInfo.ToNetworkString());
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 throw new Exception("AcceptP2PConnect", ex);
             }
         }
-        public void RejectP2PConnect(object sender ,byte[] data)
+        public void RejectP2PConnect(object sender, byte[] data)
         {
-            if(sender is VClient client)
+            if (sender is VClient client)
             {
                 string connectionId = ByteArrayHelper.ConvertByteArrayToString(data, 0, 8, EncodingType.ASCII).GetResult();
                 client.RespondToP2PConnectRequest(DataType.P2PRejectConnect, connectionId);
@@ -115,11 +118,14 @@ namespace VRemoteDesktop.Services.VTCPClient
                     connection.Value.SendScreen(e.Type, e.Data, e.TotalSize);
             }
         }
-        private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
+        public void Send(DataType type, byte[] data)
         {
-            ClientDataReceived?.Invoke(sender, e);
+            foreach (var connection in _connections)
+            {
+                if (connection.Value.ClientType == VClientType.Receiver)
+                    connection.Value.Send(type, data, connection.Value.SocketId, true);
+            }
         }
-
         public void Dispose()
         {
             Dispose(true);
