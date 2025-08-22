@@ -90,6 +90,7 @@
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
+    <Compile Include="Helpers\ListByteArray.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
     <Compile Include="Layouts\FileMessage.cs">
       <SubType>Component</SubType>
@@ -123,6 +124,7 @@
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
     <Compile Include="Services\VTCPClient\P2PConnectionManager.cs" />
+    <Compile Include="Services\VTCPClient\TCPClient.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClient\VClientManager.cs" />
     <Compile Include="Startup.cs" />
