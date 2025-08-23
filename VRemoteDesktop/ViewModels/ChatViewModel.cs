@@ -46,6 +46,7 @@ namespace VRemoteDesktop.ViewModels
             _clients.Add(key, value);
             value.P2PChatReceived += P2PChatReceivedEventHandler;
             ClientAdded = key;
+            _currentConnectionActivate = key;
         }
         public void RemoveConnection(string key)
         {
