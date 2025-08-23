@@ -1,28 +1,13 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Configuration;
-using System.Linq;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
-using VRemoteDesktop.Services.Authentication;
-using VRemoteDesktop.Services.ConnectionManager;
-using VRemoteDesktop.Services.Keyboard;
-using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.RemoteDesktop;
-using VRemoteDesktop.Services.ScreenCapture;
-using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
-using VRemoteDesktop.Utils;
-using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.ViewModels
