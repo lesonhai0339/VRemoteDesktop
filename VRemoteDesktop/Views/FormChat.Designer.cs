@@ -42,6 +42,7 @@
             this.fpnNumberChatConnection.Name = "fpnNumberChatConnection";
             this.fpnNumberChatConnection.Size = new System.Drawing.Size(330, 98);
             this.fpnNumberChatConnection.TabIndex = 9;
+            this.fpnNumberChatConnection.Paint += new System.Windows.Forms.PaintEventHandler(this.fpnNumberChatConnection_Paint);
             // 
             // fpnChat
             // 

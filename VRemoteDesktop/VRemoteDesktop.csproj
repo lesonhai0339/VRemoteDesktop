@@ -92,10 +92,20 @@
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\ListByteArray.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
+    <Compile Include="Layouts\CustomPanel.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Layouts\CustomTableLayout.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Layouts\CustomUserControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
     <Compile Include="Layouts\FileMessage.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Models\ErrorResponse.cs" />
+    <Compile Include="Models\EventRegistration.cs" />
     <Compile Include="Models\MouseData.cs" />
     <Compile Include="Models\P2PConnectionResponse.cs" />
     <Compile Include="Models\TaskGroup.cs" />
@@ -112,6 +122,7 @@
     <Compile Include="Models\ScreenRegion.cs" />
     <Compile Include="Models\StateObject.cs" />
     <Compile Include="Models\Sendstate.cs" />
+    <Compile Include="Models\UIPropertyRegistration.cs" />
     <Compile Include="Services\Authentication\Authentication.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
@@ -131,6 +142,7 @@
     <Compile Include="Startup.cs" />
     <Compile Include="Utils\Logger.cs" />
     <Compile Include="Interop\Win32Apis.cs" />
+    <Compile Include="ViewModels\ChatViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\RemoteViewModel.cs" />
     <Compile Include="Views\FormMain.cs">
@@ -153,6 +165,12 @@
     <Compile Include="Views\FormRemote.Designer.cs">
       <DependentUpon>FormRemote.cs</DependentUpon>
     </Compile>
+    <EmbeddedResource Include="Layouts\CustomTableLayout.resx">
+      <DependentUpon>CustomTableLayout.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Layouts\CustomUserControl.resx">
+      <DependentUpon>CustomUserControl.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>

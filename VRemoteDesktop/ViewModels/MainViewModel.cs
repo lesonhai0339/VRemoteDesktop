@@ -26,7 +26,7 @@ namespace VRemoteDesktop.ViewModels
         private ManualResetEvent _resetEvent;
 
         private readonly RemoteDesktopService _remoteDesktopService;
-        public event EventHandler<EventArgs> ClientAcceptRequestRemote;
+        public event EventHandler<P2PClientDataReceived> ClientAcceptRequestRemote;
         public MainViewModel(RemoteDesktopService remoteDesktopService)
         {
             IsConnected = false;
@@ -117,7 +117,7 @@ namespace VRemoteDesktop.ViewModels
         private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
         {
             _resetEvent.Set();
-            ClientAcceptRequestRemote?.Invoke(sender, new EventArgs());
+            ClientAcceptRequestRemote?.Invoke(sender, e);
         }   
         private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
         {
@@ -134,6 +134,7 @@ namespace VRemoteDesktop.ViewModels
                     case DataType.LoginFailed:
                         Console.WriteLine("LoginFailed");
                         break;
+                    case DataType.P2PRequestConnect:
                     case DataType.P2PAcceptConnect:
                         PartnerAcceptP2PConnect(sender, e);
                         break;

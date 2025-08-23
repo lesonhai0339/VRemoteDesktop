@@ -80,7 +80,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var newConnection = NewClient(connectionId, VClientType.Sender);
             if (newConnection == null)
             {
-                MessageBox.Show("Không thể thiếtlập  kết nối", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
             newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
@@ -166,6 +165,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 newClient.UpdatePartnerInfo(partnerInfo);
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
                 newClient.Send(DataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
+                DataReceivedEvent?.Invoke(sender, e);
 
                 if (_vClientManager.HasClientOfType(VClientType.Receiver))
                     StartScreenCapture();
@@ -321,6 +321,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
                 case DataType.P2PAcceptConnect:
                     ProcessP2PConnectAccepted(sender, e);
+                    DataReceivedEvent?.Invoke(sender, e);
                     break;
                 case DataType.Mouse:
                     MouseReceivedEventHandler(sender, e);

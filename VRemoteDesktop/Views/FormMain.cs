@@ -23,6 +23,9 @@ namespace VRemoteDesktop
     {
         private readonly object _lock = new object();
         private MainViewModel _viewModel;
+        private FormChat chatForm;
+        private bool isShow;
+
         private readonly RemoteDesktopService _remoteDesktopService;
         public FormMain(RemoteDesktopService remoteDesktopService)
         {
@@ -30,7 +33,8 @@ namespace VRemoteDesktop
             _remoteDesktopService = remoteDesktopService;
             ViewModel = new MainViewModel(_remoteDesktopService);
             SetupBinding();
-
+            chatForm = new FormChat();
+            isShow = false;
         }
         #region Properties
         public MainViewModel ViewModel
@@ -136,12 +140,18 @@ namespace VRemoteDesktop
                 action();
             }
         }
-        private void ClientAcceptRequestRemoteEventHandler(object sender ,EventArgs e)
+        private void ClientAcceptRequestRemoteEventHandler(object sender ,P2PClientDataReceived e)
         {
             if(sender is VClient vClient)
             {
-                OpenRemoteForm(vClient);
-
+                if(e.Type == Models.DataType.P2PAcceptConnect)
+                {
+                    OpenRemoteForm(vClient);
+                }
+                else if(e.Type == Models.DataType.P2PRequestConnect)
+                {
+                    AddChat(vClient);
+                }
             }
         }
         private void OpenRemoteForm(VClient client)
@@ -153,6 +163,16 @@ namespace VRemoteDesktop
             }
             FormRemote remoteForm = new FormRemote(client, _remoteDesktopService);
             remoteForm.Show();
+            AddChat(client);
+        }
+        private void AddChat(VClient client)
+        {
+            if (!isShow || chatForm.IsDisposed)
+            {
+                chatForm.Show();
+                isShow = true;
+            }
+            chatForm.ChatView.UpdateConnection(client.SocketId, client);
         }
     }
 }
