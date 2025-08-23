@@ -165,7 +165,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 newClient.UpdatePartnerInfo(partnerInfo);
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
                 newClient.Send(DataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
-                DataReceivedEvent?.Invoke(sender, e);
+                DataReceivedEvent?.Invoke(newClient, e);
 
                 if (_vClientManager.HasClientOfType(VClientType.Receiver))
                     StartScreenCapture();
