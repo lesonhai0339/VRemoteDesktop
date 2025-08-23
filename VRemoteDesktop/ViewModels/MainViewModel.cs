@@ -114,22 +114,13 @@ namespace VRemoteDesktop.ViewModels
         }
         public void Login()
         {
-            var client = _remoteDesktopService.GetClientById(_id);
-            client.Login(_remoteDesktopService.GetMe().ToNetworkString());
+            _remoteDesktopService.Login(_id);
         }
         public void RequestP2PConnect(string id, string password)
         {
             try
             {
-                string connectionId = StringHelper.RandomStringNumber(8);
-                var newConnection = _remoteDesktopService.NewClient(connectionId, VClientType.Sender);
-                if (newConnection == null)
-                {
-                    MessageBox.Show("Không thể thiết lập kết nối", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return;
-                }
-                Connect(newConnection);
-                newConnection.P2PConnect(id, password, _remoteDesktopService.GetMe().ToNetworkString());               
+                _remoteDesktopService.P2PConnect(id, password);
             }
             catch(Exception ex)
             {

@@ -29,6 +29,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public class RemoteDesktopService : IDisposable
     {
+        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.Getvalue("RemoteServerIP");
+        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.Getvalue("RemoteServerPort");
         private volatile bool _disposed;
 
         private readonly IClientInfoManager _clientInfo;
@@ -52,9 +54,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             StartKeyboardListener();
 
         }
-
-
-
         #region Properties
         public bool Disposed => _disposed;
         #endregion
@@ -62,6 +61,29 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public ClientInfo GetMe()
         {
             return _clientInfo.GetMyInfo();
+        }
+        public void Login(string id)
+        {
+            var client = _vClientManager.GetByKey(id);
+            if(client != null)
+            {
+                byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
+                client.Send(DataType.Login, encoder);
+            }
+        }
+        public void P2PConnect(string partnerId, string partnerPassword)
+        {
+            string connectionId = StringHelper.RandomStringNumber(8);
+            var newConnection = NewClient(connectionId, VClientType.Sender);
+            if (newConnection == null)
+            {
+                MessageBox.Show("Không thể thiếtlập  kết nối", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+            string dataString = StringHelper.StringBuilderWithSeparator("|", newConnection.SocketId, partnerId, partnerPassword, GetMe());
+            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
+            newConnection.Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
         public void UpdateMyInfo(byte[] data)
         {
@@ -135,21 +157,99 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
             {
-                //P2P request connect succeeeded
-                _vClientManager.AcceptP2PConnect(_clientInfo.GetMyInfo(), partnerInfo, connectionId);
+                var newClient = _vClientManager.New(connectionId, VClientType.Receiver);
+                newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+                newClient.UpdatePartnerInfo(partnerInfo);
+                byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
+                newClient.Send(DataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
 
                 if (_vClientManager.HasClientOfType(VClientType.Receiver))
                     StartScreenCapture();
             }
             else
             {
-                //P2P request connect failed
-                _vClientManager.RejectP2PConnect(sender, e.Data);
+                if(sender is VClient client)
+                {
+                    string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, 8, EncodingType.ASCII).GetResult();
+                    byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
+                    client.Send(DataType.P2PRejectConnect, dataBytes, client.SocketId, true);
+                }
+            }
+        }
+        private void ProcessP2PConnectAccepted(object sender, P2PClientDataReceived e)
+        {
+            try
+            {
+                if(sender is VClient client)
+                {
+                    string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
+                    string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
+                    ClientInfo partnerInfo = new ClientInfo
+                    {
+                        Id = stringArray[0],
+                        Password = stringArray[1],
+                        ComputerName = stringArray[2],
+                        Width = int.Parse(stringArray[3]),
+                        Height = int.Parse(stringArray[4]),
+                        MajorVersion = stringArray[5],
+                        MinorVersion = stringArray[6],
+                        Ip = stringArray[7],
+                        Port = stringArray[8],
+                        PublicIP = stringArray[9],
+                    };
+                    client.UpdatePartnerInfo(partnerInfo);
+                }
+            }
+            catch (Exception ex)
+            {
             }
         }
         private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)
         {
-            _vClientManager.ScreenUpdate(e);
+            foreach (var connection in _vClientManager.Connections)
+            {
+                if (connection.Value.ClientType == VClientType.Receiver)
+                    SendScreen(connection.Value, e.Type, e.Data, e.TotalSize);
+            }
+        }
+        public void SendScreen(VClient  client, DataType type, List<byte[]> data, int totalSize)
+        {
+            try
+            {
+                if (data.Count == 0 || totalSize == 0)
+                {
+                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    return;
+                }
+                byte[] socketId = Encoding.ASCII.GetBytes(client.SocketId);
+                var header = client.GenerateP2PHeader(type, totalSize, socketId);
+
+                List<TaskObject> tasks = new List<TaskObject>();
+                tasks.Add(new TaskObject
+                {
+                    TaskType = type,
+                    Data = header,
+                    IsSendHeader = false
+                });
+
+                //data
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var task = new TaskObject
+                    {
+                        TaskType = type,
+                        Data = data[i],
+                        IsSendHeader = false
+                    };
+
+                    tasks.Add(task);
+                }
+                client.AddWorkGroup(tasks, DataType.Screen);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+            }
         }
         private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
@@ -190,7 +290,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             if (_globalHook.CheckClipboard(e, out var data, out var type))
             {
-                _vClientManager.Send(type, data);
+                foreach (var connection in _vClientManager.Connections)
+                {
+                    if (connection.Value.ClientType == VClientType.Receiver)
+                        connection.Value.Send(type, data, connection.Value.SocketId, true);
+                }
             }
             else
             {
@@ -206,6 +310,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
                 case DataType.P2PRequestConnect:
                     P2PRequestConnectHandler(sender, e);
+                    break;
+                case DataType.P2PAcceptConnect:
+                    ProcessP2PConnectAccepted(sender, e);
                     break;
                 case DataType.Mouse:
                     MouseReceivedEventHandler(sender, e);

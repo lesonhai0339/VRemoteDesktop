@@ -23,8 +23,6 @@ namespace VRemoteDesktop.Services.VTCPClient
 {
     public class VClientManager : IDisposable
     {
-        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.Getvalue("RemoteServerIP");
-        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.Getvalue("RemoteServerPort");
         private readonly ConcurrentDictionary<string, VClient> _connections;
         public EventHandler<P2PClientDataReceived> ClientDataReceived;
         public VClientManager()
@@ -60,7 +58,6 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             throw new InvalidOperationException(string.Format("Cannot remove connection with Id:{0}", id));
         }
-
         public VClient GetByKey(string id)
         {
             if (_connections.TryGetValue(id, out var client))
@@ -83,48 +80,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
         {
             ClientDataReceived?.Invoke(sender, e);
-        }
-        public void AcceptP2PConnect(ClientInfo myInfo, ClientInfo partnerInfo, string connectionId)
-        {
-            try
-            {
-                var newClient = New(connectionId, VClientType.Receiver);
-                newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
-                newClient.UpdatePartnerInfo(partnerInfo);
-                newClient.RespondToP2PConnectRequest(DataType.P2PAcceptConnect, myInfo.ToNetworkString());
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("AcceptP2PConnect", ex);
-            }
-        }
-        public void RejectP2PConnect(object sender, byte[] data)
-        {
-            if (sender is VClient client)
-            {
-                string connectionId = ByteArrayHelper.ConvertByteArrayToString(data, 0, 8, EncodingType.ASCII).GetResult();
-                client.RespondToP2PConnectRequest(DataType.P2PRejectConnect, connectionId);
-            }
-            else
-            {
-                throw new ArgumentException(string.Format("Invalid arguments"));
-            }
-        }
-        public void ScreenUpdate(ScreenCaptureEventArgs e)
-        {
-            foreach (var connection in _connections)
-            {
-                if (connection.Value.ClientType == VClientType.Receiver)
-                    connection.Value.SendScreen(e.Type, e.Data, e.TotalSize);
-            }
-        }
-        public void Send(DataType type, byte[] data)
-        {
-            foreach (var connection in _connections)
-            {
-                if (connection.Value.ClientType == VClientType.Receiver)
-                    connection.Value.Send(type, data, connection.Value.SocketId, true);
-            }
         }
         public void Dispose()
         {

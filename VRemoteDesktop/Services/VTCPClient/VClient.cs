@@ -257,13 +257,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                             switch (task.Type)
                             {
                                 case DataType.P2PAcceptConnect:
-                                    Console.WriteLine("Partner accepted");
-                                    ProcessP2PConnectAccepted(task.Data);
-                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
-                                    break;
-                                case DataType.P2PRejectConnect:
-                                    Console.WriteLine("Client Reject request to p2p connection");
-                                    break;
                                 default:
                                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
                                     break;
@@ -476,48 +469,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             Partner = partnerInfo;
         }
-        public void Login(string data)
-        {
-            byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
-            Send(DataType.Login, encoder);
-        }
-        public void P2PConnect(string partnerId, string partnerPassword, string myInfo)
-        {
-            Console.WriteLine("Request connect");
-            string dataString = StringHelper.StringBuilderWithSeparator("|", SocketId, partnerId, partnerPassword, myInfo);
-            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
-        }
-        public void RespondToP2PConnectRequest(DataType type, string data)
-        {
-            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(data, EncodingType.ASCII).GetResult();
-            Send(type, dataBytes, SocketId, true);
-        }
-        private void ProcessP2PConnectAccepted(byte[] dataReceived)
-        {
-            try
-            {
-                string data = ByteArrayHelper.ConvertByteArrayToString(dataReceived, EncodingType.ASCII).GetResult();
-                string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
-                ClientInfo partnerInfo = new ClientInfo
-                {
-                    Id = stringArray[0],
-                    Password = stringArray[1],
-                    ComputerName = stringArray[2],
-                    Width = int.Parse(stringArray[3]),
-                    Height = int.Parse(stringArray[4]),
-                    MajorVersion = stringArray[5],
-                    MinorVersion = stringArray[6],
-                    Ip = stringArray[7],
-                    Port = stringArray[8],
-                    PublicIP = stringArray[9],
-                };
-                Partner = partnerInfo;
-            }
-            catch (Exception ex) 
-            {
-            }
-        }
         public void SendScreen(DataType type, List<byte[]> data, int totalSize)
         {
             try
@@ -642,7 +593,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             return resultBytes;
         }
-        private byte[] GenerateP2PHeader(DataType type, int dataSize , byte[] socketId)
+        public byte[] GenerateP2PHeader(DataType type, int dataSize , byte[] socketId)
         {
             int totalSize = dataSize + SocketId.Length + 5; // 5 bytes added are 4 for totalSize and 1 for type
             byte[] header = new byte[5 + SocketId.Length];
