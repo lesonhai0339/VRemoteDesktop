@@ -613,50 +613,114 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     data = PrepareHeader(type, partnerId, data);
                 }
-                Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
-                {
-                    try
-                    {
-                        Socket.EndSend(ar);
-                    }
-                    catch (SocketException ex)
-                    {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-                    }
-                }, null);
+                Send(data);
+                //Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
+                //{
+                //    try
+                //    {
+                //        Socket.EndSend(ar);
+                //    }
+                //    catch (SocketException ex)
+                //    {
+                //        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+                //    }
+                //}, null);
             }
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
             }
         }
+        //public void Send(byte[] data)
+        //{
+        //    try
+        //    {
+        //        Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
+        //        {
+        //            try
+        //            {
+        //                Socket.EndSend(ar);
+        //            }
+        //            catch (SocketException ex)
+        //            {
+        //                Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+        //            }
+        //            catch (Exception ex)
+        //            {
+        //                Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
+        //            }
+        //        }, null);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
+        //    }
+        //}
         public void Send(byte[] data)
         {
             try
             {
-                Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
+                if(data == null || data.Length == 0)
                 {
-                    try
-                    {
-                        Socket.EndSend(ar);
-                    }
-                    catch (SocketException ex)
-                    {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-                    }
-                }, null);
+                    throw new ArgumentException("Missing arguments");
+                }
+                Sendstate state = new Sendstate
+                {
+                    Data = data,
+                    Remained = data.Length,
+                    Sent = 0,
+                    Timeout = DateTime.Now
+                };
+                Send(state);
             }
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
+            }
+        }
+        private void Send(Sendstate state)
+        {
+            if (!Socket.Connected)
+            {
+                throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
+            }
+            if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > 30)
+            {
+                throw new TimeoutException("Send timeout");
+            }
+            Socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
+        }
+        private void SendCallback(IAsyncResult ar)
+        {
+            var sentState = (Sendstate)ar.AsyncState;
+            try
+            {
+                checked
+                {
+                    int num = Socket.EndSend(ar);
+                    if (num <= 0)
+                    {
+                        throw new InvalidOperationException("Send error on socket with socket Id: " + SocketId.ToString());
+                    }
+                    sentState.Sent += num;
+                    sentState.Remained -= num;
+                    if (sentState.Remained > 0)
+                    {
+                        Send(sentState);
+                    }
+                }
+            }
+            catch(SocketException ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "SendCallback error on socketid: " + SocketId);
             }
         }
         public void Dispose()

@@ -312,7 +312,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             if (task.IsSendHeader)
             {
-                Send(task.TaskType, task.Data, task.SessionId, true);
+                //Send(task.TaskType, task.Data, task.SessionId, true);
             }
             else
             {
@@ -585,7 +585,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             for (int i = 0; i < list.Count; i++)
             {
-                SckState test = new SckState
+                Sendstate test = new Sendstate
                 {
                     Data = list[i],
                     Remained = list[i].Length,
@@ -595,7 +595,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             }
         }
-        private void Send1(SckState t)
+        private void Send1(Sendstate t)
         {
             try
             {
@@ -608,7 +608,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void SendCallback(IAsyncResult ar)
         {
-            var state = (SckState)ar.AsyncState;
+            var state = (Sendstate)ar.AsyncState;
             try
             {
                 int num =  Socket.EndSend(ar);

@@ -36,6 +36,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly IClientInfoManager _clientInfo;
         private readonly GlobalHookService _globalHook;
         private readonly VClientManager _vClientManager;
+        private ManualResetEvent _reset;
 
         public event EventHandler<KeyboardEventArgs> KeyboardEvent;
         public event EventHandler<P2PClientDataReceived> DataReceivedEvent;
@@ -43,6 +44,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             _disposed = false;
             _clientInfo = clientInfo;
+            _reset = new ManualResetEvent(false);
 
             _globalHook = globalHook;
             _vClientManager = vClientManager;
@@ -73,6 +75,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public void P2PConnect(string partnerId, string partnerPassword)
         {
+            _reset.Reset();
             string connectionId = StringHelper.RandomStringNumber(8);
             var newConnection = NewClient(connectionId, VClientType.Sender);
             if (newConnection == null)
@@ -81,7 +84,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 return;
             }
             newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
-            string dataString = StringHelper.StringBuilderWithSeparator("|", newConnection.SocketId, partnerId, partnerPassword, GetMe());
+            _reset.WaitOne(5000);
+            string dataString = StringHelper.StringBuilderWithSeparator("|", newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
             newConnection.Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
@@ -305,6 +309,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             switch (e.Type)
             {
+                case DataType.Connect:
+                    _reset.Set();
+                    DataReceivedEvent?.Invoke(sender, e);
+                    break;
                 case DataType.Clipboard:
                     SetClipboard(e.Data);
                     break;

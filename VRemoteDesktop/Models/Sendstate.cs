@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteDesktop.Models
 {
-    public class SckState
+    public class Sendstate
     {
         public DateTime Timeout { get; set; }
         public byte[] Data { get;set; }
