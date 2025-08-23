@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Reflection.Emit;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.ViewModels;
@@ -19,11 +20,23 @@ namespace VRemoteDesktop.Views
             ChatView = new ChatViewModel();
             SetupBinding();
 
+            Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
 
+            this.Location = new Point(
+                workingArea.Right - this.Width,
+                workingArea.Bottom - this.Height - 120
+            );
+
+            fpnChat.FlowDirection = FlowDirection.TopDown;
+            fpnChat.WrapContents = false;
+            fpnChat.AutoScroll = true;
+            fpnChat.BorderStyle = BorderStyle.FixedSingle;
+            fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
 
             fpnNumberChatConnection.BorderStyle = BorderStyle.FixedSingle;
             fpnNumberChatConnection.FlowDirection = FlowDirection.TopDown;
             fpnNumberChatConnection.WrapContents = false;
+            fpnNumberChatConnection.BackColor = Color.White;
         }
         public ChatViewModel ChatView
         {
@@ -34,27 +47,45 @@ namespace VRemoteDesktop.Views
         {
             _chatViewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
+        private void Add()
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(Add));
+                return;
+            }
+            var value = _chatViewModel.ClientAdded;
 
+            var control = _chatViewModel.NewControl(value);
+
+            fpnNumberChatConnection.Controls.Add(control);
+        }
+        private void Remove()
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action(Remove));
+                return;
+            }
+            var value = _chatViewModel.ClientRemoved;
+
+            var lbs = fpnNumberChatConnection.Controls.Find(value, true);
+
+            foreach (var lb in lbs)
+            {
+                lb.Click -= _chatViewModel.EventCallback;
+                fpnNumberChatConnection.Controls.Remove(lb);
+            }
+        }
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if(e.PropertyName == nameof(_chatViewModel.ClientAdded))
             {
-                var value = _chatViewModel.ClientAdded;
-
-                var control = _chatViewModel.NewControl(value);
-
-                fpnNumberChatConnection.Controls.Add(control);
+                Add();
             }
             if (e.PropertyName == nameof(_chatViewModel.ClientRemoved))
             {
-                var value = _chatViewModel.ClientRemoved;
-
-                var lbs = fpnNumberChatConnection.Controls.Find(value, true);
-
-                foreach(var lb in lbs)
-                {
-                    fpnNumberChatConnection.Controls.Remove(lb);
-                }
+                Remove();
             }
         }
         private void FormChat_Load(object sender, EventArgs e)
@@ -64,6 +95,12 @@ namespace VRemoteDesktop.Views
         private void fpnNumberChatConnection_Paint(object sender, PaintEventArgs e)
         {
 
+        }
+
+        private void btnSend_Click(object sender, EventArgs e)
+        {
+            string text = txtChatContent.Text;
+            _chatViewModel.SendChatMessage(text);
         }
     }
 }

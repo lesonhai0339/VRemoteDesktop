@@ -167,6 +167,11 @@ namespace VRemoteDesktop
         }
         private void AddChat(VClient client)
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<VClient>(AddChat), client);
+                return;
+            }
             if (!isShow || chatForm.IsDisposed)
             {
                 chatForm.Show();

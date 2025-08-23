@@ -17,7 +17,7 @@ namespace VRemoteDesktop.Layouts
             _connectionId = connectionId;
             EventHandlerAction = eventHandlerAction;
         }
-
+        public string Id => _connectionId;
         public TableLayoutPanel Table => _table;
 
         //Set number of row and column for TableLayoutPanel

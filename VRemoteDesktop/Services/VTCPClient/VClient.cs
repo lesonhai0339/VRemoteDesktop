@@ -50,6 +50,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
         public event EventHandler<P2PClientDataReceived> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
+        public event EventHandler<P2PChatEventArgs> P2PChatReceived;
         public VClient(string socketId, VClientType clientType)
         {
             ScreenTasks = new ConcurrentQueue<object>();
@@ -256,7 +257,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             switch (task.Type)
                             {
-                                case DataType.P2PAcceptConnect:
+                                case DataType.Message:
+                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Data));
+                                    break;
                                 default:
                                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
                                     break;

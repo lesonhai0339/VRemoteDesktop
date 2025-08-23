@@ -5,9 +5,11 @@ using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
+using static System.Windows.Forms.LinkLabel;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -16,6 +18,7 @@ namespace VRemoteDesktop.ViewModels
         private readonly Dictionary<string, VClient> _clients;
         private string _clientAdded;
         private string _clientRemoved;
+        private string _currentConnectionActivate;
         public ChatViewModel()
         {
             _clients = new Dictionary<string, VClient>();
@@ -41,54 +44,86 @@ namespace VRemoteDesktop.ViewModels
         public void UpdateConnection(string key, VClient value)
         {
             _clients.Add(key, value);
+            value.P2PChatReceived += P2PChatReceivedEventHandler;
             ClientAdded = key;
         }
         public void RemoveConnection(string key)
         {
-            _clients.Remove(key);
-            ClientRemoved = key;
+            if(_clients.TryGetValue(key, out var client))
+            {
+                client.P2PChatReceived -= P2PChatReceivedEventHandler;
+                _clients.Remove(key);
+                ClientRemoved = key;
+            }
         }
+
+        private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
+        {
+            if(sender is VClient client)
+            {
+                MessageBox.Show($"Received message from connectionID: {client.SocketId} - Message: {Encoding.ASCII.GetString(e.Data)}");
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        public TableLayoutPanel NewControl(string id)
+        public Label NewControl(string id)
         {
-            if(_clients.TryGetValue(id, out var client))
+            if (_clients.TryGetValue(id, out var client))
             {
-                CustomTableLayout table = new CustomTableLayout(client.MyId, null)
-                               .SetColAndRow(2, 1)
-                               .SetStyles(
-                                   new UIPropertyRegistration(nameof(BorderStyle), BorderStyle.FixedSingle)
-                               )
-                               .SetColumAndRowStyle(
-                                   new List<ColumnStyle>
-                                   {
-                        new ColumnStyle(SizeType.Percent, 20F),
-                        new ColumnStyle(SizeType.Percent, 80F)
-                                   },
-                                   new List<RowStyle>
-                                   {
-                        new RowStyle(SizeType.AutoSize),
-                                   }
-                               );
-
                 Label lbChat = new Label
                 {
                     Text = client.Partner.ComputerName,
                     Name = client.SocketId,
-                    AutoSize = true
+                    BackColor = Color.WhiteSmoke,
+                    BorderStyle = BorderStyle.FixedSingle
                 };
-                CustomPanel pnStatus = new CustomPanel();
-                pnStatus.Paint += pnStatus.CreateCircle;
-
-                table.AddControl(nameof(pnStatus), pnStatus, 0, 0);
-                table.AddControl(nameof(lbChat), lbChat, 1, 0);
-
-                return table.Table;
+                lbChat.Click += ChangeConnectionActivate;
+                lbChat.MouseHover += (s, e) =>
+                {
+                    lbChat.BackColor = Color.Aqua;
+                    lbChat.Cursor = Cursors.Hand;
+                };
+                lbChat.MouseLeave += (s, e) =>
+                {
+                    lbChat.BackColor = Color.WhiteSmoke;
+                    lbChat.Cursor = Cursors.Default;
+                };
+                return lbChat;
             }
             return null;
+        }
+        private void ChangeConnectionActivate(object sender, EventArgs e)
+        {
+            if(sender is Label lb)
+            {
+                _currentConnectionActivate = lb.Name;
+            }
+        }
+        public bool SendChatMessage(string chatData)
+        {
+            if(_clients.TryGetValue(_currentConnectionActivate, out var client))
+            {
+                client.AddWork(new TaskObject
+                {
+                    TaskType = DataType.Message,
+                    Data = Encoding.ASCII.GetBytes(chatData),
+                    IsSendHeader = true,
+                    SessionId = client.SocketId
+                });
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        public void EventCallback(object sender, EventArgs e)
+        {
+            MessageBox.Show(" Callback");
         }
         public void Dispose()
         {

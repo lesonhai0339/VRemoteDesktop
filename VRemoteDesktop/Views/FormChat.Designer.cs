@@ -69,6 +69,7 @@
             this.btnSend.TabIndex = 6;
             this.btnSend.Text = "Gửi";
             this.btnSend.UseVisualStyleBackColor = true;
+            this.btnSend.Click += new System.EventHandler(this.btnSend_Click);
             // 
             // txtChatContent
             // 
