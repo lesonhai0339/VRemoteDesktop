@@ -15,15 +15,26 @@ using static System.Windows.Forms.LinkLabel;
 
 namespace VRemoteDesktop.ViewModels
 {
+    public class ChatConnection
+    {
+        public ChatConnection(VClient client , List<object> lists)
+        {
+            Client = client;
+            Messages = lists;
+        }
+        public VClient Client { get; set; }
+        public List<object> Messages { get; set; }
+    }
     public class ChatViewModel: INotifyPropertyChanged, IDisposable
     {
-        private readonly Dictionary<string, VClient> _clients;
+        private readonly Dictionary<string, ChatConnection> _clients;
         private string _clientAdded;
         private string _clientRemoved;
         private string _currentConnectionActivate;
+        public event Action<Control> ControlEvent;
         public ChatViewModel()
         {
-            _clients = new Dictionary<string, VClient>();
+            _clients = new Dictionary<string, ChatConnection>();
         }
         public string ClientAdded
         {
@@ -45,7 +56,7 @@ namespace VRemoteDesktop.ViewModels
         }
         public void UpdateConnection(string key, VClient value)
         {
-            _clients.Add(key, value);
+            _clients.Add(key, new ChatConnection(value , new List<object>()));
             value.P2PChatReceived += P2PChatReceivedEventHandler;
             ClientAdded = key;
             _currentConnectionActivate = key;
@@ -54,7 +65,7 @@ namespace VRemoteDesktop.ViewModels
         {
             if(_clients.TryGetValue(key, out var client))
             {
-                client.P2PChatReceived -= P2PChatReceivedEventHandler;
+                client.Client.P2PChatReceived -= P2PChatReceivedEventHandler;
                 _clients.Remove(key);
                 ClientRemoved = key;
             }
@@ -64,7 +75,39 @@ namespace VRemoteDesktop.ViewModels
         {
             if(sender is VClient client)
             {
-                MessageBox.Show($"Received message from connectionID: {client.SocketId} - Message: {Encoding.ASCII.GetString(e.Data)} - Type: {e.Type}");
+                if (_clients.TryGetValue(client.SocketId, out var chat))
+                {
+                    if (e.Type == DataType.RequestSendFile)
+                    {
+                        string[] data = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.ASCII.GetString(e.Data), "|");
+                        FileReceived file = new FileReceived();
+                        file.Add(new FileReceivedInfo
+                        {
+                            FileExtension = data[0],
+                            Filename = data[1],
+                            FileSize = long.Parse(data[2])
+                        });
+                        ControlEvent?.Invoke(file);
+                    }
+                    else if (e.Type == DataType.Message)
+                    {
+                        string data = Encoding.ASCII.GetString(e.Data);
+                        Label lb = new Label
+                        {
+                            Text = client.Partner.ComputerName + ": "+ data 
+                        };
+                        ControlEvent?.Invoke(lb);
+
+                    }
+                    else if (e.Type == DataType.AcceptSendFile)
+                    {
+
+                    }
+                    else if (e.Type == DataType.FileTransfer)
+                    {
+
+                    }
+                }         
             }
         }
 
@@ -79,8 +122,8 @@ namespace VRemoteDesktop.ViewModels
             {
                 Label lbChat = new Label
                 {
-                    Text = client.Partner.ComputerName,
-                    Name = client.SocketId,
+                    Text = client.Client.Partner.ComputerName,
+                    Name = client.Client.SocketId,
                     BackColor = Color.WhiteSmoke,
                     BorderStyle = BorderStyle.FixedSingle
                 };
@@ -124,12 +167,12 @@ namespace VRemoteDesktop.ViewModels
             }
             if (_clients.TryGetValue(_currentConnectionActivate, out var client))
             {
-                client.AddWork(new TaskObject
+                client.Client.AddWork(new TaskObject
                 {
                     TaskType = type,
                     Data = data,
                     IsSendHeader = true,
-                    SessionId = client.SocketId
+                    SessionId = client.Client.SocketId
                 });
             }
             else

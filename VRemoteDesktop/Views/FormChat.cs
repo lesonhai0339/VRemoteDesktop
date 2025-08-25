@@ -51,7 +51,19 @@ namespace VRemoteDesktop.Views
         private void SetupBinding()
         {
             _chatViewModel.PropertyChanged += OnViewModelPropertyChanged;
+            _chatViewModel.ControlEvent += ControlEventHandler;
         }
+
+        private void ControlEventHandler(Control control)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<Control>(ControlEventHandler), control);
+                return;
+            }
+            fpnNumberChatConnection.Controls.Add(control);
+        }
+
         private void Add()
         {
             if (this.InvokeRequired)
