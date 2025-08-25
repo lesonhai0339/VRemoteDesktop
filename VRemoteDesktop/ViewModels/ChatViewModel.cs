@@ -160,7 +160,7 @@ namespace VRemoteDesktop.ViewModels
                 Console.WriteLine("Total file send: "+ count);
             }
         }
-        private void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
+        private void FileReceivedClickEventHandler(object sender, EventArgs e)
         {
             if(sender is Button btn && btn.Parent is FileReceived pr)
             {
@@ -241,6 +241,13 @@ namespace VRemoteDesktop.ViewModels
         public void SendChatMessage(string chatData)
         {
             SendToClient(DataType.Message, Encoding.ASCII.GetBytes(chatData));
+            Label lb = new Label
+            {
+                Text = "Me: " + chatData,
+                AutoSize = true,
+                TextAlign = ContentAlignment.TopLeft,
+            };
+            ControlEvent?.Invoke(lb);
         }
         public void RequestSendFile()
         {

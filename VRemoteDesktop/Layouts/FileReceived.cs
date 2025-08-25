@@ -31,6 +31,7 @@ namespace VRemoteDesktop.Layouts
         private Label _fileSize;
         private Button _save;
         private Button _cancel;
+        private FileReceivedInfo _fileInfo;
 
         public event EventHandler<P2PFileReceivedEventArgs> ClickedEvent;
         public FileReceived()
@@ -58,6 +59,7 @@ namespace VRemoteDesktop.Layouts
             {
                 throw new ArgumentException("Missing some arguments");
             }
+            _fileInfo = fileInfo;
             _fileImageExtension = new PictureBox();
             using (Icon icon = Helpers.FileHelper.GetFileIconFromFileExtension(fileInfo.FileExtension))
             {
@@ -90,7 +92,7 @@ namespace VRemoteDesktop.Layouts
             };
             _save.Click += (s, e) =>
             {
-                string savePath = Helpers.FileHelper.OpenFileDialogAndGetFilePath();
+                string savePath = Helpers.FileHelper.OpenFileDialogAndSaveFile(_fileInfo.Filename);
                 ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(true, savePath));
             };
             _cancel.Click += (s, e) =>
