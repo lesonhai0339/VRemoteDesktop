@@ -31,6 +31,7 @@ namespace VRemoteDesktop.ViewModels
         private string _clientAdded;
         private string _clientRemoved;
         private string _currentConnectionActivate;
+        private string _filePath;
         public event Action<Control> ControlEvent;
         public ChatViewModel()
         {
@@ -58,8 +59,8 @@ namespace VRemoteDesktop.ViewModels
         {
             _chatConnections.Add(key, client);
             client.P2PChatReceived += P2PChatReceivedEventHandler;
-            ClientAdded = key;
             _currentConnectionActivate = key;
+            ClientAdded = key;
         }
         public void RemoveConnection(string key)
         {
@@ -68,8 +69,8 @@ namespace VRemoteDesktop.ViewModels
             {
                 client.P2PChatReceived -= P2PChatReceivedEventHandler;
                 _chatConnections.Remove(key);
-                ClientRemoved = key;
                 _currentConnectionActivate = _chatConnections.GetLastConnectionId();
+                ClientRemoved = key;
             }
         }
 
@@ -92,10 +93,12 @@ namespace VRemoteDesktop.ViewModels
                 }
                 else if (e.Type == DataType.Message)
                 {
-                    string data = Encoding.UTF8.GetString(e.Data);
+                    string data = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.UTF8).GetResult();
                     Label lb = new Label
                     {
-                        Text = client.Partner.ComputerName + ": " + data
+                        Text = client.Partner.ComputerName + ": " + data,
+                        AutoSize = true,
+                        TextAlign = ContentAlignment.TopLeft,
                     };
                     ControlEvent?.Invoke(lb);
 
@@ -114,7 +117,7 @@ namespace VRemoteDesktop.ViewModels
                 }
                 else if (e.Type == DataType.FileTransfer)
                 {
-
+                    
                 }
             }
         }
@@ -199,11 +202,49 @@ namespace VRemoteDesktop.ViewModels
         {
             SendToClient(DataType.Message, Encoding.ASCII.GetBytes(chatData));
         }
-        public void RequestSendFile(FileInfo fileInfo)
+        public void RequestSendFile()
         {
-            string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.Extension, fileInfo.Name, fileInfo.Length);
-            byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
-            SendToClient(DataType.RequestSendFile, byteArray);
+            using (var dialog = new OpenFileDialog())
+            {
+                DialogResult result = dialog.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
+                {
+                    string selectedPath = dialog.FileName;
+                    _filePath = selectedPath;
+                    try
+                    {
+                        FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
+                        if (fileInfo != null)
+                        {
+                            FileReceived file = new FileReceived();
+                            file.Add(new FileReceivedInfo
+                            {
+                                FileExtension = fileInfo.Extension,
+                                Filename = fileInfo.Name,
+                                FileSize = fileInfo.Length
+                            });
+
+                            string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.Extension, fileInfo.Name, fileInfo.Length);
+                            byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
+                            SendToClient(DataType.RequestSendFile, byteArray);
+
+                            ControlEvent?.Invoke(file);
+                        }
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        MessageBox.Show($"Error: {ex.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Lỗi không xác định");
+                }
+            }
         }
         private void SendToClient(DataType type, byte[] data)
         {

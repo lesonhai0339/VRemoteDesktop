@@ -36,6 +36,8 @@ namespace VRemoteDesktop.Views
             fpnChat.AutoScroll = true;
             fpnChat.BorderStyle = BorderStyle.FixedSingle;
             fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
+            fpnNumberChatConnection.BackColor = Color.White;
+
 
             fpnNumberChatConnection.BorderStyle = BorderStyle.FixedSingle;
             fpnNumberChatConnection.FlowDirection = FlowDirection.TopDown;
@@ -61,7 +63,9 @@ namespace VRemoteDesktop.Views
                 this.Invoke(new Action<Control>(ControlEventHandler), control);
                 return;
             }
+            control.MaximumSize = new Size(fpnChat.Width - SystemInformation.VerticalScrollBarWidth - 10, 0);
             fpnChat.Controls.Add(control);
+            fpnChat.SetFlowBreak(control, true);
         }
 
         private void Add()
@@ -122,43 +126,7 @@ namespace VRemoteDesktop.Views
 
         private void btnSendAttachment_Click(object sender, EventArgs e)
         {
-            using (var dialog = new OpenFileDialog())
-            {
-                DialogResult result = dialog.ShowDialog();
-                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
-                {
-                    string selectedPath = dialog.FileName;
-                    _filePath = selectedPath;
-                    try
-                    {
-                        FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
-                        if (fileInfo != null)
-                        {
-                            FileReceived file = new FileReceived();
-                            file.Add(new FileReceivedInfo
-                            {
-                                FileExtension = fileInfo.Extension,
-                                Filename = fileInfo.Name,
-                                FileSize = fileInfo.Length
-                            });
-                            _chatViewModel.RequestSendFile(fileInfo);
-                            AddItemToChatTemplate(file);
-                        }
-                    }
-                    catch (InvalidOperationException ex)
-                    {
-                        MessageBox.Show($"Error: {ex.Message}");
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"Error: {ex.Message}");
-                    }
-                }
-                else
-                {
-                    MessageBox.Show("Lỗi không xác định");
-                }
-            }
+            _chatViewModel.RequestSendFile();
         }
         private void AddItemToChatTemplate(Control control)
         {
