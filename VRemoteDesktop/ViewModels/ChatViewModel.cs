@@ -79,7 +79,7 @@ namespace VRemoteDesktop.ViewModels
                 {
                     if (e.Type == DataType.RequestSendFile)
                     {
-                        string[] data = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.ASCII.GetString(e.Data), "|");
+                        string[] data = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(e.Data), "|");
                         FileReceived file = new FileReceived();
                         file.Add(new FileReceivedInfo
                         {
@@ -91,7 +91,7 @@ namespace VRemoteDesktop.ViewModels
                     }
                     else if (e.Type == DataType.Message)
                     {
-                        string data = Encoding.ASCII.GetString(e.Data);
+                        string data = Encoding.UTF8.GetString(e.Data);
                         Label lb = new Label
                         {
                             Text = client.Partner.ComputerName + ": "+ data 
@@ -156,7 +156,7 @@ namespace VRemoteDesktop.ViewModels
         public void RequestSendFile(FileInfo fileInfo)
         {
             string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.Extension, fileInfo.Name, fileInfo.Length);
-            byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
+            byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
             SendToClient(DataType.RequestSendFile, byteArray);
         }
         private void SendToClient(DataType type, byte[] data)

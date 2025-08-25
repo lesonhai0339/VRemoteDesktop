@@ -61,7 +61,7 @@ namespace VRemoteDesktop.Views
                 this.Invoke(new Action<Control>(ControlEventHandler), control);
                 return;
             }
-            fpnNumberChatConnection.Controls.Add(control);
+            fpnChat.Controls.Add(control);
         }
 
         private void Add()
