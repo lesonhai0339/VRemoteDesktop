@@ -258,6 +258,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                             switch (task.Type)
                             {
                                 case DataType.Message:
+                                case DataType.RequestSendFile:
+                                case DataType.AcceptSendFile:
+                                case DataType.FileTransfer:
                                     P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                     break;
                                 default:

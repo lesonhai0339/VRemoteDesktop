@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
+using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Events;
@@ -104,26 +106,35 @@ namespace VRemoteDesktop.ViewModels
                 _currentConnectionActivate = lb.Name;
             }
         }
-        public bool SendChatMessage(string chatData)
+        public void SendChatMessage(string chatData)
+        {
+            SendToClient(DataType.Message, Encoding.ASCII.GetBytes(chatData));
+        }
+        public void RequestSendFile(FileInfo fileInfo)
+        {
+            string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.Extension, fileInfo.Name, fileInfo.Length);
+            byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.ASCII).GetResult();
+            SendToClient(DataType.RequestSendFile, byteArray);
+        }
+        private void SendToClient(DataType type, byte[] data)
         {
             if (string.IsNullOrEmpty(_currentConnectionActivate))
             {
                 _currentConnectionActivate = _clients.First().Key;
             }
-            if(_clients.TryGetValue(_currentConnectionActivate, out var client))
+            if (_clients.TryGetValue(_currentConnectionActivate, out var client))
             {
                 client.AddWork(new TaskObject
                 {
-                    TaskType = DataType.Message,
-                    Data = Encoding.ASCII.GetBytes(chatData),
+                    TaskType = type,
+                    Data = data,
                     IsSendHeader = true,
                     SessionId = client.SocketId
                 });
-                return true;
             }
             else
             {
-                return false;
+                throw new InvalidOperationException("Cannot find client with id: "+ _currentConnectionActivate);
             }
         }
         public void EventCallback(object sender, EventArgs e)

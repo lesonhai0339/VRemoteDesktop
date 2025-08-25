@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
@@ -118,7 +119,7 @@ namespace VRemoteDesktop.Views
                     _filePath = selectedPath;
                     try
                     {
-                        var fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
+                        FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
                         if (fileInfo != null)
                         {
                             FileReceived file = new FileReceived();
@@ -128,6 +129,7 @@ namespace VRemoteDesktop.Views
                                 Filename = fileInfo.Name,
                                 FileSize = fileInfo.Length
                             });
+                            _chatViewModel.RequestSendFile(fileInfo);
                             AddItemToChatTemplate(file);
                         }
                     }
