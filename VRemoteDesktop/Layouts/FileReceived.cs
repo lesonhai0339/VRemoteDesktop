@@ -8,6 +8,16 @@ using System.Windows.Forms;
 
 namespace VRemoteDesktop.Layouts
 {
+    public class P2PFileReceivedEventArgs: EventArgs
+    {
+        public P2PFileReceivedEventArgs(bool acceptSave, string filePath)
+        {
+            this.AcceptSave = acceptSave;
+            this.filePath = filePath;
+        }
+        public bool AcceptSave { get; set; }
+        public string filePath { get; set; }
+    }
     public class FileReceivedInfo
     {
         public string FileExtension { get; set; }
@@ -22,7 +32,7 @@ namespace VRemoteDesktop.Layouts
         private Button _save;
         private Button _cancel;
 
-        public event EventHandler<EventArgs> ClickedEvent;
+        public event EventHandler<P2PFileReceivedEventArgs> ClickedEvent;
         public FileReceived()
         {
             InitializeComponent();
@@ -80,11 +90,12 @@ namespace VRemoteDesktop.Layouts
             };
             _save.Click += (s, e) =>
             {
-                ClickedEvent?.Invoke(s, e);
+                string savePath = Helpers.FileHelper.OpenFileDialogAndGetFilePath();
+                ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(true, savePath));
             };
             _cancel.Click += (s, e) =>
             {
-                ClickedEvent?.Invoke(s, e);
+                ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(false, null));
             };
             this.Controls.Add(_fileImageExtension, 0, 0);
             this.SetRowSpan(_fileImageExtension, 2);

@@ -12,6 +12,7 @@ using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
 using static System.Windows.Forms.LinkLabel;
+using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -27,11 +28,13 @@ namespace VRemoteDesktop.ViewModels
     }
     public class ChatViewModel: INotifyPropertyChanged, IDisposable
     {
+        private const int CHUNK_SIZE = 8192;
         private readonly IChatManager<VClient, object> _chatConnections;
         private string _clientAdded;
         private string _clientRemoved;
         private string _currentConnectionActivate;
         private string _filePath;
+        private string _savePath;
         public event Action<Control> ControlEvent;
         public ChatViewModel()
         {
@@ -108,26 +111,63 @@ namespace VRemoteDesktop.ViewModels
                     int flag = e.Data[0];
                     if (flag == 1)
                     {
-                        MessageBox.Show("Partner accepted send file");
+                        BeginSendFile(client);
                     }
                     else
                     {
+                        _savePath = null;
                         MessageBox.Show("Partner Rejected send file");
                     }
                 }
                 else if (e.Type == DataType.FileTransfer)
                 {
-                    
+                    FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
+                    long chunkNumber = Helpers.FileHelper.CalculateChunkNumber(fileInfo.Length, CHUNK_SIZE);
+                    int count = 0;
+                    while (count < chunkNumber)
+                    {
+                        int offset = count * CHUNK_SIZE;
+                        byte[] chunkData = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, CHUNK_SIZE);
+
+
+                        byte[] dataSend = new byte[chunkData.Length + 4]; //4 byte for offset
+                        Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
+                        Buffer.BlockCopy(chunkData, 0, dataSend, 4, chunkData.Length);
+
+                        client.Send(DataType.FileTransfer, dataSend);
+                        count++;
+                    }
                 }
             }
         }
-        private void FileReceivedClickEventHandler(object sender, EventArgs e)
+        private void BeginSendFile(VClient client)
+        {
+            FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
+            long chunkNumber = Helpers.FileHelper.CalculateChunkNumber(fileInfo.Length, CHUNK_SIZE);
+            int count = 0;
+            while (count < chunkNumber)
+            {
+                int offset = count * CHUNK_SIZE;
+                byte[] chunkData = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, CHUNK_SIZE);
+
+
+                byte[] dataSend = new byte[chunkData.Length + 4]; //4 byte for offset
+                Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
+                Buffer.BlockCopy(chunkData, 0, dataSend, 4, chunkData.Length);
+
+                client.Send(DataType.FileTransfer, dataSend);
+                count++;
+                Console.WriteLine("Total file send: "+ count);
+            }
+        }
+        private void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
         {
             if(sender is Button btn && btn.Parent is FileReceived pr)
             {
                 //Accept file
                 if (string.Compare(btn.Name, "btnSave") == 0)
                 {
+                    _savePath = e.filePath;
                     var client = _chatConnections.GetClientById(_currentConnectionActivate);
                     if (client != null)
                     {
