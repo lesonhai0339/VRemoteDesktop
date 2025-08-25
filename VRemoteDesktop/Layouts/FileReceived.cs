@@ -95,5 +95,17 @@ namespace VRemoteDesktop.Layouts
             this.Controls.Add(_save, 2, 0);
             this.Controls.Add(_cancel, 2, 1);
         }
+        public void RemoveButton(string text)
+        {
+            this.Controls.Remove(this._save);
+            this.Controls.Remove(this._cancel);
+            Button btn = new Button
+            {
+                Text = text,
+                Name = "btn"+ text
+            };
+            this.Controls.Add(btn, 2, 0);
+            this.SetRowSpan(btn, 2);
+        }
     }
 }

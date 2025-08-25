@@ -102,7 +102,15 @@ namespace VRemoteDesktop.ViewModels
                     }
                     else if (e.Type == DataType.AcceptSendFile)
                     {
-
+                        int flag = e.Data[0];
+                        if(flag == 1)
+                        {
+                            MessageBox.Show("Partner accepted send file");
+                        }
+                        else
+                        {
+                            MessageBox.Show("Partner Rejected send file");
+                        }
                     }
                     else if (e.Type == DataType.FileTransfer)
                     {
@@ -113,10 +121,10 @@ namespace VRemoteDesktop.ViewModels
         }
         private void FileReceivedClickEventHandler(object sender, EventArgs e)
         {
-            if(sender is Button btn)
+            if(sender is Button btn && btn.Parent is FileReceived pr)
             {
                 //Accept file
-                if(string.Compare(btn.Name, "btnSave") == 0)
+                if (string.Compare(btn.Name, "btnSave") == 0)
                 {
                     if(_clients.TryGetValue(_currentConnectionActivate, out var client))
                     {
@@ -127,6 +135,7 @@ namespace VRemoteDesktop.ViewModels
                             IsSendHeader = true,
                             SessionId = client.Client.SocketId
                         });
+                        pr.RemoveButton("Accepted");
                     }
                 }
                 //Reject file
@@ -141,6 +150,7 @@ namespace VRemoteDesktop.ViewModels
                             IsSendHeader = true,
                             SessionId = client.Client.SocketId
                         });
+                        pr.RemoveButton("Rejected");
                     }
                 }
             }
