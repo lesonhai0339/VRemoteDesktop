@@ -87,6 +87,7 @@ namespace VRemoteDesktop.ViewModels
                             Filename = data[1],
                             FileSize = long.Parse(data[2])
                         });
+                        file.ClickedEvent += FileReceivedClickEventHandler;
                         ControlEvent?.Invoke(file);
                     }
                     else if (e.Type == DataType.Message)
@@ -110,7 +111,40 @@ namespace VRemoteDesktop.ViewModels
                 }         
             }
         }
-
+        private void FileReceivedClickEventHandler(object sender, EventArgs e)
+        {
+            if(sender is Button btn)
+            {
+                //Accept file
+                if(string.Compare(btn.Name, "btnSave") == 0)
+                {
+                    if(_clients.TryGetValue(_currentConnectionActivate, out var client))
+                    {
+                        client.Client.AddWork(new TaskObject
+                        {
+                            TaskType = DataType.AcceptSendFile,
+                            Data = new byte[] { 1 },
+                            IsSendHeader = true,
+                            SessionId = client.Client.SocketId
+                        });
+                    }
+                }
+                //Reject file
+                if (string.Compare(btn.Name, "btnCancel") == 0)
+                {
+                    if (_clients.TryGetValue(_currentConnectionActivate, out var client))
+                    {
+                        client.Client.AddWork(new TaskObject
+                        {
+                            TaskType = DataType.AcceptSendFile,
+                            Data = new byte[] { 0 },
+                            IsSendHeader = true,
+                            SessionId = client.Client.SocketId
+                        });
+                    }
+                }
+            }
+        }
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName = null)
         {
