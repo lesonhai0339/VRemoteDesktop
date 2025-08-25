@@ -121,22 +121,10 @@ namespace VRemoteDesktop.ViewModels
                 }
                 else if (e.Type == DataType.FileTransfer)
                 {
-                    FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
-                    long chunkNumber = Helpers.FileHelper.CalculateChunkNumber(fileInfo.Length, CHUNK_SIZE);
-                    int count = 0;
-                    while (count < chunkNumber)
-                    {
-                        int offset = count * CHUNK_SIZE;
-                        byte[] chunkData = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, CHUNK_SIZE);
-
-
-                        byte[] dataSend = new byte[chunkData.Length + 4]; //4 byte for offset
-                        Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
-                        Buffer.BlockCopy(chunkData, 0, dataSend, 4, chunkData.Length);
-
-                        client.Send(DataType.FileTransfer, dataSend);
-                        count++;
-                    }
+                    int offset = BitConverter.ToInt32(e.Data, 0);
+                    byte[] data = new byte[e.Data.Length - 4];
+                    Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
+                    Helpers.FileHelper.WriteToFile(_savePath, offset, data);
                 }
             }
         }
@@ -160,7 +148,7 @@ namespace VRemoteDesktop.ViewModels
                 Console.WriteLine("Total file send: "+ count);
             }
         }
-        private void FileReceivedClickEventHandler(object sender, EventArgs e)
+        private void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
         {
             if(sender is Button btn && btn.Parent is FileReceived pr)
             {
