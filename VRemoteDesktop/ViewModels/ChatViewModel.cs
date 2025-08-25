@@ -27,14 +27,14 @@ namespace VRemoteDesktop.ViewModels
     }
     public class ChatViewModel: INotifyPropertyChanged, IDisposable
     {
-        private readonly Dictionary<string, ChatConnection> _clients;
+        private readonly IChatManager<VClient, object> _chatConnections;
         private string _clientAdded;
         private string _clientRemoved;
         private string _currentConnectionActivate;
         public event Action<Control> ControlEvent;
         public ChatViewModel()
         {
-            _clients = new Dictionary<string, ChatConnection>();
+            _chatConnections = new ChatManager<VClient, object>();
         }
         public string ClientAdded
         {
@@ -54,20 +54,22 @@ namespace VRemoteDesktop.ViewModels
                 OnPropertyChanged("ClientRemoved");
             }
         }
-        public void UpdateConnection(string key, VClient value)
+        public void UpdateConnection(string key, VClient client)
         {
-            _clients.Add(key, new ChatConnection(value , new List<object>()));
-            value.P2PChatReceived += P2PChatReceivedEventHandler;
+            _chatConnections.Add(key, client);
+            client.P2PChatReceived += P2PChatReceivedEventHandler;
             ClientAdded = key;
             _currentConnectionActivate = key;
         }
         public void RemoveConnection(string key)
         {
-            if(_clients.TryGetValue(key, out var client))
+            var client = _chatConnections.GetClientById(key);
+            if(client != null)
             {
-                client.Client.P2PChatReceived -= P2PChatReceivedEventHandler;
-                _clients.Remove(key);
+                client.P2PChatReceived -= P2PChatReceivedEventHandler;
+                _chatConnections.Remove(key);
                 ClientRemoved = key;
+                _currentConnectionActivate = _chatConnections.GetLastConnectionId();
             }
         }
 
@@ -75,48 +77,45 @@ namespace VRemoteDesktop.ViewModels
         {
             if(sender is VClient client)
             {
-                if (_clients.TryGetValue(client.SocketId, out var chat))
+                if (e.Type == DataType.RequestSendFile)
                 {
-                    if (e.Type == DataType.RequestSendFile)
+                    string[] data = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(e.Data), "|");
+                    FileReceived file = new FileReceived();
+                    file.Add(new FileReceivedInfo
                     {
-                        string[] data = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(e.Data), "|");
-                        FileReceived file = new FileReceived();
-                        file.Add(new FileReceivedInfo
-                        {
-                            FileExtension = data[0],
-                            Filename = data[1],
-                            FileSize = long.Parse(data[2])
-                        });
-                        file.ClickedEvent += FileReceivedClickEventHandler;
-                        ControlEvent?.Invoke(file);
-                    }
-                    else if (e.Type == DataType.Message)
+                        FileExtension = data[0],
+                        Filename = data[1],
+                        FileSize = long.Parse(data[2])
+                    });
+                    file.ClickedEvent += FileReceivedClickEventHandler;
+                    ControlEvent?.Invoke(file);
+                }
+                else if (e.Type == DataType.Message)
+                {
+                    string data = Encoding.UTF8.GetString(e.Data);
+                    Label lb = new Label
                     {
-                        string data = Encoding.UTF8.GetString(e.Data);
-                        Label lb = new Label
-                        {
-                            Text = client.Partner.ComputerName + ": "+ data 
-                        };
-                        ControlEvent?.Invoke(lb);
+                        Text = client.Partner.ComputerName + ": " + data
+                    };
+                    ControlEvent?.Invoke(lb);
 
-                    }
-                    else if (e.Type == DataType.AcceptSendFile)
+                }
+                else if (e.Type == DataType.AcceptSendFile)
+                {
+                    int flag = e.Data[0];
+                    if (flag == 1)
                     {
-                        int flag = e.Data[0];
-                        if(flag == 1)
-                        {
-                            MessageBox.Show("Partner accepted send file");
-                        }
-                        else
-                        {
-                            MessageBox.Show("Partner Rejected send file");
-                        }
+                        MessageBox.Show("Partner accepted send file");
                     }
-                    else if (e.Type == DataType.FileTransfer)
+                    else
                     {
+                        MessageBox.Show("Partner Rejected send file");
+                    }
+                }
+                else if (e.Type == DataType.FileTransfer)
+                {
 
-                    }
-                }         
+                }
             }
         }
         private void FileReceivedClickEventHandler(object sender, EventArgs e)
@@ -126,14 +125,15 @@ namespace VRemoteDesktop.ViewModels
                 //Accept file
                 if (string.Compare(btn.Name, "btnSave") == 0)
                 {
-                    if(_clients.TryGetValue(_currentConnectionActivate, out var client))
+                    var client = _chatConnections.GetClientById(_currentConnectionActivate);
+                    if (client != null)
                     {
-                        client.Client.AddWork(new TaskObject
+                        client.AddWork(new TaskObject
                         {
                             TaskType = DataType.AcceptSendFile,
                             Data = new byte[] { 1 },
                             IsSendHeader = true,
-                            SessionId = client.Client.SocketId
+                            SessionId = client.SocketId
                         });
                         pr.RemoveButton("Accepted");
                     }
@@ -141,14 +141,15 @@ namespace VRemoteDesktop.ViewModels
                 //Reject file
                 if (string.Compare(btn.Name, "btnCancel") == 0)
                 {
-                    if (_clients.TryGetValue(_currentConnectionActivate, out var client))
+                    var client = _chatConnections.GetClientById(_currentConnectionActivate);
+                    if (client != null)
                     {
-                        client.Client.AddWork(new TaskObject
+                        client.AddWork(new TaskObject
                         {
                             TaskType = DataType.AcceptSendFile,
                             Data = new byte[] { 0 },
                             IsSendHeader = true,
-                            SessionId = client.Client.SocketId
+                            SessionId = client.SocketId
                         });
                         pr.RemoveButton("Rejected");
                     }
@@ -162,12 +163,13 @@ namespace VRemoteDesktop.ViewModels
         }
         public Label NewControl(string id)
         {
-            if (_clients.TryGetValue(id, out var client))
+            var client = _chatConnections.GetClientById(_currentConnectionActivate);
+            if (client != null)
             {
                 Label lbChat = new Label
                 {
-                    Text = client.Client.Partner.ComputerName,
-                    Name = client.Client.SocketId,
+                    Text = client.Partner.ComputerName,
+                    Name = client.SocketId,
                     BackColor = Color.WhiteSmoke,
                     BorderStyle = BorderStyle.FixedSingle
                 };
@@ -207,16 +209,17 @@ namespace VRemoteDesktop.ViewModels
         {
             if (string.IsNullOrEmpty(_currentConnectionActivate))
             {
-                _currentConnectionActivate = _clients.First().Key;
+                _currentConnectionActivate = _chatConnections.GetLastConnectionId();
             }
-            if (_clients.TryGetValue(_currentConnectionActivate, out var client))
+            var client = _chatConnections.GetClientById(_currentConnectionActivate);
+            if (client != null)
             {
-                client.Client.AddWork(new TaskObject
+                client.AddWork(new TaskObject
                 {
                     TaskType = type,
                     Data = data,
                     IsSendHeader = true,
-                    SessionId = client.Client.SocketId
+                    SessionId = client.SocketId
                 });
             }
             else

@@ -99,10 +99,10 @@ namespace VRemoteDesktop.Layouts
         {
             this.Controls.Remove(this._save);
             this.Controls.Remove(this._cancel);
-            Button btn = new Button
+            Label btn = new Label
             {
                 Text = text,
-                Name = "btn"+ text
+                AutoSize = true
             };
             this.Controls.Add(btn, 2, 0);
             this.SetRowSpan(btn, 2);
