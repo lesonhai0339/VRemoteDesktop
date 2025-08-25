@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 namespace VRemoteDesktop.Helpers
 {
@@ -21,6 +23,40 @@ namespace VRemoteDesktop.Helpers
                 "Executable files (*.exe)|*.exe|" +
                 "ZIP archives (*.zip)|*.zip|" +
                 "All files (*.*)|*.*";
+        [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct SHFILEINFO 
+        {
+            public IntPtr hIcon;
+            public int iIcon;
+            public uint dwAttributes;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+            public string szDisplayName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
+            public string szTypeName;
+        }
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool DestroyIcon(IntPtr handle);
+        private const uint SHGFI_ICON = 0x100;
+        private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
+        private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+        public static Icon GetFileIconFromFileExtension(string fileExtension)
+        {
+            SHFILEINFO shinfo = new SHFILEINFO();
+            SHGetFileInfo(
+                fileExtension,
+                FILE_ATTRIBUTE_NORMAL,
+                ref shinfo,
+                (uint)Marshal.SizeOf(typeof(SHFILEINFO)),
+                SHGFI_ICON | SHGFI_USEFILEATTRIBUTES);
+            if(shinfo.hIcon == IntPtr.Zero)
+            {
+                return null;
+            }
+            return Icon.FromHandle(shinfo.hIcon);
+        }
         public static string CreateFileChecksum(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
@@ -34,8 +70,7 @@ namespace VRemoteDesktop.Helpers
                 byte[] hash = md5.ComputeHash(stream);
                 return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
-        }
-
+        }     
         public static byte[] GetFileDataByOffset(string filePath, int offset, int size = 8192)
         {
             if (!File.Exists(filePath))

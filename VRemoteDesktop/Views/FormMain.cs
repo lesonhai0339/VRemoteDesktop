@@ -35,6 +35,8 @@ namespace VRemoteDesktop
             SetupBinding();
             chatForm = new FormChat();
             isShow = false;
+            this.FormBorderStyle = FormBorderStyle.Fixed3D;
+
         }
         #region Properties
         public MainViewModel ViewModel

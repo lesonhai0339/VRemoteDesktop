@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection.Emit;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteDesktop.Layouts;
 using VRemoteDesktop.ViewModels;
 
 namespace VRemoteDesktop.Views
@@ -14,18 +15,20 @@ namespace VRemoteDesktop.Views
     public partial class FormChat : Form
     {
         private ChatViewModel _chatViewModel;
+        private string _filePath;
         public FormChat()
         {
             InitializeComponent();
             ChatView = new ChatViewModel();
             SetupBinding();
-
             Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
 
             this.Location = new Point(
                 workingArea.Right - this.Width,
                 workingArea.Bottom - this.Height - 120
             );
+            this.MaximizeBox = false;
+            this.FormBorderStyle = FormBorderStyle.Fixed3D;
 
             fpnChat.FlowDirection = FlowDirection.TopDown;
             fpnChat.WrapContents = false;
@@ -37,6 +40,7 @@ namespace VRemoteDesktop.Views
             fpnNumberChatConnection.FlowDirection = FlowDirection.TopDown;
             fpnNumberChatConnection.WrapContents = false;
             fpnNumberChatConnection.BackColor = Color.White;
+            fpnNumberChatConnection.AutoScroll = true;
         }
         public ChatViewModel ChatView
         {
@@ -101,6 +105,55 @@ namespace VRemoteDesktop.Views
         {
             string text = txtChatContent.Text;
             _chatViewModel.SendChatMessage(text);
+        }
+
+        private void btnSendAttachment_Click(object sender, EventArgs e)
+        {
+            using (var dialog = new OpenFileDialog())
+            {
+                DialogResult result = dialog.ShowDialog();
+                if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
+                {
+                    string selectedPath = dialog.FileName;
+                    _filePath = selectedPath;
+                    try
+                    {
+                        var fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
+                        if (fileInfo != null)
+                        {
+                            FileReceived file = new FileReceived();
+                            file.Add(new FileReceivedInfo
+                            {
+                                FileExtension = fileInfo.Extension,
+                                Filename = fileInfo.Name,
+                                FileSize = fileInfo.Length
+                            });
+                            AddItemToChatTemplate(file);
+                        }
+                    }
+                    catch (InvalidOperationException ex)
+                    {
+                        MessageBox.Show($"Error: {ex.Message}");
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show($"Error: {ex.Message}");
+                    }
+                }
+                else
+                {
+                    MessageBox.Show("Lỗi không xác định");
+                }
+            }
+        }
+        private void AddItemToChatTemplate(Control control)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<UserControl>(AddItemToChatTemplate), control);
+                return;
+            }
+            fpnChat.Controls.Add(control);
         }
     }
 }

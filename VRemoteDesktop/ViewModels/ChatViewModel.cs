@@ -62,7 +62,7 @@ namespace VRemoteDesktop.ViewModels
         {
             if(sender is VClient client)
             {
-                MessageBox.Show($"Received message from connectionID: {client.SocketId} - Message: {Encoding.ASCII.GetString(e.Data)}");
+                MessageBox.Show($"Received message from connectionID: {client.SocketId} - Message: {Encoding.ASCII.GetString(e.Data)} - Type: {e.Type}");
             }
         }
 
@@ -106,6 +106,10 @@ namespace VRemoteDesktop.ViewModels
         }
         public bool SendChatMessage(string chatData)
         {
+            if (string.IsNullOrEmpty(_currentConnectionActivate))
+            {
+                _currentConnectionActivate = _clients.First().Key;
+            }
             if(_clients.TryGetValue(_currentConnectionActivate, out var client))
             {
                 client.AddWork(new TaskObject

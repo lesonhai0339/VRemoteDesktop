@@ -60,6 +60,7 @@
             this.btnSendAttachment.TabIndex = 7;
             this.btnSendAttachment.UseMnemonic = false;
             this.btnSendAttachment.UseVisualStyleBackColor = true;
+            this.btnSendAttachment.Click += new System.EventHandler(this.btnSendAttachment_Click);
             // 
             // btnSend
             // 

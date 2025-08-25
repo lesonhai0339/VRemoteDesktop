@@ -55,6 +55,7 @@ namespace VRemoteDesktop.Views
             _remoteDesktopService = remoteDesktopService;
             _remoteDesktopService.KeyboardEvent += KeyboardReceivedEventHandler;
             RemoteViewModel = new RemoteViewModel(_vClient, _mouseExtension, _remoteDesktopService);
+            this.FormBorderStyle = FormBorderStyle.Fixed3D;
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);

@@ -258,7 +258,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                             switch (task.Type)
                             {
                                 case DataType.Message:
-                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Data));
+                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                     break;
                                 default:
                                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
