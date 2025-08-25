@@ -143,7 +143,14 @@ namespace VRemoteDesktop.ViewModels
                 Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
                 Buffer.BlockCopy(chunkData, 0, dataSend, 4, chunkData.Length);
 
-                client.Send(DataType.FileTransfer, dataSend);
+                client.AddWork(
+                    new TaskObject
+                    {
+                        TaskType = DataType.FileTransfer,
+                        Data = dataSend,
+                        SessionId = client.SocketId,
+                        IsSendHeader = true
+                    });
                 count++;
                 Console.WriteLine("Total file send: "+ count);
             }

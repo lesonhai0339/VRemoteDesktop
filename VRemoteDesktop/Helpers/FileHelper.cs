@@ -148,7 +148,7 @@ namespace VRemoteDesktop.Helpers
             {
                 try
                 {
-                    using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Write))
+                    using (FileStream fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write))
                     {
                         fs.Seek(offset, SeekOrigin.Begin);
                         fs.Write(data, 0, data.Length);
