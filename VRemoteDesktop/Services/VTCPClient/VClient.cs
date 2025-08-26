@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -380,6 +381,8 @@ namespace VRemoteDesktop.Services.VTCPClient
 
         public void Cancel()
         {
+            var stack = Environment.StackTrace;
+            Console.WriteLine("Cancel called by:\n" + stack);
             _cts.Cancel();
         }
         /// <summary>
@@ -731,6 +734,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void Dispose()
         {
+            var stack = Environment.StackTrace;
+            Console.WriteLine("Dispose called by:\n" + stack);
+
             Dispose(true);
             GC.SuppressFinalize(this);
         }

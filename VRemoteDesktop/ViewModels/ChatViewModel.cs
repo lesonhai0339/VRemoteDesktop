@@ -113,10 +113,12 @@ namespace VRemoteDesktop.ViewModels
                     int flag = e.Data[0];
                     if (flag == 1)
                     {
+                        _curFileReceived.PartnerAcceptSendFile();
                         BeginSendFile(client);
                     }
                     else
                     {
+                        _curFileReceived.PartnerRejectSendFile();
                         _savePath = null;
                         MessageBox.Show("Partner Rejected send file");
                     }
@@ -136,29 +138,36 @@ namespace VRemoteDesktop.ViewModels
         }
         private void BeginSendFile(VClient client)
         {
-            FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
-            long chunkNumber = Helpers.FileHelper.CalculateChunkNumber(fileInfo.Length, CHUNK_SIZE);
-            int count = 0;
-            while (count < chunkNumber)
+            try
             {
-                int offset = count * CHUNK_SIZE;
-                byte[] chunkData = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, CHUNK_SIZE);
+                FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
+                long chunkNumber = Helpers.FileHelper.CalculateChunkNumber(fileInfo.Length, CHUNK_SIZE);
+                int count = 0;
+                while (count < chunkNumber)
+                {
+                    int offset = count * CHUNK_SIZE;
+                    byte[] chunkData = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, CHUNK_SIZE);
 
 
-                byte[] dataSend = new byte[chunkData.Length + 4]; //4 byte for offset
-                Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
-                Buffer.BlockCopy(chunkData, 0, dataSend, 4, chunkData.Length);
+                    byte[] dataSend = new byte[chunkData.Length + 4]; //4 byte for offset
+                    Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
+                    Buffer.BlockCopy(chunkData, 0, dataSend, 4, chunkData.Length);
 
-                client.AddWork(
-                    new TaskObject
-                    {
-                        TaskType = DataType.FileTransfer,
-                        Data = dataSend,
-                        SessionId = client.SocketId,
-                        IsSendHeader = true
-                    });
-                count++;
-                Console.WriteLine("Total file send: "+ count);
+                    client.AddWork(
+                        new TaskObject
+                        {
+                            TaskType = DataType.FileTransfer,
+                            Data = dataSend,
+                            SessionId = client.SocketId,
+                            IsSendHeader = true
+                        });
+                    count++;
+                    Console.WriteLine("Total file send: " + count);
+                }
+            }
+            catch(Exception ex)
+            {
+                throw;
             }
         }
         private void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
@@ -205,7 +214,7 @@ namespace VRemoteDesktop.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        public Label NewControl(string id)
+        public Label NewControl(string id, int width)
         {
             var client = _chatConnections.GetClientById(_currentConnectionActivate);
             if (client != null)
@@ -215,17 +224,19 @@ namespace VRemoteDesktop.ViewModels
                     Text = client.Partner.ComputerName,
                     Name = client.SocketId,
                     BackColor = Color.WhiteSmoke,
-                    BorderStyle = BorderStyle.FixedSingle
+                    BorderStyle = BorderStyle.FixedSingle,
+                    AutoSize = false,
+                    Width = width - 2,
+                    Height = 20,
+                    Margin = Padding.Empty
                 };
                 lbChat.Click += ChangeConnectionActivate;
                 lbChat.MouseHover += (s, e) =>
                 {
-                    lbChat.BackColor = Color.Aqua;
                     lbChat.Cursor = Cursors.Hand;
                 };
                 lbChat.MouseLeave += (s, e) =>
                 {
-                    lbChat.BackColor = Color.WhiteSmoke;
                     lbChat.Cursor = Cursors.Default;
                 };
                 return lbChat;
@@ -237,6 +248,7 @@ namespace VRemoteDesktop.ViewModels
             if(sender is Label lb)
             {
                 _currentConnectionActivate = lb.Name;
+                lb.BackColor = Color.LightGray;
             }
         }
         public void SendChatMessage(string chatData)
@@ -270,8 +282,8 @@ namespace VRemoteDesktop.ViewModels
                                 FileExtension = fileInfo.Extension,
                                 Filename = fileInfo.Name,
                                 FileSize = fileInfo.Length
-                            });
-
+                            }, true);
+                            _curFileReceived = file;
                             string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.Extension, fileInfo.Name, fileInfo.Length);
                             byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
                             SendToClient(DataType.RequestSendFile, byteArray);

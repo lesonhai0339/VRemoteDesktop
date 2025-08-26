@@ -32,6 +32,7 @@ namespace VRemoteDesktop.Layouts
         private Label _fileSize;
         private Button _save;
         private Button _cancel;
+        private Label _waitingPartnerAccept;
         private FileReceivedInfo _fileInfo;
         public VProgressBar _progressbar;
 
@@ -54,7 +55,7 @@ namespace VRemoteDesktop.Layouts
 
             this.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
-        public void Add(FileReceivedInfo fileInfo)
+        public void Add(FileReceivedInfo fileInfo, bool isSender = false)
         {
             if (string.IsNullOrEmpty(fileInfo.FileExtension)
                || string.IsNullOrEmpty(fileInfo.Filename))
@@ -82,33 +83,49 @@ namespace VRemoteDesktop.Layouts
                 Name = "lbFileSize",
                 AutoSize = true,
             };
-            _save = new Button
-            {
-                Text = "Save",
-                Name = "btnSave"
-            };
-            _cancel = new Button
-            {
-                Text = "Cancel",
-                Name = "btnCancel"
-            };
-            _save.Click += (s, e) =>
-            {
-                string savePath = Helpers.FileHelper.OpenFileDialogAndSaveFile(_fileInfo.Filename);
-                ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(true, savePath));
-            };
-            _cancel.Click += (s, e) =>
-            {
-                ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(false, null));
-            };
+
             this.Controls.Add(_fileImageExtension, 0, 0);
             this.SetRowSpan(_fileImageExtension, 2);
 
             this.Controls.Add(_fileName, 1, 0);
             this.Controls.Add(_fileSize, 1, 1);
 
-            this.Controls.Add(_save, 2, 0);
-            this.Controls.Add(_cancel, 2, 1);
+            if (!isSender)
+            {
+                _save = new Button
+                {
+                    Text = "Save",
+                    Name = "btnSave"
+                };
+                _cancel = new Button
+                {
+                    Text = "Cancel",
+                    Name = "btnCancel"
+                };
+                _save.Click += (s, e) =>
+                {
+                    string savePath = Helpers.FileHelper.OpenFileDialogAndSaveFile(_fileInfo.Filename);
+                    ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(true, savePath));
+                };
+                _cancel.Click += (s, e) =>
+                {
+                    ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(false, null));
+                };
+
+                this.Controls.Add(_save, 2, 0);
+                this.Controls.Add(_cancel, 2, 1);
+            }
+            else
+            {
+                _waitingPartnerAccept = new Label
+                {
+                    AutoSize = true,
+                    Text = "Chờ đối tác xác nhận..."
+                };
+
+                this.Controls.Add(_waitingPartnerAccept, 2, 0);
+                this.SetRowSpan(_waitingPartnerAccept, 2);
+            }
         }
         public void RemoveButton()
         {
@@ -145,6 +162,24 @@ namespace VRemoteDesktop.Layouts
             };
             this.Controls.Add(btn, 2, 0);
             this.SetRowSpan(btn, 2);
+        }
+        public void PartnerAcceptSendFile()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(PartnerAcceptSendFile));
+                return;
+            }
+            _waitingPartnerAccept.Text = "Đối tác đã chấp thuận, đang gửi file";
+        }
+        public void PartnerRejectSendFile()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(PartnerRejectSendFile));
+                return;
+            }
+            _waitingPartnerAccept.Text = "Đối tác từ đã từ chối";
         }
     }
 }

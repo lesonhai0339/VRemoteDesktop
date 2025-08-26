@@ -36,13 +36,13 @@ namespace VRemoteDesktop.Views
             fpnChat.AutoScroll = true;
             fpnChat.BorderStyle = BorderStyle.FixedSingle;
             fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
-            fpnNumberChatConnection.BackColor = Color.White;
+            fpnChat.BackColor = Color.White;
 
 
             fpnNumberChatConnection.BorderStyle = BorderStyle.FixedSingle;
             fpnNumberChatConnection.FlowDirection = FlowDirection.TopDown;
             fpnNumberChatConnection.WrapContents = false;
-            fpnNumberChatConnection.BackColor = Color.White;
+            fpnNumberChatConnection.BackColor = Color.Yellow;
             fpnNumberChatConnection.AutoScroll = true;
         }
         public ChatViewModel ChatView
@@ -87,17 +87,16 @@ namespace VRemoteDesktop.Views
             fpnChat.SetFlowBreak(control, true);
         }
 
-        private void Add()
+        private void Add(int width)
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action(Add));
+                this.BeginInvoke(new Action<int>(Add), width);
                 return;
             }
             var value = _chatViewModel.ClientAdded;
 
-            var control = _chatViewModel.NewControl(value);
-
+            var control = _chatViewModel.NewControl(value, width);
             fpnNumberChatConnection.Controls.Add(control);
         }
         private void Remove()
@@ -121,7 +120,7 @@ namespace VRemoteDesktop.Views
         {
             if(e.PropertyName == nameof(_chatViewModel.ClientAdded))
             {
-                Add();
+                Add(fpnNumberChatConnection.Width);
             }
             if (e.PropertyName == nameof(_chatViewModel.ClientRemoved))
             {
