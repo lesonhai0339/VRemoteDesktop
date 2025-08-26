@@ -145,6 +145,7 @@
     <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClient\VClientManager.cs" />
     <Compile Include="Startup.cs" />
+    <Compile Include="Utils\DefaultValue.cs" />
     <Compile Include="Utils\Logger.cs" />
     <Compile Include="Interop\Win32Apis.cs" />
     <Compile Include="ViewModels\ChatViewModel.cs" />

@@ -11,8 +11,7 @@ using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
-using static System.Windows.Forms.LinkLabel;
-using static VRemoteDesktop.Utils.Logger;
+using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -28,7 +27,6 @@ namespace VRemoteDesktop.ViewModels
     }
     public class ChatViewModel: INotifyPropertyChanged, IDisposable
     {
-        private const int CHUNK_SIZE = 1024 * 16;
         private readonly IChatManager<VClient, object> _chatConnections;
         private string _clientAdded;
         private string _clientRemoved;

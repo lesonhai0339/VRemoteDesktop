@@ -10,7 +10,9 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Utils;
 using static VRemoteDesktop.Utils.Logger;
+using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -23,8 +25,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
     }
     public class ScreenCaptureService : IScreenCaptureServiceListener
     {
-        private const int CHUNK_SIZE = 8192;
-        private const int DEFAULT_FPS = 20;
         private readonly object _lock = new object(); // For thread safety. Can use ReadWriteLockSlim instead
 
         private volatile bool _isCapturing;
@@ -125,7 +125,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
                 stopwatch.Stop();
                 int elapsed = (int)stopwatch.ElapsedMilliseconds;
-                int frameTime = 1000 / DEFAULT_FPS;
+                int frameTime = 1000 / FPS;
                 int remainTime = frameTime - elapsed;
                 if (remainTime > 0)
                 {
