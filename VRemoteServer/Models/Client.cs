@@ -146,7 +146,7 @@ namespace VRemoteServer.Models
                 await _dataCallback(partnerId, command,this, buffer);
             }
         }
-        public async Task StartReceiving(int bufferSize = 8192)
+        public async Task StartReceiving(int bufferSize = 1024 * 16)
         {
             try
             {

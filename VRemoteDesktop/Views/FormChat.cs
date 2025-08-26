@@ -54,6 +54,25 @@ namespace VRemoteDesktop.Views
         {
             _chatViewModel.PropertyChanged += OnViewModelPropertyChanged;
             _chatViewModel.ControlEvent += ControlEventHandler;
+            _chatViewModel.TestEvent += TestEventHandler;
+        }
+
+        private void TestEventHandler(Control control, int num)
+        {
+
+            if(control is FileReceived f)
+            {
+                UpdateBar(f, num);
+            }
+        }
+        private void UpdateBar(FileReceived f, int num)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action<FileReceived, int>(UpdateBar), f, num);
+                return;
+            }
+            f.UpdateProgressBar(num);
         }
 
         private void ControlEventHandler(Control control)

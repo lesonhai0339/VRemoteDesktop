@@ -28,7 +28,7 @@ namespace VRemoteDesktop.ViewModels
     }
     public class ChatViewModel: INotifyPropertyChanged, IDisposable
     {
-        private const int CHUNK_SIZE = 8192;
+        private const int CHUNK_SIZE = 1024 * 16;
         private readonly IChatManager<VClient, object> _chatConnections;
         private string _clientAdded;
         private string _clientRemoved;
@@ -37,6 +37,8 @@ namespace VRemoteDesktop.ViewModels
         private string _savePath;
         private FileReceived _curFileReceived;
         public event Action<Control> ControlEvent;
+        public event Action<Control, int> TestEvent;
+        private long num = 0;
         public ChatViewModel()
         {
             _chatConnections = new ChatManager<VClient, object>();
@@ -126,7 +128,10 @@ namespace VRemoteDesktop.ViewModels
                     byte[] data = new byte[e.Data.Length - 4];
                     Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
                     Helpers.FileHelper.WriteToFile(_savePath, offset, data);
-                    _curFileReceived.UpdateProgressBar(data.Length);
+                    TestEvent?.Invoke(_curFileReceived, data.Length);
+                    num += data.Length;
+                    Console.WriteLine("Total file received: " + num);
+
                 }
             }
         }
@@ -175,7 +180,7 @@ namespace VRemoteDesktop.ViewModels
                             IsSendHeader = true,
                             SessionId = client.SocketId
                         });
-                        pr.RemoveButton("Accepted");
+                        pr.RemoveButton();
                     }
                 }
                 //Reject file
@@ -191,7 +196,7 @@ namespace VRemoteDesktop.ViewModels
                             IsSendHeader = true,
                             SessionId = client.SocketId
                         });
-                        pr.RemoveButton("Rejected");
+                        pr.RemoveButton();
                     }
                 }
             }

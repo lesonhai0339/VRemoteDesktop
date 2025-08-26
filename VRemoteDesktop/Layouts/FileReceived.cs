@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Forms;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace VRemoteDesktop.Layouts
 {
@@ -32,7 +33,7 @@ namespace VRemoteDesktop.Layouts
         private Button _save;
         private Button _cancel;
         private FileReceivedInfo _fileInfo;
-        private VProgressBar _progressbar;
+        public VProgressBar _progressbar;
 
         public event EventHandler<P2PFileReceivedEventArgs> ClickedEvent;
         public FileReceived()
@@ -109,30 +110,41 @@ namespace VRemoteDesktop.Layouts
             this.Controls.Add(_save, 2, 0);
             this.Controls.Add(_cancel, 2, 1);
         }
-        public void RemoveButton(string text)
+        public void RemoveButton()
         {
             this.Controls.Remove(this._save);
             this.Controls.Remove(this._cancel);
             this.Controls.Remove(this._fileSize);
-            Label btn = new Label
-            {
-                Text = text,
-                AutoSize = true
-            };
-            this.Controls.Add(btn, 2, 0);
-            //this.SetRowSpan(btn, 2);
             _progressbar = new VProgressBar(_fileInfo);
+            _progressbar.ProgressCompleted += ProgressCompletedEventHandler;
             this.Controls.Add(_progressbar, 1, 1);
             this.SetColumnSpan(_progressbar, 2);
         }
         public void UpdateProgressBar(int num)
         {
-            if (this.InvokeRequired)
+            if(_progressbar != null)
+                _progressbar.SetStep(num);
+        }
+        private void ProgressCompletedEventHandler(object sender, EventArgs e)
+        {
+           if(_progressbar != null)
             {
-                this.Invoke(new Action<int>(UpdateProgressBar), num);
-                return;
+                _progressbar.ProgressCompleted -= ProgressCompletedEventHandler;
+                this.Controls.Remove(_progressbar);
+                _progressbar.Dispose();
+                _progressbar = null;
             }
-            this._progressbar.SetStep(num);
+            FileTaskCompleted();
+        }
+        private void FileTaskCompleted()
+        {
+            Label btn = new Label
+            {
+                Text = "Completed",
+                AutoSize = true
+            };
+            this.Controls.Add(btn, 2, 0);
+            this.SetRowSpan(btn, 2);
         }
     }
 }
