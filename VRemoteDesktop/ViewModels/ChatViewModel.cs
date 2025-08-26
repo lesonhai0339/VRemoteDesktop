@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Windows.Forms;
@@ -27,6 +28,7 @@ namespace VRemoteDesktop.ViewModels
     }
     public class ChatViewModel: INotifyPropertyChanged, IDisposable
     {
+        private readonly object _lock = new object();
         private readonly int CHUNK_SIZE = DEFAULT_CHUNK_SIZE;
         private readonly IChatManager<VClient, object> _chatConnections;
         private string _clientAdded;
@@ -34,6 +36,7 @@ namespace VRemoteDesktop.ViewModels
         private string _currentConnectionActivate;
         private string _filePath;
         private string _savePath;
+        private FileStream _fileStream;
         private FileReceived _curFileReceived;
         public event Action<Control> ControlEvent;
         public event Action<Control, int> TestEvent;
@@ -125,13 +128,20 @@ namespace VRemoteDesktop.ViewModels
                 }
                 else if (e.Type == DataType.FileTransfer)
                 {
-                    int offset = BitConverter.ToInt32(e.Data, 0);
-                    byte[] data = new byte[e.Data.Length - 4];
-                    Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
-                    Helpers.FileHelper.WriteToFile(_savePath, offset, data);
-                    TestEvent?.Invoke(_curFileReceived, data.Length);
-                    num += data.Length;
-                    Console.WriteLine("Total file received: " + num);
+                    try
+                    {
+                        int offset = BitConverter.ToInt32(e.Data, 0);
+                        byte[] data = new byte[e.Data.Length - 4];
+                        Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
+                        Helpers.FileHelper.WriteToFile(_fileStream, offset, data);
+                        TestEvent?.Invoke(_curFileReceived, data.Length);
+                        num += data.Length;
+                        Console.WriteLine("Total file received: " + num);
+                    }
+                    catch(Exception ex)
+                    {
+                        throw;
+                    }
 
                 }
             }
@@ -159,7 +169,8 @@ namespace VRemoteDesktop.ViewModels
                             TaskType = DataType.FileTransfer,
                             Data = dataSend,
                             SessionId = client.SocketId,
-                            IsSendHeader = true
+                            IsSendHeader = true,
+                            Priority = TaskObjectPriority.Low
                         });
                     count++;
                     Console.WriteLine("Total file send: " + count);
@@ -170,6 +181,14 @@ namespace VRemoteDesktop.ViewModels
                 throw;
             }
         }
+        private void InitializeFileTransfer(string savePath)
+        {
+            lock (_lock)
+            {
+                _fileStream?.Dispose();
+                _fileStream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+            }
+        }
         private void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
         {
             if(sender is Button btn && btn.Parent is FileReceived pr)
@@ -178,6 +197,7 @@ namespace VRemoteDesktop.ViewModels
                 if (string.Compare(btn.Name, "btnSave") == 0)
                 {
                     _savePath = e.filePath;
+                    InitializeFileTransfer(_savePath);
                     var client = _chatConnections.GetClientById(_currentConnectionActivate);
                     if (client != null)
                     {
@@ -341,7 +361,8 @@ namespace VRemoteDesktop.ViewModels
         {
             if (disposing)
             {
-
+                  _fileStream?.Dispose();
+        _fileStream = null;
             }
         }
  

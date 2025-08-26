@@ -62,7 +62,8 @@ namespace VRemoteDesktop.ViewModels
                 TaskType = DataType.Clipboard,
                 Data = Encoding.UTF8.GetBytes(clipboard),
                 IsSendHeader = true,
-                SessionId = _vClient.SocketId
+                SessionId = _vClient.SocketId,
+                Priority = TaskObjectPriority.High
             });
         }
         public void ProcessKeyboard(KeyboardEventArgs e)
@@ -77,7 +78,8 @@ namespace VRemoteDesktop.ViewModels
                 TaskType = DataType.Keyboard,
                 Data = Encoding.ASCII.GetBytes(keyboard),
                 IsSendHeader = true,
-                SessionId = _vClient.SocketId
+                SessionId = _vClient.SocketId,
+                Priority = TaskObjectPriority.High
             });
         }
         public void ProcessMouseEvent(
@@ -106,7 +108,8 @@ namespace VRemoteDesktop.ViewModels
                     TaskType = DataType.Mouse,
                     Data = Encoding.ASCII.GetBytes(mouseEventString),
                     IsSendHeader = true,
-                    SessionId = _vClient.SocketId
+                    SessionId = _vClient.SocketId,
+                    Priority = TaskObjectPriority.High
                 });            
             }
             catch (Exception ex)

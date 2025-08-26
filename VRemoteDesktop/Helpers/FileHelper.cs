@@ -111,6 +111,35 @@ namespace VRemoteDesktop.Helpers
 
             return new FileInfo(filePath);
         }
+        public static void InitializeFileTransfer(FileStream stream, string savePath)
+        {
+            lock (_lock)
+            {
+                stream?.Dispose();
+                stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+            }
+        }
+        public static void WriteToFile(FileStream fs, int offset, byte[] data)
+        {
+            if (fs == null)
+                throw new ArgumentException("FileStream cannot be null.", nameof(fs));
+            if (data == null)
+                throw new ArgumentException("data cannot be null.", nameof(data));
+
+            lock (_lock)
+            {
+                try
+                {
+                    fs.Seek(offset, SeekOrigin.Begin);
+                    fs.Write(data, 0, data.Length);
+                    fs.Flush();
+                }
+                catch (IOException ex)
+                {
+                    throw new InvalidOperationException($"Failed to write to file at offset {offset}", ex);
+                }
+            }
+        }
         public static void WriteToFile(string path, string content)
         {
 

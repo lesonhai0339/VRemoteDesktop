@@ -38,23 +38,24 @@ namespace VRemoteDesktop.Services.VTCPClient
         private ClientInfo _partnerInfo;
 
         private Socket _socket;
+        private BlockingCollection<DataReceive> _tasks;
         private BackgroundWorker _receiveBackgroundWorker;
-        private BackgroundWorker _senderBackgroundWorker;
+        private BackgroundWorker _backgroundWorker2;
 
         private ManualResetEvent _resetEvent;
         private CancellationTokenSource _cts;
         private CancellationToken _cancellationToken;
 
-        private readonly BlockingCollection<DataReceive> _receivetasks;
-        private readonly BlockingCollection<object> _sendTasks;
+        private ConcurrentQueue<object> _screenTasks;
+        private ConcurrentQueue<object> _commandTasks;
 
         public event EventHandler<P2PClientDataReceived> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
         public VClient(string socketId, VClientType clientType)
         {
-            _sendTasks = new BlockingCollection<object>();
-            _receivetasks = new BlockingCollection<DataReceive>();
+            ScreenTasks = new ConcurrentQueue<object>();
+            CommandTasks = new ConcurrentQueue<object>();
 
             _isSocketConnected = false;
             _isP2PConnected = false;
@@ -62,14 +63,15 @@ namespace VRemoteDesktop.Services.VTCPClient
             _cts = new CancellationTokenSource();
             _cancellationToken = _cts.Token;
             //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
+            Tasks = new BlockingCollection<DataReceive>();
             ReceivedWorker = new BackgroundWorker();
             ReceivedWorker.WorkerSupportsCancellation = true;
 
-            SenderWorker = new BackgroundWorker();
-            SenderWorker.WorkerSupportsCancellation = true;
-            if (!SenderWorker.IsBusy)
+            Worker2 = new BackgroundWorker();
+            Worker2.WorkerSupportsCancellation = true;
+            if (!Worker2.IsBusy)
             {
-                SenderWorker.RunWorkerAsync();
+                Worker2.RunWorkerAsync();
             }
 
             _socketId = socketId;
@@ -130,21 +132,37 @@ namespace VRemoteDesktop.Services.VTCPClient
             get => _partnerId;
             set => _partnerId = value;
         }
-        public BackgroundWorker SenderWorker
+        public ConcurrentQueue<object> ScreenTasks
         {
-            get => _senderBackgroundWorker;
+            get => _screenTasks;
+            private set
+            {
+                _screenTasks = value;
+            }
+        }
+        public ConcurrentQueue<object> CommandTasks
+        {
+            get => _commandTasks;
+            private set
+            {
+                _commandTasks = value;
+            }
+        }
+        public BackgroundWorker Worker2
+        {
+            get => _backgroundWorker2;
             set
             {
-                if (_senderBackgroundWorker != null)
+                if (_backgroundWorker2 != null)
                 {
-                    _senderBackgroundWorker.DoWork -= SenderDoWork;
+                    _backgroundWorker2.DoWork -= DoWork2;
                 }
 
-                _senderBackgroundWorker = value;
+                _backgroundWorker2 = value;
 
-                if (_senderBackgroundWorker != null)
+                if (_backgroundWorker2 != null)
                 {
-                    _senderBackgroundWorker.DoWork += SenderDoWork;
+                    _backgroundWorker2.DoWork += DoWork2;
                 }
             }
         }
@@ -204,13 +222,21 @@ namespace VRemoteDesktop.Services.VTCPClient
                 }
             }
         }
+        public BlockingCollection<DataReceive> Tasks
+        {
+            get => _tasks;
+            private set
+            {
+                _tasks = value;
+            }
+        }
         #endregion
         #region Methods
         private void DataReceivedWork(object sender, DoWorkEventArgs e)
         {
             try
             {
-                foreach (var task in _receivetasks.GetConsumingEnumerable(_cancellationToken))
+                foreach (var task in Tasks.GetConsumingEnumerable(_cancellationToken))
                 {
                     try
                     {
@@ -255,36 +281,39 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
             }
         }
-        private void SenderDoWork(object sender, DoWorkEventArgs e)
+        private void DoWork2(object sender, DoWorkEventArgs e)
         {
-            try
+            int count = 0;
+            while (!_cancellationToken.IsCancellationRequested)
             {
-                foreach (var obj in _sendTasks.GetConsumingEnumerable(_cancellationToken))
+                var taskQueue = DequeueTask();
+                if (taskQueue != null)
                 {
                     try
                     {
-                        if(obj is TaskGroup taskGroup)
-                        {
-                            foreach (var t in taskGroup.Tasks)
-                            {
-                                ProcessTask(t);
-                            }
-                        }
-                        else if(obj is TaskObject task)
+                        if (taskQueue is TaskObject task)
                         {
                             ProcessTask(task);
                         }
-
+                        else if (taskQueue is TaskGroup taskGroup)
+                        {
+                            foreach (var t in taskGroup.Tasks)
+                            {
+                                if (CommandTasks.TryPeek(out _))
+                                {
+                                    break;
+                                }
+                                ProcessTask(t);
+                            }
+                        }
                     }
                     catch (Exception ex)
                     {
                         Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
                     }
                 }
-            }
-            catch (OperationCanceledException ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
+                count++;
+                Thread.Sleep(5);
             }
         }
         private void ProcessTask(TaskObject task)
@@ -298,14 +327,58 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Send(task.Data);
             }
         }
+        private object DequeueTask()
+        {
+            try
+            {
+                if (CommandTasks.Count > 0)
+                {
+                    return CommandTasks.TryDequeue(out var tasks) ? tasks : null;
+                }
+                else
+                {
+                    return ScreenTasks.TryDequeue(out var tasks) ? tasks : null;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "RemoteClient").Error(ex, "DequeueTask error");
+                return null;
+            }
+        }
         public void AddWork(TaskObject task)
         {
-            _sendTasks.Add(task);
+            if (ScreenTasks.Count >= 2)
+            {
+                // keep last frame and remove all previous frames
+                object lastItem = null;
+                while (ScreenTasks.TryDequeue(out var item))
+                {
+                    lastItem = item;
+                }
+                if (lastItem != null)
+                {
+                    ScreenTasks.Enqueue(lastItem);
+                }
+                ScreenTasks.Enqueue(task);
+            }
+            else
+            {
+                CommandTasks.Enqueue(task);
+            }
         }
         public void AddWorkGroup(List<TaskObject> tasks, DataType type = DataType.None)
         {
-            _sendTasks.Add(new TaskGroup(tasks));
+            if (type == DataType.Screen || type == DataType.Chunks)
+            {
+                ScreenTasks.Enqueue(new TaskGroup(tasks));
+            }
+            else
+            {
+                CommandTasks.Enqueue(new TaskGroup(tasks));
+            }
         }
+
         public void Cancel()
         {
             var stack = Environment.StackTrace;
@@ -505,7 +578,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 byte[] data = new byte[bytes.Length - 13];
                 Buffer.BlockCopy(bytes, 13, data, 0, data.Length);
 
-                _receivetasks.Add(new DataReceive
+                Tasks.Add(new DataReceive
                 {
                     Type = commandType,
                     Length = length,
@@ -692,9 +765,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                     _receiveBackgroundWorker.Dispose();
 
                     //queue
-                    if (_receivetasks != null)
+                    if (Tasks != null)
                     {
-                        foreach(var item in _receivetasks.GetConsumingEnumerable())
+                        foreach(var item in Tasks.GetConsumingEnumerable())
                         {
                             if (item is IDisposable disposableItem)
                             {
