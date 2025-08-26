@@ -7,7 +7,8 @@ namespace VRemoteDesktop.Utils
 {
     public static class DefaultValue
     {
-        public static int CHUNK_SIZE = 1024 * 32;
-        public static int FPS = 20;
+        public static int DEFAULT_BUFFER_SIZE = 1024 * 8;
+        public static int DEFAULT_CHUNK_SIZE = 1024 * 32;
+        public static int DEFAULT_FPS = 20;
     }
 }

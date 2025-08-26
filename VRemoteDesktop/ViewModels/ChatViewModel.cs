@@ -27,6 +27,7 @@ namespace VRemoteDesktop.ViewModels
     }
     public class ChatViewModel: INotifyPropertyChanged, IDisposable
     {
+        private readonly int CHUNK_SIZE = DEFAULT_CHUNK_SIZE;
         private readonly IChatManager<VClient, object> _chatConnections;
         private string _clientAdded;
         private string _clientRemoved;

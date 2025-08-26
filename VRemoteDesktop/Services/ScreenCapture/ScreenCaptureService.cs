@@ -26,7 +26,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
     public class ScreenCaptureService : IScreenCaptureServiceListener
     {
         private readonly object _lock = new object(); // For thread safety. Can use ReadWriteLockSlim instead
-
+        private readonly int CHUNK_SIZE = DEFAULT_CHUNK_SIZE;
+        private readonly int FPS = DEFAULT_FPS;
         private volatile bool _isCapturing;
         private bool _disposed = false;
         private byte[] _buffer = new byte[20];

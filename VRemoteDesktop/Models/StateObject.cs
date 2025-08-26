@@ -12,13 +12,13 @@ namespace VRemoteDesktop.Models
         public StateObject()
         {
             WorkSocket = null;
-            Buffer = new byte[CHUNK_SIZE];
+            Buffer = new byte[DEFAULT_BUFFER_SIZE];
             ByteArrayBuilder = new ByteArrayBuilder();
             ColPendingContinousPacket = new Dictionary<byte, ByteArrayBuilder>();
             SckId = "";
         }
         public Socket WorkSocket;
-        public int BufferSize = CHUNK_SIZE;
+        public int BufferSize = DEFAULT_BUFFER_SIZE;
         public byte[] Buffer;
         public ByteArrayBuilder ByteArrayBuilder;
         public Dictionary<byte, ByteArrayBuilder> ColPendingContinousPacket;
