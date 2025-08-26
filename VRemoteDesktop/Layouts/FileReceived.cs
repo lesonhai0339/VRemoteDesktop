@@ -32,6 +32,7 @@ namespace VRemoteDesktop.Layouts
         private Button _save;
         private Button _cancel;
         private FileReceivedInfo _fileInfo;
+        private VProgressBar _progressbar;
 
         public event EventHandler<P2PFileReceivedEventArgs> ClickedEvent;
         public FileReceived()
@@ -112,13 +113,26 @@ namespace VRemoteDesktop.Layouts
         {
             this.Controls.Remove(this._save);
             this.Controls.Remove(this._cancel);
+            this.Controls.Remove(this._fileSize);
             Label btn = new Label
             {
                 Text = text,
                 AutoSize = true
             };
             this.Controls.Add(btn, 2, 0);
-            this.SetRowSpan(btn, 2);
+            //this.SetRowSpan(btn, 2);
+            _progressbar = new VProgressBar(_fileInfo);
+            this.Controls.Add(_progressbar, 1, 1);
+            this.SetColumnSpan(_progressbar, 2);
+        }
+        public void UpdateProgressBar(int num)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<int>(UpdateProgressBar), num);
+                return;
+            }
+            this._progressbar.SetStep(num);
         }
     }
 }

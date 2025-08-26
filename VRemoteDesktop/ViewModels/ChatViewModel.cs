@@ -35,6 +35,7 @@ namespace VRemoteDesktop.ViewModels
         private string _currentConnectionActivate;
         private string _filePath;
         private string _savePath;
+        private FileReceived _curFileReceived;
         public event Action<Control> ControlEvent;
         public ChatViewModel()
         {
@@ -84,15 +85,15 @@ namespace VRemoteDesktop.ViewModels
                 if (e.Type == DataType.RequestSendFile)
                 {
                     string[] data = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(e.Data), "|");
-                    FileReceived file = new FileReceived();
-                    file.Add(new FileReceivedInfo
+                    _curFileReceived = new FileReceived();
+                    _curFileReceived.Add(new FileReceivedInfo
                     {
                         FileExtension = data[0],
                         Filename = data[1],
                         FileSize = long.Parse(data[2])
                     });
-                    file.ClickedEvent += FileReceivedClickEventHandler;
-                    ControlEvent?.Invoke(file);
+                    _curFileReceived.ClickedEvent += FileReceivedClickEventHandler;
+                    ControlEvent?.Invoke(_curFileReceived);
                 }
                 else if (e.Type == DataType.Message)
                 {
@@ -125,6 +126,7 @@ namespace VRemoteDesktop.ViewModels
                     byte[] data = new byte[e.Data.Length - 4];
                     Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
                     Helpers.FileHelper.WriteToFile(_savePath, offset, data);
+                    _curFileReceived.UpdateProgressBar(data.Length);
                 }
             }
         }

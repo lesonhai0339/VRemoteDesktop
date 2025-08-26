@@ -105,6 +105,9 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Layouts\FileReceived.cs" />
+    <Compile Include="Layouts\VProgressBar.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Models\ChatManager.cs" />
     <Compile Include="Models\ErrorResponse.cs" />
     <Compile Include="Models\EventRegistration.cs" />
