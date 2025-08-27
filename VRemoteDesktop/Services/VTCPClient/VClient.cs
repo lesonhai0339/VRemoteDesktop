@@ -225,8 +225,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                             //{
                             //    lastTask = t;
                             //}
-
-                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(lastTask.Type, lastTask.Data));
+                            _ = Task.Factory.StartNew(() =>
+                                P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(lastTask.Type, lastTask.Data)));
                         }
                         else
                         {
@@ -236,10 +236,12 @@ namespace VRemoteDesktop.Services.VTCPClient
                                 case DataType.RequestSendFile:
                                 case DataType.AcceptSendFile:
                                 case DataType.FileTransfer:
-                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
+                                    _ = Task.Factory.StartNew(() =>
+                                        P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data)));
                                     break;
                                 default:
-                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                                    _ = Task.Factory.StartNew(() =>
+                                        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data)));
                                     break;
                             }
                         }        
