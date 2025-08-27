@@ -85,6 +85,12 @@ namespace VRemoteDesktop.Views
             control.MaximumSize = new Size(fpnChat.Width - SystemInformation.VerticalScrollBarWidth - 10, 0);
             fpnChat.Controls.Add(control);
             fpnChat.SetFlowBreak(control, true);
+
+            fpnChat.PerformLayout();
+            fpnChat.Refresh();
+            fpnChat.Invalidate();
+
+            fpnChat.ScrollControlIntoView(control);
         }
 
         private void Add(int width)
@@ -98,6 +104,12 @@ namespace VRemoteDesktop.Views
 
             var control = _chatViewModel.NewControl(value, width);
             fpnNumberChatConnection.Controls.Add(control);
+
+            fpnNumberChatConnection.PerformLayout();
+            fpnNumberChatConnection.Refresh();
+            fpnNumberChatConnection.Invalidate();
+
+            fpnNumberChatConnection.ScrollControlIntoView(control);
         }
         private void Remove()
         {
