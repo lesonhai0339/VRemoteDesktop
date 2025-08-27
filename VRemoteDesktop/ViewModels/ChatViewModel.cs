@@ -7,6 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
@@ -140,9 +141,11 @@ namespace VRemoteDesktop.ViewModels
                         int offset = BitConverter.ToInt32(e.Data, 0);
                         byte[] data = new byte[e.Data.Length - 4];
                         Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
+                        _ = Task.Factory.StartNew(()=>
+                            TestEvent?.Invoke(_curFileReceived, data.Length));
                         _fileExtension.WriteDataToFile(offset, data);
                         //Helpers.FileHelper.WriteToFile(_fileStream, offset, data);
-                        TestEvent?.Invoke(_curFileReceived, data.Length);
+                        
                     }
                     catch(Exception ex)
                     {

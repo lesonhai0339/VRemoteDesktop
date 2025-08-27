@@ -90,8 +90,8 @@ namespace VRemoteDesktop.Services.File
             finally
             {
                 _lastWriteTime = DateTime.Now;
-                var a = new FileChunk(offset, data.Length);
-                _chunksReceived.Add(_count, a);
+                var chunk = new FileChunk(offset, data.Length);
+                _chunksReceived.Add(_count, chunk);
                 _count++;
 
                 long num = _chunksReceived.Sum(x => x.Value.Size);
