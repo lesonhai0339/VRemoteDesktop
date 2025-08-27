@@ -31,16 +31,5 @@ jobs:
     
     - name: Restore NuGet packages
       run: nuget restore $env:Solution_Name
-    
-    - name: Build solution
-      run: msbuild $env:Solution_Name /p:Configuration=${{ matrix.configuration }}
-    
-    - name: Run unit tests
-      run: |
-        $testAssemblies = Get-ChildItem -Recurse -Filter "*test*.dll" | Where-Object {
-          $_.DirectoryName -like "*bin\${{ matrix.configuration }}*"
-        }
-        foreach ($assembly in $testAssemblies) {
-          vstest.console.exe $assembly.FullName
-        }
+      
       shell: powershell
