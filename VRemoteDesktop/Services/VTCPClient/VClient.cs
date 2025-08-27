@@ -4,6 +4,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Configuration;
+using System.Diagnostics;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -212,8 +213,13 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 foreach (var task in _receivetasks.GetConsumingEnumerable(_cancellationToken))
                 {
+                    Stopwatch stopwatch = new Stopwatch();
+                    stopwatch.Start();
                     try
                     {
+                        ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
+                        Log.ForContext("FileName", this.GetType().Name + "Threads").Info(": Current_worker_threds: " + workerThreads + " - completion_Port_Threads: " + completionPortThreads + " - current_tasks: "+ _receivetasks.Count);
+
                       
                         if (task.Type == DataType.Screen || task.Type == DataType.Chunks)
                         {
@@ -225,8 +231,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                             //{
                             //    lastTask = t;
                             //}
-                            _ = Task.Factory.StartNew(() =>
-                                P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(lastTask.Type, lastTask.Data)));
+                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(lastTask.Type, lastTask.Data));
                         }
                         else
                         {
@@ -236,12 +241,21 @@ namespace VRemoteDesktop.Services.VTCPClient
                                 case DataType.RequestSendFile:
                                 case DataType.AcceptSendFile:
                                 case DataType.FileTransfer:
-                                    _ = Task.Factory.StartNew(() =>
-                                        P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data)));
+                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                     break;
                                 default:
                                     _ = Task.Factory.StartNew(() =>
-                                        TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data)));
+                                    {
+                                        try
+                                        {
+                                            TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
+                                        }
+                                    });
+                                    
                                     break;
                             }
                         }        
@@ -250,6 +264,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
                     }
+                    stopwatch.Stop();
+                    Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Error("Elasped time: "+ stopwatch.Elapsed.TotalMilliseconds);
                 }
             }
             catch(OperationCanceledException ex)
