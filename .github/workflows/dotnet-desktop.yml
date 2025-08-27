@@ -1,4 +1,4 @@
-name: .NET Core Desktop
+name: .NET Framework 4.0 Desktop
 
 on:
   push:
@@ -11,26 +11,36 @@ jobs:
     strategy:
       matrix:
         configuration: [Debug, Release]
+    
     runs-on: windows-latest
+    
     env:
       Solution_Name: VRemoteDesktop.sln
-
+    
     steps:
     - name: Checkout
       uses: actions/checkout@v4
       with:
         fetch-depth: 0
-
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: 8.0.x
-
+    
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+    
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v2
-
+    
+    - name: Restore NuGet packages
+      run: nuget restore $env:Solution_Name
+    
     - name: Build solution
       run: msbuild $env:Solution_Name /p:Configuration=${{ matrix.configuration }}
-
+    
     - name: Run unit tests
-      run: dotnet test $env:Solution_Name --configuration ${{ matrix.configuration }}
+      run: |
+        $testAssemblies = Get-ChildItem -Recurse -Filter "*test*.dll" | Where-Object {
+          $_.DirectoryName -like "*bin\${{ matrix.configuration }}*"
+        }
+        foreach ($assembly in $testAssemblies) {
+          vstest.console.exe $assembly.FullName
+        }
+      shell: powershell
