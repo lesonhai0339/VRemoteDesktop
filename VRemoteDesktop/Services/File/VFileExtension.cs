@@ -11,8 +11,14 @@ namespace VRemoteDesktop.Services.File
 {
     public class FileChunk
     {
-        public int Offset { get; set; }
-        public int Size { get; set; }
+        public FileChunk(long offset, long size)
+        {
+            Offset = offset;
+            Size = size;
+        }
+
+        public long Offset { get; set; }
+        public long Size { get; set; }
     }
     public interface IVFileExtension
     {
@@ -84,13 +90,11 @@ namespace VRemoteDesktop.Services.File
             finally
             {
                 _lastWriteTime = DateTime.Now;
-                _chunksReceived.Add(_count, new FileChunk { 
-                    Offset = offset, 
-                    Size = data.Length 
-                });
+                var a = new FileChunk(offset, data.Length);
+                _chunksReceived.Add(_count, a);
                 _count++;
 
-                int num = _chunksReceived.Sum(x => x.Value.Size);
+                long num = _chunksReceived.Sum(x => x.Value.Size);
                 if(num == _fileSize)
                 {
                     FileEvent?.Invoke(this,new FileEventArgs());
