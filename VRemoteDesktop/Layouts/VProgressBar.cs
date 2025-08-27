@@ -11,7 +11,7 @@ namespace VRemoteDesktop.Layouts
         private long _totalSize;
         private float _received;
         public event EventHandler<EventArgs> ProgressCompleted;
-        public VProgressBar(FileReceivedInfo fileInfo)
+        public VProgressBar(VFileInfo fileInfo)
         {
             if (fileInfo == null)
                 throw new ArgumentNullException(nameof(fileInfo));
@@ -24,7 +24,7 @@ namespace VRemoteDesktop.Layouts
 
             InitializeComponent(fileInfo);
         }
-        private void InitializeComponent(FileReceivedInfo fileInfo)
+        private void InitializeComponent(VFileInfo fileInfo)
         {
             this.Visible = true;
             this.Minimum = 0;

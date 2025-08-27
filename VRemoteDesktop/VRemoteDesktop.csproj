@@ -70,22 +70,11 @@
     <Compile Include="Enums\WindowsKeyboardEvent.cs" />
     <Compile Include="Enums\WindowsMouseEvent.cs" />
     <Compile Include="Enums\WindowsMouseMessage.cs" />
-    <Compile Include="Events\ClientConnectionEventArgs.cs" />
-    <Compile Include="Events\ConnectEventArgs.cs" />
+    <Compile Include="Events\FileEventArgs.cs" />
     <Compile Include="Events\KeyboardEventArgs.cs" />
-    <Compile Include="Events\LoginEventArgs.cs" />
-    <Compile Include="Events\MouseEvent.cs" />
-    <Compile Include="Events\P2PAcceptConnectEventArgs.cs" />
     <Compile Include="Events\P2PChatEventArgs.cs" />
     <Compile Include="Events\P2PClientDataReceived.cs" />
-    <Compile Include="Events\P2PClipboardEventArgs.cs" />
-    <Compile Include="Events\P2PRequestConnectEventArgs.cs" />
-    <Compile Include="Events\P2PDisconnectEventArgs.cs" />
-    <Compile Include="Events\P2PFileSendEventArgs.cs" />
-    <Compile Include="Events\P2PKeyboardEventArgs.cs" />
-    <Compile Include="Events\P2PMouseEventArgs.cs" />
     <Compile Include="Events\P2PScreenEventArgs.cs" />
-    <Compile Include="Events\P2PScreenSendResponeEventArgs.cs" />
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
@@ -104,7 +93,7 @@
     <Compile Include="Layouts\FileMessage.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Layouts\FileReceived.cs" />
+    <Compile Include="Layouts\FileReceivedLayout.cs" />
     <Compile Include="Layouts\VProgressBar.cs">
       <SubType>Component</SubType>
     </Compile>
@@ -130,6 +119,7 @@
     <Compile Include="Models\UIPropertyRegistration.cs" />
     <Compile Include="Services\Authentication\Authentication.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
+    <Compile Include="Services\File\VFileExtension.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
     <Compile Include="Services\Keyboard\VirtualClipboard.cs" />
     <Compile Include="Services\Keyboard\VirtualKeyboard.cs" />
@@ -148,6 +138,7 @@
     <Compile Include="Utils\DefaultValue.cs" />
     <Compile Include="Utils\Logger.cs" />
     <Compile Include="Interop\Win32Apis.cs" />
+    <Compile Include="Utils\VPriorityQueue.cs" />
     <Compile Include="ViewModels\ChatViewModel.cs" />
     <Compile Include="ViewModels\MainViewModel.cs" />
     <Compile Include="ViewModels\RemoteViewModel.cs" />

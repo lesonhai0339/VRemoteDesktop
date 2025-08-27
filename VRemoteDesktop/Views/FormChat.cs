@@ -60,16 +60,16 @@ namespace VRemoteDesktop.Views
         private void TestEventHandler(Control control, int num)
         {
 
-            if(control is FileReceived f)
+            if(control is FileReceivedLayout f)
             {
                 UpdateBar(f, num);
             }
         }
-        private void UpdateBar(FileReceived f, int num)
+        private void UpdateBar(FileReceivedLayout f, int num)
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<FileReceived, int>(UpdateBar), f, num);
+                this.BeginInvoke(new Action<FileReceivedLayout, int>(UpdateBar), f, num);
                 return;
             }
             f.UpdateProgressBar(num);

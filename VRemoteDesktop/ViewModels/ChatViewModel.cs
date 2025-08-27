@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Services.File;
 using VRemoteDesktop.Services.VTCPClient;
 using static VRemoteDesktop.Utils.DefaultValue;
 
@@ -34,17 +35,17 @@ namespace VRemoteDesktop.ViewModels
         private string _clientAdded;
         private string _clientRemoved;
         private string _currentConnectionActivate;
-        private string _filePath;
-        private string _savePath;
-        private FileStream _fileStream;
-        private FileReceived _curFileReceived;
+        private FileReceivedLayout _curFileReceived;
+        private readonly IVFileExtension _fileExtension;
         public event Action<Control> ControlEvent;
         public event Action<Control, int> TestEvent;
-        private long num = 0;
         public ChatViewModel()
         {
+            _fileExtension = new VFileExtension();
+            _fileExtension.FileEvent += FileEventHandler;
             _chatConnections = new ChatManager<VClient, object>();
         }
+
         public string ClientAdded
         {
             get => _clientAdded;
@@ -89,8 +90,15 @@ namespace VRemoteDesktop.ViewModels
                 if (e.Type == DataType.RequestSendFile)
                 {
                     string[] data = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(e.Data), "|");
-                    _curFileReceived = new FileReceived();
-                    _curFileReceived.Add(new FileReceivedInfo
+                    _fileExtension.Add(new VFileInfo
+                    {
+                        FileExtension = data[0],
+                        Filename = data[1],
+                        FileSize = long.Parse(data[2])
+                    }, false);
+                    
+                    _curFileReceived = new FileReceivedLayout();
+                    _curFileReceived.Add(new VFileInfo
                     {
                         FileExtension = data[0],
                         Filename = data[1],
@@ -122,7 +130,6 @@ namespace VRemoteDesktop.ViewModels
                     else
                     {
                         _curFileReceived.PartnerRejectSendFile();
-                        _savePath = null;
                         MessageBox.Show("Partner Rejected send file");
                     }
                 }
@@ -133,10 +140,9 @@ namespace VRemoteDesktop.ViewModels
                         int offset = BitConverter.ToInt32(e.Data, 0);
                         byte[] data = new byte[e.Data.Length - 4];
                         Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
-                        Helpers.FileHelper.WriteToFile(_fileStream, offset, data);
+                        _fileExtension.WriteDataToFile(offset, data);
+                        //Helpers.FileHelper.WriteToFile(_fileStream, offset, data);
                         TestEvent?.Invoke(_curFileReceived, data.Length);
-                        num += data.Length;
-                        Console.WriteLine("Total file received: " + num);
                     }
                     catch(Exception ex)
                     {
@@ -150,7 +156,7 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
+                FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_fileExtension.FilePath);
                 long chunkNumber = Helpers.FileHelper.CalculateChunkNumber(fileInfo.Length, CHUNK_SIZE);
                 int count = 0;
                 while (count < chunkNumber)
@@ -180,24 +186,21 @@ namespace VRemoteDesktop.ViewModels
             {
                 throw;
             }
-        }
-        private void InitializeFileTransfer(string savePath)
-        {
-            lock (_lock)
+            finally
             {
-                _fileStream?.Dispose();
-                _fileStream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+                _fileExtension.Clear();
             }
         }
         private void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
         {
-            if(sender is Button btn && btn.Parent is FileReceived pr)
+            if(sender is Button btn && btn.Parent is FileReceivedLayout pr)
             {
                 //Accept file
                 if (string.Compare(btn.Name, "btnSave") == 0)
                 {
-                    _savePath = e.filePath;
-                    InitializeFileTransfer(_savePath);
+                    _fileExtension.UpdateSavePath(e.filePath);
+                    //_savePath = e.filePath;
+                    //InitializeFileTransfer(_savePath);
                     var client = _chatConnections.GetClientById(_currentConnectionActivate);
                     if (client != null)
                     {
@@ -214,6 +217,7 @@ namespace VRemoteDesktop.ViewModels
                 //Reject file
                 if (string.Compare(btn.Name, "btnCancel") == 0)
                 {
+                    _fileExtension.Clear();
                     var client = _chatConnections.GetClientById(_currentConnectionActivate);
                     if (client != null)
                     {
@@ -290,20 +294,24 @@ namespace VRemoteDesktop.ViewModels
                 if (result == DialogResult.OK && !string.IsNullOrWhiteSpace(dialog.FileName))
                 {
                     string selectedPath = dialog.FileName;
-                    _filePath = selectedPath;
                     try
                     {
-                        FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(_filePath);
+                        FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(selectedPath);
                         if (fileInfo != null)
                         {
-                            FileReceived file = new FileReceived();
-                            file.Add(new FileReceivedInfo
+                            VFileInfo vfileInfo = new VFileInfo
                             {
                                 FileExtension = fileInfo.Extension,
                                 Filename = fileInfo.Name,
                                 FileSize = fileInfo.Length
-                            }, true);
+                            };
+                            _fileExtension.Add(vfileInfo, true);
+                            _fileExtension.UpdateSavePath(selectedPath);
+
+                            FileReceivedLayout file = new FileReceivedLayout();
+                            file.Add(vfileInfo, true);
                             _curFileReceived = file;
+
                             string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.Extension, fileInfo.Name, fileInfo.Length);
                             byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
                             SendToClient(DataType.RequestSendFile, byteArray);
@@ -352,6 +360,11 @@ namespace VRemoteDesktop.ViewModels
         {
             MessageBox.Show(" Callback");
         }
+        private void FileEventHandler(object sender, FileEventArgs e)
+        {
+            Console.WriteLine("Finished write file");
+            _fileExtension.Clear();
+        }
         public void Dispose()
         {
             Dispose(true);
@@ -361,8 +374,11 @@ namespace VRemoteDesktop.ViewModels
         {
             if (disposing)
             {
-                  _fileStream?.Dispose();
-        _fileStream = null;
+                if(_fileExtension != null)
+                {
+                    _fileExtension.FileEvent -= FileEventHandler;
+                    _fileExtension.Dispose();
+                }
             }
         }
  

@@ -19,13 +19,13 @@ namespace VRemoteDesktop.Layouts
         public bool AcceptSave { get; set; }
         public string filePath { get; set; }
     }
-    public class FileReceivedInfo
+    public class VFileInfo
     {
         public string FileExtension { get; set; }
         public string Filename { get; set; }
         public long FileSize { get; set; }
     }
-    public class FileReceived: TableLayoutPanel
+    public class FileReceivedLayout: TableLayoutPanel
     {
         private PictureBox _fileImageExtension;
         private Label _fileName;
@@ -33,11 +33,11 @@ namespace VRemoteDesktop.Layouts
         private Button _save;
         private Button _cancel;
         private Label _waitingPartnerAccept;
-        private FileReceivedInfo _fileInfo;
+        private VFileInfo _fileInfo;
         public VProgressBar _progressbar;
 
         public event EventHandler<P2PFileReceivedEventArgs> ClickedEvent;
-        public FileReceived()
+        public FileReceivedLayout()
         {
             InitializeComponent();
         }
@@ -55,7 +55,7 @@ namespace VRemoteDesktop.Layouts
 
             this.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
-        public void Add(FileReceivedInfo fileInfo, bool isSender = false)
+        public void Add(VFileInfo fileInfo, bool isSender = false)
         {
             if (string.IsNullOrEmpty(fileInfo.FileExtension)
                || string.IsNullOrEmpty(fileInfo.Filename))
