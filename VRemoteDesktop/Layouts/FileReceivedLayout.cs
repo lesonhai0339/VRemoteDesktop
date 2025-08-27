@@ -43,6 +43,7 @@ namespace VRemoteDesktop.Layouts
         }
         private void InitializeComponent()
         {
+            this.BackColor = Color.Yellow;
             this.ColumnCount = 3;
             this.RowCount = 2;
             this.Dock = DockStyle.Fill;
