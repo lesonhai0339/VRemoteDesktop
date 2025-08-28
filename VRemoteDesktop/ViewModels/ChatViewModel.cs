@@ -19,18 +19,19 @@ using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.ViewModels
 {
-    public class ChatViewModel: INotifyPropertyChanged, IDisposable
+    public class ChatViewModel:IDisposable
     {
         private readonly object _lock = new object();
         private readonly int CHUNK_SIZE = DEFAULT_CHUNK_SIZE;
         private readonly IChatManager<VClient, object> _chatConnections;
-        private string _clientAdded;
-        private string _clientRemoved;
         private string _currentConnectionActivate;
         private FileReceivedLayout _curFileReceived;
         private readonly IVFileExtension _fileExtension;
-        public event Action<Control> ControlEvent;
         public event Action<Control, int> TestEvent;
+
+        public event EventHandler<ChatControlAddedEventArgs> AddeddEvent;
+        public event EventHandler<ChatControlRemoveEventArgs> RemovedEvent;
+        public event EventHandler<ChatControlUpdateEventArgs> UpdateEvent;
         public ChatViewModel()
         {
             _fileExtension = new VFileExtension();
@@ -38,30 +39,12 @@ namespace VRemoteDesktop.ViewModels
             _chatConnections = new ChatManager<VClient, object>();
         }
 
-        public string ClientAdded
-        {
-            get => _clientAdded;
-            private set
-            {
-                _clientAdded = value;
-                OnPropertyChanged("ClientAdded");
-            }
-        }
-        public string ClientRemoved
-        {
-            get => _clientRemoved;
-            private set
-            {
-                _clientAdded = value;
-                OnPropertyChanged("ClientRemoved");
-            }
-        }
         public void UpdateConnection(string key, VClient client)
         {
             _chatConnections.Add(key, client);
             client.P2PChatReceived += P2PChatReceivedEventHandler;
             _currentConnectionActivate = key;
-            ClientAdded = key;
+            AddChatConnection(key);
         }
         public void RemoveConnection(string key)
         {
@@ -71,7 +54,7 @@ namespace VRemoteDesktop.ViewModels
                 client.P2PChatReceived -= P2PChatReceivedEventHandler;
                 _chatConnections.Remove(key);
                 _currentConnectionActivate = _chatConnections.GetLastConnectionId();
-                ClientRemoved = key;
+                RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(ChatControlType.Connection, key));
             }
         }
         private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
@@ -90,9 +73,9 @@ namespace VRemoteDesktop.ViewModels
                     _fileExtension.Add(fileInfo, false);
                     
                     _curFileReceived = new FileReceivedLayout();
-                    _curFileReceived.Add(fileInfo);
                     _curFileReceived.ClickedEvent += FileReceivedClickEventHandler;
-                    ControlEvent?.Invoke(_curFileReceived);
+                    _curFileReceived.Add(fileInfo);
+                    AddeddEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, _curFileReceived));
                 }
                 else if (e.Type == DataType.Message)
                 {
@@ -103,20 +86,19 @@ namespace VRemoteDesktop.ViewModels
                         AutoSize = true,
                         TextAlign = ContentAlignment.TopLeft,
                     };
-                    ControlEvent?.Invoke(lb);
-
+                    AddeddEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, lb));
                 }
                 else if (e.Type == DataType.AcceptSendFile)
                 {
                     int flag = e.Data[0];
                     if (flag == 1)
                     {
-                        _curFileReceived.PartnerAcceptSendFile();
+                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, ()=> _curFileReceived.UpdateRequestSendFileStatus("Đối tác đã chấp nhận")));
                         BeginSendFile(client);
                     }
                     else
                     {
-                        _curFileReceived.PartnerRejectSendFile();
+                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => _curFileReceived.UpdateRequestSendFileStatus("Đối tác đã từ chối")));
                         MessageBox.Show("Partner Rejected send file");
                     }
                 }
@@ -178,7 +160,7 @@ namespace VRemoteDesktop.ViewModels
                 _fileExtension.Clear();
             }
         }
-        private void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
+        public void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
         {
             if(sender is Button btn && btn.Parent is FileReceivedLayout pr)
             {
@@ -198,7 +180,7 @@ namespace VRemoteDesktop.ViewModels
                             IsSendHeader = true,
                             SessionId = client.SocketId
                         });
-                        pr.RemoveButton();
+                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => pr.RemoveButton()));
                     }
                 }
                 //Reject file
@@ -215,17 +197,12 @@ namespace VRemoteDesktop.ViewModels
                             IsSendHeader = true,
                             SessionId = client.SocketId
                         });
-                        pr.RemoveButton();
+                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => pr.RemoveButton()));
                     }
                 }
             }
         }
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected virtual void OnPropertyChanged(string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        public Label NewControl(string id, int width)
+        public void AddChatConnection(string id)
         {
             var client = _chatConnections.GetClientById(_currentConnectionActivate);
             if (client != null)
@@ -237,24 +214,14 @@ namespace VRemoteDesktop.ViewModels
                     BackColor = Color.WhiteSmoke,
                     BorderStyle = BorderStyle.FixedSingle,
                     AutoSize = false,
-                    Width = width - 2,
                     Height = 20,
                     Margin = Padding.Empty
                 };
                 lbChat.Click += ChangeConnectionActivate;
-                lbChat.MouseHover += (s, e) =>
-                {
-                    lbChat.Cursor = Cursors.Hand;
-                };
-                lbChat.MouseLeave += (s, e) =>
-                {
-                    lbChat.Cursor = Cursors.Default;
-                };
-                return lbChat;
+                AddeddEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Connection, lbChat));
             }
-            return null;
         }
-        private void ChangeConnectionActivate(object sender, EventArgs e)
+        public void ChangeConnectionActivate(object sender, EventArgs e)
         {
             if(sender is Label lb)
             {
@@ -271,7 +238,7 @@ namespace VRemoteDesktop.ViewModels
                 AutoSize = true,
                 TextAlign = ContentAlignment.TopLeft,
             };
-            ControlEvent?.Invoke(lb);
+            AddeddEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, lb));
         }
         public void RequestSendFile()
         {
@@ -303,7 +270,7 @@ namespace VRemoteDesktop.ViewModels
                             byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
                             SendToClient(DataType.RequestSendFile, byteArray);
 
-                            ControlEvent?.Invoke(file);
+                            AddeddEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, file));
                         }
                     }
                     catch (InvalidOperationException ex)

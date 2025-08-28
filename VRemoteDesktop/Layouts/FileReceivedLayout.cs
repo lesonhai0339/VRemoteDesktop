@@ -140,7 +140,7 @@ namespace VRemoteDesktop.Layouts
         }
         public void UpdateProgressBar(int num)
         {
-            if(_progressbar != null)
+            if (_progressbar != null)
                 _progressbar.SetStep(num);
         }
         private void ProgressCompletedEventHandler(object sender, EventArgs e)
@@ -164,13 +164,9 @@ namespace VRemoteDesktop.Layouts
             this.Controls.Add(btn, 2, 0);
             this.SetRowSpan(btn, 2);
         }
-        public void PartnerAcceptSendFile()
+        public void UpdateRequestSendFileStatus(string text)
         {
-            _waitingPartnerAccept.Text = "Đối tác đã chấp thuận";
-        }
-        public void PartnerRejectSendFile()
-        {
-            _waitingPartnerAccept.Text = "Đối tác từ đã từ chối";
+            _waitingPartnerAccept.Text = text;
         }
     }
 }

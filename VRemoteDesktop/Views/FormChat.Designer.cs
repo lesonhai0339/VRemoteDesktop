@@ -1,4 +1,7 @@
-﻿namespace VRemoteDesktop.Views
+﻿using System;
+using System.Windows.Forms;
+
+namespace VRemoteDesktop.Views
 {
     partial class FormChat
     {
@@ -42,7 +45,6 @@
             this.fpnNumberChatConnection.Name = "fpnNumberChatConnection";
             this.fpnNumberChatConnection.Size = new System.Drawing.Size(330, 98);
             this.fpnNumberChatConnection.TabIndex = 9;
-            this.fpnNumberChatConnection.Paint += new System.Windows.Forms.PaintEventHandler(this.fpnNumberChatConnection_Paint);
             // 
             // fpnChat
             // 
@@ -94,6 +96,7 @@
             this.Name = "FormChat";
             this.Text = "FormChat";
             this.Load += new System.EventHandler(this.FormChat_Load);
+            this.FormClosing += new FormClosingEventHandler(this.FormChat_FormClosing);
             this.ResumeLayout(false);
             this.PerformLayout();
 
