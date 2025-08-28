@@ -81,20 +81,16 @@ namespace VRemoteDesktop.ViewModels
                 if (e.Type == DataType.RequestSendFile)
                 {
                     string[] data = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(e.Data), "|");
-                    _fileExtension.Add(new VFileInfo
+                    var fileInfo = new VFileInfo
                     {
                         FileExtension = data[0],
                         Filename = data[1],
                         FileSize = long.Parse(data[2])
-                    }, false);
+                    };
+                    _fileExtension.Add(fileInfo, false);
                     
                     _curFileReceived = new FileReceivedLayout();
-                    _curFileReceived.Add(new VFileInfo
-                    {
-                        FileExtension = data[0],
-                        Filename = data[1],
-                        FileSize = long.Parse(data[2])
-                    });
+                    _curFileReceived.Add(fileInfo);
                     _curFileReceived.ClickedEvent += FileReceivedClickEventHandler;
                     ControlEvent?.Invoke(_curFileReceived);
                 }

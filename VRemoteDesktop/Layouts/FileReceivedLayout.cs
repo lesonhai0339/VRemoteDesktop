@@ -166,20 +166,10 @@ namespace VRemoteDesktop.Layouts
         }
         public void PartnerAcceptSendFile()
         {
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action(PartnerAcceptSendFile));
-                return;
-            }
-            _waitingPartnerAccept.Text = "Đối tác đã chấp thuận, đang gửi file";
+            _waitingPartnerAccept.Text = "Đối tác đã chấp thuận";
         }
         public void PartnerRejectSendFile()
         {
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action(PartnerRejectSendFile));
-                return;
-            }
             _waitingPartnerAccept.Text = "Đối tác từ đã từ chối";
         }
     }

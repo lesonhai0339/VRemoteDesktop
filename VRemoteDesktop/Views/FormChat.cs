@@ -45,7 +45,7 @@ namespace VRemoteDesktop.Views
             fpnNumberChatConnection.BackColor = Color.Yellow;
             fpnNumberChatConnection.AutoScroll = true;
 
-            this.KeyDown += KeydownEventHandler;
+            this.txtChatContent.KeyDown += KeydownEventHandler;
         }
 
         private void KeydownEventHandler(object sender, KeyEventArgs e)
@@ -54,10 +54,7 @@ namespace VRemoteDesktop.Views
             {
                 if(e.KeyCode == Keys.Return)
                 {
-                    if (!string.IsNullOrWhiteSpace(txtChatContent.Text))
-                    {
-                        SendMessage(txtChatContent.Text);
-                    }
+                    SendMessage(txtChatContent.Text);
                 }
             }
         }
@@ -164,10 +161,7 @@ namespace VRemoteDesktop.Views
         }
         private void btnSend_Click(object sender, EventArgs e)
         {
-            if (!string.IsNullOrWhiteSpace(txtChatContent.Text))
-            {
-                SendMessage(txtChatContent.Text);
-            }
+            SendMessage(txtChatContent.Text);
         }
         private void btnSendAttachment_Click(object sender, EventArgs e)
         {
@@ -175,8 +169,12 @@ namespace VRemoteDesktop.Views
         }
         private void SendMessage(string content)
         {
-            _chatViewModel.SendChatMessage(content);
-            txtChatContent.Text = "";
+            if (!string.IsNullOrWhiteSpace(content))
+            {
+                _chatViewModel.SendChatMessage(content);
+                txtChatContent.Clear();
+                txtChatContent.Select();
+            }
         }
         private void AddItemToChatTemplate(Control control)
         {

@@ -242,17 +242,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                                 case DataType.RequestSendFile:
                                 case DataType.AcceptSendFile:
                                 case DataType.FileTransfer:
-                                    _ = Task.Factory.StartNew(() =>
-                                    {
-                                        try
-                                        {
-                                            P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
-                                        }
-                                    });
+                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                     break;
                                 default:
                                    
@@ -267,7 +257,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
                     }
                     stopwatch.Stop();
-                    Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Error("Elasped time: "+ stopwatch.Elapsed.TotalMilliseconds);
+                    Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Error("Type: " + task.Type + " - Elasped time: "+ stopwatch.Elapsed.TotalMilliseconds);
                 }
             }
             catch(OperationCanceledException ex)

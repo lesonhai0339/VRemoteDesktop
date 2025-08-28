@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace VRemoteDesktop.Utils
 {
@@ -38,8 +39,8 @@ namespace VRemoteDesktop.Utils
         /// <summary>
         /// Add item in VPriority queue
         /// </summary>
-        /// <param name="t"></param>
-        /// <param name="i"></param>
+        /// <param name="t">Item</param>
+        /// <param name="i">Priority(int)</param>
         public void Enqueue(T t, TPriority i)
         {
             lock (_lock)
@@ -64,7 +65,7 @@ namespace VRemoteDesktop.Utils
         /// <summary>
         /// Take item out VPriority queue
         /// </summary>
-        /// <param name="value"></param>
+        /// <param name="value">Item</param>
         /// <returns></returns>
         public bool Dequeue(out T value)
         {
