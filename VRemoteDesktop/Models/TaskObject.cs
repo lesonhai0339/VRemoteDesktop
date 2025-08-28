@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using VRemoteDesktop.Enums;
 
 namespace VRemoteDesktop.Models
 {
@@ -16,12 +17,6 @@ namespace VRemoteDesktop.Models
         public byte[] Data { get; set; } = new byte[0];
         public int Length => Data?.Length ?? 0;
         public bool IsSendHeader { get; set; } = true;
-        public TaskObjectPriority Priority { get; set; } = TaskObjectPriority.Low;
-    }
-    public enum TaskObjectPriority
-    {
-        Low,
-        Medium,
-        High
+        public QueuePriority Priority { get; set; } = QueuePriority.Low;
     }
 }

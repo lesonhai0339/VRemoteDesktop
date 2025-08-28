@@ -10,13 +10,13 @@ using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Layouts;
 using VRemoteDesktop.ViewModels;
+using static System.Net.Mime.MediaTypeNames;
 
 namespace VRemoteDesktop.Views
 {
     public partial class FormChat : Form
     {
         private ChatViewModel _chatViewModel;
-        private string _filePath;
         public FormChat()
         {
             InitializeComponent();
@@ -44,7 +44,24 @@ namespace VRemoteDesktop.Views
             fpnNumberChatConnection.WrapContents = false;
             fpnNumberChatConnection.BackColor = Color.Yellow;
             fpnNumberChatConnection.AutoScroll = true;
+
+            this.KeyDown += KeydownEventHandler;
         }
+
+        private void KeydownEventHandler(object sender, KeyEventArgs e)
+        {
+            if(Form.ActiveForm == this)
+            {
+                if(e.KeyCode == Keys.Return)
+                {
+                    if (!string.IsNullOrWhiteSpace(txtChatContent.Text))
+                    {
+                        SendMessage(txtChatContent.Text);
+                    }
+                }
+            }
+        }
+
         public ChatViewModel ChatView
         {
             get => _chatViewModel;
@@ -56,7 +73,6 @@ namespace VRemoteDesktop.Views
             _chatViewModel.ControlEvent += ControlEventHandler;
             _chatViewModel.TestEvent += TestEventHandler;
         }
-
         private void TestEventHandler(Control control, int num)
         {
 
@@ -92,7 +108,6 @@ namespace VRemoteDesktop.Views
 
             fpnChat.ScrollControlIntoView(control);
         }
-
         private void Add(int width)
         {
             if (this.InvokeRequired)
@@ -147,16 +162,21 @@ namespace VRemoteDesktop.Views
         {
 
         }
-
         private void btnSend_Click(object sender, EventArgs e)
         {
-            string text = txtChatContent.Text;
-            _chatViewModel.SendChatMessage(text);
+            if (!string.IsNullOrWhiteSpace(txtChatContent.Text))
+            {
+                SendMessage(txtChatContent.Text);
+            }
         }
-
         private void btnSendAttachment_Click(object sender, EventArgs e)
         {
             _chatViewModel.RequestSendFile();
+        }
+        private void SendMessage(string content)
+        {
+            _chatViewModel.SendChatMessage(content);
+            txtChatContent.Text = "";
         }
         private void AddItemToChatTemplate(Control control)
         {

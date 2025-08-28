@@ -17,6 +17,7 @@ namespace VRemoteDesktop.Utils
     }
     public class VPriorityQueue<T, TPriority> where TPriority : IComparable<TPriority>
     {
+        private readonly object _lock= new object();
         private readonly List<Test<T, TPriority>> _list;
         private readonly IComparer<TPriority> _comparer;
         public VPriorityQueue(IComparer<TPriority> comparer = null)
@@ -24,27 +25,52 @@ namespace VRemoteDesktop.Utils
             _list = new List<Test<T, TPriority>>();
             _comparer = comparer ?? Comparer<TPriority>.Default;
         }
-        public void Enqueue(T t, TPriority i)
+        public int Count
         {
-            _list.Add(new Test<T, TPriority>(t, i));
-
-            int index = _list.Count - 1;
-            while(index > 0)
+            get
             {
-                int parent = (index - 1)/ 2;
-
-                if (_comparer.Compare(_list[index].Priority, _list[parent].Priority) >= 0) break;
-
-                var temp = _list[index];
-                _list[index] = _list[parent];
-                _list[parent] = temp;
-
-                index = parent;
+                lock (_lock)
+                {
+                    return _list.Count;
+                }
             }
         }
+        /// <summary>
+        /// Add item in VPriority queue
+        /// </summary>
+        /// <param name="t"></param>
+        /// <param name="i"></param>
+        public void Enqueue(T t, TPriority i)
+        {
+            lock (_lock)
+            {
+                _list.Add(new Test<T, TPriority>(t, i));
+
+                int index = _list.Count - 1;
+                while (index > 0)
+                {
+                    int parent = (index - 1) / 2;
+
+                    if (_comparer.Compare(_list[index].Priority, _list[parent].Priority) >= 0) break;
+
+                    var temp = _list[index];
+                    _list[index] = _list[parent];
+                    _list[parent] = temp;
+
+                    index = parent;
+                }
+            }
+        }
+        /// <summary>
+        /// Take item out VPriority queue
+        /// </summary>
+        /// <param name="value"></param>
+        /// <returns></returns>
         public bool Dequeue(out T value)
         {
-            value = default(T);
+            lock (_lock)
+            {
+                value = default(T);
             if (_list.Count == 0) return false;
 
             var root = _list[0];
@@ -76,6 +102,7 @@ namespace VRemoteDesktop.Utils
 
             value = root.Value;
             return true;
+            }
         }
     }
 }

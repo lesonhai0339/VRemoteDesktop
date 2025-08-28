@@ -86,11 +86,7 @@ namespace VRemoteDesktop.Services.File
                 {
                     Helpers.FileHelper.WriteToFile(_stream, offset, data);
                 }
-            }
-            finally
-            {
-                _lastWriteTime = DateTime.Now;
-                if(_chunksReceived != null)
+                if (_chunksReceived != null)
                 {
                     _chunksReceived.Add(_count, new FileChunk(offset, data.Length));
                     _count++;
@@ -101,6 +97,10 @@ namespace VRemoteDesktop.Services.File
                         FileEvent?.Invoke(this, new FileEventArgs());
                     }
                 }
+            }
+            finally
+            {
+                _lastWriteTime = DateTime.Now;
             }
         }
         private void NewStream(string filePath)

@@ -18,6 +18,7 @@ using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.RemoteDesktop;
+using VRemoteDesktop.Utils;
 using VRemoteDesktop.ViewModels;
 using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
@@ -47,36 +48,36 @@ namespace VRemoteDesktop.Services.VTCPClient
         private CancellationToken _cancellationToken;
 
         private readonly BlockingCollection<DataReceive> _receivetasks;
-        private readonly BlockingCollection<object> _sendTasks;
+        private readonly VPriorityQueue<object, int> _senderTasks;
 
         public event EventHandler<P2PClientDataReceived> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
         public VClient(string socketId, VClientType clientType)
         {
-            _sendTasks = new BlockingCollection<object>();
-            _receivetasks = new BlockingCollection<DataReceive>();
-
-            _isSocketConnected = false;
-            _isP2PConnected = false;
+            Partner = null;
             _isDisposed = false;
+            _isP2PConnected = false;
+            _isSocketConnected = false;
+            _socketId = socketId;
+            _clientType = clientType;
+
+            _resetEvent = new ManualResetEvent(false);
+
             _cts = new CancellationTokenSource();
             _cancellationToken = _cts.Token;
-            //_timer = new Timer(PingToServer, null, TimeSpan.FromSeconds(0), TimeSpan.FromSeconds(5));
+
+            _receivetasks = new BlockingCollection<DataReceive>();
+            _senderTasks = new VPriorityQueue<object, int>();
+
             ReceivedWorker = new BackgroundWorker();
             ReceivedWorker.WorkerSupportsCancellation = true;
-
             SenderWorker = new BackgroundWorker();
             SenderWorker.WorkerSupportsCancellation = true;
             if (!SenderWorker.IsBusy)
             {
                 SenderWorker.RunWorkerAsync();
             }
-
-            _socketId = socketId;
-            _clientType = clientType;
-            _resetEvent = new ManualResetEvent(false);
-            Partner = null;
         }
         #region Properties
         public ClientInfo Partner
@@ -241,21 +242,22 @@ namespace VRemoteDesktop.Services.VTCPClient
                                 case DataType.RequestSendFile:
                                 case DataType.AcceptSendFile:
                                 case DataType.FileTransfer:
-                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
-                                    break;
-                                default:
                                     _ = Task.Factory.StartNew(() =>
                                     {
                                         try
                                         {
-                                            TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                                            P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                         }
                                         catch (Exception ex)
                                         {
                                             Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
                                         }
                                     });
-                                    
+                                    break;
+                                default:
+                                   
+                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+
                                     break;
                             }
                         }        
@@ -277,27 +279,31 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
-                foreach (var obj in _sendTasks.GetConsumingEnumerable(_cancellationToken))
+                while (!_cancellationToken.IsCancellationRequested)
                 {
-                    try
+                    if (_senderTasks.Dequeue(out var taskObj))
                     {
-                        if(obj is TaskGroup taskGroup)
+                        try
                         {
-                            foreach (var t in taskGroup.Tasks)
+                            if (taskObj is TaskGroup taskGroup)
                             {
-                                ProcessTask(t);
+                                foreach (var t in taskGroup.Tasks)
+                                {
+                                    ProcessTask(t);
+                                }
                             }
-                        }
-                        else if(obj is TaskObject task)
-                        {
-                            ProcessTask(task);
-                        }
+                            else if (taskObj is TaskObject task)
+                            {
+                                ProcessTask(task);
+                            }
 
+                        }
+                        catch (Exception ex)
+                        {
+                            Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
+                        }
                     }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
-                    }
+                    Thread.Sleep(5);
                 }
             }
             catch (OperationCanceledException ex)
@@ -318,11 +324,11 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWork(TaskObject task)
         {
-            _sendTasks.Add(task);
+            _senderTasks.Enqueue(task, (int)task.Priority);
         }
         public void AddWorkGroup(List<TaskObject> tasks, DataType type = DataType.None)
         {
-            _sendTasks.Add(new TaskGroup(tasks));
+            _senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
         }
         public void Cancel()
         {

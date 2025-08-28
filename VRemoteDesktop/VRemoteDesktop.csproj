@@ -55,6 +55,7 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Enums\QueuePriority.cs" />
     <Compile Include="Enums\VClientType.cs" />
     <Compile Include="Enums\VMouseButtons.cs" />
     <Compile Include="Enums\MouseEventType.cs" />
@@ -97,6 +98,7 @@
     <Compile Include="Layouts\VProgressBar.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Models\ChatConnection.cs" />
     <Compile Include="Models\ChatManager.cs" />
     <Compile Include="Models\ErrorResponse.cs" />
     <Compile Include="Models\EventRegistration.cs" />

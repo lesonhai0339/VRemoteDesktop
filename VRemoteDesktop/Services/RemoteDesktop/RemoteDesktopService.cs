@@ -234,7 +234,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     TaskType = type,
                     Data = header,
                     IsSendHeader = false,
-                    Priority = TaskObjectPriority.Medium
+                    Priority = QueuePriority.Medium
                 });
 
                 //data
@@ -245,7 +245,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         TaskType = type,
                         Data = data[i],
                         IsSendHeader = false,
-                        Priority = TaskObjectPriority.Medium
+                        Priority = QueuePriority.Medium
                     };
 
                     tasks.Add(task);

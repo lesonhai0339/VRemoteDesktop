@@ -9,6 +9,7 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
@@ -18,16 +19,6 @@ using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.ViewModels
 {
-    public class ChatConnection
-    {
-        public ChatConnection(VClient client , List<object> lists)
-        {
-            Client = client;
-            Messages = lists;
-        }
-        public VClient Client { get; set; }
-        public List<object> Messages { get; set; }
-    }
     public class ChatViewModel: INotifyPropertyChanged, IDisposable
     {
         private readonly object _lock = new object();
@@ -83,7 +74,6 @@ namespace VRemoteDesktop.ViewModels
                 ClientRemoved = key;
             }
         }
-
         private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
         {
             if(sender is VClient client)
@@ -141,11 +131,10 @@ namespace VRemoteDesktop.ViewModels
                         int offset = BitConverter.ToInt32(e.Data, 0);
                         byte[] data = new byte[e.Data.Length - 4];
                         Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
-                        _ = Task.Factory.StartNew(()=>
-                            TestEvent?.Invoke(_curFileReceived, data.Length));
+                        TestEvent?.Invoke(_curFileReceived, data.Length);
+
                         _fileExtension.WriteDataToFile(offset, data);
-                        //Helpers.FileHelper.WriteToFile(_fileStream, offset, data);
-                        
+                        //Helpers.FileHelper.WriteToFile(_fileStream, offset, data);           
                     }
                     catch(Exception ex)
                     {
@@ -167,7 +156,6 @@ namespace VRemoteDesktop.ViewModels
                     int offset = count * CHUNK_SIZE;
                     byte[] chunkData = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, CHUNK_SIZE);
 
-
                     byte[] dataSend = new byte[chunkData.Length + 4]; //4 byte for offset
                     Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
                     Buffer.BlockCopy(chunkData, 0, dataSend, 4, chunkData.Length);
@@ -179,7 +167,7 @@ namespace VRemoteDesktop.ViewModels
                             Data = dataSend,
                             SessionId = client.SocketId,
                             IsSendHeader = true,
-                            Priority = TaskObjectPriority.Low
+                            Priority = QueuePriority.Low
                         });
                     count++;
                     Console.WriteLine("Total file send: " + count);
@@ -384,6 +372,5 @@ namespace VRemoteDesktop.ViewModels
                 }
             }
         }
- 
     }
 }
