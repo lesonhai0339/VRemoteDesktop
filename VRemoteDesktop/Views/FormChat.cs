@@ -55,7 +55,7 @@ namespace VRemoteDesktop.Views
             fpnNumberChatConnection.AutoScroll = true;
 
             _chatViewModel.ProgressBarEvent += ProgressBarEventHandler;
-            _chatViewModel.AddeddEvent += AddeddEventHandler;
+            _chatViewModel.AddedEvent += AddeddEventHandler;
             _chatViewModel.RemovedEvent += RemovedEventHandler;
             _chatViewModel.UpdateEvent += UpdateEventHandler;
 
@@ -70,7 +70,7 @@ namespace VRemoteDesktop.Views
             if(_chatViewModel != null)
             {
                 _chatViewModel.ProgressBarEvent -= ProgressBarEventHandler;
-                _chatViewModel.AddeddEvent -= AddeddEventHandler;
+                _chatViewModel.AddedEvent -= AddeddEventHandler;
                 _chatViewModel.RemovedEvent -= RemovedEventHandler;
                 _chatViewModel.UpdateEvent -= UpdateEventHandler;
                 _chatViewModel.Dispose();
@@ -108,11 +108,11 @@ namespace VRemoteDesktop.Views
 
             UpdateBar(e.FileLayout, e.Num);
         }
-        private void UpdateBar(FileReceivedLayout f, int num)
+        private void UpdateBar(FileAttachmentLayout f, int num)
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<FileReceivedLayout, int>(UpdateBar), f, num);
+                this.BeginInvoke(new Action<FileAttachmentLayout, int>(UpdateBar), f, num);
                 return;
             }
             f.UpdateProgressBar(num);
@@ -200,7 +200,7 @@ namespace VRemoteDesktop.Views
             var controls = fpnChat.Controls.Find(key, true);
             foreach (var ctl in controls)
             {
-                if (ctl is FileReceivedLayout file)
+                if (ctl is FileAttachmentLayout file)
                 {
                     fpnChat.Controls.Remove(file);
                     file.AcceptSaveFile -= _chatViewModel.FileReceivedClickEventHandler;

@@ -12,7 +12,7 @@ using static System.Net.Mime.MediaTypeNames;
 
 namespace VRemoteDesktop.Layouts
 {
-    public class FileReceivedLayout: TableLayoutPanel
+    public class FileAttachmentLayout: TableLayoutPanel
     {
         private PictureBox _fileImageExtension;
         private Label _fileName;
@@ -24,7 +24,7 @@ namespace VRemoteDesktop.Layouts
         private VProgressBar _progressbar;
 
         public event EventHandler<P2PFileReceivedEventArgs> AcceptSaveFile;
-        public FileReceivedLayout()
+        public FileAttachmentLayout()
         {
             InitializeComponent();
         }
