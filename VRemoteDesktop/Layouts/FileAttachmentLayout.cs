@@ -14,6 +14,7 @@ namespace VRemoteDesktop.Layouts
 {
     public class FileAttachmentLayout: TableLayoutPanel
     {
+        private readonly Font _defaultFont = new Font("Segoe UI", 9F, FontStyle.Bold | FontStyle.Italic);
         private PictureBox _fileImage;
         private Label _fileName;
         private Label _fileSize;
@@ -108,7 +109,8 @@ namespace VRemoteDesktop.Layouts
                 _waitingPartnerAccept = new Label
                 {
                     AutoSize = true,
-                    Text = "Chờ đối tác xác nhận..."
+                    Text = "Chờ đối tác xác nhận...",
+                    Font = _defaultFont
                 };
 
                 this.Controls.Add(_waitingPartnerAccept, 2, 0);
@@ -144,7 +146,8 @@ namespace VRemoteDesktop.Layouts
                 {
                     Text = "Đã từ chối file",
                     Name = "lbRejectFile",
-                    AutoSize = true
+                    AutoSize = true,
+                    Font = _defaultFont
                 };
                 this.Controls.Add(rj, 1, 1);
             }
@@ -175,7 +178,8 @@ namespace VRemoteDesktop.Layouts
             Label btn = new Label
             {
                 Text = (type == ProgressbarEnum.Finished) ? "Hoàn thành" : "Xảy ra lỗi",
-                AutoSize = true
+                AutoSize = true,
+                Font = _defaultFont
             };
             this.Controls.Add(btn, 1, 1);
         }
