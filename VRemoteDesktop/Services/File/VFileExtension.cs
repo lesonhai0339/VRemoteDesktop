@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
+using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.Services.File
 {
