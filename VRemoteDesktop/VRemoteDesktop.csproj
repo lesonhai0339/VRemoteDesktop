@@ -80,6 +80,7 @@
     <Compile Include="Events\KeyboardEventArgs.cs" />
     <Compile Include="Events\P2PChatEventArgs.cs" />
     <Compile Include="Events\P2PClientDataReceived.cs" />
+    <Compile Include="Events\P2PFileReceivedEventArgs.cs" />
     <Compile Include="Events\P2PScreenEventArgs.cs" />
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
@@ -99,13 +100,13 @@
     <Compile Include="Layouts\FileMessage.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Layouts\FileReceivedLayout.cs" />
+    <Compile Include="Layouts\FileReceivedLayout.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Layouts\VProgressBar.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Models\ChatConnection.cs" />
     <Compile Include="Models\ChatManager.cs" />
-    <Compile Include="Models\ErrorResponse.cs" />
     <Compile Include="Models\EventRegistration.cs" />
     <Compile Include="Models\MouseData.cs" />
     <Compile Include="Models\P2PConnectionResponse.cs" />
@@ -124,6 +125,7 @@
     <Compile Include="Models\StateObject.cs" />
     <Compile Include="Models\Sendstate.cs" />
     <Compile Include="Models\UIPropertyRegistration.cs" />
+    <Compile Include="Models\VFileInfo.cs" />
     <Compile Include="Services\Authentication\Authentication.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
     <Compile Include="Services\File\VFileExtension.cs" />

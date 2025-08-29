@@ -6,26 +6,12 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
+using VRemoteDesktop.Events;
+using VRemoteDesktop.Models;
 using static System.Net.Mime.MediaTypeNames;
 
 namespace VRemoteDesktop.Layouts
 {
-    public class P2PFileReceivedEventArgs: EventArgs
-    {
-        public P2PFileReceivedEventArgs(bool acceptSave, string filePath)
-        {
-            this.AcceptSave = acceptSave;
-            this.FilePath = filePath;
-        }
-        public bool AcceptSave { get; set; }
-        public string FilePath { get; set; }
-    }
-    public class VFileInfo
-    {
-        public string FileExtension { get; set; }
-        public string Filename { get; set; }
-        public long FileSize { get; set; }
-    }
     public class FileReceivedLayout: TableLayoutPanel
     {
         private PictureBox _fileImageExtension;
@@ -140,6 +126,9 @@ namespace VRemoteDesktop.Layouts
         }
         public void RejectSendFile()
         {
+            this.Controls.Remove(this._save);
+            this.Controls.Remove(this._cancel);
+            this.Controls.Remove(this._fileSize);
             Label rj = new Label
             {
                 Text = "Từ chối file",
