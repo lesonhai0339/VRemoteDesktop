@@ -14,7 +14,7 @@ namespace VRemoteDesktop.Layouts
 {
     public class FileAttachmentLayout: TableLayoutPanel
     {
-        private PictureBox _fileImageExtension;
+        private PictureBox _fileImage;
         private Label _fileName;
         private Label _fileSize;
         private Button _save;
@@ -30,7 +30,6 @@ namespace VRemoteDesktop.Layouts
         }
         private void InitializeComponent()
         {
-            this.BackColor = Color.Yellow;
             this.ColumnCount = 3;
             this.RowCount = 2;
             this.Dock = DockStyle.Fill;
@@ -42,6 +41,7 @@ namespace VRemoteDesktop.Layouts
             this.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 30F));
 
             this.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            this.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         }
         public void Add(VFileInfo fileInfo, bool isSender = false)
         {
@@ -51,11 +51,11 @@ namespace VRemoteDesktop.Layouts
                 throw new ArgumentException("Missing some arguments");
             }
             _fileInfo = fileInfo;
-            _fileImageExtension = new PictureBox();
+            _fileImage = new PictureBox();
             using (Icon icon = Helpers.FileHelper.GetFileIconFromFileExtension(fileInfo.FileExtension))
             {
                 if (icon != null)
-                    _fileImageExtension.Image = icon?.ToBitmap();
+                    _fileImage.Image = icon?.ToBitmap();
                 else
                     throw new InvalidOperationException("Cannot get file icon form file extension");
             }
@@ -72,8 +72,8 @@ namespace VRemoteDesktop.Layouts
                 AutoSize = true,
             };
 
-            this.Controls.Add(_fileImageExtension, 0, 0);
-            this.SetRowSpan(_fileImageExtension, 2);
+            this.Controls.Add(_fileImage, 0, 0);
+            this.SetRowSpan(_fileImage, 2);
 
             this.Controls.Add(_fileName, 1, 0);
             this.Controls.Add(_fileSize, 1, 1);
@@ -117,52 +117,67 @@ namespace VRemoteDesktop.Layouts
         }
         public void AcceptSendFile()
         {
-            this.Controls.Remove(this._save);
-            this.Controls.Remove(this._cancel);
-            this.Controls.Remove(this._fileSize);
-            _progressbar = new VProgressBar(_fileInfo);
-            _progressbar.ProgressCompleted += ProgressCompletedEventHandler;
-            this.Controls.Add(_progressbar, 1, 1);
+            try
+            {
+                _save.Visible = false;
+                _cancel.Visible = false;
+                this.Controls.Remove(this._fileSize);
+
+                _progressbar = new VProgressBar(_fileInfo);
+                _progressbar.ProgressBarEvent += ProgressCompletedEventHandler;
+                this.Controls.Add(_progressbar, 1, 1);
+            }
+            finally
+            {
+                _fileSize?.Dispose();
+                _fileSize = null;
+            }
         }
         public void RejectSendFile()
         {
-            this.Controls.Remove(this._save);
-            this.Controls.Remove(this._cancel);
-            this.Controls.Remove(this._fileSize);
-            Label rj = new Label
+            try
             {
-                Text = "Từ chối file",
-                Name = "lbRejectFile",
-                AutoSize = true,
-            };
-            this.Controls.Add(rj, 2, 0);
-            this.SetColumnSpan(rj, 2);
+                _save.Visible = false;
+                _cancel.Visible = false;
+                this.Controls.Remove(_fileSize);
+                Label rj = new Label
+                {
+                    Text = "Đã từ chối file",
+                    Name = "lbRejectFile",
+                    AutoSize = true
+                };
+                this.Controls.Add(rj, 1, 1);
+            }
+            finally
+            {
+                _fileSize?.Dispose();
+                _fileSize = null;
+            }
         }
         public void UpdateProgressBar(int num)
         {
             if (_progressbar != null)
                 _progressbar.SetStep(num);
         }
-        private void ProgressCompletedEventHandler(object sender, EventArgs e)
+        private void ProgressCompletedEventHandler(object sender, ChatProgressBarEventArgs e)
         {
-           if(_progressbar != null)
+            if (_progressbar != null)
             {
-                _progressbar.ProgressCompleted -= ProgressCompletedEventHandler;
+                _progressbar.ProgressBarEvent -= ProgressCompletedEventHandler;
                 this.Controls.Remove(_progressbar);
                 _progressbar.Dispose();
                 _progressbar = null;
             }
-            FileTaskCompleted();
+            ProgressBarCompletedTask(e.Type);
         }
-        private void FileTaskCompleted()
+        private void ProgressBarCompletedTask(ProgressbarEnum type)
         {
             Label btn = new Label
             {
-                Text = "Completed",
+                Text = (type == ProgressbarEnum.Finished) ? "Hoàn thành" : "Xảy ra lỗi",
                 AutoSize = true
             };
-            this.Controls.Add(btn, 2, 0);
-            this.SetRowSpan(btn, 2);
+            this.Controls.Add(btn, 1, 1);
         }
         public void UpdateRequestSendFileStatus(string text)
         {
@@ -173,7 +188,7 @@ namespace VRemoteDesktop.Layouts
             if (disposing)
             {
                 if(_progressbar != null)
-                    _progressbar.ProgressCompleted -= ProgressCompletedEventHandler;
+                    _progressbar.ProgressBarEvent -= ProgressCompletedEventHandler;
             }
             base.Dispose(disposing);
         }

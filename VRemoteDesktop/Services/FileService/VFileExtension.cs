@@ -138,10 +138,6 @@ namespace VRemoteDesktop.Services.FileService
                     return info;
                 }
             }
-            else
-            {
-                throw new FileNotFoundException("File does no existed");
-            }
             return null;
         }
         public void UpdateSavePath(string filePath)

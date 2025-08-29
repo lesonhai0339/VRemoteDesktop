@@ -73,9 +73,11 @@
     <Compile Include="Enums\WindowsMouseEvent.cs" />
     <Compile Include="Enums\WindowsMouseMessage.cs" />
     <Compile Include="Events\ChatControlAddedEventArgs.cs" />
-    <Compile Include="Events\ChatControlProgressBarUpdateEventArgs.cs" />
+    <Compile Include="Events\ChatControlProgressBarUpdateUIEventArgs.cs" />
     <Compile Include="Events\ChatControlRemoveEventArgs.cs" />
     <Compile Include="Events\ChatControlUpdateEventArgs.cs" />
+    <Compile Include="Events\ChatDisconnectedEventArgs.cs" />
+    <Compile Include="Events\ChatProgressBarEventArgs.cs" />
     <Compile Include="Events\FileEventArgs.cs" />
     <Compile Include="Events\KeyboardEventArgs.cs" />
     <Compile Include="Events\P2PChatEventArgs.cs" />
@@ -83,6 +85,7 @@
     <Compile Include="Events\P2PFileReceivedEventArgs.cs" />
     <Compile Include="Events\P2PScreenEventArgs.cs" />
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
+    <Compile Include="Events\SocketDisposeEventArgs.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />

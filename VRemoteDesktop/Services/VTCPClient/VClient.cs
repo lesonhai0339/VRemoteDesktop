@@ -29,7 +29,7 @@ namespace VRemoteDesktop.Services.VTCPClient
     {
         private bool _isSocketConnected;
         private bool _isP2PConnected;
-        private bool _isDisposed;
+        private volatile bool _isDisposed;
         private object _lockObject = new object();
         private string _socketId;
         private string _myId;
@@ -50,6 +50,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         private readonly BlockingCollection<DataReceive> _receivetasks;
         private readonly VPriorityQueue<object, int> _senderTasks;
 
+        public event EventHandler<SocketDisposeEventArgs> SocketDisposing;
         public event EventHandler<P2PClientDataReceived> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
@@ -252,7 +253,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     }
                     catch (Exception ex)
                     {
-                        Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
+                        Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
                     }
                     stopwatch.Stop();
                     Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Error("Type: " + task.Type + " - Elasped time: "+ stopwatch.Elapsed.TotalMilliseconds);
@@ -288,7 +289,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         }
                         catch (Exception ex)
                         {
-                            Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
+                            Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
                         }
                     }
                     Thread.Sleep(5);
@@ -317,12 +318,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         public void AddWorkGroup(List<TaskObject> tasks, DataType type = DataType.None)
         {
             _senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
-        }
-        public void Cancel()
-        {
-            var stack = Environment.StackTrace;
-            Console.WriteLine("Cancel called by:\n" + stack);
-            _cts.Cancel();
         }
         /// <summary>
         /// Connect to remote server with default IP and port
@@ -386,7 +381,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     //Connected?.Invoke(this, new ConnectEventArgs(false));
                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Connect, false, new byte[0]));
-                    Log.ForContext("FileName", "RemoteClient").Error("Cannot connect to server");
+                    Log.ForContext("FileName", this.GetType().Name).Error("Cannot connect to server");
                     return;
                 }
 
@@ -402,15 +397,15 @@ namespace VRemoteDesktop.Services.VTCPClient
                 stateObject.SckId = _socketId;
 
                 Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
-                Log.ForContext("FileName", "RemoteClient").Info("Connected to {RemoteEndPoint}, starting receive loop");
+                Log.ForContext("FileName", this.GetType().Name).Info("Connected to {RemoteEndPoint}, starting receive loop");
             }
             catch (SocketException ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "SocketException when connecting to remote server");
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "SocketException when connecting to remote server");
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when connecting to remote server");
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when connecting to remote server");
             }
         }
         public void UpdatePartnerInfo(ClientInfo partnerInfo)
@@ -496,12 +491,12 @@ namespace VRemoteDesktop.Services.VTCPClient
                 }
                 catch (SocketException ex)
                 {
-                    Log.ForContext("FileName", "RemoteClient").Error(ex, "Begin receive error");
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, "Begin receive error");
                 }
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Unexpected error when receiving data from remote server");
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when receiving data from remote server");
             }
         }
         private void ProcessReceiveData(byte[] bytes)
@@ -562,52 +557,12 @@ namespace VRemoteDesktop.Services.VTCPClient
                     data = PrepareHeader(type, partnerId, data);
                 }
                 Send(data);
-                //Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
-                //{
-                //    try
-                //    {
-                //        Socket.EndSend(ar);
-                //    }
-                //    catch (SocketException ex)
-                //    {
-                //        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-                //    }
-                //}, null);
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
             }
         }
-        //public void Send(byte[] data)
-        //{
-        //    try
-        //    {
-        //        Socket.BeginSend(data, 0, data.Length, SocketFlags.None, (ar) =>
-        //        {
-        //            try
-        //            {
-        //                Socket.EndSend(ar);
-        //            }
-        //            catch (SocketException ex)
-        //            {
-        //                Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-        //            }
-        //            catch (Exception ex)
-        //            {
-        //                Log.ForContext("FileName", "RemoteClient").Error(ex, "Send error");
-        //            }
-        //        }, null);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
-        //    }
-        //}
         public void Send(byte[] data)
         {
             try
@@ -627,7 +582,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error when sending data to remote server without specific length");
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
             }
         }
         private void Send(Sendstate state)
@@ -664,18 +619,20 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             catch(SocketException ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "SendCallback error on socketid: " + SocketId);
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback error on socketid: " + SocketId);
             }
+        }
+        private void Cancel()
+        {
+            _cts.Cancel();
         }
         public void Dispose()
         {
-            var stack = Environment.StackTrace;
-            Console.WriteLine("Dispose called by:\n" + stack);
-
+            SocketDisposing?.Invoke(this, new SocketDisposeEventArgs(SocketId));
             Dispose(true);
             GC.SuppressFinalize(this);
         }

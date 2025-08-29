@@ -133,6 +133,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _vClientManager.Remove(id);
             if (_vClientManager.Connections.Count == 0)
             {
+                StopScreenCapture();
+            }
+            else
+            {
                 if (!_vClientManager.HasClientOfType(VClientType.Receiver))
                     StopScreenCapture();
             }

@@ -6,9 +6,9 @@ using VRemoteDesktop.Layouts;
 
 namespace VRemoteDesktop.Events
 {
-    public class ChatControlProgressBarUpdateEventArgs: EventArgs
+    public class ChatControlProgressBarUpdateUIEventArgs: EventArgs
     {
-        public ChatControlProgressBarUpdateEventArgs(FileAttachmentLayout fileLayout, int num)
+        public ChatControlProgressBarUpdateUIEventArgs(FileAttachmentLayout fileLayout, int num)
         {
             FileLayout = fileLayout;
             Num = num;

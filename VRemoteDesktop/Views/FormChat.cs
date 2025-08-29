@@ -103,16 +103,15 @@ namespace VRemoteDesktop.Views
                 }
             }
         }
-        private void ProgressBarEventHandler(object sender, ChatControlProgressBarUpdateEventArgs e)
+        private void ProgressBarEventHandler(object sender, ChatControlProgressBarUpdateUIEventArgs e)
         {
-
             UpdateBar(e.FileLayout, e.Num);
         }
         private void UpdateBar(FileAttachmentLayout f, int num)
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<FileAttachmentLayout, int>(UpdateBar), f, num);
+                this.Invoke(new Action<FileAttachmentLayout, int>(UpdateBar), f, num);
                 return;
             }
             f.UpdateProgressBar(num);

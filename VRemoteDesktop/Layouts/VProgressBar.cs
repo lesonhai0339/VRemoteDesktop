@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.Layouts
@@ -11,7 +13,10 @@ namespace VRemoteDesktop.Layouts
     {
         private long _totalSize;
         private float _received;
-        public event EventHandler<EventArgs> ProgressCompleted;
+        private System.Threading.Timer _timeout;
+        private DateTime _time;
+
+        public event EventHandler<ChatProgressBarEventArgs> ProgressBarEvent;
         public VProgressBar(VFileInfo fileInfo)
         {
             if (fileInfo == null)
@@ -24,6 +29,7 @@ namespace VRemoteDesktop.Layouts
                 throw new ArgumentOutOfRangeException(nameof(fileInfo.FileSize), "FileSize must be greater than zero");
 
             InitializeComponent(fileInfo);
+            _timeout = new System.Threading.Timer(CheckTimeOut, null, 0, 5000);
         }
         private void InitializeComponent(VFileInfo fileInfo)
         {
@@ -35,9 +41,24 @@ namespace VRemoteDesktop.Layouts
 
             _totalSize = fileInfo.FileSize;
             _received = 0;
+            _time = DateTime.Now;
+        }
+        private void CheckTimeOut(object obj)
+        {
+            DateTime curTime = DateTime.Now;
+            var elpased = (curTime - _time).TotalSeconds;
+            if(elpased > 30)
+            {
+                _timeout?.Dispose();
+                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Timeout));
+            }
         }
         public void SetStep(int length)
         {
+            if (length <= 0)
+                throw new ArgumentOutOfRangeException(nameof(length), "Step length must be greater than zero");
+
+            _time = DateTime.Now;
             _received += length;
             if (_received < (_totalSize / 100))
                 return;
@@ -50,9 +71,8 @@ namespace VRemoteDesktop.Layouts
             {
                 this.PerformStep();
             }
-
             if (this.Value == this.Maximum)
-                ProgressCompleted?.Invoke(this, new EventArgs());
+                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Finished));
         }
     }
 }

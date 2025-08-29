@@ -23,7 +23,7 @@ namespace VRemoteDesktop.ViewModels
     public class ChatViewModel:IDisposable
     {
         private readonly object _lock = new object();
-        private readonly IChatManager<VClient, object> _chatConnections;
+        private readonly IChatManager<object> _chatConnections;
         private string _currentConnectionActivate;
         private FileAttachmentLayout _currentFileAttachment;
         private readonly IVFileExtension _fileExtension;
@@ -31,12 +31,13 @@ namespace VRemoteDesktop.ViewModels
         public event EventHandler<ChatControlAddedEventArgs> AddedEvent;
         public event EventHandler<ChatControlRemoveEventArgs> RemovedEvent;
         public event EventHandler<ChatControlUpdateEventArgs> UpdateEvent;
-        public event EventHandler<ChatControlProgressBarUpdateEventArgs> ProgressBarEvent;
+        public event EventHandler<ChatControlProgressBarUpdateUIEventArgs> ProgressBarEvent;
         public ChatViewModel()
         {
             _fileExtension = new VFileExtension();
             _fileExtension.FileEvent += FileEventHandler;
-            _chatConnections = new ChatManager<VClient, object>();
+            _chatConnections = new ChatManager<object>();
+            _chatConnections.ChatDisconnected += ChatDisconnectedEventHandler;
         }
         public void AddConnection(string key, VClient client)
         {
@@ -108,7 +109,7 @@ namespace VRemoteDesktop.ViewModels
                     {
                         _fileExtension.WriteData(e.Data);
                         //remove 4 byte header
-                        ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateEventArgs(_currentFileAttachment, e.Data.Length - 4));
+                        ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(_currentFileAttachment, e.Data.Length - 4));
                     }
                     catch(Exception ex)
                     {
@@ -211,10 +212,6 @@ namespace VRemoteDesktop.ViewModels
 
                 AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, fileAttachmentLayout));
             }
-            else
-            {
-                throw new InvalidOperationException( nameof(RequestSendFile) + " error ");
-            }
         }
         private void SendToClient(DataType type, byte[] data)
         {
@@ -238,6 +235,10 @@ namespace VRemoteDesktop.ViewModels
                 throw new InvalidOperationException("Cannot find client with id: "+ _currentConnectionActivate);
             }
         }
+        private void ChatDisconnectedEventHandler(object sender, ChatDisconnectedEventArgs e)
+        {
+            RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(ChatControlType.Connection, e.SocketId));
+        }
         private void FileEventHandler(object sender, FileEventArgs e)
         {
             Console.WriteLine("Finished write file");
@@ -256,6 +257,11 @@ namespace VRemoteDesktop.ViewModels
                 {
                     _fileExtension.FileEvent -= FileEventHandler;
                     _fileExtension.Dispose();
+                }
+                if(_chatConnections != null)
+                {
+                    _chatConnections.ChatDisconnected -= ChatDisconnectedEventHandler;
+                    _chatConnections.Dispose();
                 }
             }
         }

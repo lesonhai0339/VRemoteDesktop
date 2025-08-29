@@ -46,17 +46,43 @@ namespace VRemoteDesktop.Services.VTCPClient
                 (client as IDisposable)?.Dispose();
                 throw new InvalidOperationException(string.Format("Client with Id:{0} already exists", id));
             }
-            client.TCPClientReceived += TCPClientResponseEventHandler;
+            if(client != null)
+            {
+                client.TCPClientReceived += TCPClientResponseEventHandler;
+                client.SocketDisposing += SocketDisposingEventHandler;
+            }
+        }
+
+        private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
+        {
+            if(sender is VClient client)
+            {
+                Remove(client);
+            }
         }
         public bool Remove(string id)
         {
             if (_connections.TryRemove(id, out var client))
             {
                 client.TCPClientReceived -= TCPClientResponseEventHandler;
+                client.SocketDisposing -= SocketDisposingEventHandler;
                 (client as IDisposable)?.Dispose();
                 return true;
             }
             throw new InvalidOperationException(string.Format("Cannot remove connection with Id:{0}", id));
+        }
+        public bool Remove(VClient client)
+        {
+            if(client != null)
+            {
+                client.TCPClientReceived -= TCPClientResponseEventHandler;
+                client.SocketDisposing -= SocketDisposingEventHandler;
+                if (_connections.TryRemove(client.SocketId, out _))
+                {
+                    return true;
+                }
+            }
+            throw new InvalidOperationException(string.Format("Cannot remove connection with Id:{0}", client.SocketId));
         }
         public VClient GetByKey(string id)
         {
