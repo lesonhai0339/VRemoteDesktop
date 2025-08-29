@@ -176,6 +176,7 @@ namespace VRemoteDesktop
             }
             if (!isShow || chatForm.IsDisposed)
             {
+                //need to cal event from ChatForm to this to set isShow = false when Chat form disposed
                 chatForm.Show();
                 isShow = true;
             }
