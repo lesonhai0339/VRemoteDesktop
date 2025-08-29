@@ -10,6 +10,7 @@ using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
+using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.ViewModels;
 using static System.Net.Mime.MediaTypeNames;
 
@@ -21,8 +22,15 @@ namespace VRemoteDesktop.Views
         public FormChat()
         {
             InitializeComponent();
-            ChatView = new ChatViewModel();
-            SetupBinding();
+            Setup();
+        }
+        public void AddConnection(string id, VClient client)
+        {
+            _chatViewModel.AddConnection(id, client);
+        }
+        private void Setup()
+        {
+            _chatViewModel = new ChatViewModel();
             Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
 
             this.Location = new Point(
@@ -46,29 +54,12 @@ namespace VRemoteDesktop.Views
             fpnNumberChatConnection.BackColor = Color.Yellow;
             fpnNumberChatConnection.AutoScroll = true;
 
-            this.txtChatContent.KeyDown += KeydownEventHandler;
-        }
-        private void KeydownEventHandler(object sender, KeyEventArgs e)
-        {
-            if(Form.ActiveForm == this)
-            {
-                if(e.KeyCode == Keys.Return)
-                {
-                    SendMessage(txtChatContent.Text);
-                }
-            }
-        }
-        public ChatViewModel ChatView
-        {
-            get => _chatViewModel;
-            private set => _chatViewModel = value;
-        }
-        private void SetupBinding()
-        {
-            _chatViewModel.TestEvent += TestEventHandler;
+            _chatViewModel.ProgressBarEvent += ProgressBarEventHandler;
             _chatViewModel.AddeddEvent += AddeddEventHandler;
             _chatViewModel.RemovedEvent += RemovedEventHandler;
             _chatViewModel.UpdateEvent += UpdateEventHandler;
+
+            this.txtChatContent.KeyDown += KeydownEventHandler;
         }
         private void FormChat_Load(object sender, EventArgs e)
         {
@@ -78,29 +69,12 @@ namespace VRemoteDesktop.Views
         {
             if(_chatViewModel != null)
             {
-                _chatViewModel.TestEvent -= TestEventHandler;
+                _chatViewModel.ProgressBarEvent -= ProgressBarEventHandler;
                 _chatViewModel.AddeddEvent -= AddeddEventHandler;
                 _chatViewModel.RemovedEvent -= RemovedEventHandler;
                 _chatViewModel.UpdateEvent -= UpdateEventHandler;
                 _chatViewModel.Dispose();
             }
-        }
-        private void TestEventHandler(Control control, int num)
-        {
-
-            if(control is FileReceivedLayout f)
-            {
-                UpdateBar(f, num);
-            }
-        }
-        private void UpdateBar(FileReceivedLayout f, int num)
-        {
-            if (this.InvokeRequired)
-            {
-                this.BeginInvoke(new Action<FileReceivedLayout, int>(UpdateBar), f, num);
-                return;
-            }
-            f.UpdateProgressBar(num);
         }
         private void btnSend_Click(object sender, EventArgs e)
         {
@@ -119,14 +93,29 @@ namespace VRemoteDesktop.Views
                 txtChatContent.Select();
             }
         }
-        private void AddItemToChatTemplate(Control control)
+        private void KeydownEventHandler(object sender, KeyEventArgs e)
+        {
+            if (Form.ActiveForm == this)
+            {
+                if (e.KeyCode == Keys.Return)
+                {
+                    SendMessage(txtChatContent.Text);
+                }
+            }
+        }
+        private void ProgressBarEventHandler(object sender, ChatControlProgressBarUpdateEventArgs e)
+        {
+
+            UpdateBar(e.FileLayout, e.Num);
+        }
+        private void UpdateBar(FileReceivedLayout f, int num)
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action<UserControl>(AddItemToChatTemplate), control);
+                this.BeginInvoke(new Action<FileReceivedLayout, int>(UpdateBar), f, num);
                 return;
             }
-            fpnChat.Controls.Add(control);
+            f.UpdateProgressBar(num);
         }
         private void AddeddEventHandler(object sender, ChatControlAddedEventArgs e)
         {
@@ -214,7 +203,7 @@ namespace VRemoteDesktop.Views
                 if (ctl is FileReceivedLayout file)
                 {
                     fpnChat.Controls.Remove(file);
-                    file.ClickedEvent -= _chatViewModel.FileReceivedClickEventHandler;
+                    file.AcceptSaveFile -= _chatViewModel.FileReceivedClickEventHandler;
                     file.Dispose();
                 }
                 else if (ctl is Label lb)

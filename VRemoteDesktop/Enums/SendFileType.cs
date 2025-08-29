@@ -5,11 +5,9 @@ using System.Text;
 
 namespace VRemoteDesktop.Enums
 {
-    public enum SendFileType
+    public enum SendFileRespondType:  byte
     {
-        None = 0,
-        RequestSendFile = 1,
-        AcceptSendFile = 2,
-        FileTransfer = 3
+        Accept = 0x01,
+        Reject = 0x02
     }
 }

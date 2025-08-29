@@ -73,6 +73,7 @@
     <Compile Include="Enums\WindowsMouseEvent.cs" />
     <Compile Include="Enums\WindowsMouseMessage.cs" />
     <Compile Include="Events\ChatControlAddedEventArgs.cs" />
+    <Compile Include="Events\ChatControlProgressBarUpdateEventArgs.cs" />
     <Compile Include="Events\ChatControlRemoveEventArgs.cs" />
     <Compile Include="Events\ChatControlUpdateEventArgs.cs" />
     <Compile Include="Events\FileEventArgs.cs" />

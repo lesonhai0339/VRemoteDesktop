@@ -27,19 +27,18 @@ namespace VRemoteDesktop.ViewModels
         private string _currentConnectionActivate;
         private FileReceivedLayout _curFileReceived;
         private readonly IVFileExtension _fileExtension;
-        public event Action<Control, int> TestEvent;
 
         public event EventHandler<ChatControlAddedEventArgs> AddeddEvent;
         public event EventHandler<ChatControlRemoveEventArgs> RemovedEvent;
         public event EventHandler<ChatControlUpdateEventArgs> UpdateEvent;
+        public event EventHandler<ChatControlProgressBarUpdateEventArgs> ProgressBarEvent;
         public ChatViewModel()
         {
             _fileExtension = new VFileExtension();
             _fileExtension.FileEvent += FileEventHandler;
             _chatConnections = new ChatManager<VClient, object>();
         }
-
-        public void UpdateConnection(string key, VClient client)
+        public void AddConnection(string key, VClient client)
         {
             _chatConnections.Add(key, client);
             client.P2PChatReceived += P2PChatReceivedEventHandler;
@@ -73,7 +72,7 @@ namespace VRemoteDesktop.ViewModels
                     _fileExtension.Add(fileInfo, false);
                     
                     _curFileReceived = new FileReceivedLayout();
-                    _curFileReceived.ClickedEvent += FileReceivedClickEventHandler;
+                    _curFileReceived.AcceptSaveFile += FileReceivedClickEventHandler;
                     _curFileReceived.Add(fileInfo);
                     AddeddEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, _curFileReceived));
                 }
@@ -90,16 +89,19 @@ namespace VRemoteDesktop.ViewModels
                 }
                 else if (e.Type == DataType.AcceptSendFile)
                 {
-                    int flag = e.Data[0];
-                    if (flag == 1)
+                    SendFileRespondType respondType = (SendFileRespondType)e.Data[0];
+                    if (respondType == SendFileRespondType.Accept)
                     {
                         UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, ()=> _curFileReceived.UpdateRequestSendFileStatus("Đối tác đã chấp nhận")));
                         BeginSendFile(client);
                     }
-                    else
+                    else if(respondType == SendFileRespondType.Reject)
                     {
                         UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => _curFileReceived.UpdateRequestSendFileStatus("Đối tác đã từ chối")));
-                        MessageBox.Show("Partner Rejected send file");
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException("Unexpected type");
                     }
                 }
                 else if (e.Type == DataType.FileTransfer)
@@ -109,7 +111,7 @@ namespace VRemoteDesktop.ViewModels
                         int offset = BitConverter.ToInt32(e.Data, 0);
                         byte[] data = new byte[e.Data.Length - 4];
                         Buffer.BlockCopy(e.Data, 4, data, 0, data.Length);
-                        TestEvent?.Invoke(_curFileReceived, data.Length);
+                        ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateEventArgs(_curFileReceived, data.Length));
 
                         _fileExtension.WriteDataToFile(offset, data);
                         //Helpers.FileHelper.WriteToFile(_fileStream, offset, data);           
@@ -162,25 +164,24 @@ namespace VRemoteDesktop.ViewModels
         }
         public void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
         {
-            if(sender is Button btn && btn.Parent is FileReceivedLayout pr)
+            if(sender is Button btn && btn.Parent is FileReceivedLayout parent)
             {
                 //Accept file
                 if (string.Compare(btn.Name, "btnSave") == 0)
                 {
-                    _fileExtension.UpdateSavePath(e.filePath);
-                    //_savePath = e.filePath;
-                    //InitializeFileTransfer(_savePath);
+                    _fileExtension.UpdateSavePath(e.FilePath);
+
                     var client = _chatConnections.GetClientById(_currentConnectionActivate);
                     if (client != null)
                     {
                         client.AddWork(new TaskObject
                         {
                             TaskType = DataType.AcceptSendFile,
-                            Data = new byte[] { 1 },
+                            Data = new byte[] { (byte)SendFileRespondType.Accept },
                             IsSendHeader = true,
                             SessionId = client.SocketId
                         });
-                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => pr.RemoveButton()));
+                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => parent.AcceptSendFile()));
                     }
                 }
                 //Reject file
@@ -193,11 +194,11 @@ namespace VRemoteDesktop.ViewModels
                         client.AddWork(new TaskObject
                         {
                             TaskType = DataType.AcceptSendFile,
-                            Data = new byte[] { 0 },
+                            Data = new byte[] { (byte)SendFileRespondType.Reject },
                             IsSendHeader = true,
                             SessionId = client.SocketId
                         });
-                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => pr.RemoveButton()));
+                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => parent.RejectSendFile()));
                     }
                 }
             }
@@ -275,16 +276,16 @@ namespace VRemoteDesktop.ViewModels
                     }
                     catch (InvalidOperationException ex)
                     {
-                        MessageBox.Show($"Error: {ex.Message}");
+                        throw ex;
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"Error: {ex.Message}");
+                        throw ex;
                     }
                 }
                 else
                 {
-                    MessageBox.Show("Lỗi không xác định");
+                    throw new InvalidOperationException("Open file dialog error");
                 }
             }
         }
@@ -309,10 +310,6 @@ namespace VRemoteDesktop.ViewModels
             {
                 throw new InvalidOperationException("Cannot find client with id: "+ _currentConnectionActivate);
             }
-        }
-        public void EventCallback(object sender, EventArgs e)
-        {
-            MessageBox.Show(" Callback");
         }
         private void FileEventHandler(object sender, FileEventArgs e)
         {

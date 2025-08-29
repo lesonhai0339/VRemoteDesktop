@@ -179,7 +179,7 @@ namespace VRemoteDesktop
                 chatForm.Show();
                 isShow = true;
             }
-            chatForm.ChatView.UpdateConnection(client.SocketId, client);
+            chatForm.AddConnection(client.SocketId, client);
         }
     }
 }

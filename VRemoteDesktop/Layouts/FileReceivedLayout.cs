@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Windows.Forms;
 using static System.Net.Mime.MediaTypeNames;
@@ -14,10 +15,10 @@ namespace VRemoteDesktop.Layouts
         public P2PFileReceivedEventArgs(bool acceptSave, string filePath)
         {
             this.AcceptSave = acceptSave;
-            this.filePath = filePath;
+            this.FilePath = filePath;
         }
         public bool AcceptSave { get; set; }
-        public string filePath { get; set; }
+        public string FilePath { get; set; }
     }
     public class VFileInfo
     {
@@ -34,9 +35,9 @@ namespace VRemoteDesktop.Layouts
         private Button _cancel;
         private Label _waitingPartnerAccept;
         private VFileInfo _fileInfo;
-        public VProgressBar _progressbar;
+        private VProgressBar _progressbar;
 
-        public event EventHandler<P2PFileReceivedEventArgs> ClickedEvent;
+        public event EventHandler<P2PFileReceivedEventArgs> AcceptSaveFile;
         public FileReceivedLayout()
         {
             InitializeComponent();
@@ -71,7 +72,7 @@ namespace VRemoteDesktop.Layouts
                     _fileImageExtension.Image = icon?.ToBitmap();
                 else
                     throw new InvalidOperationException("Cannot get file icon form file extension");
-                }
+            }
             _fileName = new Label
             {
                 Text = Helpers.StringHelper.GenerateStringShortcut(fileInfo.Filename, 30),
@@ -106,11 +107,11 @@ namespace VRemoteDesktop.Layouts
                 _save.Click += (s, e) =>
                 {
                     string savePath = Helpers.FileHelper.OpenFileDialogAndSaveFile(_fileInfo.Filename);
-                    ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(true, savePath));
+                    AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(true, savePath));
                 };
                 _cancel.Click += (s, e) =>
                 {
-                    ClickedEvent?.Invoke(s, new P2PFileReceivedEventArgs(false, null));
+                    AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(false, null));
                 };
 
                 this.Controls.Add(_save, 2, 0);
@@ -128,7 +129,7 @@ namespace VRemoteDesktop.Layouts
                 this.SetRowSpan(_waitingPartnerAccept, 2);
             }
         }
-        public void RemoveButton()
+        public void AcceptSendFile()
         {
             this.Controls.Remove(this._save);
             this.Controls.Remove(this._cancel);
@@ -136,7 +137,17 @@ namespace VRemoteDesktop.Layouts
             _progressbar = new VProgressBar(_fileInfo);
             _progressbar.ProgressCompleted += ProgressCompletedEventHandler;
             this.Controls.Add(_progressbar, 1, 1);
-            this.SetColumnSpan(_progressbar, 2);
+        }
+        public void RejectSendFile()
+        {
+            Label rj = new Label
+            {
+                Text = "Từ chối file",
+                Name = "lbRejectFile",
+                AutoSize = true,
+            };
+            this.Controls.Add(rj, 2, 0);
+            this.SetColumnSpan(rj, 2);
         }
         public void UpdateProgressBar(int num)
         {
@@ -167,6 +178,15 @@ namespace VRemoteDesktop.Layouts
         public void UpdateRequestSendFileStatus(string text)
         {
             _waitingPartnerAccept.Text = text;
+        }
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if(_progressbar != null)
+                    _progressbar.ProgressCompleted -= ProgressCompletedEventHandler;
+            }
+            base.Dispose(disposing);
         }
     }
 }
