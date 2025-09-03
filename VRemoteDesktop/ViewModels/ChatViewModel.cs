@@ -136,6 +136,7 @@ namespace VRemoteDesktop.ViewModels
                 {
                     try
                     {
+                        Console.WriteLine("File send Received: " + (e.Data.Length - 20) + " bytes");
                         _chatAttachmentService.ProcessFileDataReceived(e.Data);   
                     }
                     catch(Exception ex)
@@ -280,10 +281,11 @@ namespace VRemoteDesktop.ViewModels
             {
                 if (_attachments.TryGetValue(e.FileId, out var attachment))
                 {
-                    ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(attachment, e.Size));
+                    Console.WriteLine("Received: "+ e.Size);
+                    ProgressBarEvent?.BeginInvoke(this, new ChatControlProgressBarUpdateUIEventArgs(attachment, e.Size), null, null);
                 }
             }
-            else if(e.Status == FileStatus.Finished)
+            if(e.Status == FileStatus.Finished)
             {
                 Console.WriteLine("Finished write file");
                 _attachments.TryRemove(e.FileId, out _);
