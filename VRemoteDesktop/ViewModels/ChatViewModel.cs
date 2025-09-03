@@ -17,6 +17,7 @@ using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
 using VRemoteDesktop.Services.VTCPClient;
+using static System.Net.WebRequestMethods;
 using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.ViewModels
@@ -135,13 +136,7 @@ namespace VRemoteDesktop.ViewModels
                 {
                     try
                     {
-                        string fileId = _chatAttachmentService.ProcessFileDataReceived(e.Data);
-
-                        if(_attachments.TryGetValue(fileId, out var attachment))
-                        {
-                            //remove 20 byte header
-                            ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(attachment, e.Data.Length - 20));
-                        }   
+                        _chatAttachmentService.ProcessFileDataReceived(e.Data);   
                     }
                     catch(Exception ex)
                     {
@@ -281,8 +276,18 @@ namespace VRemoteDesktop.ViewModels
         }
         private void FileEventHandler(object sender, FileEventArgs e)
         {
-            Console.WriteLine("Finished write file");
-            _attachments.TryRemove(e.FileId, out _);    
+            if(e.Status == FileStatus.NewReceived)
+            {
+                if (_attachments.TryGetValue(e.FileId, out var attachment))
+                {
+                    ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(attachment, e.Size));
+                }
+            }
+            else if(e.Status == FileStatus.Finished)
+            {
+                Console.WriteLine("Finished write file");
+                _attachments.TryRemove(e.FileId, out _);
+            }
         }
         public void Dispose()
         {

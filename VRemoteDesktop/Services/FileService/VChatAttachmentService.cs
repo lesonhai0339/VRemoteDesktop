@@ -170,13 +170,18 @@ namespace VRemoteDesktop.Services.FileService
                 if (flush)
                 {
                     //Received enough data
-                    FileEvent?.Invoke(this, new FileEventArgs(fileId));
+                    FileEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, 0));
                     //Remove stream
                     if (_curStreams.TryRemove(fileId, out FileStream stream))
                     {
                         stream?.Dispose();
                     }
                     _fileManager.Remove(fileId);
+                }
+                else
+                {
+                    //Not received enough data
+                    FileEvent?.Invoke(this, new FileEventArgs(FileStatus.NewReceived, fileId, data.Length));
                 }
             }
             return fileId;
