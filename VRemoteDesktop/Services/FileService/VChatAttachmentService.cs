@@ -78,7 +78,7 @@ namespace VRemoteDesktop.Services.FileService
             }
             try
             {
-                info = new VFileInfo(id: fileInfo[0], filePath: null, fileExtension: fileInfo[1], filename: fileInfo[2], fileSize: size, isSender: false);
+                info = new VFileInfo(id: fileInfo[0], filePath: null, filename: fileInfo[1], fileExtension: fileInfo[2], fileSize: size, isSender: false);
                 return _fileManager.Add(info);
             }
             catch (Exception ex)
@@ -94,7 +94,7 @@ namespace VRemoteDesktop.Services.FileService
                 throw new ArgumentNullException(nameof(fileInfo));
             try
             {
-                info = new VFileInfo(id: null, filePath: fileInfo.FullName, fileExtension: fileInfo.Extension, filename: fileInfo.Name, fileSize: fileInfo.Length, isSender);
+                info = new VFileInfo(id: null, filePath: fileInfo.FullName, filename: fileInfo.Name, fileExtension: fileInfo.Extension, fileSize: fileInfo.Length, isSender);
                 return _fileManager.Add(info);
             }
             catch (Exception ex)

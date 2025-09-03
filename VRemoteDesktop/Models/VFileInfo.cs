@@ -8,7 +8,7 @@ namespace VRemoteDesktop.Models
     public class VFileInfo
     {
         public VFileInfo() { }
-        public VFileInfo(string id,string filePath, string fileExtension, string filename, long fileSize, bool isSender)
+        public VFileInfo(string id,string filePath, string filename, string fileExtension, long fileSize, bool isSender)
         {
             Id = id ?? Guid.NewGuid().ToString("N").Substring(0, 16);
             FilePath = filePath ?? string.Empty;
