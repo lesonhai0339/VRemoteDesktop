@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Drawing;
 using System.Windows.Forms;
 
 namespace VRemoteDesktop.Views
@@ -41,6 +42,11 @@ namespace VRemoteDesktop.Views
             // 
             // fpnNumberChatConnection
             // 
+            this.fpnNumberChatConnection.BorderStyle = BorderStyle.FixedSingle;
+            this.fpnNumberChatConnection.FlowDirection = FlowDirection.TopDown;
+            this.fpnNumberChatConnection.WrapContents = false;
+            this.fpnNumberChatConnection.AutoScroll = true;
+            this.fpnNumberChatConnection.BackColor = Color.White;
             this.fpnNumberChatConnection.Location = new System.Drawing.Point(21, 21);
             this.fpnNumberChatConnection.Name = "fpnNumberChatConnection";
             this.fpnNumberChatConnection.Size = new System.Drawing.Size(330, 98);
@@ -52,6 +58,12 @@ namespace VRemoteDesktop.Views
             this.fpnChat.Name = "fpnChat";
             this.fpnChat.Size = new System.Drawing.Size(331, 220);
             this.fpnChat.TabIndex = 8;
+            this.fpnChat.FlowDirection = FlowDirection.TopDown;
+            this.fpnChat.WrapContents = false;
+            this.fpnChat.AutoScroll = true;
+            this.fpnChat.BorderStyle = BorderStyle.FixedSingle;
+            this.fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
+            this.fpnChat.BackColor = Color.White;
             // 
             // btnSendAttachment
             // 
@@ -84,6 +96,8 @@ namespace VRemoteDesktop.Views
             // 
             // FormChat
             // 
+            this.MaximizeBox = false;
+            this.FormBorderStyle = FormBorderStyle.Fixed3D;
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(371, 408);

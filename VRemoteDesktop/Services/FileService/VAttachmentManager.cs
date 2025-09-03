@@ -8,11 +8,11 @@ using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.Services.FileService
 {
-    public class VFileManager: IDisposable
+    public class VAttachmentManager: IDisposable
     {
         public readonly object _lock= new object();
         public ConcurrentDictionary<string, VFileInfo> _files;
-        public VFileManager()
+        public VAttachmentManager()
         {
             _files = new ConcurrentDictionary<string, VFileInfo>();
         }

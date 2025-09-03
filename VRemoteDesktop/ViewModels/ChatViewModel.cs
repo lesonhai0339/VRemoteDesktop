@@ -25,13 +25,13 @@ namespace VRemoteDesktop.ViewModels
 {
     public class ChatViewModel:IDisposable
     {
+        private static readonly Color SelectedColor = Color.LightSkyBlue;
+        private static readonly Color DefaultColor = Color.White;
         private readonly object _lock = new object();
         private readonly IChatManager<object> _chatConnections;
         private string _currentConnectionActivate;
-        //private FileAttachmentLayout _currentFileAttachment;
 
         private ConcurrentDictionary<string, FileAttachmentLayout> _attachments;
-        //private readonly IVFileExtension _fileExtension;
         private readonly IVChatAttachmentService _chatAttachmentService;
 
         public event EventHandler<ChatControlAddedEventArgs> AddedEvent;
@@ -41,8 +41,6 @@ namespace VRemoteDesktop.ViewModels
         public ChatViewModel()
         {
             _attachments = new ConcurrentDictionary<string, FileAttachmentLayout>();
-            //_fileExtension = new VFileExtension();
-            //_fileExtension.FileEvent += FileEventHandler;
             _chatAttachmentService = new VChatAttachmentService();
             _chatAttachmentService.FileEvent += FileEventHandler;
 
@@ -85,17 +83,6 @@ namespace VRemoteDesktop.ViewModels
                     {
                         throw new InvalidOperationException("Error when received request send file");
                     }
-                    //if (_fileExtension.AddFileInfo(e.Data, false, out VFileInfo info))
-                    //{
-                    //    _currentFileAttachment = new FileAttachmentLayout();
-                    //    _currentFileAttachment.AcceptSaveFile += FileReceivedClickEventHandler;
-                    //    _currentFileAttachment.Add(info);
-                    //    AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, _currentFileAttachment));
-                    //}
-                    //else
-                    //{
-                    //    throw new InvalidOperationException("Error when received request send file");
-                    //}
                 }
                 else if (e.Type == DataType.Message)
                 {
@@ -137,7 +124,6 @@ namespace VRemoteDesktop.ViewModels
                 {
                     try
                     {
-                        Console.WriteLine("File send Received: " + (e.Data.Length - 20) + " bytes");
                         _chatAttachmentService.ProcessFileDataReceived(e.Data);   
                     }
                     catch(Exception ex)
@@ -217,12 +203,23 @@ namespace VRemoteDesktop.ViewModels
         }
         public void ChangeConnectionActivate(object sender, EventArgs e)
         {
-            if(sender is Label lb)
+            if(sender is Label lb && lb.Parent is FlowLayoutPanel flow)
             {
-                _currentConnectionActivate = lb.Name;
-                lb.BackColor = Color.LightGray;
+                foreach(var connection in flow.Controls.OfType<Label>())
+                {
+                    if(connection == lb)
+                    {
+                        _currentConnectionActivate = lb.Name;
+                        lb.BackColor = SelectedColor;
+                    }
+                    else
+                    {
+                        connection.BackColor = DefaultColor;
+                    }
+                }
             }
         }
+        //Create new label and send message to partner
         public void SendChatMessage(string chatData)
         {
             SendToClient(DataType.Message, Encoding.ASCII.GetBytes(chatData));
@@ -234,6 +231,7 @@ namespace VRemoteDesktop.ViewModels
             };
             AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, lb));
         }
+        //Create new file info and send request to partner
         public void RequestSendFile()
         {
             var fileInfo = _chatAttachmentService.GetFileSendInfo();
@@ -250,6 +248,7 @@ namespace VRemoteDesktop.ViewModels
                 AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, fileAttachmentLayout));
             }
         }
+        //Send data to current activated connection(VClient)
         private void SendToClient(DataType type, byte[] data)
         {
             if (string.IsNullOrEmpty(_currentConnectionActivate))
@@ -273,10 +272,12 @@ namespace VRemoteDesktop.ViewModels
                 throw new InvalidOperationException("Cannot find client with id: "+ _currentConnectionActivate);
             }
         }
+        //Event event handler from ChatManager, this event is used to remove chat connection UI when disconnected
         private void ChatDisconnectedEventHandler(object sender, ChatDisconnectedEventArgs e)
         {
             RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(ChatControlType.Connection, e.SocketId));
         }
+        //Event event handler from FileService, this event is used to update progress bar UI when received file data, finally remove file out attachments when finished
         private void FileEventHandler(object sender, FileEventArgs e)
         {
             if (_attachments.TryGetValue(e.FileId, out var attachment))
