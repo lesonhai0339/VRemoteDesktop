@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net.Mail;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
@@ -263,7 +264,8 @@ namespace VRemoteDesktop.ViewModels
                     TaskType = type,
                     Data = data,
                     IsSendHeader = true,
-                    SessionId = client.SocketId
+                    SessionId = client.SocketId,
+                    Priority = QueuePriority.High
                 });
             }
             else
@@ -277,18 +279,11 @@ namespace VRemoteDesktop.ViewModels
         }
         private void FileEventHandler(object sender, FileEventArgs e)
         {
-            if(e.Status == FileStatus.NewReceived)
+            if (_attachments.TryGetValue(e.FileId, out var attachment))
             {
-                if (_attachments.TryGetValue(e.FileId, out var attachment))
-                {
-                    Console.WriteLine("Received: "+ e.Size);
-                    ProgressBarEvent?.BeginInvoke(this, new ChatControlProgressBarUpdateUIEventArgs(attachment, e.Size), null, null);
-                }
-            }
-            if(e.Status == FileStatus.Finished)
-            {
-                Console.WriteLine("Finished write file");
-                _attachments.TryRemove(e.FileId, out _);
+                ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(attachment, e.Size));
+                if (e.Status == FileStatus.Finished)
+                    _attachments.TryRemove(e.FileId, out _);
             }
         }
         public void Dispose()
