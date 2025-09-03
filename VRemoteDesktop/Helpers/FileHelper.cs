@@ -119,6 +119,10 @@ namespace VRemoteDesktop.Helpers
                 stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
             }
         }
+        public static FileStream CreateFileStream(string savePath)
+        {
+            return new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+        }
         public static void WriteToFile(FileStream fs, int offset, byte[] data, bool flush = true)
         {
             if (fs == null)

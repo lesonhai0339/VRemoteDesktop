@@ -5,6 +5,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
@@ -128,6 +129,14 @@ namespace VRemoteDesktop.Services.FileService
                 throw new NullReferenceException("Does not exist file info with id: " + id);
 
             fileInfo.UpdateSavePath(savePath);
+
+            //Create new file stream    
+            NewFileStream(id, savePath);    
+        }
+        private void NewFileStream(string fileId,  string savePath)
+        {
+            FileStream stream =  Helpers.FileHelper.CreateFileStream(savePath);
+            _curStreams.TryAdd(fileId, stream);
         }
         public string ProcessFileDataReceived(byte[] rawData)
         {
