@@ -208,6 +208,10 @@ namespace VRemoteDesktop.Services.SystemService
 
             }
         }
+        public List<byte[]> GetFirstScreen()
+        {
+            return _screenCaptureService.GetScreenPackets();
+        }
         #endregion
         #region Events
         private void KeyPressedEventHandler(object sender, KeyboardEventArgs e)

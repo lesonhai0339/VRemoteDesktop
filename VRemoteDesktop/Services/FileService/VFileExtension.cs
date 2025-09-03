@@ -179,11 +179,14 @@ namespace VRemoteDesktop.Services.FileService
                     _chunksReceived.Add(_count, new FileChunk(offset, data.Length));
                     _count++;
 
-                    long num = _chunksReceived.Sum(x => x.Value.Size);
-                    if (num == _fileSize)
+                    lock (_lock)
                     {
-                        FileEvent?.Invoke(this, new FileEventArgs());
-                    }
+                        long num = _chunksReceived.Sum(x => x.Value.Size);
+                        if (num == _fileSize)
+                        {
+                            FileEvent?.Invoke(this, new FileEventArgs());
+                        }
+                    }            
                 }
             }
             finally

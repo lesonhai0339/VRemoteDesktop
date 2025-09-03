@@ -13,6 +13,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Utils;
 using static VRemoteDesktop.Utils.Logger;
 using static VRemoteDesktop.Utils.DefaultValue;
+using System.Windows.Forms;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -22,6 +23,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         void StopCapture();
         event EventHandler<ScreenCaptureEventArgs> ScreenEvent;
         bool IsCapturing { get; set; }
+        List<byte[]> GetScreenPackets();
     }
     public class ScreenCaptureService : IScreenCaptureServiceListener
     {
@@ -117,10 +119,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     switch (screenEnum)
                     {
                         case ScreenType.FULLSCREEN:
-                            ScreenToChunks(screens[0], totalSize);
+                            ScreenToPackets(screens[0], totalSize);
                             break;
                         case ScreenType.REGIONSCREENS:
-                            RegionsChangedToChunks(screens, totalSize);
+                            ScreenRegionsChangedToPackets(screens, totalSize);
                             break;
                     }
                 }
@@ -134,8 +136,36 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
         }
+        public List<byte[]> GetScreenPackets()
+        {
+            try
+            {
+                var screens = _capture.GetScreen();
+                long totalSize = checked(screens.Sum(x => x.TotalSize));
+                if (_dataSend.Length < totalSize + 40)
+                {
+                    _dataSend = new byte[totalSize + 40];
+                }
+                lock (_lock)
+                {
+                    byte[] screenCaptureCompressed = ByteArrayHelper.CompressGzip(screens[0].Bytes).GetResult();
+                    byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
+                    int dataLength = screenCaptureCompressed.Length + checksum.Length;
+
+                    var byteCombined = ByteArrayHelper.Combine(checksum, screenCaptureCompressed).GetResult();
+                    _dataSend = byteCombined;
+                    var listByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataLength, CHUNK_SIZE).GetResult();
+                    return listByteArray;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "ScreenHook").Error(ex, "Screen event error");
+            }
+            return null;
+        }
         // Send full screen to sender at first connect
-        private void ScreenToChunks(ScreenRegion screen, long totalChunksSize)
+        private void ScreenToPackets(ScreenRegion screen, long totalChunksSize)
         {
             try
             {
@@ -167,7 +197,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
         }
         //Capture and send screen region change to sender
-        private void RegionsChangedToChunks(List<ScreenRegion> regions, long totalChunksSize)
+        private void ScreenRegionsChangedToPackets(List<ScreenRegion> regions, long totalChunksSize)
         {
             try
             {

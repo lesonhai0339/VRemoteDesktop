@@ -35,68 +35,88 @@ namespace VRemoteServer.Services
         }
         public async Task Enqueue(RemoteTask task)
         {
-            await _taskWriter.WriteAsync(task);
+            try
+            {
+                Log.ForContext("FileName", "TaskChannel").Information("Enqueue still working!");
+                await _taskWriter.WriteAsync(task);
+
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "TaskChannel").Error(ex, "Enqueue error!");
+                throw;
+            }
         }
         private async Task DoWorkAsync(CancellationToken cancellation)
         {
-            await foreach (var task in _taskReader.ReadAllAsync(cancellation))
+            try
             {
-                try
+                Log.ForContext("FileName", "TaskChannel").Information("DoWorkAsync still working!");
+                await foreach (var task in _taskReader.ReadAllAsync(cancellation))
                 {
-                    switch (task.CommandType)
+                    try
                     {
-                        case Enums.CommandType.Connect:
-                            break;
-                        case Enums.CommandType.Login:
-                            await ProcessLogin(task);
-                            break;
-                        case Enums.CommandType.P2PRequestConnect:
-                            await ProcessP2PRequestConnect(task);
-                            break;
-                        case Enums.CommandType.P2PAcceptConnect:
-                            await ProcessRespondP2PRequestConnect(task);
-                            break;
-                        case Enums.CommandType.P2PRejectConnect:
-                            await ProcessRespondP2PRequestConnect(task);
-                            break;
-                        case Enums.CommandType.P2PDataSend:
-                            await ProcessP2PDataSend(task);
-                            break;
-                        case Enums.CommandType.Disconnect:
-                            break;
-                        case Enums.CommandType.Ping:
-                            ProcessPing(task);
-                            break;
-                        case Enums.CommandType.Pong:
-                            break;
-                        case Enums.CommandType.Error:
-                            break;
-                        case Enums.CommandType.Screen:
-                        case Enums.CommandType.Chunks:
-                            await P2PDataSend(task);
-                            break;
-                        case Enums.CommandType.Keyboard:
-                        case Enums.CommandType.Mouse:
-                        case Enums.CommandType.ScreenOk:
-                        case Enums.CommandType.ChunksOk:
-                        case Enums.CommandType.Clipboard:
-                        case Enums.CommandType.Message:
-                        case Enums.CommandType.FileTransfer:
-                        case Enums.CommandType.RequestSendFile:
-                        case Enums.CommandType.AcceptSendFile:
-                            await P2PCommand(task);
-                            break;
-                        case Enums.CommandType.P2PDisconnect:
-                            await ProcessP2PDisconnect(task);
-                            break;
-                        default:
-                            break;
+                        Log.ForContext("FileName", "TaskChannel").Information("Channel reader still working!");
+                        switch (task.CommandType)
+                        {
+                            case Enums.CommandType.Connect:
+                                break;
+                            case Enums.CommandType.Login:
+                                await ProcessLogin(task);
+                                break;
+                            case Enums.CommandType.P2PRequestConnect:
+                                await ProcessP2PRequestConnect(task);
+                                break;
+                            case Enums.CommandType.P2PAcceptConnect:
+                                await ProcessRespondP2PRequestConnect(task);
+                                break;
+                            case Enums.CommandType.P2PRejectConnect:
+                                await ProcessRespondP2PRequestConnect(task);
+                                break;
+                            case Enums.CommandType.P2PDataSend:
+                                await ProcessP2PDataSend(task);
+                                break;
+                            case Enums.CommandType.Disconnect:
+                                break;
+                            case Enums.CommandType.Ping:
+                                ProcessPing(task);
+                                break;
+                            case Enums.CommandType.Pong:
+                                break;
+                            case Enums.CommandType.Error:
+                                break;
+                            case Enums.CommandType.Screen:
+                            case Enums.CommandType.Chunks:
+                                await P2PDataSend(task);
+                                break;
+                            case Enums.CommandType.Keyboard:
+                            case Enums.CommandType.Mouse:
+                            case Enums.CommandType.ScreenOk:
+                            case Enums.CommandType.ChunksOk:
+                            case Enums.CommandType.Clipboard:
+                            case Enums.CommandType.Message:
+                            case Enums.CommandType.FileTransfer:
+                            case Enums.CommandType.RequestSendFile:
+                            case Enums.CommandType.AcceptSendFile:
+                                await P2PCommand(task);
+                                break;
+                            case Enums.CommandType.P2PDisconnect:
+                                await ProcessP2PDisconnect(task);
+                                break;
+                            default:
+                                break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", "TaskChannel").Error(ex, "DoWorkAsync error!");
                     }
                 }
-                catch (Exception ex)
-                {
-                    Log.ForContext("FileName", "RemoteDesktopServer").Error(ex, $"Error processing task");
-                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "TaskChannel").Error(ex, "DoWorkAsync error!");
+                throw;
             }
         }
 
@@ -192,6 +212,8 @@ namespace VRemoteServer.Services
         {
             try
             {
+                if (client == null)
+                    return 0;
                 byte[] bytes = new byte[data.Length + 5 + socketId.Length];
                 Buffer.BlockCopy(BitConverter.GetBytes(bytes.Length), 0, bytes, 0, 4);
                 bytes[4] = (byte)commandType;
@@ -349,6 +371,8 @@ namespace VRemoteServer.Services
         {
             try
             {
+                Log.ForContext("FileName", "ClientDisconnectCallback")
+       .Information("ClientDisconnectCallback - " + client.IP);
                 var a = _clientsActing.FirstOrDefault(x => x.Value.Client == client);
                 if (a.Value != null)
                 {
@@ -356,7 +380,13 @@ namespace VRemoteServer.Services
                 }
                 foreach (var connection in _connections.ToArray())
                 {
-                    var partner = (connection.Value.Sender == client) ? connection.Value.Receiver : connection.Value.Sender;
+                    var partner = connection.Value.Sender == client ? connection.Value.Receiver
+                        : connection.Value.Receiver == client ? connection.Value.Sender
+                        : null;
+
+                    if (partner == null)
+                        return;
+
                     _ = await SendCommandAsync(partner, DEFAULT_SOCKETID, Enums.CommandType.P2PDisconnect, new byte[0]);
                     if (connection.Value.Sender == client || connection.Value.Receiver == client)
                     {

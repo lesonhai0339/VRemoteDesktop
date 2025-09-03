@@ -107,7 +107,10 @@ namespace VRemoteDesktop.ViewModels
                 {
                     try
                     {
-                        _fileExtension.WriteData(e.Data);
+                        _ = Task.Factory.StartNew(() =>
+                        {
+                            _fileExtension.WriteData(e.Data);
+                        });
                         //remove 4 byte header
                         ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(_currentFileAttachment, e.Data.Length - 4));
                     }

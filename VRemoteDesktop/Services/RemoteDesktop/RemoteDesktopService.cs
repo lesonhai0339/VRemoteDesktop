@@ -171,6 +171,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 newClient.Send(DataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
                 DataReceivedEvent?.Invoke(newClient, e);
 
+                var screen = _globalHook.GetFirstScreen();
+                int length = screen.Sum(x=> x.Length);
+                SendScreen(newClient, DataType.Screen, screen, length);
                 if (_vClientManager.HasClientOfType(VClientType.Receiver))
                     StartScreenCapture();
             }

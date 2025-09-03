@@ -465,6 +465,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 if (num > 0)
                 {
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
+                    Console.WriteLine("Socket: "+ SocketId + " Cancel Status: "+ _cancellationToken.IsCancellationRequested);
                     while (!_cancellationToken.IsCancellationRequested)
                     {
                         if (!(stateObject.ByteArrayBuilder.Length >= 5))

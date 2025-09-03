@@ -164,6 +164,11 @@ namespace VRemoteDesktop.Layouts
         }
         private void ProgressCompletedEventHandler(object sender, ChatProgressBarEventArgs e)
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<object, ChatProgressBarEventArgs>(ProgressCompletedEventHandler), sender, e);
+                return;
+            }
             if (_progressbar != null)
             {
                 _progressbar.ProgressBarEvent -= ProgressCompletedEventHandler;
