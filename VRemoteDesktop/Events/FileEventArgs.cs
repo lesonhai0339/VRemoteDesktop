@@ -7,5 +7,11 @@ namespace VRemoteDesktop.Events
 {
     public class FileEventArgs: EventArgs
     {
+        public FileEventArgs() { }
+        public FileEventArgs(string fileId)
+        {
+            FileId = fileId;
+        }
+        public string FileId { get; set; }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
@@ -26,11 +25,8 @@ namespace VRemoteDesktop.ViewModels
         private readonly object _lock = new object();
         private readonly IChatManager<object> _chatConnections;
         private string _currentConnectionActivate;
-        //private FileAttachmentLayout _currentFileAttachment;
-
-        private ConcurrentDictionary<string, FileAttachmentLayout> _attachments;
-        //private readonly IVFileExtension _fileExtension;
-        private readonly IVChatAttachmentService _chatAttachmentService;
+        private FileAttachmentLayout _currentFileAttachment;
+        private readonly IVFileExtension _fileExtension;
 
         public event EventHandler<ChatControlAddedEventArgs> AddedEvent;
         public event EventHandler<ChatControlRemoveEventArgs> RemovedEvent;
@@ -38,12 +34,8 @@ namespace VRemoteDesktop.ViewModels
         public event EventHandler<ChatControlProgressBarUpdateUIEventArgs> ProgressBarEvent;
         public ChatViewModel()
         {
-            _attachments = new ConcurrentDictionary<string, FileAttachmentLayout>();
-            //_fileExtension = new VFileExtension();
-            //_fileExtension.FileEvent += FileEventHandler;
-            _chatAttachmentService = new VChatAttachmentService();
-            _chatAttachmentService.FileEvent += FileEventHandler;
-
+            _fileExtension = new VFileExtension();
+            _fileExtension.FileEvent += FileEventHandler;
             _chatConnections = new ChatManager<object>();
             _chatConnections.ChatDisconnected += ChatDisconnectedEventHandler;
         }
@@ -71,29 +63,17 @@ namespace VRemoteDesktop.ViewModels
             {
                 if (e.Type == DataType.RequestSendFile)
                 {
-                    if (_chatAttachmentService.ReceivedFileInfo(e.Data, false, out VFileInfo info))
+                    if (_fileExtension.AddFileInfo(e.Data, false, out VFileInfo info))
                     {
-                        var attachment = new FileAttachmentLayout(info.Id);
-                        attachment.AcceptSaveFile += FileReceivedClickEventHandler;
-                        attachment.Add(info);
-                        _attachments[info.Id] = attachment;
-                        AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, attachment));
+                        _currentFileAttachment = new FileAttachmentLayout();
+                        _currentFileAttachment.AcceptSaveFile += FileReceivedClickEventHandler;
+                        _currentFileAttachment.Add(info);
+                        AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, _currentFileAttachment));
                     }
                     else
                     {
                         throw new InvalidOperationException("Error when received request send file");
                     }
-                    //if (_fileExtension.AddFileInfo(e.Data, false, out VFileInfo info))
-                    //{
-                    //    _currentFileAttachment = new FileAttachmentLayout();
-                    //    _currentFileAttachment.AcceptSaveFile += FileReceivedClickEventHandler;
-                    //    _currentFileAttachment.Add(info);
-                    //    AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, _currentFileAttachment));
-                    //}
-                    //else
-                    //{
-                    //    throw new InvalidOperationException("Error when received request send file");
-                    //}
                 }
                 else if (e.Type == DataType.Message)
                 {
@@ -109,39 +89,30 @@ namespace VRemoteDesktop.ViewModels
                 else if (e.Type == DataType.AcceptSendFile)
                 {
                     SendFileRespondType respondType = (SendFileRespondType)e.Data[0];
-                    string fileId = Encoding.ASCII.GetString(e.Data, 1, 16);
-                    if (_attachments.TryGetValue(fileId, out var attachment))
+                    if (respondType == SendFileRespondType.Accept)
                     {
-                        if (respondType == SendFileRespondType.Accept)
-                        {
-                            UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => attachment.UpdateRequestSendFileStatus("Đối tác đã chấp nhận")));
-                            _chatAttachmentService.SendFile(client, fileId);
-                        }
-                        else if (respondType == SendFileRespondType.Reject)
-                        {
-                            UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => attachment.UpdateRequestSendFileStatus("Đối tác đã từ chối")));
-                        }
-                        else
-                        {
-                            throw new InvalidOperationException("Unexpected type");
-                        }
+                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, ()=> _currentFileAttachment.UpdateRequestSendFileStatus("Đối tác đã chấp nhận")));
+                        _fileExtension.SendFile(client);
+                    }
+                    else if(respondType == SendFileRespondType.Reject)
+                    {
+                        UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => _currentFileAttachment.UpdateRequestSendFileStatus("Đối tác đã từ chối")));
                     }
                     else
                     {
-                        //TODO: Cannot find attachment with id
+                        throw new InvalidOperationException("Unexpected type");
                     }
                 }
                 else if (e.Type == DataType.FileTransfer)
                 {
                     try
                     {
-                        string fileId = _chatAttachmentService.ProcessFileDataReceived(e.Data);
-
-                        if(_attachments.TryGetValue(fileId, out var attachment))
+                        _ = Task.Factory.StartNew(() =>
                         {
-                            //remove 20 byte header
-                            ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(attachment, e.Data.Length - 20));
-                        }   
+                            _fileExtension.WriteData(e.Data);
+                        });
+                        //remove 4 byte header
+                        ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(_currentFileAttachment, e.Data.Length - 4));
                     }
                     catch(Exception ex)
                     {
@@ -157,18 +128,15 @@ namespace VRemoteDesktop.ViewModels
                 //Accept file
                 if (string.Compare(btn.Name, "btnSave") == 0)
                 {
-                    _chatAttachmentService.UpdateFileSavePath(parent.Id, e.FilePath);
+                    _fileExtension.UpdateSavePath(e.FilePath);
+
                     var client = _chatConnections.GetClientById(_currentConnectionActivate);
                     if (client != null)
                     {
-                        var fileId = Encoding.ASCII.GetBytes(parent.Id);
-                        byte[] data = new byte[fileId.Length + 1];
-                        data[0] = (byte)SendFileRespondType.Accept;
-                        Buffer.BlockCopy(fileId, 0 , data , 1 , fileId.Length); 
                         client.AddWork(new TaskObject
                         {
                             TaskType = DataType.AcceptSendFile,
-                            Data = data,
+                            Data = new byte[] { (byte)SendFileRespondType.Accept },
                             IsSendHeader = true,
                             SessionId = client.SocketId
                         });
@@ -178,24 +146,19 @@ namespace VRemoteDesktop.ViewModels
                 //Reject file
                 if (string.Compare(btn.Name, "btnCancel") == 0)
                 {
-                    var fileId = Encoding.ASCII.GetBytes(parent.Id);
-                    byte[] data = new byte[fileId.Length + 1];
-                    data[0] = (byte)SendFileRespondType.Reject;
-                    Buffer.BlockCopy(fileId, 0, data, 1, fileId.Length);
+                    _fileExtension.Clear();
                     var client = _chatConnections.GetClientById(_currentConnectionActivate);
                     if (client != null)
                     {
                         client.AddWork(new TaskObject
                         {
                             TaskType = DataType.AcceptSendFile,
-                            Data = data,
+                            Data = new byte[] { (byte)SendFileRespondType.Reject },
                             IsSendHeader = true,
                             SessionId = client.SocketId
                         });
                         UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => parent.RejectSendFile()));
                     }
-                    _attachments.TryRemove(parent.Id, out _);
-                    _chatAttachmentService.RemoveFileInfo(parent.Id);
                 }
             }
         }
@@ -239,14 +202,14 @@ namespace VRemoteDesktop.ViewModels
         }
         public void RequestSendFile()
         {
-            var fileInfo = _chatAttachmentService.GetFileSendInfo();
+            var fileInfo = _fileExtension.GetFileSendInfo();
             if(fileInfo != null)
             {
-                FileAttachmentLayout fileAttachmentLayout = new FileAttachmentLayout(fileInfo.Id);
+                FileAttachmentLayout fileAttachmentLayout = new FileAttachmentLayout();
                 fileAttachmentLayout.Add(fileInfo, true);
-                _attachments.TryAdd(fileInfo.Id , fileAttachmentLayout);
+                _currentFileAttachment = fileAttachmentLayout;
 
-                string data = Helpers.StringHelper.StringBuilderWithSeparator("|",fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize);
+                string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.FileExtension, fileInfo.Filename, fileInfo.FileSize);
                 byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
                 SendToClient(DataType.RequestSendFile, byteArray);
 
@@ -282,7 +245,7 @@ namespace VRemoteDesktop.ViewModels
         private void FileEventHandler(object sender, FileEventArgs e)
         {
             Console.WriteLine("Finished write file");
-            _attachments.TryRemove(e.FileId, out _);    
+            _fileExtension.Clear();
         }
         public void Dispose()
         {
@@ -293,10 +256,10 @@ namespace VRemoteDesktop.ViewModels
         {
             if (disposing)
             {
-                if(_chatAttachmentService != null)
+                if(_fileExtension != null)
                 {
-                    _chatAttachmentService.FileEvent -= FileEventHandler;
-                    _chatAttachmentService.Dispose();
+                    _fileExtension.FileEvent -= FileEventHandler;
+                    _fileExtension.Dispose();
                 }
                 if(_chatConnections != null)
                 {

@@ -129,10 +129,11 @@
     <Compile Include="Models\Sendstate.cs" />
     <Compile Include="Models\UIPropertyRegistration.cs" />
     <Compile Include="Models\VFileInfo.cs" />
-    <Compile Include="Services\Authentication\Authentication.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
     <Compile Include="Services\FileService\ChatHelper.cs" />
     <Compile Include="Services\FileService\VFileExtension.cs" />
+    <Compile Include="Services\FileService\VFileManager.cs" />
+    <Compile Include="Services\FileService\VChatAttachmentService.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
     <Compile Include="Services\Keyboard\VirtualClipboard.cs" />
     <Compile Include="Services\Keyboard\VirtualKeyboard.cs" />
@@ -143,7 +144,6 @@
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
-    <Compile Include="Services\VTCPClient\P2PConnectionManager.cs" />
     <Compile Include="Services\VTCPClient\TCPClient.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClient\VClientManager.cs" />
@@ -216,6 +216,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Services\VTCPClient\VClient_Backup.txt" />
+    <Content Include="ViewModels\ChatViewModel_Backup.txt" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

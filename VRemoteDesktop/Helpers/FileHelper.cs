@@ -119,20 +119,22 @@ namespace VRemoteDesktop.Helpers
                 stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
             }
         }
-        public static void WriteToFile(FileStream fs, int offset, byte[] data)
+        public static void WriteToFile(FileStream fs, int offset, byte[] data, bool flush = true)
         {
             if (fs == null)
                 throw new ArgumentException("FileStream cannot be null.", nameof(fs));
             if (data == null)
                 throw new ArgumentException("data cannot be null.", nameof(data));
 
-            lock (_lock)
+            lock (fs)
             {
                 try
                 {
                     fs.Seek(offset, SeekOrigin.Begin);
                     fs.Write(data, 0, data.Length);
-                    fs.Flush();
+                    
+                    if(flush)
+                        fs.Flush();
                 }
                 catch (IOException ex)
                 {
