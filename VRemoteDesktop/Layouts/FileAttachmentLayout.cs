@@ -36,9 +36,10 @@ namespace VRemoteDesktop.Layouts
         {
             this.ColumnCount = 3;
             this.RowCount = 2;
-            this.Dock = DockStyle.Fill;
+            this.Dock = DockStyle.Top;
             this.AutoSize = true;   
             this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            this.BorderStyle = BorderStyle.FixedSingle;
 
             this.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             this.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 50F));
@@ -65,11 +66,12 @@ namespace VRemoteDesktop.Layouts
             }
             _fileName = new Label
             {
-                Text = Helpers.StringHelper.GenerateStringShortcut(fileInfo.Filename, 30),
+                Text = fileInfo.Filename,
                 Name = "lbFileName",
-                AutoSize = false,
-                Dock = DockStyle.Fill,
+                AutoSize = true,
                 TextAlign = ContentAlignment.MiddleLeft,
+                AutoEllipsis = true,
+                MaximumSize = new Size(200, 60),
             };
             _fileSize = new Label
             {

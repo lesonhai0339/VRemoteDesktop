@@ -176,7 +176,7 @@ namespace VRemoteDesktop.Views
         }
         private void ProcessMessageAdded(Control control)
         {
-            control.MaximumSize = new Size(fpnChat.Width - SystemInformation.VerticalScrollBarWidth - 10, 0);
+            control.MaximumSize = new Size(fpnChat.Width -2, 0);
             fpnChat.Controls.Add(control);
             RefeshUI(fpnChat);
             fpnChat.ScrollControlIntoView(control);
