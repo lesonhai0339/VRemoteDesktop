@@ -71,7 +71,7 @@ namespace VRemoteDesktop.Layouts
                 AutoSize = true,
                 TextAlign = ContentAlignment.MiddleLeft,
                 AutoEllipsis = true,
-                MaximumSize = new Size(200, 60),
+                MaximumSize = new Size(200, 40),
             };
             _fileSize = new Label
             {
