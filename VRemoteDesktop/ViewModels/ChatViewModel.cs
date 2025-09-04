@@ -153,7 +153,8 @@ namespace VRemoteDesktop.ViewModels
                             TaskType = DataType.AcceptSendFile,
                             Data = data,
                             IsSendHeader = true,
-                            SessionId = client.SocketId
+                            SessionId = client.SocketId,
+                            Priority = QueuePriority.High
                         });
                         UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => parent.AcceptSendFile()));
                     }
@@ -173,7 +174,8 @@ namespace VRemoteDesktop.ViewModels
                             TaskType = DataType.AcceptSendFile,
                             Data = data,
                             IsSendHeader = true,
-                            SessionId = client.SocketId
+                            SessionId = client.SocketId,
+                            Priority = QueuePriority.High
                         });
                         UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.Message, () => parent.RejectSendFile()));
                     }

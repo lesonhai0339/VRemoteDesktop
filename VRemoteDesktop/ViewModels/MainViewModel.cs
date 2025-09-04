@@ -14,11 +14,8 @@ namespace VRemoteDesktop.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
-        private readonly object _lock = new object();
         private bool _isLogged = false;
         private string _id;
-        private string _partnerId;
-        private string _partnerPassword;
         private string _myId;
         private string _myPassword;
         private bool _isConnected;

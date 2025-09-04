@@ -23,10 +23,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         private bool _isDisposed;
         private object _lockObject = new object();
         private string _socketId;
-        private string _myId;
-        private string _myPassword;
-        private string _partnerId;
-        private string _partnerPassword;
         private VClientType _clientType;
         private ClientInfo _partnerInfo;
 
@@ -102,26 +98,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             get => _socketId;
             private set => _socketId = value;
-        }
-        public string MyId
-        {
-            get => _myId;
-            set => _myId = value;
-        }
-        public string MyPassword
-        {
-            get => _myPassword;
-            set => _myPassword = value;
-        }
-        public string PartnerId
-        {
-            get => _partnerId;
-            set => _partnerId = value;
-        }
-        public string PartnerPassword
-        {
-            get => _partnerId;
-            set => _partnerId = value;
         }
         public ConcurrentQueue<object> ScreenTasks
         {

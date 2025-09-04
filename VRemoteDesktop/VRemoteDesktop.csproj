@@ -113,7 +113,6 @@
     <Compile Include="Models\ChunkFileInfo.cs" />
     <Compile Include="Models\EventRegistration.cs" />
     <Compile Include="Models\MouseData.cs" />
-    <Compile Include="Models\P2PConnectionResponse.cs" />
     <Compile Include="Models\TaskGroup.cs" />
     <Compile Include="Models\TaskObject.cs" />
     <Compile Include="Models\BaseResponse.cs" />
@@ -131,6 +130,7 @@
     <Compile Include="Models\UIPropertyRegistration.cs" />
     <Compile Include="Models\VFileInfo.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
+    <Compile Include="Services\FileService\SaveChat.cs" />
     <Compile Include="Services\FileService\VAttachmentManager.cs" />
     <Compile Include="Services\FileService\VChatAttachmentService.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
