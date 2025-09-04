@@ -91,6 +91,46 @@ namespace VRemoteDesktop.Helpers
             }
             return data.ToArray();
         }
+        public static int GetFileDataByOffset(string filePath, int offset, ref byte[] source, int size = 8192)
+        {
+            if (!File.Exists(filePath))
+                throw new ArgumentException(string.Format("Does not existed {0}", filePath));
+
+            if (offset < 0)
+                throw new ArgumentException("Offset cannot be neigative");
+
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                fs.Seek(offset, SeekOrigin.Begin);
+                int bytesRead = fs.Read(source, 0, size);
+                return bytesRead;
+            }
+        }
+        public static int GetChunkFileDataByOffset(string filePath, int offset, ref byte[] source, int size = 8192)
+        {
+            if (!File.Exists(filePath))
+                throw new ArgumentException(string.Format("Does not existed {0}", filePath));
+
+            if (offset < 0)
+                throw new ArgumentException("Offset cannot be neigative");
+
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                fs.Seek(offset, SeekOrigin.Begin);
+                int totalBytesRead = 0;
+                int remainingBytes = size;
+                while(totalBytesRead < size && remainingBytes > 0)
+                {
+                    int bytesRead = fs.Read(source, totalBytesRead, remainingBytes);
+                    if (bytesRead == 0)
+                        break;
+
+                    totalBytesRead += bytesRead;
+                    remainingBytes -= bytesRead;
+                }
+                return totalBytesRead;
+            }
+        }
         public static long CalculateChunkNumber(long dataSize, int chunkSize = 8192)
         {
             if (dataSize <= 0)

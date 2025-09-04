@@ -109,6 +109,9 @@ namespace VRemoteDesktop.Services.FileService
             if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
             {
                 FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(filePath);
+                if(fileInfo.Length > int.MaxValue)
+                    throw new ArgumentOutOfRangeException("File size cannot be larger than " + int.MaxValue);
+
                 if (BuildSenderFileInfo(fileInfo, true, out VFileInfo info))
                 {
                     info.UpdateSavePath(filePath);
@@ -233,29 +236,32 @@ namespace VRemoteDesktop.Services.FileService
         /// </summary>
         /// <param name="client">socket connection will be receive file data</param>
         /// <param name="fileId">file id</param>
-        private void BeginSendFile(VClient client, string fileId)
+        [Obsolete("This method require load whole file data to memory")]
+        private void BeginSendFileOld(VClient client, string fileId)
         {
             try
             {
                 var info = _attachmentManager.Get(fileId);
                 if (info == null)
-                    throw new InvalidOperationException("Does not exists file with id: "+ fileId);
+                    throw new InvalidOperationException("Does not exists file with id: " + fileId);
 
                 FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(info.FilePath);
                 if (fileInfo == null)
-                    throw new InvalidOperationException("Does not exists file: "+ info.FilePath);
+                    throw new InvalidOperationException("Does not exists file: " + info.FilePath);
 
-                long chunkNumber = Helpers.FileHelper.CalculateChunkNumber(fileInfo.Length, CHUNK_SIZE);
-                int count = 0;
-                while (count < chunkNumber)
+                int fileSize = (int)fileInfo.Length;
+                int handledSize = 0;
+
+                byte[] chunkData = new byte[CHUNK_SIZE];
+                while (handledSize < fileSize)
                 {
-                    int offset = count * CHUNK_SIZE;
-                    byte[] chunkData = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, CHUNK_SIZE);
+                    int offset = handledSize;
+                    int bytesRead = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, ref chunkData, CHUNK_SIZE);
 
-                    byte[] dataSend = new byte[chunkData.Length + 20]; //4 byte for offset + 16 byte for file id
+                    byte[] dataSend = new byte[bytesRead + 20]; //4 byte for offset + 16 byte for file id
                     Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
                     Buffer.BlockCopy(Encoding.ASCII.GetBytes(fileId), 0, dataSend, 4, fileId.Length);
-                    Buffer.BlockCopy(chunkData, 0, dataSend, fileId.Length + 4 , chunkData.Length);
+                    Buffer.BlockCopy(chunkData, 0, dataSend, fileId.Length + 4, bytesRead);
 
                     client.AddWork(
                         new TaskObject
@@ -267,15 +273,59 @@ namespace VRemoteDesktop.Services.FileService
                             Priority = QueuePriority.Low
                         });
                     //Notify sending progress
-                    count++;
+                    handledSize += bytesRead;
                 }
-
+                chunkData = null;
                 //After sending all data, remove file info
                 _attachmentManager.Remove(fileId);
             }
             catch (Exception ex)
             {
-                throw ex;
+                throw;
+            }
+        }
+
+        /// <summary>
+        /// Split file to chunks and send chunk metadata to specific client(client will take data from file by chunk metadata and send, this will decrease memory usage instead load whole file data to memory)
+        /// </summary>
+        /// <param name="client"></param>
+        /// <param name="fileId"></param>
+        private void BeginSendFile(VClient client, string fileId)
+        {
+            try
+            {
+                var info = _attachmentManager.Get(fileId);
+                if (info == null)
+                    throw new InvalidOperationException("Does not exists file with id: " + fileId);
+
+                FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(info.FilePath);
+                if (fileInfo == null)
+                    throw new InvalidOperationException("Does not exists file: " + info.FilePath);
+
+                int fileSize = (int)fileInfo.Length;
+                int handledSize = 0;
+
+                while (handledSize < fileSize)
+                {
+                    int offset = handledSize;
+                    int size = Math.Min(CHUNK_SIZE, fileSize - handledSize);
+                    client.AddWork(
+                        new TaskObject
+                        (
+                            type: DataType.FileTransfer,
+                            sessionId : client.SocketId,
+                            isSendHeader: true,
+                            priority: QueuePriority.Low,
+                            chunkFileInfo: new ChunkFileInfo(fileId : fileId, filePath: fileInfo.FullName, offset: offset, chunkSize: size)
+                        ));
+                    handledSize = offset + size;
+                }
+                //After sending all data, remove file info
+                //_attachmentManager.Remove(fileId);
+            }
+            catch (Exception ex)
+            {
+                throw;
             }
         }
         public void Dispose()

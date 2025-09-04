@@ -234,18 +234,25 @@ namespace VRemoteDesktop.ViewModels
         //Create new file info and send request to partner
         public void RequestSendFile()
         {
-            var fileInfo = _chatAttachmentService.GetFileSendInfo();
-            if(fileInfo != null)
+            try
             {
-                FileAttachmentLayout fileAttachmentLayout = new FileAttachmentLayout(fileInfo.Id);
-                fileAttachmentLayout.Add(fileInfo, true);
-                _attachments.TryAdd(fileInfo.Id , fileAttachmentLayout);
+                var fileInfo = _chatAttachmentService.GetFileSendInfo();
+                if (fileInfo != null)
+                {
+                    FileAttachmentLayout fileAttachmentLayout = new FileAttachmentLayout(fileInfo.Id);
+                    fileAttachmentLayout.Add(fileInfo, true);
+                    _attachments.TryAdd(fileInfo.Id, fileAttachmentLayout);
 
-                string data = Helpers.StringHelper.StringBuilderWithSeparator("|",fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize);
-                byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
-                SendToClient(DataType.RequestSendFile, byteArray);
+                    string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize);
+                    byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
+                    SendToClient(DataType.RequestSendFile, byteArray);
 
-                AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, fileAttachmentLayout));
+                    AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, fileAttachmentLayout));
+                }
+            }
+            catch(Exception ex)
+            {
+                throw;
             }
         }
         //Send data to current activated connection(VClient)

@@ -110,6 +110,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Models\ChatManager.cs" />
+    <Compile Include="Models\ChunkFileInfo.cs" />
     <Compile Include="Models\EventRegistration.cs" />
     <Compile Include="Models\MouseData.cs" />
     <Compile Include="Models\P2PConnectionResponse.cs" />

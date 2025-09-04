@@ -302,6 +302,12 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void ProcessTask(TaskObject task)
         {
+            if(task.TaskType == DataType.FileTransfer)
+            {
+                ProcessFileTransfer(task);
+                return;
+            }
+
             if (task.IsSendHeader)
             {
                 Send(task.TaskType, task.Data, task.SessionId, true);
@@ -547,6 +553,29 @@ namespace VRemoteDesktop.Services.VTCPClient
             Buffer.BlockCopy(socketId, 0, header, 5, 8);
 
             return header;
+        }
+        private void ProcessFileTransfer(TaskObject task)
+        {
+            //chunk file header
+            byte[] header = new byte[20];
+            Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, header, 0, 4);
+            Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, header, 4, 16);
+
+            byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize];
+            int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, task.ChunkFileInfo.ChunkSize);
+            if(chunkRead != chunkFileData.Length)
+                throw new Exception("ByteRead not the same with bytes data expected");
+
+            var newArray = ByteArrayHelper.Combine(header, chunkFileData).GetResult();
+
+            if (task.IsSendHeader)
+            {
+                Send(task.TaskType, newArray, task.SessionId, true);
+            }
+            else
+            {
+                Send(newArray);
+            }
         }
         public void Send(DataType type, byte[] data,string partnerId = "00000000", bool isSendHeader = true)
         {
