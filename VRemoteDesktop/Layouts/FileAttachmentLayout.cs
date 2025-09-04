@@ -127,8 +127,10 @@ namespace VRemoteDesktop.Layouts
         {
             try
             {
-                _save.Visible = false;
-                _cancel.Visible = false;
+                _save.Enabled = false;
+                _save.BackColor = SystemColors.Control;
+                _cancel.Enabled = false;
+                _cancel.BackColor = SystemColors.Control;
                 this.Controls.Remove(this._fileSize);
 
                 _progressbar = new VProgressBar(_fileInfo);
@@ -145,8 +147,10 @@ namespace VRemoteDesktop.Layouts
         {
             try
             {
-                _save.Visible = false;
-                _cancel.Visible = false;
+                _save.Enabled = false;
+                _save.BackColor = SystemColors.Control;
+                _cancel.Enabled = false;
+                _cancel.BackColor = SystemColors.Control;
                 this.Controls.Remove(_fileSize);
                 Label rj = new Label
                 {
@@ -154,7 +158,7 @@ namespace VRemoteDesktop.Layouts
                     Name = "lbRejectFile",
                     AutoSize = true,
                     Font = _defaultFont,
-                    Dock = DockStyle.Fill
+                    Dock = DockStyle.Fill,
                 };
                 this.Controls.Add(rj, 1, 1);
             }
@@ -198,7 +202,7 @@ namespace VRemoteDesktop.Layouts
                 Text = (type == ProgressbarEnum.Finished) ? "Hoàn thành" : "Xảy ra lỗi",
                 AutoSize = true,
                 Font = _defaultFont,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
             };
             this.Controls.Add(btn, 1, 1);
         }
