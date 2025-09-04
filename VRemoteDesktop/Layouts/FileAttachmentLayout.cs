@@ -67,7 +67,7 @@ namespace VRemoteDesktop.Layouts
             {
                 Text = Helpers.StringHelper.GenerateStringShortcut(fileInfo.Filename, 30),
                 Name = "lbFileName",
-                AutoSize = true,
+                AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.MiddleLeft,
             };
@@ -75,7 +75,7 @@ namespace VRemoteDesktop.Layouts
             {
                 Text = Helpers.StringHelper.GetFileSizeString(fileInfo.FileSize),
                 Name = "lbFileSize",
-                AutoSize = true,
+                AutoSize = false,
                 Dock = DockStyle.Fill,
                 TextAlign = ContentAlignment.TopLeft,
             };
@@ -115,7 +115,7 @@ namespace VRemoteDesktop.Layouts
             {
                 _waitingPartnerAccept = new Label
                 {
-                    AutoSize = true,
+                    AutoSize = false,
                     Text = "Chờ đối tác xác nhận...",
                     Font = _defaultFont,
                     Dock = DockStyle.Fill
@@ -154,7 +154,7 @@ namespace VRemoteDesktop.Layouts
                 {
                     Text = "Đã từ chối file",
                     Name = "lbRejectFile",
-                    AutoSize = true,
+                    AutoSize = false,
                     Font = _defaultFont,
                     Dock = DockStyle.Fill,
                 };
@@ -210,7 +210,7 @@ namespace VRemoteDesktop.Layouts
             Label btn = new Label
             {
                 Text = (type == ProgressbarEnum.Finished) ? "Hoàn thành" : "Xảy ra lỗi",
-                AutoSize = true,
+                AutoSize = false,
                 Font = _defaultFont,
                 Dock = DockStyle.Fill,
             };
