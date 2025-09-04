@@ -14,7 +14,7 @@ namespace VRemoteDesktop.Layouts
 {
     public class FileAttachmentLayout: TableLayoutPanel
     {
-        private readonly Font _defaultFont = new Font("Segoe UI", 9F, FontStyle.Bold | FontStyle.Italic);
+        private readonly Font _defaultFont = new Font("Segoe UI", 9F, FontStyle.Bold);// | FontStyle.Italic);
         private string _id;
         private PictureBox _fileImage;
         private Label _fileName;
@@ -183,6 +183,12 @@ namespace VRemoteDesktop.Layouts
         }
         private void ProgressBarCompletedTask(ProgressbarEnum type)
         {
+            var oldControl = this.GetControlFromPosition(1, 1);
+            if(oldControl != null)
+            {
+                this.Controls.Remove(oldControl);
+                oldControl.Dispose();
+            }
             Label btn = new Label
             {
                 Text = (type == ProgressbarEnum.Finished) ? "Hoàn thành" : "Xảy ra lỗi",
