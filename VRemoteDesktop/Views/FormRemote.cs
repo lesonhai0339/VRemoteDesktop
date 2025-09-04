@@ -132,6 +132,32 @@ namespace VRemoteDesktop.Views
         {
             _remoteDesktopService.AddKeyboardListenerOnFormByHandle(this.Handle);
         }
+        private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (_remoteViewModel != null)
+            {
+                _remoteViewModel.ScreenEvent -= ScreenEvent;
+                _remoteViewModel.ScreenChunksEvent -= ChunksEvent;
+            }
+            if(_remoteDesktopService != null)
+            {
+                _remoteDesktopService.RemoveKeyboardListenerOnFormByHandle(this.Handle);
+                _remoteDesktopService.KeyboardEvent -= KeyboardReceivedEventHandler;
+            }
+
+            if (_mouseExtension != null)
+                _mouseExtension.Dispose();
+
+            if(_curScreen != null)
+                _curScreen.Dispose();
+
+            if(_screenGraphics != null)
+                _screenGraphics.Dispose();
+
+            _pendingSender?.Dispose();
+
+            _isP2PDisconnectCallback?.Dispose();
+        }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {
             _pendingClickArgs = e;

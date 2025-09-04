@@ -313,6 +313,7 @@ namespace VRemoteDesktop.ViewModels
                     _chatConnections.ChatDisconnected -= ChatDisconnectedEventHandler;
                     _chatConnections.Dispose();
                 }
+                _attachments.Clear();
             }
         }
     }

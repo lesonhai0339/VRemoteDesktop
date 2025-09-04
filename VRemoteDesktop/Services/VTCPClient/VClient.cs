@@ -554,29 +554,37 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             return header;
         }
+        /// <summary>
+        /// Get chunk file data and send to remote server
+        /// </summary>
+        /// <param name="task"></param>
+        /// <exception cref="Exception"></exception>
         private void ProcessFileTransfer(TaskObject task)
         {
-            //chunk file header
-            byte[] header = new byte[20];
-            Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, header, 0, 4);
-            Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, header, 4, 16);
+            byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + 20];
+            Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, 0, 4);
+            Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, 4, 16);
+            int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, 20, task.ChunkFileInfo.ChunkSize);
 
-            byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize];
-            int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, task.ChunkFileInfo.ChunkSize);
-            if(chunkRead != chunkFileData.Length)
+            if(chunkRead != chunkFileData.Length - 20)
                 throw new Exception("ByteRead not the same with bytes data expected");
-
-            var newArray = ByteArrayHelper.Combine(header, chunkFileData).GetResult();
 
             if (task.IsSendHeader)
             {
-                Send(task.TaskType, newArray, task.SessionId, true);
+                Send(task.TaskType, chunkFileData, task.SessionId, true);
             }
             else
             {
-                Send(newArray);
+                Send(chunkFileData);
             }
         }
+        /// <summary>
+        /// Create packet header before sending to remote server
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="data"></param>
+        /// <param name="partnerId"></param>
+        /// <param name="isSendHeader"></param>
         public void Send(DataType type, byte[] data,string partnerId = "00000000", bool isSendHeader = true)
         {
             try

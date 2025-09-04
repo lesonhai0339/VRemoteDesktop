@@ -256,7 +256,7 @@ namespace VRemoteDesktop.Services.FileService
                 while (handledSize < fileSize)
                 {
                     int offset = handledSize;
-                    int bytesRead = Helpers.FileHelper.GetFileDataByOffset(fileInfo.FullName, offset, ref chunkData, CHUNK_SIZE);
+                    int bytesRead = Helpers.FileHelper.GetChunkFileDataByOffset(fileInfo.FullName, offset, ref chunkData, CHUNK_SIZE);
 
                     byte[] dataSend = new byte[bytesRead + 20]; //4 byte for offset + 16 byte for file id
                     Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
@@ -316,12 +316,12 @@ namespace VRemoteDesktop.Services.FileService
                             sessionId : client.SocketId,
                             isSendHeader: true,
                             priority: QueuePriority.Low,
-                            chunkFileInfo: new ChunkFileInfo(fileId : fileId, filePath: fileInfo.FullName, offset: offset, chunkSize: size)
+                            chunkFileInfo: new ChunkFileInfo(fileId : info.Id, filePath: fileInfo.FullName, offset: offset, chunkSize: size)
                         ));
                     handledSize = offset + size;
                 }
                 //After sending all data, remove file info
-                //_attachmentManager.Remove(fileId);
+                _attachmentManager.Remove(fileId);
             }
             catch (Exception ex)
             {

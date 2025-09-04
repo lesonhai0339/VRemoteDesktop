@@ -69,6 +69,7 @@ namespace VRemoteDesktop.Views
                 _chatViewModel.UpdateEvent -= UpdateEventHandler;
                 _chatViewModel.Dispose();
             }
+            this.txtChatContent.KeyDown -= KeydownEventHandler;
         }
         private void btnSend_Click(object sender, EventArgs e)
         {
