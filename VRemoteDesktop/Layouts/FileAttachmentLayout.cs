@@ -68,14 +68,16 @@ namespace VRemoteDesktop.Layouts
                 Text = Helpers.StringHelper.GenerateStringShortcut(fileInfo.Filename, 30),
                 Name = "lbFileName",
                 AutoSize = true,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.MiddleLeft,
             };
             _fileSize = new Label
             {
                 Text = Helpers.StringHelper.GetFileSizeString(fileInfo.FileSize),
                 Name = "lbFileSize",
                 AutoSize = true,
-                Dock = DockStyle.Fill
+                Dock = DockStyle.Fill,
+                TextAlign = ContentAlignment.TopLeft,
             };
 
             this.Controls.Add(_fileImage, 0, 0);
@@ -174,11 +176,11 @@ namespace VRemoteDesktop.Layouts
             if(control is Button btn)
             {
                 btn.Enabled = false;
-                btn.BackColor = this.BackColor;
                 btn.FlatStyle = FlatStyle.Flat;
                 btn.TabStop = false;
                 btn.Text = "";
                 btn.FlatAppearance.BorderSize = 0;
+                btn.BackColor = this.BackColor;
             }
         }
         private void ProgressCompletedEventHandler(object sender, ChatProgressBarEventArgs e)
