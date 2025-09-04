@@ -130,9 +130,7 @@
     <Compile Include="Models\UIPropertyRegistration.cs" />
     <Compile Include="Models\VFileInfo.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
-    <Compile Include="Services\FileService\ChatHelper.cs" />
-    <Compile Include="Services\FileService\VFileExtension.cs" />
-    <Compile Include="Services\FileService\VFileManager.cs" />
+    <Compile Include="Services\FileService\VAttachmentManager.cs" />
     <Compile Include="Services\FileService\VChatAttachmentService.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
     <Compile Include="Services\Keyboard\VirtualClipboard.cs" />

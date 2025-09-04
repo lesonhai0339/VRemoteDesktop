@@ -22,7 +22,7 @@ namespace VRemoteDesktop.Services.FileService
         bool BuildSenderFileInfo(FileInfo fileInfo, bool isSender, out VFileInfo info);
         VFileInfo GetFileSendInfo();
         void UpdateFileSavePath(string id, string savePath);
-        string ProcessFileDataReceived(byte[] rawData);
+        void ProcessFileDataReceived(byte[] rawData);
         void SendFile(VClient client, string fileId);
         void Dispose();
     }
@@ -32,12 +32,12 @@ namespace VRemoteDesktop.Services.FileService
         private volatile bool _disposing = false;   
         private readonly object _lock = new object();
         private readonly int CHUNK_SIZE = DEFAULT_CHUNK_SIZE;
-        private VFileManager _fileManager;
+        private VAttachmentManager _attachmentManager;
         private ConcurrentDictionary<string, FileStream> _curStreams;
         public event EventHandler<FileEventArgs> FileEvent;
         public VChatAttachmentService()
         {
-            _fileManager = new VFileManager();  
+            _attachmentManager = new VAttachmentManager();  
             _curStreams = new ConcurrentDictionary<string, FileStream>();   
         }
         public bool RemoveFileInfo(string id)
@@ -45,7 +45,7 @@ namespace VRemoteDesktop.Services.FileService
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException("Id cannot be null or empty");
 
-            return _fileManager.Remove(id);
+            return _attachmentManager.Remove(id);
         }   
         public bool ReceivedFileInfo(byte[] rawData, bool isSender, out VFileInfo info)
         {
@@ -80,7 +80,7 @@ namespace VRemoteDesktop.Services.FileService
             try
             {
                 info = new VFileInfo(id: fileInfo[0], filePath: null, filename: fileInfo[1], fileExtension: fileInfo[2], fileSize: size, isSender: false);
-                return _fileManager.Add(info);
+                return _attachmentManager.Add(info);
             }
             catch (Exception ex)
             {
@@ -96,7 +96,7 @@ namespace VRemoteDesktop.Services.FileService
             try
             {
                 info = new VFileInfo(id: null, filePath: fileInfo.FullName, filename: fileInfo.Name, fileExtension: fileInfo.Extension, fileSize: fileInfo.Length, isSender);
-                return _fileManager.Add(info);
+                return _attachmentManager.Add(info);
             }
             catch (Exception ex)
             {
@@ -124,7 +124,7 @@ namespace VRemoteDesktop.Services.FileService
             if (string.IsNullOrWhiteSpace(savePath))
                 throw new ArgumentNullException("Save path cannot be null or empty");
 
-            var fileInfo = _fileManager.Get(id);    
+            var fileInfo = _attachmentManager.Get(id);    
             if(fileInfo == null)
                 throw new NullReferenceException("Does not exist file info with id: " + id);
 
@@ -138,53 +138,59 @@ namespace VRemoteDesktop.Services.FileService
             FileStream stream =  Helpers.FileHelper.CreateFileStream(savePath);
             _curStreams.TryAdd(fileId, stream);
         }
-        public string ProcessFileDataReceived(byte[] rawData)
+        public void ProcessFileDataReceived(byte[] rawData)
         {
-            if (rawData == null || rawData.Length == 0)
-                throw new ArgumentNullException("Data cannot be null or empty");
-
-            //Header will take 20 bytes, 4 byte for offset, 16 byte for file id
-            if (rawData.Length < 20)
-                throw new InvalidOperationException("Data is not valid");
-
-            int offset = BitConverter.ToInt32(rawData, 0);
-            string fileId = Encoding.ASCII.GetString(rawData, 4, 16);
-            byte[] data = new byte[rawData.Length - 20];
-            Buffer.BlockCopy(rawData, 20, data, 0, data.Length);
-
-            var fileStream = FindFileStream(fileId);
-            if (fileStream == null)
-                throw new InvalidOperationException("Does not exist file stream with id: "+ fileId);
-
-            bool flush = false;
-            //Check and update file info
-            var fileInfo = _fileManager.Get(fileId);
-            if (fileInfo != null)
+            try
             {
-                fileInfo.UpdateReceivedSize(data.Length);
-                fileInfo.UpdateWriteTime(DateTime.Now);
-                flush = (fileInfo.FileSize == fileInfo.ReceivedSize);
+                if (rawData == null || rawData.Length == 0)
+                    throw new ArgumentNullException("Data cannot be null or empty");
 
-                //Write data to file
-                WriteToFile(fileStream, offset, data, flush);
-                if (flush)
+                //Header will take 20 bytes, 4 byte for offset, 16 byte for file id
+                if (rawData.Length < 20)
+                    throw new InvalidOperationException("Data is not valid");
+
+                int offset = BitConverter.ToInt32(rawData, 0);
+                string fileId = Encoding.ASCII.GetString(rawData, 4, 16);
+                byte[] data = new byte[rawData.Length - 20];
+                Buffer.BlockCopy(rawData, 20, data, 0, data.Length);
+
+                var fileStream = FindFileStream(fileId);
+                if (fileStream == null)
+                    throw new InvalidOperationException("Does not exist file stream with id: " + fileId);
+
+                bool flush = false;
+                //Check and update file info
+                var fileInfo = _attachmentManager.Get(fileId);
+                if (fileInfo != null)
                 {
-                    //Received enough data
-                    FileEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length));
-                    //Remove stream
-                    if (_curStreams.TryRemove(fileId, out FileStream stream))
+                    fileInfo.UpdateReceivedSize(data.Length);
+                    fileInfo.UpdateWriteTime(DateTime.Now);
+                    flush = (fileInfo.FileSize == fileInfo.ReceivedSize);
+
+                    //Write data to file
+                    WriteToFile(fileStream, offset, data, flush);
+                    if (flush)
                     {
-                        stream?.Dispose();
+                        //Received enough data
+                        FileEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length));
+                        //Remove stream
+                        if (_curStreams.TryRemove(fileId, out FileStream stream))
+                        {
+                            stream?.Dispose();
+                        }
+                        _attachmentManager.Remove(fileId);
                     }
-                    _fileManager.Remove(fileId);
-                }
-                else
-                {
-                    //Not received enough data
-                    FileEvent?.Invoke(this, new FileEventArgs(FileStatus.NewReceived, fileId, data.Length));
+                    else
+                    {
+                        //Not received enough data
+                        FileEvent?.Invoke(this, new FileEventArgs(FileStatus.NewReceived, fileId, data.Length));
+                    }
                 }
             }
-            return fileId;
+            catch(Exception ex)
+            {
+                throw;
+            }   
         }
         private FileStream FindFileStream(string id)
         {
@@ -222,11 +228,16 @@ namespace VRemoteDesktop.Services.FileService
                 throw ex;
             }
         }
+        /// <summary>
+        /// Split file data to chunks with header and send to specific client
+        /// </summary>
+        /// <param name="client">socket connection will be receive file data</param>
+        /// <param name="fileId">file id</param>
         private void BeginSendFile(VClient client, string fileId)
         {
             try
             {
-                var info = _fileManager.Get(fileId);
+                var info = _attachmentManager.Get(fileId);
                 if (info == null)
                     throw new InvalidOperationException("Does not exists file with id: "+ fileId);
 
@@ -255,10 +266,12 @@ namespace VRemoteDesktop.Services.FileService
                             IsSendHeader = true,
                             Priority = QueuePriority.Low
                         });
+                    //Notify sending progress
                     count++;
                 }
 
-                _fileManager.Remove(fileId);
+                //After sending all data, remove file info
+                _attachmentManager.Remove(fileId);
             }
             catch (Exception ex)
             {
@@ -277,7 +290,7 @@ namespace VRemoteDesktop.Services.FileService
                 if (!_disposed)
                 {
                     _disposing = true;
-                    _fileManager?.Dispose();
+                    _attachmentManager?.Dispose();
                     foreach (var stream in _curStreams.Values.ToList())
                     {
                         stream?.Dispose();

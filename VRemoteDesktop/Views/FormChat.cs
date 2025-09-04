@@ -31,35 +31,29 @@ namespace VRemoteDesktop.Views
         private void Setup()
         {
             _chatViewModel = new ChatViewModel();
-            Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
-
-            this.Location = new Point(
-                workingArea.Right - this.Width,
-                workingArea.Bottom - this.Height - 120
-            );
-            this.MaximizeBox = false;
-            this.FormBorderStyle = FormBorderStyle.Fixed3D;
-
-            fpnChat.FlowDirection = FlowDirection.TopDown;
-            fpnChat.WrapContents = false;
-            fpnChat.AutoScroll = true;
-            fpnChat.BorderStyle = BorderStyle.FixedSingle;
-            fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
-            fpnChat.BackColor = Color.White;
-
-
-            fpnNumberChatConnection.BorderStyle = BorderStyle.FixedSingle;
-            fpnNumberChatConnection.FlowDirection = FlowDirection.TopDown;
-            fpnNumberChatConnection.WrapContents = false;
-            fpnNumberChatConnection.BackColor = Color.Yellow;
-            fpnNumberChatConnection.AutoScroll = true;
 
             _chatViewModel.ProgressBarEvent += ProgressBarEventHandler;
             _chatViewModel.AddedEvent += AddeddEventHandler;
             _chatViewModel.RemovedEvent += RemovedEventHandler;
             _chatViewModel.UpdateEvent += UpdateEventHandler;
-
             this.txtChatContent.KeyDown += KeydownEventHandler;
+        }
+        protected override void SetVisibleCore(bool value)
+        {
+            base.SetVisibleCore(value);
+            if (value && this.WindowState == FormWindowState.Normal)
+            {
+                PositionForm();
+            }
+        }
+
+        private void PositionForm()
+        {
+            Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
+            this.Location = new Point(
+                workingArea.Right - this.Width,
+                workingArea.Bottom - this.Height - 120
+            );
         }
         private void FormChat_Load(object sender, EventArgs e)
         {
@@ -173,6 +167,10 @@ namespace VRemoteDesktop.Views
         {
             control.Width = fpnNumberChatConnection.Width - 2;
             fpnNumberChatConnection.Controls.Add(control);
+            if (control is Label lb)
+            {
+                _chatViewModel.ChangeConnectionActivate(lb, EventArgs.Empty);
+            }
             RefeshUI(fpnNumberChatConnection);
             fpnNumberChatConnection.ScrollControlIntoView(control);
         }
