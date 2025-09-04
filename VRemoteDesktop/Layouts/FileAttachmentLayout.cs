@@ -127,10 +127,8 @@ namespace VRemoteDesktop.Layouts
         {
             try
             {
-                _save.Enabled = false;
-                _save.BackColor = SystemColors.Control;
-                _cancel.Enabled = false;
-                _cancel.BackColor = SystemColors.Control;
+                DisableControl(_save);
+                DisableControl(_cancel);
                 this.Controls.Remove(this._fileSize);
 
                 _progressbar = new VProgressBar(_fileInfo);
@@ -147,10 +145,8 @@ namespace VRemoteDesktop.Layouts
         {
             try
             {
-                _save.Enabled = false;
-                _save.BackColor = SystemColors.Control;
-                _cancel.Enabled = false;
-                _cancel.BackColor = SystemColors.Control;
+                DisableControl(_save);
+                DisableControl(_cancel);
                 this.Controls.Remove(_fileSize);
                 Label rj = new Label
                 {
@@ -172,6 +168,18 @@ namespace VRemoteDesktop.Layouts
         {
             if (_progressbar != null)
                 _progressbar.SetStep(num);
+        }
+        private void DisableControl(Control control)
+        {
+            if(control is Button btn)
+            {
+                btn.Enabled = false;
+                btn.BackColor = this.BackColor;
+                btn.FlatStyle = FlatStyle.Flat;
+                btn.TabStop = false;
+                btn.Text = "";
+                btn.FlatAppearance.BorderSize = 0;
+            }
         }
         private void ProgressCompletedEventHandler(object sender, ChatProgressBarEventArgs e)
         {
