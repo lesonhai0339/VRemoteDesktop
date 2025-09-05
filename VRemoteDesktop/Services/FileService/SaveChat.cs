@@ -300,22 +300,25 @@ namespace VRemoteDesktop.Services.FileService
         public object[] ReadLastMessagesObject(string filePath, int numberOfMsg)
         {
             string[] messages = ReadLastMessages(filePath, numberOfMsg);
-            return messages.Select(x =>
+            var result = messages.Select(x =>
             {
-                if (ParseStringToChatFile(x, out ChatFile chatFile))
+                if(string.IsNullOrEmpty(x))
+                    return null;
+                else if(ParseStringToChatFile(x, out ChatFile chatFile))
                     return (object)chatFile;
                 else if (ParseStringToChatFile(x, out ChatText chatText))
                     return (object)chatText;
                 else
                     return null;
             }).ToArray();
+            return result;
         }
         private bool ParseStringToChatFile(string rawString, out ChatText chatText)
         {
             chatText = null;
 
             string[] data = rawString.Split('|');
-            if (data.Length != this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
+            if (data.Length != typeof(ChatText).GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
                 return false;
 
             if (!Enum.TryParse(data[1], out ChatContentTypeEnum type))
@@ -341,7 +344,7 @@ namespace VRemoteDesktop.Services.FileService
             chatFile = null;
 
             string[] data = rawString.Split('|');
-            if (data.Length != this.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
+            if (data.Length != typeof(ChatFile).GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
                 return false;
             if (!Enum.TryParse(data[1], out ChatContentTypeEnum type))
                 return false;

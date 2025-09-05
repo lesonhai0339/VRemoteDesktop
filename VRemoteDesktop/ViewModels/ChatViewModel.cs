@@ -41,6 +41,7 @@ namespace VRemoteDesktop.ViewModels
         public event EventHandler<ChatControlRemoveEventArgs> RemovedEvent;
         public event EventHandler<ChatControlUpdateEventArgs> UpdateEvent;
         public event EventHandler<ChatControlProgressBarUpdateUIEventArgs> ProgressBarEvent;
+        public event EventHandler<ChatUpdateChatHistoryEventArgs> UpdateChatHistoryEvent;
         public ChatViewModel()
         {
             _saveChat = new SaveChat(); 
@@ -177,12 +178,12 @@ namespace VRemoteDesktop.ViewModels
             if (messages == null || messages.Length == 0)
                 //throw new InvalidOperationException("Does not exists chat data for this connection");
                 return;
-
+            List<Control> controls = new List<Control>();
             foreach (var message in messages)
             {
                 if(message is ChatFile chatFile)
                 {
-
+                    //TODO: not implement, missing file Id to create FileAttachmentLayout, will handler tomorrow
                 }
                 else if(message is ChatText chatText)
                 {
@@ -193,13 +194,14 @@ namespace VRemoteDesktop.ViewModels
                         AutoSize = true,
                         TextAlign = ContentAlignment.TopLeft,
                     };
-                    AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, lb));
+                    controls.Add(lb);
                 }
                 else
                 {
                     continue;
                 }
             }
+            UpdateChatHistoryEvent?.Invoke(this, new ChatUpdateChatHistoryEventArgs(ChatUpdateChatHistoryEventType.LoadHistory, controls));
         }
         private string GetChatPath(string connectionId)
         {

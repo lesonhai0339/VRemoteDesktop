@@ -36,6 +36,7 @@ namespace VRemoteDesktop.Views
             _chatViewModel.AddedEvent += AddeddEventHandler;
             _chatViewModel.RemovedEvent += RemovedEventHandler;
             _chatViewModel.UpdateEvent += UpdateEventHandler;
+            _chatViewModel.UpdateChatHistoryEvent += UpdateChatHistoryEventHandler;
             this.txtChatContent.KeyDown += KeydownEventHandler;  
         }
         protected override void SetVisibleCore(bool value)
@@ -67,6 +68,7 @@ namespace VRemoteDesktop.Views
                 _chatViewModel.AddedEvent -= AddeddEventHandler;
                 _chatViewModel.RemovedEvent -= RemovedEventHandler;
                 _chatViewModel.UpdateEvent -= UpdateEventHandler;
+                _chatViewModel.UpdateChatHistoryEvent -= UpdateChatHistoryEventHandler;
                 _chatViewModel.Dispose();
             }
             this.txtChatContent.KeyDown -= KeydownEventHandler;
@@ -90,19 +92,19 @@ namespace VRemoteDesktop.Views
                 }
             }
         }  
-        private void InsertFirst(Control parent, Control[] children)
+        private void InsertFirst(Control parent, List<Control> children)
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action<Control, Control[]>(InsertFirst), parent, children);
+                this.Invoke(new Action<Control, List<Control>>(InsertFirst), parent, children);
                 return;
             }
-
             foreach(Control child in children)
             {
                 parent.Controls.Add(child);
                 parent.Controls.SetChildIndex(child, 0);
             }
+            RefeshUI(fpnChat);
         }
         private void SendMessage(string content)
         {
@@ -123,10 +125,32 @@ namespace VRemoteDesktop.Views
                 }
             }
         }
+        private void UpdateChatHistoryEventHandler(object sender, ChatUpdateChatHistoryEventArgs e)
+        {
+            ProcessUpdateChatHistory(e.Type, e.Controls);
+        }
+        private void ProcessUpdateChatHistory(ChatUpdateChatHistoryEventType type, List<Control> controls)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<ChatUpdateChatHistoryEventType, List<Control>>(ProcessUpdateChatHistory), type, controls);
+                return;
+            }
+            if (type == ChatUpdateChatHistoryEventType.LoadHistory)
+            {
+                //FpnChat have 10 controls but only remove 5 and remaining 5???????
+                foreach (Control ctl in fpnChat.Controls)
+                {
+                    ProcessMessageRemoved(ctl);
+                }
+                InsertFirst(fpnChat, controls);
+            }
+        }
         private void ProgressBarEventHandler(object sender, ChatControlProgressBarUpdateUIEventArgs e)
         {
             UpdateBar(e.FileLayout, e.Num);
         }
+
         private void UpdateBar(FileAttachmentLayout f, int num)
         {
             if (this.InvokeRequired)
@@ -217,6 +241,24 @@ namespace VRemoteDesktop.Views
                 ctl.Dispose();
             }
             RefeshUI(fpnNumberChatConnection);
+        }
+        private void ProcessMessageRemoved(Control control)
+        {
+            if(control.Parent == fpnChat)
+            {
+                if (control is FileAttachmentLayout file)
+                {
+                    fpnChat.Controls.Remove(file);
+                    file.AcceptSaveFile -= _chatViewModel.FileReceivedClickEventHandler;
+                    file.Dispose();
+                }
+                else if (control is Label lb)
+                {
+                    fpnChat.Controls.Remove(lb);
+                    lb.Dispose();
+                }
+                RefeshUI(fpnChat);
+            }
         }
         private void ProcessMessageRemoved(string key)
         {
