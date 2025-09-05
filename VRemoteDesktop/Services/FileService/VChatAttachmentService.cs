@@ -144,7 +144,7 @@ namespace VRemoteDesktop.Services.FileService
         public void ProcessFileDataReceived(byte[] rawData)
         {
             try
-            {
+            { 
                 if (rawData == null || rawData.Length == 0)
                     throw new ArgumentNullException("Data cannot be null or empty");
 
@@ -157,6 +157,7 @@ namespace VRemoteDesktop.Services.FileService
                 byte[] data = new byte[rawData.Length - 20];
                 Buffer.BlockCopy(rawData, 20, data, 0, data.Length);
 
+                string filePath = _attachmentManager.Get(fileId)?.FilePath;
                 var fileStream = FindFileStream(fileId);
                 if (fileStream == null)
                     throw new InvalidOperationException("Does not exist file stream with id: " + fileId);
@@ -175,7 +176,7 @@ namespace VRemoteDesktop.Services.FileService
                     if (flush)
                     {
                         //Received enough data
-                        FileEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length));
+                        FileEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length, filePath));
                         //Remove stream
                         if (_curStreams.TryRemove(fileId, out FileStream stream))
                         {
@@ -186,7 +187,7 @@ namespace VRemoteDesktop.Services.FileService
                     else
                     {
                         //Not received enough data
-                        FileEvent?.Invoke(this, new FileEventArgs(FileStatus.NewReceived, fileId, data.Length));
+                        FileEvent?.Invoke(this, new FileEventArgs(FileStatus.NewReceived, fileId, data.Length, filePath));
                     }
                 }
             }

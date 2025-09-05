@@ -15,6 +15,7 @@ namespace VRemoteDesktop.Layouts
     public class FileAttachmentLayout: TableLayoutPanel
     {
         private readonly Font _defaultFont = new Font("Segoe UI", 9F, FontStyle.Bold);// | FontStyle.Italic);
+        private string _socketId;
         private string _id;
         private PictureBox _fileImage;
         private Label _fileName;
@@ -26,12 +27,15 @@ namespace VRemoteDesktop.Layouts
         private VProgressBar _progressbar;
 
         public event EventHandler<P2PFileReceivedEventArgs> AcceptSaveFile;
-        public FileAttachmentLayout(string id)
+        public FileAttachmentLayout(string id, string socketId)
         {
             _id = id;
+            _socketId = socketId;
             InitializeComponent();
         }
         public string Id => _id;
+        public string SocketId => _socketId;
+        public VFileInfo FileInfo => _fileInfo;
         private void InitializeComponent()
         {
             this.ColumnCount = 3;

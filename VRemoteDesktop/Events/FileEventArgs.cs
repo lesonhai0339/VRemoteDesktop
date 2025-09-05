@@ -13,14 +13,16 @@ namespace VRemoteDesktop.Events
     public class FileEventArgs: EventArgs
     {
         public FileEventArgs() { }
-        public FileEventArgs(FileStatus status, string fileId, int size)
+        public FileEventArgs(FileStatus status, string fileId, int size, string filePath)
         {
             Status = status;
             FileId = fileId;
             Size = size;
+            FilePath = filePath;
         }
         public FileStatus Status { get; set; }
         public string FileId { get; set; }
         public int Size { get; set; }
+        public string FilePath { get; set; }
     }
 }

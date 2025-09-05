@@ -36,7 +36,7 @@ namespace VRemoteDesktop.Views
             _chatViewModel.AddedEvent += AddeddEventHandler;
             _chatViewModel.RemovedEvent += RemovedEventHandler;
             _chatViewModel.UpdateEvent += UpdateEventHandler;
-            this.txtChatContent.KeyDown += KeydownEventHandler;
+            this.txtChatContent.KeyDown += KeydownEventHandler;  
         }
         protected override void SetVisibleCore(bool value)
         {
@@ -78,6 +78,31 @@ namespace VRemoteDesktop.Views
         private void btnSendAttachment_Click(object sender, EventArgs e)
         {
             _chatViewModel.RequestSendFile();
+        }
+        private void fpnChat_MouseWheel(object sender, MouseEventArgs e)
+        {
+            if (fpnChat.VerticalScroll.Visible)
+            {
+                Console.WriteLine("Scroll visible, value: " + fpnChat.VerticalScroll.Value);
+                if(fpnChat.VerticalScroll.Value == 0)
+                {
+                    Console.WriteLine("At the top, continue load 5 previous message");
+                }
+            }
+        }  
+        private void InsertFirst(Control parent, Control[] children)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<Control, Control[]>(InsertFirst), parent, children);
+                return;
+            }
+
+            foreach(Control child in children)
+            {
+                parent.Controls.Add(child);
+                parent.Controls.SetChildIndex(child, 0);
+            }
         }
         private void SendMessage(string content)
         {
