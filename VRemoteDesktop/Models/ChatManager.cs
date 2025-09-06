@@ -28,6 +28,7 @@ namespace VRemoteDesktop.Models
         int GetMessageCountById(string id);
         List<T> GetMessages(string id);
         List<T> GetMessages(string id, int offset, int length);
+        bool ContainsKey(string id);
         event EventHandler<ChatDisconnectedEventArgs> ChatDisconnected;
         void Dispose();
     }
@@ -51,6 +52,10 @@ namespace VRemoteDesktop.Models
                         client: client,
                         messages: new List<T>())
                    );
+        }
+        public bool ContainsKey(string id)
+        {
+            return _curChat.ContainsKey(id);
         }
         public bool Remove(string id)
         {

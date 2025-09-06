@@ -27,8 +27,6 @@ namespace VRemoteDesktop.ViewModels
 {
     public class ChatViewModel:IDisposable
     {
-        private static readonly Color SelectedColor = Color.LightSkyBlue;
-        private static readonly Color DefaultColor = Color.White;
         private readonly object _lock = new object();
         private readonly IChatManager<object> _chatConnections;
         private string _currentConnectionActivate;
@@ -42,6 +40,7 @@ namespace VRemoteDesktop.ViewModels
         public event EventHandler<ChatControlUpdateEventArgs> UpdateEvent;
         public event EventHandler<ChatControlProgressBarUpdateUIEventArgs> ProgressBarEvent;
         public event EventHandler<ChatUpdateChatHistoryEventArgs> UpdateChatHistoryEvent;
+        public event EventHandler<EventArgs> ChangeConnectionActivateEvent;
         public ChatViewModel()
         {
             _saveChat = new SaveChat(); 
@@ -82,7 +81,7 @@ namespace VRemoteDesktop.ViewModels
                 {
                     Text = client.Partner.ComputerName,
                     Name = client.SocketId,
-                    BackColor = Color.WhiteSmoke,
+                    BackColor = Color.White,
                     BorderStyle = BorderStyle.FixedSingle,
                     AutoSize = false,
                     Height = 20,
@@ -92,24 +91,21 @@ namespace VRemoteDesktop.ViewModels
                 AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Connection, lbChat));
             }
         }
+        public bool IsValidConnection(string id)
+        {
+            return _chatConnections.ContainsKey(id);
+        }
+        public void SetCurrentConnectionActivate(string id)
+        {
+            _currentConnectionActivate = id;
+        }
+        public string GetCurrentConnectionActivate()
+        {
+            return _currentConnectionActivate;
+        }
         public void ChangeConnectionActivate(object sender, EventArgs e)
         {
-            if (sender is Label lb && lb.Parent is FlowLayoutPanel flow)
-            {
-                foreach (var connection in flow.Controls.OfType<Label>())
-                {
-                    if (connection == lb)
-                    {
-                        _currentConnectionActivate = lb.Name;
-                        lb.BackColor = SelectedColor;
-                        LoadChatHistoryByConnectionId(lb.Name);
-                    }
-                    else
-                    {
-                        connection.BackColor = DefaultColor;
-                    }
-                }
-            }
+            ChangeConnectionActivateEvent?.Invoke(sender, new EventArgs());
         }
         //Create new label and send message to partner
         public void SendChatMessage(string chatData)
@@ -171,7 +167,7 @@ namespace VRemoteDesktop.ViewModels
                 )
             );
         }
-        private void LoadChatHistoryByConnectionId(string connectionId)
+        public void LoadChatHistoryByConnectionId(string connectionId)
         {
             string chatHistoryFilePath = GetChatPath(connectionId);
             object[] messages = _saveChat.ReadLastMessagesObject(chatHistoryFilePath, 5);
