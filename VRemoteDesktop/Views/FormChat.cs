@@ -147,8 +147,6 @@ namespace VRemoteDesktop.Views
                 bool isSameConnection = (string.Compare(lb.Name, _chatViewModel.GetCurrentConnectionActivate(), StringComparison.OrdinalIgnoreCase) == 0);
                 if (isSameConnection)
                 {
-                    if(lb.BackColor == DefaultColor)
-                        lb.BackColor = SelectedColor;
                     if(fpnChat.Controls.Count == 0)
                         _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
                     return;

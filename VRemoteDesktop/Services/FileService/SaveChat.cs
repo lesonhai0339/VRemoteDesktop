@@ -300,6 +300,9 @@ namespace VRemoteDesktop.Services.FileService
         public object[] ReadLastMessagesObject(string filePath, int numberOfMsg)
         {
             string[] messages = ReadLastMessages(filePath, numberOfMsg);
+            if(messages == null || messages.Length == 0)
+                return null;
+
             var result = messages.Select(x =>
             {
                 if(string.IsNullOrEmpty(x))

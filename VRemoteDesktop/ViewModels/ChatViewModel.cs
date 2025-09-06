@@ -81,7 +81,7 @@ namespace VRemoteDesktop.ViewModels
                 {
                     Text = client.Partner.ComputerName,
                     Name = client.SocketId,
-                    BackColor = Color.White,
+                    BackColor = Color.LightSkyBlue,
                     BorderStyle = BorderStyle.FixedSingle,
                     AutoSize = false,
                     Height = 20,
