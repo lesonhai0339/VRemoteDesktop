@@ -512,8 +512,7 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                SendFileRespondType respondType = (SendFileRespondType)data[0];
-                string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, 1, 16, EncodingType.ASCII).GetResult();
+                string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, 0, 16, EncodingType.ASCII).GetResult();
                 if (string.IsNullOrWhiteSpace(fileId))
                 {
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
@@ -536,8 +535,7 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                SendFileRespondType respondType = (SendFileRespondType)data[0];
-                string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, 1, 16, EncodingType.ASCII).GetResult();
+                string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, 0, 16, EncodingType.ASCII).GetResult();
                 if (string.IsNullOrWhiteSpace(fileId))
                 {
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
