@@ -522,7 +522,7 @@ namespace VRemoteDesktop.ViewModels
                 var chunks =  _chatAttachmentService.GetFileChunksInfo(fileId);
                 for(int i = 0; i < chunks.Count; i++)
                 {
-                    SendFileToClient(client, SocketDataType.Chat, ChatDataType.FileData, chunks[0]);
+                    SendFileToClient(client, SocketDataType.Chat, ChatDataType.FileData, chunks[i]);
                 }
             }
             catch(Exception ex)
