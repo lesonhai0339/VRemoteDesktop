@@ -279,7 +279,7 @@ namespace VRemoteDesktop.Views
                     ProcessMessageAdded(e.ConnectionId, e.Content);
                     RefeshUI(fpnChat);
                 }
-                else if (e.Type == ChatControlType.RequestAttachment)
+                else if (e.Type == ChatControlType.RequestAttachment || e.Type == ChatControlType.ReceivedAttachment)
                 {
                     ProcessAttachmentAdded(e.Type, e.ConnectionId, e.FileInfo);
                     RefeshUI(fpnChat);
@@ -293,13 +293,14 @@ namespace VRemoteDesktop.Views
         private void ProcessAttachmentAdded(ChatControlType type, string connectionId, VFileInfo fileInfo)
         {
             FileAttachmentLayout fileAttachmentLayout = new FileAttachmentLayout(fileInfo.Id, connectionId);
-            fileAttachmentLayout.Add(fileInfo, true);
             if(type == ChatControlType.RequestAttachment)
             {
+                fileAttachmentLayout.Add(fileInfo, true);
                 _attachments.TryAdd(fileInfo.Id, fileAttachmentLayout);
             }
             if (type == ChatControlType.ReceivedAttachment)
             {
+                fileAttachmentLayout.Add(fileInfo, false);
                 _attachments[fileInfo.Id] = fileAttachmentLayout;
                 fileAttachmentLayout.AcceptSaveFile += FileReceivedClickEventHandler;
             }

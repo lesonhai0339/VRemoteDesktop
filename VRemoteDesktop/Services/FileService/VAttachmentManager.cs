@@ -19,7 +19,7 @@ namespace VRemoteDesktop.Services.FileService
         public VAttachmentManager()
         {
             _files = new ConcurrentDictionary<string, VFileInfo>();
-            _timer = new System.Threading.Timer(CleanupCallback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+            _timer = new System.Threading.Timer(CleanupCallback, null, TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(2));
         }
 
         private void CleanupCallback(object state)
@@ -28,7 +28,7 @@ namespace VRemoteDesktop.Services.FileService
                 return;
             foreach(var file in _files)
             {
-                if(DateTime.Now.Subtract(file.Value.LastWriteTime).TotalMinutes > 2)
+                if(DateTime.Now.Subtract(file.Value.LastWriteTime).TotalMinutes > 3)
                 {
                     FileRemoved?.Invoke(this, new ChatFileRemovedEventArgs(file.Value.Id));
                     _files.TryRemove(file.Key, out _);
