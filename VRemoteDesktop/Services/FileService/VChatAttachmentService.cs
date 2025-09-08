@@ -37,7 +37,8 @@ namespace VRemoteDesktop.Services.FileService
         public event EventHandler<FileEventArgs> FileEvent;
         public VChatAttachmentService()
         {
-            _attachmentManager = new VAttachmentManager();  
+            _attachmentManager = new VAttachmentManager();
+            _attachmentManager.FileRemoved += FileRemovedEventHandler;
             _curStreams = new ConcurrentDictionary<string, FileStream>();   
         }
         public bool RemoveFileInfo(string id)
@@ -329,6 +330,13 @@ namespace VRemoteDesktop.Services.FileService
                 throw;
             }
         }
+        private void FileRemovedEventHandler(object sender, ChatFileRemovedEventArgs e)
+        {
+            if(!string.IsNullOrWhiteSpace(e.FileId))
+            {
+                _curStreams.TryRemove(e.FileId, out FileStream stream);
+            }
+        }
         public void Dispose()
         {
             Dispose(true);
@@ -341,7 +349,11 @@ namespace VRemoteDesktop.Services.FileService
                 if (!_disposed)
                 {
                     _disposing = true;
-                    _attachmentManager?.Dispose();
+                    if (_attachmentManager != null)
+                    {
+                        _attachmentManager.FileRemoved -= FileRemovedEventHandler;
+                        _attachmentManager.Dispose();
+                    }
                     foreach (var stream in _curStreams.Values.ToList())
                     {
                         stream?.Dispose();

@@ -79,6 +79,7 @@
     <Compile Include="Events\ChatControlUpdateEventArgs.cs" />
     <Compile Include="Events\ChatDisconnectedEventArgs.cs" />
     <Compile Include="Events\ChatErrorEventArgs.cs" />
+    <Compile Include="Events\ChatFileRemovedEventArgs.cs" />
     <Compile Include="Events\ChatProgressBarEventArgs.cs" />
     <Compile Include="Events\ChatUpdateChatHistoryEventArgs.cs" />
     <Compile Include="Events\FileEventArgs.cs" />

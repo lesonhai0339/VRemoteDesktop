@@ -4,18 +4,38 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.Services.FileService
 {
     public class VAttachmentManager: IDisposable
     {
-        public readonly object _lock= new object();
-        public ConcurrentDictionary<string, VFileInfo> _files;
+        private readonly object _lock= new object();
+        private ConcurrentDictionary<string, VFileInfo> _files;
+        private System.Threading.Timer _timer;
+        public event EventHandler<ChatFileRemovedEventArgs> FileRemoved;
         public VAttachmentManager()
         {
             _files = new ConcurrentDictionary<string, VFileInfo>();
+            _timer = new System.Threading.Timer(CleanupCallback, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
         }
+
+        private void CleanupCallback(object state)
+        {
+            if(_files.IsEmpty)
+                return;
+            foreach(var file in _files)
+            {
+                if(DateTime.Now.Subtract(file.Value.LastWriteTime).TotalMinutes > 2)
+                {
+                    FileRemoved?.Invoke(this, new ChatFileRemovedEventArgs(file.Value.Id));
+                    _files.TryRemove(file.Key, out _);
+                }
+            }
+        }
+
         public string New(string fileName, string fileExtension, long fileSize , bool isSender)
         {
             if (string.IsNullOrWhiteSpace(fileName))
