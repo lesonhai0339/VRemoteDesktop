@@ -16,14 +16,14 @@ namespace VRemoteDesktop.Services.FileService
 {
     public interface IVChatAttachmentService
     {
-        event EventHandler<FileEventArgs> FileEvent;
+        event EventHandler<FileEventArgs> FileDataReceivedEvent;
         bool RemoveFileInfo(string id);
         bool ReceivedFileInfo(byte[] rawData, bool isSender, out VFileInfo info);
         bool BuildSenderFileInfo(FileInfo fileInfo, bool isSender, out VFileInfo info);
         VFileInfo GetFileSendInfo();
         void UpdateFileSavePath(string id, string savePath);
         void ProcessFileDataReceived(byte[] rawData);
-        void SendFile(VClient client, string fileId);
+        List<ChunkFileInfo> GetFileChunksInfo(string fileId);
         void Dispose();
     }
     internal class VChatAttachmentService: IVChatAttachmentService, IDisposable
@@ -34,7 +34,7 @@ namespace VRemoteDesktop.Services.FileService
         private readonly int CHUNK_SIZE = DEFAULT_CHUNK_SIZE;
         private VAttachmentManager _attachmentManager;
         private ConcurrentDictionary<string, FileStream> _curStreams;
-        public event EventHandler<FileEventArgs> FileEvent;
+        public event EventHandler<FileEventArgs> FileDataReceivedEvent;
         public VChatAttachmentService()
         {
             _attachmentManager = new VAttachmentManager();
@@ -54,7 +54,7 @@ namespace VRemoteDesktop.Services.FileService
             if (rawData == null || rawData.Length == 0)
                 throw new ArgumentNullException(nameof(rawData));
 
-            string[] fileInfo = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(rawData), "|");
+            string[] fileInfo = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(rawData), DEFAULT_SEPRATOR);
 
             //At least for value (id, filename, fileExtension, file size)
             if (fileInfo.Length < 4)
@@ -177,7 +177,7 @@ namespace VRemoteDesktop.Services.FileService
                     if (flush)
                     {
                         //Received enough data
-                        FileEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length, filePath));
+                        FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length, filePath));
                         //Remove stream
                         if (_curStreams.TryRemove(fileId, out FileStream stream))
                         {
@@ -188,7 +188,7 @@ namespace VRemoteDesktop.Services.FileService
                     else
                     {
                         //Not received enough data
-                        FileEvent?.Invoke(this, new FileEventArgs(FileStatus.NewReceived, fileId, data.Length, filePath));
+                        FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.NewReceived, fileId, data.Length, filePath));
                     }
                 }
             }
@@ -219,14 +219,11 @@ namespace VRemoteDesktop.Services.FileService
                 throw;
             }
         }
-        public void SendFile(VClient client, string fileId)
+        public List<ChunkFileInfo> GetFileChunksInfo(string fileId)
         {
             try
             {
-                _ = Task.Factory.StartNew(() =>
-                {
-                    BeginSendFile(client, fileId);
-                });
+                return GetChunks(fileId);
             }
             catch (Exception ex)
             {
@@ -268,7 +265,7 @@ namespace VRemoteDesktop.Services.FileService
                     client.AddWork(
                         new TaskObject
                         {
-                            TaskType = DataType.FileTransfer,
+                            TaskType = SocketDataType.Chat,
                             Data = dataSend,
                             SessionId = client.SocketId,
                             IsSendHeader = true,
@@ -292,10 +289,11 @@ namespace VRemoteDesktop.Services.FileService
         /// </summary>
         /// <param name="client"></param>
         /// <param name="fileId"></param>
-        private void BeginSendFile(VClient client, string fileId)
+        private List<ChunkFileInfo> GetChunks(string fileId)
         {
             try
             {
+                List<ChunkFileInfo> chunks = new List<ChunkFileInfo>();
                 var info = _attachmentManager.Get(fileId);
                 if (info == null)
                     throw new InvalidOperationException("Does not exists file with id: " + fileId);
@@ -311,19 +309,10 @@ namespace VRemoteDesktop.Services.FileService
                 {
                     int offset = handledSize;
                     int size = Math.Min(CHUNK_SIZE, fileSize - handledSize);
-                    client.AddWork(
-                        new TaskObject
-                        (
-                            type: DataType.FileTransfer,
-                            sessionId : client.SocketId,
-                            isSendHeader: true,
-                            priority: QueuePriority.Low,
-                            chunkFileInfo: new ChunkFileInfo(fileId : info.Id, filePath: fileInfo.FullName, offset: offset, chunkSize: size)
-                        ));
+                    chunks.Add(new ChunkFileInfo(fileId: info.Id, filePath: fileInfo.FullName, offset: offset, chunkSize: size));
                     handledSize = offset + size;
                 }
-                //After sending all data, remove file info
-                _attachmentManager.Remove(fileId);
+                return chunks;
             }
             catch (Exception ex)
             {

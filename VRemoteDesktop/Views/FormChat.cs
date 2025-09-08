@@ -54,12 +54,11 @@ namespace VRemoteDesktop.Views
         {
             if (_chatViewModel != null)
             {
-                _chatViewModel.ProgressBarEvent -= ProgressBarEventHandler;
+                _chatViewModel.ProgressBarUpdateEvent -= ProgressBarUpdateEventHandler;
                 _chatViewModel.AddedEvent -= AddeddEventHandler;
                 _chatViewModel.RemovedEvent -= RemovedEventHandler;
                 _chatViewModel.UpdateEvent -= UpdateEventHandler;
                 _chatViewModel.UpdateChatHistoryEvent -= UpdateChatHistoryEventHandler;
-                _chatViewModel.FileClickedEvent -= FileReceivedClickEventHandler;
                 _chatViewModel.ErrorEvent -= ShowErrorEvent;
                 _chatViewModel.Dispose();
             }
@@ -100,12 +99,11 @@ namespace VRemoteDesktop.Views
         private void SetupComponent()
         {
             _chatViewModel = new ChatViewModel();
-            _chatViewModel.ProgressBarEvent += ProgressBarEventHandler;
+            _chatViewModel.ProgressBarUpdateEvent += ProgressBarUpdateEventHandler;
             _chatViewModel.AddedEvent += AddeddEventHandler;
             _chatViewModel.RemovedEvent += RemovedEventHandler;
             _chatViewModel.UpdateEvent += UpdateEventHandler;
             _chatViewModel.UpdateChatHistoryEvent += UpdateChatHistoryEventHandler;
-            _chatViewModel.FileClickedEvent += FileReceivedClickEventHandler;
             _chatViewModel.ErrorEvent += ShowErrorEvent;
 
             this.txtChatContent.KeyDown += KeydownEventHandler;
@@ -249,7 +247,7 @@ namespace VRemoteDesktop.Views
                 }
             });
         }
-        private void ProgressBarEventHandler(object sender, ChatControlProgressBarUpdateUIEventArgs e)
+        private void ProgressBarUpdateEventHandler(object sender, ChatControlProgressBarUpdateUIEventArgs e)
         {
             if (_attachments.TryGetValue(e.FileId, out var attachment))
             {
@@ -302,13 +300,13 @@ namespace VRemoteDesktop.Views
             {
                 fileAttachmentLayout.Add(fileInfo, false);
                 _attachments[fileInfo.Id] = fileAttachmentLayout;
-                fileAttachmentLayout.AcceptSaveFile += FileReceivedClickEventHandler;
+                fileAttachmentLayout.AcceptSaveFile += FileEventHandler;
             }
             fpnChat.Controls.Add(fileAttachmentLayout);
             fpnChat.ScrollControlIntoView(fileAttachmentLayout);
         }
 
-        private void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
+        private void FileEventHandler(object sender, P2PFileReceivedEventArgs e)
         {
             InvokeAction(() =>
             {
@@ -320,7 +318,7 @@ namespace VRemoteDesktop.Views
                         _chatViewModel.UpdateFileSavePath(parent.Id, e.FilePath);
                         _chatViewModel.SaveFileChat(parent.SocketId, parent.FileInfo.SavePath, parent.FileInfo.Filename, parent.FileInfo.FileSize);
 
-                        if (_chatViewModel.ProcessAcceptSendFile(parent.Id))
+                        if (_chatViewModel.AcceptedFile(parent.Id))
                         {
                             parent.AcceptSendFile();
                         }
@@ -328,7 +326,7 @@ namespace VRemoteDesktop.Views
                     //Reject file
                     if (string.Compare(btn.Name, "btnCancel") == 0)
                     {
-                        if (_chatViewModel.ProcessRejectSendFile(parent.Id))
+                        if (_chatViewModel.DeclinedFile(parent.Id))
                         {
                             parent.RejectSendFile();
                         }
@@ -427,7 +425,7 @@ namespace VRemoteDesktop.Views
                 if (control is FileAttachmentLayout file)
                 {
                     fpnChat.Controls.Remove(file);
-                    file.AcceptSaveFile -= _chatViewModel.FileReceivedClickEventHandler;
+                    file.AcceptSaveFile -= FileEventHandler;
                     file.Dispose();
                 }
                 else if (control is Label lb)
@@ -449,7 +447,7 @@ namespace VRemoteDesktop.Views
                 if (ctl is FileAttachmentLayout file)
                 {
                     fpnChat.Controls.Remove(file);
-                    file.AcceptSaveFile -= _chatViewModel.FileReceivedClickEventHandler;
+                    file.AcceptSaveFile -= FileEventHandler;
                     file.Dispose();
                 }
                 else if (ctl is Label lb)

@@ -11,7 +11,7 @@ namespace VRemoteServer.Utils
     {
         private static Random rd = new Random();
         private static string digits = "0123456789";
-        static byte[] ByteArrayBuilder(Enums.CommandType commandType, string data)
+        static byte[] ByteArrayBuilder(Enums.SocketDataType commandType, string data)
         {
             byte[] dataBytes = Encoding.ASCII.GetBytes(data);
             byte[] byteBuilder = new byte[dataBytes.Length + 1];

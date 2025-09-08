@@ -8,12 +8,12 @@ namespace VRemoteDesktop.Events
 {
     public class P2PChatEventArgs: EventArgs
     {
-        public P2PChatEventArgs(DataType type, byte[] data)
+        public P2PChatEventArgs(SocketDataType type, byte[] data)
         {
             Type = type;
             Data = data;
         }
-        public DataType Type { get; set; }
+        public SocketDataType Type { get; set; }
         public byte[] Data { get; set; }
     }
 }

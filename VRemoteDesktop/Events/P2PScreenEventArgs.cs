@@ -9,12 +9,12 @@ namespace VRemoteDesktop.Events
 {
     public class P2PScreenEventArgs: EventArgs
     {
-        public P2PScreenEventArgs(DataType type, byte[] data)
+        public P2PScreenEventArgs(SocketDataType type, byte[] data)
         {
             Type = type;
             Data = data;
         }
-        public DataType Type { get; set; }
+        public SocketDataType Type { get; set; }
         public byte[] Data { get; set; }
     }
 }

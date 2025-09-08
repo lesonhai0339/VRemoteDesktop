@@ -24,6 +24,7 @@ using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
+using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
 {
@@ -70,7 +71,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if(client != null)
             {
                 byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
-                client.Send(DataType.Login, encoder);
+                client.Send(SocketDataType.Login, encoder);
             }
         }
         public void P2PConnect(string partnerId, string partnerPassword)
@@ -84,9 +85,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
             _reset.WaitOne(5000);
-            string dataString = StringHelper.StringBuilderWithSeparator("|", newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+            string dataString = StringHelper.StringBuilderWithSeparator(DEFAULT_SEPRATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            newConnection.Send(DataType.P2PRequestConnect, dataBytes, partnerId, true);
+            newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
         public void UpdateMyInfo(byte[] data)
         {
@@ -168,12 +169,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
                 newClient.UpdatePartnerInfo(partnerInfo);
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
-                newClient.Send(DataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
+                newClient.Send(SocketDataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
                 DataReceivedEvent?.Invoke(newClient, e);
 
                 var screen = _globalHook.GetFirstScreen();
                 int length = screen.Sum(x=> x.Length);
-                SendScreen(newClient, DataType.Screen, screen, length);
+                SendScreen(newClient, SocketDataType.Screen, screen, length);
                 if (_vClientManager.HasClientOfType(VClientType.Receiver))
                     StartScreenCapture();
             }
@@ -183,7 +184,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, 8, EncodingType.ASCII).GetResult();
                     byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
-                    client.Send(DataType.P2PRejectConnect, dataBytes, client.SocketId, true);
+                    client.Send(SocketDataType.P2PRejectConnect, dataBytes, client.SocketId, true);
                 }
             }
         }
@@ -194,7 +195,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 if(sender is VClient client)
                 {
                     string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                    string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, "|");
+                    string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, DEFAULT_SEPRATOR);
                     ClientInfo partnerInfo = new ClientInfo
                     {
                         Id = stringArray[0],
@@ -223,7 +224,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     SendScreen(connection.Value, e.Type, e.Data, e.TotalSize);
             }
         }
-        public void SendScreen(VClient  client, DataType type, List<byte[]> data, int totalSize)
+        public void SendScreen(VClient  client, SocketDataType type, List<byte[]> data, int totalSize)
         {
             try
             {
@@ -257,7 +258,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                     tasks.Add(task);
                 }
-                client.AddWorkGroup(tasks, DataType.Screen);
+                client.AddWorkGroup(tasks, SocketDataType.Screen);
             }
             catch (Exception ex)
             {
@@ -318,27 +319,27 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             switch (e.Type)
             {
-                case DataType.Connect:
+                case SocketDataType.Connect:
                     _reset.Set();
                     DataReceivedEvent?.Invoke(sender, e);
                     break;
-                case DataType.Clipboard:
+                case SocketDataType.Clipboard:
                     SetClipboard(e.Data);
                     break;
-                case DataType.P2PRequestConnect:
+                case SocketDataType.P2PRequestConnect:
                     P2PRequestConnectHandler(sender, e);
                     break;
-                case DataType.P2PAcceptConnect:
+                case SocketDataType.P2PAcceptConnect:
                     ProcessP2PConnectAccepted(sender, e);
                     DataReceivedEvent?.Invoke(sender, e);
                     break;
-                case DataType.Mouse:
+                case SocketDataType.Mouse:
                     MouseReceivedEventHandler(sender, e);
                     break;
-                case DataType.Keyboard:
+                case SocketDataType.Keyboard:
                     KeyboardReceivedEventHandler(sender, e);
                     break;
-                case DataType.P2PDisconnect:
+                case SocketDataType.P2PDisconnect:
                     ProcessP2PDisconnect(sender, e);
                     break;
                 default:

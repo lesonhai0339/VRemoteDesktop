@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteDesktop.Models
 {
-    public enum DataType : byte
+    public enum SocketDataType : byte
     {
         None = 0x00,
         Login = 0x01,
@@ -21,10 +21,7 @@ namespace VRemoteDesktop.Models
         ScreenOk = 0x0C,
         ChunksOk = 0x0D,
         Clipboard = 0x0E,
-        Message = 0x0F,
-        FileTransfer = 0x10,
-        RequestSendFile = 0x11,
-        AcceptSendFile = 0x12,
+        Chat = 0x0F,
         Connect = 0x13,
         P2PDataSend = 0x14,
 

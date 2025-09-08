@@ -12,5 +12,7 @@ namespace VRemoteDesktop.Utils
         public static int DEFAULT_FPS = 20;
         public static string DEFAULT_CHAT_FOLDER = "ChatData";
         public static string DEFAULT_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+        public static int DEFAULT_MESSAGE_LOAD = 5;
+        public static string DEFAULT_SEPRATOR = "|";
     }
 }

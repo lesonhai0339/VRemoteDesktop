@@ -145,11 +145,11 @@ namespace VRemoteDesktop
         {
             if(sender is VClient vClient)
             {
-                if(e.Type == Models.DataType.P2PAcceptConnect)
+                if(e.Type == Models.SocketDataType.P2PAcceptConnect)
                 {
                     OpenRemoteForm(vClient);
                 }
-                else if(e.Type == Models.DataType.P2PRequestConnect)
+                else if(e.Type == Models.SocketDataType.P2PRequestConnect)
                 {
                     AddChat(vClient);
                 }

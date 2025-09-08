@@ -9,19 +9,19 @@ namespace VRemoteDesktop.Events
     public class ScreenCaptureEventArgs : EventArgs
     {
         public ScreenCaptureEventArgs() { }
-        public ScreenCaptureEventArgs(DataType type, int totalSize)
+        public ScreenCaptureEventArgs(SocketDataType type, int totalSize)
         {
             Type = type;
             TotalSize = totalSize;
         }
-        public ScreenCaptureEventArgs(DataType type, List<byte[]> data, int totalSize)
+        public ScreenCaptureEventArgs(SocketDataType type, List<byte[]> data, int totalSize)
         {
             Type = type;
             Data = data;
             TotalSize = totalSize;
         }
 
-        public DataType Type { get; set; } = DataType.None;
+        public SocketDataType Type { get; set; } = SocketDataType.None;
         public List<byte[]> Data { get; set; } = new List<byte[]>();
         public int TotalSize { get; set; } = 0;
     }

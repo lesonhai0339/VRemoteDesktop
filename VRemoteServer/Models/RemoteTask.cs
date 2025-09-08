@@ -10,7 +10,7 @@ namespace VRemoteServer.Models
     public class RemoteTask
     {
         public string PartnerId { get; set; }   
-        public Enums.CommandType CommandType { get; set; }
+        public Enums.SocketDataType CommandType { get; set; }
         public Client Client { get; set; }
         public byte[] Data { get; set; }
     }

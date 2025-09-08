@@ -108,13 +108,13 @@ namespace VRemoteDesktop.Services.SystemService
 
             }
         }
-        public bool CheckClipboard(KeyboardEventArgs e, out byte[] clipboardBytes, out DataType type)
+        public bool CheckClipboard(KeyboardEventArgs e, out byte[] clipboardBytes, out SocketDataType type)
         {
             clipboardBytes = null;
-            type = DataType.None;
+            type = SocketDataType.None;
             if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
             {
-                type = DataType.Clipboard;
+                type = SocketDataType.Clipboard;
                 clipboardBytes = Encoding.UTF8.GetBytes(GetClipboard());
                 return true;
             }

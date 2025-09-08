@@ -66,9 +66,9 @@ namespace VRemoteDesktop.Services.FileService
                     ? ((DateTime)prop.GetValue(this, null)).ToString(DEFAULT_DATETIME_FORMAT)
                     : prop.GetValue(this, null).ToString() 
                     ?? string.Empty)
-                .Append("|");
+                .Append(DEFAULT_SEPRATOR);
             }
-            return sb.ToString().TrimEnd('|');
+            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPRATOR));
         }
     }
     [DataContract]
@@ -120,7 +120,7 @@ namespace VRemoteDesktop.Services.FileService
                     ? ((DateTime)prop.GetValue(this, null)).ToString(DEFAULT_DATETIME_FORMAT)
                     : prop.GetValue(this, null).ToString()
                     ?? string.Empty)
-                .Append("|");
+                .Append(DEFAULT_SEPRATOR);
             }
             return sb.ToString().TrimEnd('|');
         }

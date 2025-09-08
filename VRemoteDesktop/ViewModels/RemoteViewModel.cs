@@ -14,6 +14,7 @@ using static VRemoteDesktop.Utils.Logger;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.RemoteDesktop;
+using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -38,11 +39,11 @@ namespace VRemoteDesktop.ViewModels
         #region Methods
         public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
-            if(e.Type == DataType.Screen)
+            if(e.Type == SocketDataType.Screen)
             {
                 ScreenEvent?.Invoke(e.Data);
             }
-            if(e.Type == DataType.Chunks)
+            if(e.Type == SocketDataType.Chunks)
             {
                 ScreenChunksEvent?.Invoke(e.Data);
             }
@@ -59,7 +60,7 @@ namespace VRemoteDesktop.ViewModels
 
             _vClient.AddWork(new TaskObject
             {
-                TaskType = DataType.Clipboard,
+                TaskType = SocketDataType.Clipboard,
                 Data = Encoding.UTF8.GetBytes(clipboard),
                 IsSendHeader = true,
                 SessionId = _vClient.SocketId,
@@ -68,14 +69,14 @@ namespace VRemoteDesktop.ViewModels
         }
         public void ProcessKeyboard(KeyboardEventArgs e)
         {
-            string keyboard = Helpers.StringHelper.StringBuilderWithSeparator("|",(int)e.Command, (int)e.KeyModifier, (int)e.KeyCode, (int)e.KeyType);
+            string keyboard = Helpers.StringHelper.StringBuilderWithSeparator(DEFAULT_SEPRATOR,(int)e.Command, (int)e.KeyModifier, (int)e.KeyCode, (int)e.KeyType);
 
             //return if data is empty
             if (string.IsNullOrEmpty(keyboard)) return;
 
             _vClient.AddWork(new TaskObject
             {
-                TaskType = DataType.Keyboard,
+                TaskType = SocketDataType.Keyboard,
                 Data = Encoding.ASCII.GetBytes(keyboard),
                 IsSendHeader = true,
                 SessionId = _vClient.SocketId,
@@ -105,7 +106,7 @@ namespace VRemoteDesktop.ViewModels
 
                 _vClient.AddWork(new TaskObject
                 {
-                    TaskType = DataType.Mouse,
+                    TaskType = SocketDataType.Mouse,
                     Data = Encoding.ASCII.GetBytes(mouseEventString),
                     IsSendHeader = true,
                     SessionId = _vClient.SocketId,

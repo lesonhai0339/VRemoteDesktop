@@ -208,13 +208,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                     try
                     {
 
-                        if (task.Type == DataType.Screen || task.Type == DataType.Chunks)
+                        if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
                         {
                             var lastTask = task;
 
                             while (Tasks.TryTake(out var t, 0)
                                 && t != null
-                                && (t.Type == DataType.Screen || t.Type == DataType.Chunks))
+                                && (t.Type == SocketDataType.Screen || t.Type == SocketDataType.Chunks))
                             {
                                 lastTask = t;
                             }
@@ -225,11 +225,11 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             switch (task.Type)
                             {
-                                case DataType.P2PAcceptConnect:
+                                case SocketDataType.P2PAcceptConnect:
                                     Console.WriteLine("Partner accepted");
                                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
                                     break;
-                                case DataType.P2PRejectConnect:
+                                case SocketDataType.P2PRejectConnect:
                                     Console.WriteLine("Client Reject request to p2p connection");
                                     break;
                                 default:
@@ -335,9 +335,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                 CommandTasks.Enqueue(task);
             }
         }
-        public void AddWorkGroup(List<TaskObject> tasks, DataType type = DataType.None)
+        public void AddWorkGroup(List<TaskObject> tasks, SocketDataType type = SocketDataType.None)
         {
-            if (type == DataType.Screen || type == DataType.Chunks)
+            if (type == SocketDataType.Screen || type == SocketDataType.Chunks)
             {
                 ScreenTasks.Enqueue(new TaskGroup(tasks));
             }
@@ -412,7 +412,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 if (!Socket.Connected)
                 {
                     //Connected?.Invoke(this, new ConnectEventArgs(false));
-                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Connect, false, new byte[0]));
+                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, false, new byte[0]));
                     Log.ForContext("FileName", "RemoteClient").Error("Cannot connect to server");
                     return;
                 }
@@ -423,7 +423,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     ReceivedWorker.RunWorkerAsync();
                 }
                 //Connected?.Invoke(this, new ConnectEventArgs(true));
-                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Connect, true, new byte[0]));
+                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, true, new byte[0]));
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
                 stateObject.SckId = _socketId;
@@ -494,7 +494,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 int length = BitConverter.ToInt32(bytes, 0);
 
-                DataType commandType = (DataType)bytes[4];
+                SocketDataType commandType = (SocketDataType)bytes[4];
 
                 string socketId = BitConverter.ToString(bytes, 5, 8);
 
@@ -513,7 +513,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
-        public void Send(DataType type, ListByteArray list, int totalSize)
+        public void Send(SocketDataType type, ListByteArray list, int totalSize)
         {
             try
             {

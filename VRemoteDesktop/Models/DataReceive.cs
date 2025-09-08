@@ -7,7 +7,7 @@ namespace VRemoteDesktop.Models
 {
     public class DataReceive
     {
-        public DataType Type { get; set; }
+        public SocketDataType Type { get; set; }
         public int Length { get; set; }
         public byte[] Data { get; set; }
     }

@@ -182,7 +182,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     var byteCombined = ByteArrayHelper.Combine(checksum, screenCaptureCompressed).GetResult();
                     _dataSend = byteCombined;
                     ScreenCaptureEventArgs screenArgs = new ScreenCaptureEventArgs(
-                        type: DataType.Screen,
+                        type: SocketDataType.Screen,
                         totalSize: dataLength
                     );
 
@@ -218,7 +218,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
 
                     ScreenCaptureEventArgs chunksArgs = new ScreenCaptureEventArgs(
-                       type: DataType.Chunks,
+                       type: SocketDataType.Chunks,
                        totalSize: dataSendLength
                     );
 

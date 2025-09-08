@@ -57,6 +57,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Enums\ChatControlType.cs" />
+    <Compile Include="Enums\ChatDataType.cs" />
     <Compile Include="Enums\QueuePriority.cs" />
     <Compile Include="Enums\VClientType.cs" />
     <Compile Include="Enums\VMouseButtons.cs" />
@@ -123,7 +124,7 @@
     <Compile Include="Models\ByteArrayBuilder.cs" />
     <Compile Include="Models\ClientInfo.cs" />
     <Compile Include="Models\DataReceive.cs" />
-    <Compile Include="Enums\DataType.cs" />
+    <Compile Include="Enums\SocketDataType.cs" />
     <Compile Include="Models\KeyboardReceived.cs" />
     <Compile Include="Models\KeyboardState.cs" />
     <Compile Include="Models\MouseReceived.cs" />

@@ -24,7 +24,7 @@ namespace VRemoteServer.Models
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
         private Action<Client> _disconnectCallback;
-        private Func<string, CommandType ,Client, byte[], Task<bool>> _dataCallback;
+        private Func<string, SocketDataType ,Client, byte[], Task<bool>> _dataCallback;
         private object _lock = new object();
 
 
@@ -35,7 +35,7 @@ namespace VRemoteServer.Models
         private int _dataReceived;
         private string _partnerId;
 
-        public Client(Socket socket, Action<Client> disconnectCallback, Func<string, CommandType, Client, byte[], Task<bool>> dataCallback)
+        public Client(Socket socket, Action<Client> disconnectCallback, Func<string, SocketDataType, Client, byte[], Task<bool>> dataCallback)
         {
             _lastSendTime = DateTime.Now; //init before check timeout
             Socket = socket;
@@ -139,7 +139,7 @@ namespace VRemoteServer.Models
             }, state: null);
             return tcs.Task;
         }
-        private async Task ProcessData(string partnerId, CommandType command, byte[] buffer)
+        private async Task ProcessData(string partnerId, SocketDataType command, byte[] buffer)
         {
             if (_dataCallback != null)
             {
@@ -230,7 +230,7 @@ namespace VRemoteServer.Models
                 }
                 if (_currentHeader != null)
                 {
-                    CommandType type = (CommandType)_currentHeader[4];
+                    SocketDataType type = (SocketDataType)_currentHeader[4];
 
                     //command packet
                     if (_dataExpected == 0)

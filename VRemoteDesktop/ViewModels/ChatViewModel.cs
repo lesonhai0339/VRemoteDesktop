@@ -23,15 +23,14 @@ namespace VRemoteDesktop.ViewModels
         public event EventHandler<ChatControlAddedEventArgs> AddedEvent;
         public event EventHandler<ChatControlRemoveEventArgs> RemovedEvent;
         public event EventHandler<ChatControlUpdateEventArgs> UpdateEvent;
-        public event EventHandler<ChatControlProgressBarUpdateUIEventArgs> ProgressBarEvent;
+        public event EventHandler<ChatControlProgressBarUpdateUIEventArgs> ProgressBarUpdateEvent;
         public event EventHandler<ChatUpdateChatHistoryEventArgs> UpdateChatHistoryEvent;
-        public event EventHandler<P2PFileReceivedEventArgs> FileClickedEvent;
         public event EventHandler<ChatErrorEventArgs> ErrorEvent;
         public ChatViewModel()
         {
             _saveChat = new SaveChat(); 
             _chatAttachmentService = new VChatAttachmentService();
-            _chatAttachmentService.FileEvent += FileEventHandler;
+            _chatAttachmentService.FileDataReceivedEvent += FileDataReceivedEventHandler;
 
             _chatConnections = new ChatManager<object>();
             _chatConnections.ChatDisconnected += ChatDisconnectedEventHandler;
@@ -53,11 +52,9 @@ namespace VRemoteDesktop.ViewModels
         }
         public void RemoveConnection(string connectionId)
         {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new ArgumentNullException(nameof(connectionId), "Missing connectionId")));
+            if (!ValidateConnectionId(connectionId))
                 return;
-            }
+
             var connection = _chatConnections.GetClientById(connectionId);
             if (connection == null)
             {
@@ -81,11 +78,9 @@ namespace VRemoteDesktop.ViewModels
         }
         public string GetConnectionNameById(string connectionId)
         {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new ArgumentNullException(nameof(connectionId), "Missing connectionId")));
+            if (!ValidateConnectionId(connectionId))
                 return string.Empty;
-            }
+
             var connection = _chatConnections.GetClientById(connectionId);
             if (connection == null)
             {
@@ -96,20 +91,16 @@ namespace VRemoteDesktop.ViewModels
         }
         public bool IsValidConnection(string connectionId)
         {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new ArgumentNullException(nameof(connectionId), "Missing connectionId")));
+            if (!ValidateConnectionId(connectionId))
                 return false;
-            }
+
             return _chatConnections.ContainsKey(connectionId);
         }
         public void SetCurrentConnectionActivate(string connectionId)
         {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new ArgumentNullException(nameof(connectionId), "Missing connectionId")));
+            if (!ValidateConnectionId(connectionId))
                 return;
-            }
+
             _currentConnectionActivate = connectionId;
         }
         public void UpdateFileSavePath(string fileId, string filePath)
@@ -128,11 +119,9 @@ namespace VRemoteDesktop.ViewModels
         }
         public void SaveFileChat(string connectionId, string savePath, string fileName, long fileSize)
         {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new ArgumentNullException(nameof(connectionId), "Missing connectionId")));
+            if (!ValidateConnectionId(connectionId))
                 return;
-            }
+
             if (string.IsNullOrWhiteSpace(savePath))
             {
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new ArgumentNullException(nameof(savePath), "Missing savePath")));
@@ -150,7 +139,7 @@ namespace VRemoteDesktop.ViewModels
             }
             SaveChatFile(connectionId, ChatContentTypeEnum.File, ChatOwnerEnum.Partner, savePath, fileName, fileSize);
         }
-        public bool ProcessAcceptSendFile(string fileId)
+        public bool AcceptedFile(string fileId)
         {
             try
             {
@@ -167,18 +156,8 @@ namespace VRemoteDesktop.ViewModels
                     return false;
                 }   
 
-                byte[] fileIdArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
-                byte[] data = new byte[fileIdArray.Length + 1];
-                data[0] = (byte)SendFileRespondType.Accept;
-                Buffer.BlockCopy(fileIdArray, 0, data, 1, fileIdArray.Length);
-                connection.AddWork(new TaskObject
-                {
-                    TaskType = DataType.AcceptSendFile,
-                    Data = data,
-                    IsSendHeader = true,
-                    SessionId = connection.SocketId,
-                    Priority = QueuePriority.High
-                });
+                byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
+                SendToClient(connection, SocketDataType.Chat, ChatDataType.AcceptedSendFile, data);
                 return true;
             }
             catch(Exception ex)
@@ -187,7 +166,7 @@ namespace VRemoteDesktop.ViewModels
                 return false;
             }
         }
-        public bool ProcessRejectSendFile(string fileId)
+        public bool DeclinedFile(string fileId)
         {
             try
             {
@@ -196,25 +175,14 @@ namespace VRemoteDesktop.ViewModels
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new ArgumentNullException(nameof(fileId), "Missing fileId")));
                     return false;
                 }
-
-                byte[] fileIdArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
-                byte[] data = new byte[fileIdArray.Length + 1];
-                data[0] = (byte)SendFileRespondType.Reject;
-                Buffer.BlockCopy(fileIdArray, 0, data, 1, fileIdArray.Length);
                 var connection = _chatConnections.GetClientById(_currentConnectionActivate);
                 if (connection == null)
                 {
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException(string.Format("Does not exists connection with id {0}", _currentConnectionActivate))));
                     return false;
                 }
-                connection.AddWork(new TaskObject
-                {
-                    TaskType = DataType.AcceptSendFile,
-                    Data = data,
-                    IsSendHeader = true,
-                    SessionId = connection.SocketId,
-                    Priority = QueuePriority.High
-                });
+                byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
+                SendToClient(connection, SocketDataType.Chat, ChatDataType.DeclinedSendFile, data);  
                 _chatAttachmentService.RemoveFileInfo(fileId);
                 return true;
             }
@@ -233,7 +201,7 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                SendToClient(DataType.Message, Helpers.ByteArrayHelper.ConvertStringToByteArray(chatData, EncodingType.UTF8).GetResult());
+                SendToClient(SocketDataType.Chat, ChatDataType.Message, Helpers.ByteArrayHelper.ConvertStringToByteArray(chatData, EncodingType.UTF8).GetResult());
                 SaveChatText(_currentConnectionActivate, ChatContentTypeEnum.Message, ChatOwnerEnum.Me, chatData);
                 AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, _currentConnectionActivate, chatData, null));
             }
@@ -255,9 +223,9 @@ namespace VRemoteDesktop.ViewModels
                     return;
                 }
 
-                string data = Helpers.StringHelper.StringBuilderWithSeparator("|", fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize);
+                string data = Helpers.StringHelper.StringBuilderWithSeparator(DEFAULT_SEPRATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize);
                 byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
-                SendToClient(DataType.RequestSendFile, byteArray);
+                SendToClient(SocketDataType.Chat, ChatDataType.RequestSendFile, byteArray);
 
                 //Write to chat file
                 SaveChatFile(_currentConnectionActivate, ChatContentTypeEnum.File, ChatOwnerEnum.Me, fileInfo.FilePath, fileInfo.Filename, fileInfo.FileSize);
@@ -300,24 +268,32 @@ namespace VRemoteDesktop.ViewModels
         }
         public void LoadChatHistoryByConnectionId(string connectionId)
         {
-            if (string.IsNullOrWhiteSpace(connectionId))
-            {
-                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new ArgumentException("connectionId is null")));
+            if (!ValidateConnectionId(connectionId))
                 return;
-            }
+
             string chatHistoryFilePath = GetChatPath(connectionId);
             if (string.IsNullOrWhiteSpace(chatHistoryFilePath))
             {
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Warning, new ArgumentException("ChatHistoryFilePath path is null")));
                 return;
             }
-            object[] messages = _saveChat.ReadLastMessagesObject(chatHistoryFilePath, 5);
+            object[] messages = _saveChat.ReadLastMessagesObject(chatHistoryFilePath, DEFAULT_MESSAGE_LOAD);
             if (messages == null || messages.Length == 0)
             {
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Warning, new ArgumentException("messages is null")));
                 return;
             }
             UpdateChatHistoryEvent?.Invoke(this, new ChatUpdateChatHistoryEventArgs(ChatUpdateChatHistoryEventType.LoadHistory, connectionId, messages));
+        }
+        private bool ValidateConnectionId(string connectionId)
+        {
+            if (string.IsNullOrWhiteSpace(connectionId))
+            {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical,
+                    new ArgumentNullException(nameof(connectionId), $"Missing {nameof(connectionId)}")));
+                return false;
+            }
+            return true;
         }
         private string GetChatPath(string connectionId)
         {
@@ -339,7 +315,7 @@ namespace VRemoteDesktop.ViewModels
             }
         }
         //Send data to current activated connection(VClient)
-        private void SendToClient(DataType type, byte[] data)
+        private void SendToClient(SocketDataType type, ChatDataType chatType, byte[] data)
         {
             try
             {
@@ -353,16 +329,79 @@ namespace VRemoteDesktop.ViewModels
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException(string.Format("Does not exists connection with id {0}", _currentConnectionActivate))));
                     return;
                 }
+
+                byte[] dataSend = new byte[data.Length + 1];
+                dataSend[0] = (byte)chatType;
+                Buffer.BlockCopy(data, 0, dataSend, 1, data.Length);
+
                 connection.AddWork(new TaskObject
                 {
                     TaskType = type,
-                    Data = data,
+                    Data = dataSend,
                     IsSendHeader = true,
                     SessionId = connection.SocketId,
                     Priority = QueuePriority.High
                 });
             }
             catch(Exception ex)
+            {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
+                return;
+            }
+        }
+        private void SendToClient(VClient client, SocketDataType type, ChatDataType chatType, byte[] data)
+        {
+            try
+            {
+                if (client == null)
+                {
+                    ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("Does not exists connection")));
+                    return;
+                }
+
+                byte[] dataSend = new byte[data.Length + 1];
+                dataSend[0] = (byte)chatType;
+                Buffer.BlockCopy(data, 0, dataSend, 1, data.Length);
+
+                client.AddWork(new TaskObject
+                {
+                    TaskType = type,
+                    Data = dataSend,
+                    IsSendHeader = true,
+                    SessionId = client.SocketId,
+                    Priority = QueuePriority.High
+                });
+            }
+            catch (Exception ex)
+            {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
+                return;
+            }
+        }
+        private void SendFileToClient(VClient client, SocketDataType type, ChatDataType chatType, ChunkFileInfo chunkInfo)
+        {
+            try
+            {
+                if (client == null)
+                {
+                    ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("Does not exists connection")));
+                    return;
+                }
+
+                byte[] dataSend = new byte[1];
+                dataSend[0] = (byte)chatType;
+
+                client.AddWork(new TaskObject
+                {
+                    TaskType = type,
+                    Data = dataSend,
+                    IsSendHeader = true,
+                    SessionId = client.SocketId,
+                    Priority = QueuePriority.High,
+                    ChunkFileInfo = chunkInfo
+                });
+            }
+            catch (Exception ex)
             {
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
                 return;
@@ -379,7 +418,7 @@ namespace VRemoteDesktop.ViewModels
             {
                 if (_chatAttachmentService != null)
                 {
-                    _chatAttachmentService.FileEvent -= FileEventHandler;
+                    _chatAttachmentService.FileDataReceivedEvent -= FileDataReceivedEventHandler;
                     _chatAttachmentService.Dispose();
                 }
                 if (_chatConnections != null)
@@ -397,9 +436,9 @@ namespace VRemoteDesktop.ViewModels
             RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(ChatControlType.Connection, e.SocketId));
         }
         //Event event handler from FileService, this event is used to update progress bar UI when received file data, finally remove file out attachments when finished
-        private void FileEventHandler(object sender, FileEventArgs e)
+        private void FileDataReceivedEventHandler(object sender, FileEventArgs e)
         {
-            ProgressBarEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(e.FileId, e.Size, e.Status));
+            ProgressBarUpdateEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(e.FileId, e.Size, e.Status));
         }
         private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
         {
@@ -407,51 +446,29 @@ namespace VRemoteDesktop.ViewModels
             {
                 if (sender is VClient client)
                 {
-                    if (e.Type == DataType.RequestSendFile)
+                    ChatDataType type = e.Data[0] is byte b ? (ChatDataType)b : ChatDataType.None;
+                    byte[] data = new byte[e.Data.Length - 1];
+                    Buffer.BlockCopy(e.Data, 1, data, 0, data.Length);
+                    switch (type)
                     {
-                        if (!_chatAttachmentService.ReceivedFileInfo(e.Data, false, out VFileInfo info))
-                        {
-                            ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("Error when received request send file")));
-                            return;
-                        }
-                        AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.ReceivedAttachment, client.SocketId, null, info));
-                    }
-                    else if (e.Type == DataType.Message)
-                    {
-                        string data = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.UTF8).GetResult();
-                        SaveChatText(client.SocketId, ChatContentTypeEnum.Message, ChatOwnerEnum.Partner, data);
-                        AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, client.SocketId, data, null));
-                    }
-                    else if (e.Type == DataType.AcceptSendFile)
-                    {
-                        SendFileRespondType respondType = (SendFileRespondType)e.Data[0];
+                        case ChatDataType.Message:
+                            ProcessMessage(client, data);
+                            break;
+                        case ChatDataType.RequestSendFile:
+                            ProcessRequestSendFile(client, data);
+                            break;
+                        case ChatDataType.AcceptedSendFile:
+                            ProcessAcceptSendFile(client, data);
+                            break;
+                        case ChatDataType.DeclinedSendFile:
+                            ProcessDeclineSendFile(client, data);
+                            break;
+                        case ChatDataType.FileData:
+                            ProcessFileDataReceived(client, data);
+                            break;
+                        default:
+                            break;
 
-                        string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, 1, 16, EncodingType.ASCII).GetResult();
-                        if (string.IsNullOrWhiteSpace(fileId))
-                        {
-                            ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
-                            return;
-                        }
-                        if (respondType == SendFileRespondType.Accept)
-                        {
-                            UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.AcceptAttachment, fileId));
-                            _chatAttachmentService.SendFile(client, fileId);
-                        }
-                        if (respondType == SendFileRespondType.Reject)
-                        {
-                            UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.RejectAttachment, fileId));
-                        }
-                    }
-                    else if (e.Type == DataType.FileTransfer)
-                    {
-                        try
-                        {
-                            _chatAttachmentService.ProcessFileDataReceived(e.Data);
-                        }
-                        catch (Exception ex)
-                        {
-                            ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
-                        }
                     }
                 }
             }
@@ -460,9 +477,90 @@ namespace VRemoteDesktop.ViewModels
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
             }
         }
-        public void FileReceivedClickEventHandler(object sender, P2PFileReceivedEventArgs e)
+        private void ProcessRequestSendFile(VClient client, byte[] data)
         {
-            FileClickedEvent?.Invoke(sender, e);
+            try
+            {
+                if (!_chatAttachmentService.ReceivedFileInfo(data, false, out VFileInfo info))
+                {
+                    ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("Error when received request send file")));
+                    return;
+                }
+                AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.ReceivedAttachment, client.SocketId, null, info));
+            }
+            catch(Exception ex)
+            {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
+                return;
+            }
+        }
+        private void ProcessMessage(VClient client, byte[] data)
+        {
+            try
+            {
+                string message = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, Enums.EncodingType.UTF8).GetResult();
+                SaveChatText(client.SocketId, ChatContentTypeEnum.Message, ChatOwnerEnum.Partner, message);
+                AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, client.SocketId, message, null));
+            }
+            catch(Exception ex)
+            {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
+                return;
+            }
+        }
+        private void ProcessAcceptSendFile(VClient client, byte[] data)
+        {
+            try
+            {
+                SendFileRespondType respondType = (SendFileRespondType)data[0];
+                string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, 1, 16, EncodingType.ASCII).GetResult();
+                if (string.IsNullOrWhiteSpace(fileId))
+                {
+                    ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
+                    return;
+                }
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.AcceptAttachment, fileId));
+                var chunks =  _chatAttachmentService.GetFileChunksInfo(fileId);
+                for(int i = 0; i < chunks.Count; i++)
+                {
+                    SendFileToClient(client, SocketDataType.Chat, ChatDataType.FileData, chunks[0]);
+                }
+            }
+            catch(Exception ex)
+            {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
+                return;
+            }
+        }
+        private void ProcessDeclineSendFile(VClient client, byte[] data)
+        {
+            try
+            {
+                SendFileRespondType respondType = (SendFileRespondType)data[0];
+                string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, 1, 16, EncodingType.ASCII).GetResult();
+                if (string.IsNullOrWhiteSpace(fileId))
+                {
+                    ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
+                    return;
+                }
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.RejectAttachment, fileId));
+            }
+            catch (Exception ex)
+            {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
+                return;
+            }
+        }
+        private void ProcessFileDataReceived(VClient client, byte[] data)
+        {
+            try
+            {
+                _chatAttachmentService.ProcessFileDataReceived(data);
+            }
+            catch (Exception ex)
+            {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
+            }
         }
         #endregion
     }

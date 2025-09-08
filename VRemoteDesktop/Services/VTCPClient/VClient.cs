@@ -223,7 +223,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         Log.ForContext("FileName", this.GetType().Name + "Threads").Info(": Current_worker_threds: " + workerThreads + " - completion_Port_Threads: " + completionPortThreads + " - current_tasks: "+ _receivetasks.Count);
 
                       
-                        if (task.Type == DataType.Screen || task.Type == DataType.Chunks)
+                        if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
                         {
                             var lastTask = task;
 
@@ -239,10 +239,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             switch (task.Type)
                             {
-                                case DataType.Message:
-                                case DataType.RequestSendFile:
-                                case DataType.AcceptSendFile:
-                                case DataType.FileTransfer:
+                                case SocketDataType.Chat:
                                     P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                     break;
                                 default:                                  
@@ -302,7 +299,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void ProcessTask(TaskObject task)
         {
-            if(task.TaskType == DataType.FileTransfer)
+            if(task.TaskType == SocketDataType.Chat)
             {
                 ProcessFileTransfer(task);
                 return;
@@ -321,7 +318,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             _senderTasks.Enqueue(task, (int)task.Priority);
         }
-        public void AddWorkGroup(List<TaskObject> tasks, DataType type = DataType.None)
+        public void AddWorkGroup(List<TaskObject> tasks, SocketDataType type = SocketDataType.None)
         {
             _senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
         }
@@ -386,7 +383,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 if (!Socket.Connected)
                 {
                     //Connected?.Invoke(this, new ConnectEventArgs(false));
-                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Connect, false, new byte[0]));
+                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, false, new byte[0]));
                     Log.ForContext("FileName", this.GetType().Name).Error("Cannot connect to server");
                     return;
                 }
@@ -397,7 +394,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     ReceivedWorker.RunWorkerAsync();
                 }
                 //Connected?.Invoke(this, new ConnectEventArgs(true));
-                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(DataType.Connect, true, new byte[0]));
+                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, true, new byte[0]));
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
                 stateObject.SckId = _socketId;
@@ -418,7 +415,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             Partner = partnerInfo;
         }
-        public void SendScreen(DataType type, List<byte[]> data, int totalSize)
+        public void SendScreen(SocketDataType type, List<byte[]> data, int totalSize)
         {
             try
             {
@@ -450,7 +447,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
                     tasks.Add(task);
                 }
-                AddWorkGroup(tasks, DataType.Screen);
+                AddWorkGroup(tasks, SocketDataType.Screen);
             }
             catch (Exception ex)
             {
@@ -511,7 +508,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 int length = BitConverter.ToInt32(bytes, 0);
 
-                DataType commandType = (DataType)bytes[4];
+                SocketDataType commandType = (SocketDataType)bytes[4];
 
                 string socketId = BitConverter.ToString(bytes, 5, 8);
 
@@ -530,7 +527,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
-        private byte[] PrepareHeader(DataType type, string partnerId, byte[] data)
+        private byte[] PrepareHeader(SocketDataType type, string partnerId, byte[] data)
         {
             byte[] resultBytes = new byte[data.Length + 13];
 
@@ -542,7 +539,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             return resultBytes;
         }
-        public byte[] GenerateP2PHeader(DataType type, int dataSize , byte[] socketId)
+        public byte[] GenerateP2PHeader(SocketDataType type, int dataSize , byte[] socketId)
         {
             int totalSize = dataSize + SocketId.Length + 5; // 5 bytes added are 4 for totalSize and 1 for type
             byte[] header = new byte[5 + SocketId.Length];
@@ -561,21 +558,22 @@ namespace VRemoteDesktop.Services.VTCPClient
         /// <exception cref="Exception"></exception>
         private void ProcessFileTransfer(TaskObject task)
         {
-            byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + 20];
-            Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, 0, 4);
-            Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, 4, 16);
-            int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, 20, task.ChunkFileInfo.ChunkSize);
-
-            if(chunkRead != chunkFileData.Length - 20)
-                throw new Exception("ByteRead not the same with bytes data expected");
-
-            if (task.IsSendHeader)
+            if(task.ChunkFileInfo == null)
             {
-                Send(task.TaskType, chunkFileData, task.SessionId, true);
+                Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
             }
             else
             {
-                Send(chunkFileData);
+                byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + 21];
+                chunkFileData[0] = task.Data[0]; //first byte is command type
+                Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, 1, 4);
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, 5, 16);
+                int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, 21, task.ChunkFileInfo.ChunkSize);
+
+                if (chunkRead != chunkFileData.Length - 21)
+                    throw new Exception("ByteRead not the same with bytes data expected");
+
+                Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
             }
         }
         /// <summary>
@@ -585,7 +583,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         /// <param name="data"></param>
         /// <param name="partnerId"></param>
         /// <param name="isSendHeader"></param>
-        public void Send(DataType type, byte[] data,string partnerId = "00000000", bool isSendHeader = true)
+        public void Send(SocketDataType type, byte[] data,string partnerId = "00000000", bool isSendHeader = true)
         {
             try
             {
@@ -600,7 +598,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
             }
         }
-        public void Send(byte[] data)
+        private void Send(byte[] data)
         {
             try
             {

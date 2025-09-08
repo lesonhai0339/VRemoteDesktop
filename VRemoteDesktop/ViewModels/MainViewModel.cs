@@ -122,20 +122,20 @@ namespace VRemoteDesktop.ViewModels
             {
                 switch (e.Type)
                 {
-                    case DataType.Connect:
+                    case SocketDataType.Connect:
                         ConnectEventHandler(e.Flag);
                         break;
-                    case DataType.Login:
+                    case SocketDataType.Login:
                         LoginEventHandler(e.Flag, e.Data);
                         break;
-                    case DataType.LoginFailed:
+                    case SocketDataType.LoginFailed:
                         Console.WriteLine("LoginFailed");
                         break;
-                    case DataType.P2PRequestConnect:
-                    case DataType.P2PAcceptConnect:
+                    case SocketDataType.P2PRequestConnect:
+                    case SocketDataType.P2PAcceptConnect:
                         PartnerAcceptP2PConnect(sender, e);
                         break;
-                    case DataType.Error:
+                    case SocketDataType.Error:
                         _resetEvent.Set();
                         break;
                     default:
