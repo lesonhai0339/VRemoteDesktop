@@ -14,12 +14,14 @@ namespace VRemoteDesktop.Events
     }
     public class ChatUpdateChatHistoryEventArgs: EventArgs
     {
-        public ChatUpdateChatHistoryEventArgs(ChatUpdateChatHistoryEventType type, List<Control> controls)
+        public ChatUpdateChatHistoryEventArgs(ChatUpdateChatHistoryEventType type, string connectionId, object[] messages)
         {
             Type = type;
-            Controls = controls;
+            ConnectionId = connectionId;
+            Messages = messages;
         }
         public ChatUpdateChatHistoryEventType Type { get; set; }
-        public List<Control> Controls { get; set; }
+        public string ConnectionId { get; set; }    
+        public object[] Messages { get; set; }
     }
 }

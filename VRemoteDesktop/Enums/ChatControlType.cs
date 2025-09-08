@@ -8,6 +8,10 @@ namespace VRemoteDesktop.Enums
     public enum ChatControlType
     {
         Connection,
-        Message
+        Message,
+        RequestAttachment,
+        ReceivedAttachment,
+        AcceptAttachment,
+        RejectAttachment
     }
 }

@@ -4,17 +4,22 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
+using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.Events
 {
     public class ChatControlAddedEventArgs: EventArgs
     {
-        public ChatControlAddedEventArgs(ChatControlType type, Control control)
+        public ChatControlAddedEventArgs(ChatControlType type, string connectionId, string content, VFileInfo fileInfo)
         {
             Type = type;
-            Control = control;
+            ConnectionId = connectionId;
+            Content = content;
+            FileInfo = fileInfo;
         }
         public ChatControlType Type { get; set; }
-        public Control Control { get; set; }
+        public string ConnectionId { get; set; }    
+        public string Content { get; set; }
+        public VFileInfo FileInfo { get; set; }// when type is AttachFile, this property is not null
     }
 }

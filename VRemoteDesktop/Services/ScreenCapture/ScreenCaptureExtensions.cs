@@ -105,6 +105,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
             {
                 for (int i = 0; i < regions.Count; i++)
                 {
+                    if (regions[i].Rectangle == null || regions[i].Bytes == null)
+                        continue;
                     try
                     {
                         using (MemoryStream ms = new MemoryStream(regions[i].Bytes))

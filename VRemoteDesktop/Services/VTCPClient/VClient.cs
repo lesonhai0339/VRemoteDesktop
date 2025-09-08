@@ -700,7 +700,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     //queue
                     if (_receivetasks != null)
                     {
-                        foreach(var item in _receivetasks.GetConsumingEnumerable())
+                        _receivetasks.CompleteAdding();
+                        foreach (var item in _receivetasks.GetConsumingEnumerable())
                         {
                             if (item is IDisposable disposableItem)
                             {

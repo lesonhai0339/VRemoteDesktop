@@ -144,7 +144,6 @@ namespace VRemoteDesktop.Views
                 _remoteDesktopService.RemoveKeyboardListenerOnFormByHandle(this.Handle);
                 _remoteDesktopService.KeyboardEvent -= KeyboardReceivedEventHandler;
             }
-
             if (_mouseExtension != null)
                 _mouseExtension.Dispose();
 
@@ -156,7 +155,12 @@ namespace VRemoteDesktop.Views
 
             _pendingSender?.Dispose();
 
-            _isP2PDisconnectCallback?.Dispose();
+            _isP2PDisconnectCallback?.Dispose(); 
+
+            if (_vClient != null)
+            {
+                _vClient.Dispose();
+            }
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {

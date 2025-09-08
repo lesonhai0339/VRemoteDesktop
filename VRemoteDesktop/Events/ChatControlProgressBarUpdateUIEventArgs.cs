@@ -8,13 +8,14 @@ namespace VRemoteDesktop.Events
 {
     public class ChatControlProgressBarUpdateUIEventArgs: EventArgs
     {
-        public ChatControlProgressBarUpdateUIEventArgs(FileAttachmentLayout fileLayout, int num)
+        public ChatControlProgressBarUpdateUIEventArgs(string fileId,  int num, FileStatus status)
         {
-            FileLayout = fileLayout;
+            FileId = fileId;
             Num = num;
+            Status = status;
         }
-
-        public FileAttachmentLayout FileLayout { get; set; }
+        public string FileId { get; set; }
+        public FileStatus Status { get; set; }
         public int Num { get; set; }
     }
 }
