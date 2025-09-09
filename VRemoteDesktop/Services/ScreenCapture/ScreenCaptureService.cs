@@ -32,7 +32,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private readonly int FPS = DEFAULT_FPS;
         private volatile bool _isCapturing;
         private bool _disposed = false;
-        private byte[] _buffer = new byte[20];
         private byte[] _dataSend;
 
         private IScreenCapture _capture;
@@ -40,11 +39,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private BackgroundWorker _backgroundWorker;
         public event EventHandler<ScreenCaptureEventArgs> ScreenEvent;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
-        public ScreenCaptureService(ScreenCaptureConfig config, ScreenCapture screenCapture)
+        public ScreenCaptureService(ScreenCaptureConfig config, IScreenCapture screenCapture)
         {
             InitializeCapture(config, screenCapture);
         }
-        private void InitializeCapture(ScreenCaptureConfig config, ScreenCapture screenCapture)
+        private void InitializeCapture(ScreenCaptureConfig config, IScreenCapture screenCapture)
         {
             IsCapturing = false;
             _dataSend = new byte[1024 * 1024];
@@ -56,8 +55,20 @@ namespace VRemoteDesktop.Services.ScreenCapture
         #region Properties
         public bool IsCapturing
         {
-            get => _isCapturing;
-            set => _isCapturing = value;
+            get
+            {
+                lock (_lock)
+                {
+                    return _isCapturing;
+                }
+            }
+            set
+            {
+                lock (_lock)
+                {
+                    _isCapturing = value;
+                }
+            }
         }
         public bool IsDisposed
         {
@@ -88,6 +99,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             _capture.Renew();
             if (!BackgroundWorker.IsBusy)
             {
+                IsCapturing = true;
                 _cancel?.Dispose();
                 _cancel = new CancellationTokenSource();
                 BackgroundWorker.RunWorkerAsync();
@@ -99,6 +111,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if (BackgroundWorker.IsBusy)
             {
+                IsCapturing = false;
                 _cancel?.Cancel();
                 BackgroundWorker.CancelAsync();
                 Log.ForContext("Screen", "RemoteDesktopClient")

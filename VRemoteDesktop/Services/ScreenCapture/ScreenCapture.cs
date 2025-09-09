@@ -93,6 +93,94 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
         }
         #endregion
+        public List<ScreenRegion> GetScreenTest()
+        {
+            List<ScreenRegion> regions = new List<ScreenRegion>();
+            lock (_lockObject)
+            {
+                using (Bitmap currentScreen = CaptureWindowsScreen1())
+                {
+                    if (_previousFrame == null)
+                    {
+                        _previousFrame = currentScreen.Clone(
+                           new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                           PixelFormat.Format24bppRgb
+                        );
+                        return FullScreenRegion(currentScreen);
+                    }
+                    List<Rectangle> dirtyRegions = new List<Rectangle>();
+                    BitmapData cur = null, pre = null;
+
+                    try
+                    {
+                        cur = currentScreen.LockBits(new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                            ImageLockMode.ReadOnly,
+                            PixelFormat.Format24bppRgb);
+                        pre = _previousFrame.LockBits(new Rectangle(0, 0, _previousFrame.Width, _previousFrame.Height),
+                            ImageLockMode.ReadOnly,
+                            PixelFormat.Format24bppRgb);
+
+                        dirtyRegions = DetectDirtyRegions(cur, pre);
+                    }
+                    finally
+                    {
+                        if (cur != null)
+                            currentScreen.UnlockBits(cur);
+                        if (pre != null)
+                            _previousFrame.UnlockBits(pre);
+                    }
+
+                    using (Graphics g = Graphics.FromImage(_previousFrame))
+                    {
+                        g.DrawImageUnscaled(currentScreen, 0, 0);
+                    }
+                    return MakeScreenRegions(currentScreen, dirtyRegions);
+                }
+            }
+        }
+        private List<ScreenRegion> FullScreenRegion(Bitmap fullScreen)
+        {
+            using (var stream = new MemoryStream())
+            {
+                fullScreen.Save(stream, encoder, encoderParams);
+                ScreenRegion region = new ScreenRegion
+                {
+                    IsFullScreen = true,
+                    Rectangle = new Rectangle(0, 0, fullScreen.Width, fullScreen.Height),
+                    Bytes = stream.ToArray()
+                };
+                return new List<ScreenRegion> { region };
+            }
+        }
+        private List<ScreenRegion> MakeScreenRegions(Bitmap currentScreen, List<Rectangle> dirtyRegions)
+        {
+            List<ScreenRegion> regions = new List<ScreenRegion>();
+            if(dirtyRegions.Count == 0)
+                return new List<ScreenRegion>();
+
+            // Merge adjacent regions for efficiency
+            List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
+
+            for (int i = 0; i < mergedRegions.Count; i++)
+            {
+                using (Bitmap regionBitmap = CropBitmap(currentScreen, mergedRegions[i]))
+                {
+                    using (var stream = new MemoryStream())
+                    {
+                        regionBitmap.Save(stream, encoder, encoderParams);
+                        ScreenRegion region = new ScreenRegion
+                        {
+                            IsFullScreen = false,
+                            Rectangle = mergedRegions[i],
+                            Bytes = stream.ToArray()
+                        };
+                        regions.Add(region);
+                    }
+                }
+            }
+            return regions;
+        }
+
         public List<ScreenRegion> GetScreen()
         {
             List<ScreenRegion> regions = new List<ScreenRegion>();
@@ -220,6 +308,49 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
             return regions;
+        }
+        private List<Rectangle> GenerateRegions(BitmapData curBitmap, BitmapData preBitmap)
+        {
+            var regions = new List<Rectangle>();
+
+            for (int y = 0; y < curBitmap.Height; y += BLOCK_SIZE)
+            {
+                for (int x = 0; x < curBitmap.Width; x += BLOCK_SIZE)
+                {
+                    int width = curBitmap.Width - x > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Width - x;
+                    int height = curBitmap.Height - y > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Height - y;
+                    Rectangle block = new Rectangle(x, y,
+                        width,
+                        height);
+                    regions.Add(block);
+                }
+            }
+            return regions;
+        }
+        private List<Rectangle> DetectDirtyRegions(BitmapData curBitmap, BitmapData preBitmap)
+        {
+            var regions = GenerateRegions(curBitmap, preBitmap);
+            var maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
+
+            try
+            {
+                Parallel.ForEach(regions,
+                    new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
+                    block =>
+                    {
+                        if (IsBlockChanged(curBitmap, preBitmap, block))
+                            changedBlocks.Add(block);
+                    });
+                var result = changedBlocks.ToList();
+                return result;
+            }
+            finally
+            {
+                lock (_lockObject2)
+                {
+                    changedBlocks = new ConcurrentBag<Rectangle>();
+                }
+            }
         }
         private List<Rectangle> DetectDirtyRegions(Bitmap curBitmap, Bitmap preBitmap, List<Rectangle> regions)
         {

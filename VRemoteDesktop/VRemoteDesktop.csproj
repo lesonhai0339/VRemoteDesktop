@@ -63,7 +63,6 @@
     <Compile Include="Enums\VMouseButtons.cs" />
     <Compile Include="Enums\MouseEventType.cs" />
     <Compile Include="Enums\ScreenType.cs" />
-    <Compile Include="Enums\SendFileType.cs" />
     <Compile Include="Enums\EncodingType.cs" />
     <Compile Include="Enums\KeyCombination.cs" />
     <Compile Include="Enums\KeyState.cs" />
