@@ -19,7 +19,7 @@ namespace VRemoteDesktop.Services.FileService
         public VAttachmentManager()
         {
             _files = new ConcurrentDictionary<string, VFileInfo>();
-            _timer = new System.Threading.Timer(CleanupCallback, null, TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(2));
+            _timer = new System.Threading.Timer(CleanupCallback, null, TimeSpan.FromMinutes(2), TimeSpan.FromMinutes(5));
         }
 
         private void CleanupCallback(object state)

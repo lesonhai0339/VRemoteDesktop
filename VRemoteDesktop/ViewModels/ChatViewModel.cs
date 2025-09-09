@@ -555,6 +555,9 @@ namespace VRemoteDesktop.ViewModels
                         Send(client, SocketDataType.Chat, ChatDataType.FileData, null, chunk);
                     }
                 );
+
+                //cleanup
+                _chatAttachmentService.RemoveFileInfo(fileId);
             }
             catch(Exception ex)
             {

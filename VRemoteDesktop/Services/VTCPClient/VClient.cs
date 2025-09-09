@@ -219,10 +219,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                     stopwatch.Start();
                     try
                     {
-                        ThreadPool.GetAvailableThreads(out int workerThreads, out int completionPortThreads);
-                        Log.ForContext("FileName", this.GetType().Name + "Threads").Info(": Current_worker_threds: " + workerThreads + " - completion_Port_Threads: " + completionPortThreads + " - current_tasks: "+ _receivetasks.Count);
-
-                      
                         if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
                         {
                             var lastTask = task;
