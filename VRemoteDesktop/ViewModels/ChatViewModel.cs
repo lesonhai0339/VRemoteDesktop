@@ -17,9 +17,10 @@ namespace VRemoteDesktop.ViewModels
 {
     public class ChatViewModel:IDisposable
     {
+        private readonly object _lock = new object();
+        private string _currentConnectionActivate;
         private readonly Dictionary<ChatDataType, Action<VClient, byte[]>> _handlers;
         private readonly IChatManager<object> _chatConnections;
-        private string _currentConnectionActivate;
 
         private readonly ISaveChat _saveChat;
         private readonly IVChatAttachmentService _chatAttachmentService;
@@ -160,8 +161,10 @@ namespace VRemoteDesktop.ViewModels
             {
                 return respond;
             }
-
-            _currentConnectionActivate = connectionId;
+            lock (_lock)
+            {
+                _currentConnectionActivate = connectionId;
+            }
             return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("Setcurrent connection activate {0} success", nameof(connectionId)));
         }
@@ -411,7 +414,7 @@ namespace VRemoteDesktop.ViewModels
                     //using current connection
                     if (string.IsNullOrEmpty(_currentConnectionActivate))
                     {
-                        _currentConnectionActivate = _chatConnections.GetLastConnectionId();
+                        SetCurrentConnectionActivate(_chatConnections.GetLastConnectionId());
                     }
                     connection = _chatConnections.GetClientById(_currentConnectionActivate);
                     if (connection == null)
