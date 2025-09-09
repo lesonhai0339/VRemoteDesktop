@@ -28,6 +28,10 @@ namespace VRemoteDesktop.Views
     {
         private static readonly Color SelectedColor = Color.LightSkyBlue;
         private static readonly Color DefaultColor = Color.White;
+        private const string SUCCESS_TITLE = "Thành công";
+        private const string FAILED_TITLE = "Thất bại";
+        private const string ERROR_TITLE = "Xảy ra lỗi";
+        private const string TIMEOUT_TITLE = "Timeout";
         private ChatViewModel _chatViewModel;
         private ConcurrentDictionary<string, FileAttachmentLayout> _attachments;
 
@@ -71,7 +75,7 @@ namespace VRemoteDesktop.Views
         }
         private void btnSendAttachment_Click(object sender, EventArgs e)
         {
-            _chatViewModel.RequestSendFile();
+            RespondHandler(_chatViewModel.RequestSendFile());
         }
         private void fpnChat_MouseWheel(object sender, MouseEventArgs e)
         {
@@ -112,7 +116,7 @@ namespace VRemoteDesktop.Views
         }
         public void AddConnection(string id, VClient client)
         {
-            _chatViewModel.AddConnection(id, client);
+            RespondHandler(_chatViewModel.AddConnection(id, client));
         }    
         private void PositionForm()
         {
@@ -139,10 +143,55 @@ namespace VRemoteDesktop.Views
         {
             if (!string.IsNullOrWhiteSpace(content))
             {
-                _chatViewModel.SendChatMessage(content);
+                RespondHandler(_chatViewModel.SendChatMessage(content));
                 txtChatContent.Clear();
                 txtChatContent.Select();
             }
+        }
+        private void RespondHandler<T>(ChatRespond<T> respond)
+        {
+            switch (respond.Status)
+            {
+                case ChatRespondStatus.Success:
+                    ProcessSuccessHandler(respond);
+                    break;
+                case ChatRespondStatus.Failed:
+                    ProcessFailedHandler(respond);
+                    break;
+                case ChatRespondStatus.Error:
+                    ProcessErrorHandler(respond);
+                    break;
+                case ChatRespondStatus.Timeout:
+                    ProcessTimeoutHandler(respond);
+                    break;
+                default:
+                    Log.ForContext("FileName", this.GetType().Name + "-" + nameof(RespondHandler)).Warning("Unexpected respond type");
+                    break;
+            }
+        }
+        private void ProcessSuccessHandler<T>(ChatRespond<T> respond)
+        {
+            Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessSuccessHandler)).Info(respond.SystemMessage);
+            if (!string.IsNullOrWhiteSpace(respond.Message))
+                MessageBox.Show(respond.Message, SUCCESS_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+        private void ProcessFailedHandler<T>(ChatRespond<T> respond)
+        {
+            Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessFailedHandler)).Error(respond.SystemMessage);
+            if (!string.IsNullOrWhiteSpace(respond.Message))
+                MessageBox.Show(respond.Message, FAILED_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        private void ProcessErrorHandler<T>(ChatRespond<T> respond)
+        {
+            Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessErrorHandler)).Error(respond.SystemMessage);
+            if (!string.IsNullOrWhiteSpace(respond.Message))
+                MessageBox.Show(respond.Message, ERROR_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+        private void ProcessTimeoutHandler<T>(ChatRespond<T> respond)
+        {
+            Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessTimeoutHandler)).Error(respond.SystemMessage);
+            if (!string.IsNullOrWhiteSpace(respond.Message))
+                MessageBox.Show(respond.Message, TIMEOUT_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         #endregion
         #region Custom Events
@@ -175,27 +224,36 @@ namespace VRemoteDesktop.Views
             {
                 if (sender is Label lb && lb.Parent is FlowLayoutPanel flow)
                 {
-                    bool isSameConnection = (string.Compare(lb.Name, _chatViewModel.GetCurrentConnectionActivate(), StringComparison.OrdinalIgnoreCase) == 0);
-                    if (isSameConnection)
+                    var respond = _chatViewModel.GetCurrentConnectionActivate();
+                    if (respond.IsSuccess)
                     {
-                        if (fpnChat.Controls.Count == 0)
-                            _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
-                        return;
+                        bool isSameConnection = (string.Compare(lb.Name, respond.Data, StringComparison.OrdinalIgnoreCase) == 0);
+                        if (isSameConnection)
+                        {
+                            if (fpnChat.Controls.Count == 0)
+                                _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
+                            return;
+                        }
                     }
-                    if (_chatViewModel.IsValidConnection(lb.Name))
+                    var isValidConnection = _chatViewModel.IsValidConnection(lb.Name);
+                    RespondHandler(isValidConnection);
+                    if (isValidConnection.IsSuccess)
                     {
                         foreach (var connection in flow.Controls.OfType<Label>())
                         {
                             connection.BackColor = DefaultColor;
                         }
-                        _chatViewModel.SetCurrentConnectionActivate(lb.Name);
-                        lb.BackColor = SelectedColor;
-                        _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
+                        var sp =  _chatViewModel.SetCurrentConnectionActivate(lb.Name);
+                        RespondHandler(sp);
+                        if(sp.IsSuccess)
+                        {
+                            lb.BackColor = SelectedColor;
+                            _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
+                        }
                     }
                     else
                     {
                         ProcessConnectionRemoved(lb.Name);
-                        Log.ForContext("FileName", this.GetType().Name + nameof(ChangeConnectionActivateEventHandler)).Error("Does not exists connection with id: " + lb.Name + " in connections");
                     }
                 }
             });
@@ -216,8 +274,10 @@ namespace VRemoteDesktop.Views
                 }
                 if (message is ChatText chatMessage)
                 {
-                    string name = _chatViewModel.GetConnectionNameById(e.ConnectionId);
-                    CreateMessageControl(name, chatMessage);
+                    var respond = _chatViewModel.GetConnectionNameById(e.ConnectionId);
+                    RespondHandler(respond);
+                    if (respond.IsSuccess)
+                        CreateMessageControl(respond.Data, chatMessage);
                 }
             }
             RefeshUI(fpnChat);
@@ -315,21 +375,29 @@ namespace VRemoteDesktop.Views
                     //Accept file
                     if (string.Compare(btn.Name, "btnSave") == 0)
                     {
-                        _chatViewModel.UpdateFileSavePath(parent.Id, e.FilePath);
-                        _chatViewModel.SaveFileChat(parent.SocketId, parent.FileInfo.SavePath, parent.FileInfo.Filename, parent.FileInfo.FileSize);
-
-                        if (_chatViewModel.AcceptedFile(parent.Id))
+                        var updatePathRespond = _chatViewModel.UpdateFileSavePath(parent.Id, e.FilePath);
+                        RespondHandler(updatePathRespond);
+                        if (updatePathRespond.IsSuccess)
                         {
-                            parent.AcceptSendFile();
+                            var savefileRepond =  _chatViewModel.SaveFileChat(parent.SocketId, parent.FileInfo.SavePath, parent.FileInfo.Filename, parent.FileInfo.FileSize);
+                            RespondHandler(savefileRepond);
+                            if(savefileRepond.IsSuccess)
+                            {
+                                var respond = _chatViewModel.AcceptedFile(parent.Id);
+                                RespondHandler(respond);
+                                if (respond.IsSuccess)
+                                    parent.AcceptSendFile();
+                            }
                         }
                     }
                     //Reject file
                     if (string.Compare(btn.Name, "btnCancel") == 0)
                     {
-                        if (_chatViewModel.DeclinedFile(parent.Id))
-                        {
+                        var respond = _chatViewModel.DeclinedFile(parent.Id);
+                        RespondHandler(respond);
+                        if (respond.IsSuccess)
                             parent.RejectSendFile();
-                        }
+
                         _attachments.TryRemove(parent.Id, out _);
                     }
                 }

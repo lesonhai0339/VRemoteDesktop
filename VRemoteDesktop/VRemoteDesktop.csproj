@@ -93,6 +93,7 @@
     <Compile Include="Events\SocketDisposeEventArgs.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
+    <Compile Include="Helpers\ChatRespondHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\ListByteArray.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
@@ -115,6 +116,7 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Models\ChatManager.cs" />
+    <Compile Include="Models\ChatRespond.cs" />
     <Compile Include="Models\ChunkFileInfo.cs" />
     <Compile Include="Models\EventRegistration.cs" />
     <Compile Include="Models\MouseData.cs" />

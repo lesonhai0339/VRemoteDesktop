@@ -122,7 +122,7 @@ namespace VRemoteDesktop.Services.FileService
                     ?? string.Empty)
                 .Append(DEFAULT_SEPRATOR);
             }
-            return sb.ToString().TrimEnd('|');
+            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPRATOR));
         }
     }
     public class ChatMessage
@@ -149,24 +149,31 @@ namespace VRemoteDesktop.Services.FileService
         string ReadLastMessage(string filePath);
         string[] ReadLastMessages(string filePath, int numberOfMsg);
         object[] ReadLastMessagesObject(string filePath, int numberOfMsg);
+        void Dispose();
     }
-    public class SaveChat: ISaveChat
+    public class SaveChat: ISaveChat, IDisposable
     {
         private readonly object _lock = new object();
-
+        private bool _disposed = false; 
         // Option 1: using Interlocked
         // 0 = false(Process() not work), 1 = true(Process() is working)
         private int isRunning = 0;
 
         // Option 2: using volatile bool
         // private volatile bool _isRunning;
+        private ManualResetEvent _done = new ManualResetEvent(true);
 
+        private CancellationTokenSource _cancellation = new CancellationTokenSource();
         private ConcurrentQueue<ChatMessage> _chatMessage;
         public SaveChat()
         {
             isRunning = 0;
             //_isRunning = false;
             _chatMessage = new ConcurrentQueue<ChatMessage>();
+        }
+        public void Cancel()
+        {
+            _cancellation?.Cancel();
         }
         /// <summary>
         /// Add message to queue to save to file and avoid missing message when multiple thread try to write to file at the same time
@@ -186,6 +193,7 @@ namespace VRemoteDesktop.Services.FileService
             //option 1, using Interlocked
             if (Interlocked.CompareExchange(ref isRunning, 1, 0) == 0)
             {
+                _done.Reset();
                 ThreadPool.QueueUserWorkItem(state => Process());
             }
             //option 2, using volatile bool
@@ -320,7 +328,7 @@ namespace VRemoteDesktop.Services.FileService
         {
             chatText = null;
 
-            string[] data = rawString.Split('|');
+            string[] data = rawString.Split(char.Parse(DEFAULT_SEPRATOR));
             if (data.Length != typeof(ChatText).GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
                 return false;
 
@@ -346,7 +354,7 @@ namespace VRemoteDesktop.Services.FileService
         {
             chatFile = null;
 
-            string[] data = rawString.Split('|');
+            string[] data = rawString.Split(char.Parse(DEFAULT_SEPRATOR));
             if (data.Length != typeof(ChatFile).GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
                 return false;
             if (!Enum.TryParse(data[1], out ChatContentTypeEnum type))
@@ -379,14 +387,22 @@ namespace VRemoteDesktop.Services.FileService
             //case for option 1, using Interlocked
             try
             {
-                while (_chatMessage.TryDequeue(out var item))
+                while (!_cancellation.IsCancellationRequested)
                 {
-                    WriteMsgToFile(item);
+                    if(_chatMessage.TryDequeue(out var item))
+                    {
+                        WriteMsgToFile(item);
+                    }
+                    else
+                    {
+                        Thread.Sleep(50);
+                    }
                 }
             }
             finally
             {
                 Interlocked.Exchange(ref isRunning, 0);
+                _done.Set();
             }
             //case for option 2, using volatile bool
             //_isRunning = true;
@@ -419,6 +435,25 @@ namespace VRemoteDesktop.Services.FileService
             {
                 throw;
             }
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+            if (disposing)
+            {
+                Cancel();
+
+                _done.WaitOne();
+                while (_chatMessage.TryDequeue(out _)) ;
+                _cancellation.Dispose();
+                _done.Dispose();
+            }
+            _disposed = true;
         }
     }
 }
