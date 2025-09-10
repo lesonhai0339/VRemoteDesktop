@@ -646,6 +646,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     _isSocketConnected = false;
                     _isP2PConnected = false;
                     _isDisposed = true;
+                    _sckConnect.Dispose();
+                    _workAvailable.Dispose();
                 }
             }
             _isDisposed = true;
