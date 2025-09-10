@@ -11,6 +11,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
 using VRemoteDesktop.Services.VTCPClient;
 using static System.Net.WebRequestMethods;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.ViewModels
@@ -548,14 +549,11 @@ namespace VRemoteDesktop.ViewModels
                 UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.AcceptAttachment, fileId));
                 List<ChunkFileInfo> chunks =  _chatAttachmentService.GetFileChunksInfo(fileId);
 
-                var maxThreadsCanbeUsage = Math.Max(1, Environment.ProcessorCount / 2);
-                Parallel.ForEach(chunks, new ParallelOptions { MaxDegreeOfParallelism = maxThreadsCanbeUsage },
-                    chunk =>
-                    {
-                        Send(client, SocketDataType.Chat, ChatDataType.FileData, null, chunk);
-                    }
-                );
+                for(int i = 0; i< chunks.Count; i++)
+                {
+                    Send(client, SocketDataType.Chat, ChatDataType.FileData, null, chunks[i]);
 
+                }
                 //cleanup
                 _chatAttachmentService.RemoveFileInfo(fileId);
             }
