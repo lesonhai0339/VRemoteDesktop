@@ -5,6 +5,7 @@ using System.ComponentModel;
 using System.Configuration;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -23,8 +24,8 @@ using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteServer.Models;
-using static VRemoteDesktop.Utils.Logger;
 using static VRemoteDesktop.Utils.DefaultValue;
+using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
 {
@@ -169,6 +170,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
                 newClient.UpdatePartnerInfo(partnerInfo);
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
+
                 newClient.Send(SocketDataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
                 DataReceivedEvent?.Invoke(newClient, e);
 
@@ -184,6 +186,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, 8, EncodingType.ASCII).GetResult();
                     byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
+ 
                     client.Send(SocketDataType.P2PRejectConnect, dataBytes, client.SocketId, true);
                 }
             }
@@ -357,7 +360,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 foreach (var connection in _vClientManager.Connections)
                 {
                     if (connection.Value.ClientType == VClientType.Receiver)
-                        connection.Value.Send(type, data, connection.Value.SocketId, true);
+                        connection.Value.AddWork(new TaskObject
+                        {
+                            TaskType = type,
+                            Data = data,
+                            SessionId = connection.Value.SocketId,
+                            IsSendHeader = true,
+                            Priority = QueuePriority.High,
+                            ChunkFileInfo = null
+                        });
                 }
             }
             else

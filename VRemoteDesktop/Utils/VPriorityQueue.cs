@@ -74,6 +74,13 @@ namespace VRemoteDesktop.Utils
                 value = default(T);
             if (_list.Count == 0) return false;
 
+            if(_list.Count == 1)
+            {
+                value = _list[0].Value;
+                _list.Clear();
+                return true;
+            }
+
             var root = _list[0];
             _list[0] = _list[_list.Count - 1];
             _list.RemoveAt(_list.Count - 1);

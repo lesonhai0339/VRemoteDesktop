@@ -252,11 +252,15 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
                         }
+                      
                     }
-                    else
                     {
-                        _workAvailable.WaitOne(10);
+                        Thread.Sleep(10);
                     }
+                    //else
+                    //{
+                    //    _workAvailable.WaitOne(10);
+                    //}
                 }
             }
             catch (OperationCanceledException ex)
@@ -266,7 +270,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void ProcessTask(TaskObject task)
         {
-            Log.ForContext("FileName", "VClient_QueueHandler").Error(task.TaskType.ToString());
             if (task.TaskType == SocketDataType.Chat)
             {
                 ProcessFileTransfer(task);
@@ -278,17 +281,17 @@ namespace VRemoteDesktop.Services.VTCPClient
         public void AddWork(TaskObject task)
         {
             _senderTasks.Enqueue(task, (int)task.Priority);
-            _workAvailable.Set();
+            //_workAvailable.Set();
         }
         public void AddWorkGroup(List<TaskObject> tasks, SocketDataType type = SocketDataType.None)
         {
             _senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
-            _workAvailable.Set();
+            //_workAvailable.Set();
         }
         public void AddWorkGroup(TaskObject[] tasks, SocketDataType type = SocketDataType.None)
         {
             _senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
-            _workAvailable.Set();
+            //_workAvailable.Set();
         }
         /// <summary>
         /// Connect to remote server with default IP and port
