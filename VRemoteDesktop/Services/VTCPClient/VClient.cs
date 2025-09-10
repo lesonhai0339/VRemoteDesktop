@@ -194,6 +194,8 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 foreach (var task in _receivetasks.GetConsumingEnumerable(_cancellationToken))
                 {
+                    Log.ForContext("", "Received").Info(string.Format("Id: {0},task: {1}, Time: {2} ", this.SocketId, task.Type, DateTime.Now.ToString("HH:mm:ss:fff")));
+
                     try
                     {
                         if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
@@ -239,11 +241,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                             {
                                 foreach (var t in taskGroup.Tasks)
                                 {
+                                    Log.ForContext("", "SendData").Info(string.Format("Id: {0},task: {1}, Time: {2} ", this.SocketId, t.TaskType, DateTime.Now.ToString("HH:mm:ss:fff")));
                                     ProcessTask(t);
                                 }
                             }
                             else if (taskObj is TaskObject task)
                             {
+                                Log.ForContext("", "SendData").Info(string.Format("Id: {0},task: {1}, Time: {2} ", this.SocketId, task.TaskType, DateTime.Now.ToString("HH:mm:ss:fff")));
                                 ProcessTask(task);
                             }
 
