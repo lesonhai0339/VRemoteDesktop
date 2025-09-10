@@ -432,13 +432,17 @@ namespace VRemoteDesktop.ViewModels
                 payload[0] = (byte)chatType;
                 if (data != null) Buffer.BlockCopy(data, 0, payload, 1, data.Length);
 
+                QueuePriority priority = (chatType == ChatDataType.FileData)
+                    ? QueuePriority.Low
+                    : QueuePriority.High;
+
                 connection.AddWork(new TaskObject
                 {
                     TaskType = type,
                     Data = payload,
                     IsSendHeader = true,
                     SessionId = connection.SocketId,
-                    Priority = QueuePriority.High,
+                    Priority = priority,
                     ChunkFileInfo = chunk
                 });
             }
