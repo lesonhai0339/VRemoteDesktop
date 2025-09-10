@@ -266,7 +266,8 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void ProcessTask(TaskObject task)
         {
-            if(task.TaskType == SocketDataType.Chat)
+            Log.ForContext("FileName", "VClient_QueueHandler").Error(task.TaskType.ToString());
+            if (task.TaskType == SocketDataType.Chat)
             {
                 ProcessFileTransfer(task);
                 return;
