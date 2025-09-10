@@ -10,21 +10,23 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using static VRemoteDesktop.Interop.Win32Apis;
 using VRemoteDesktop.Models;
+using System.Diagnostics;
+using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
-    public interface IScreenCapture : IDisposable
+    public interface IScreenCapture
     {
-        ScreenRegion GetCurrentScreen();
+        List<ScreenRegion> GetCurrentScreen();
         List<ScreenRegion> GetScreen();
         void Renew();
+        void Dispose();
     }
-    public class ScreenCapture : IScreenCapture
+    public class ScreenCapture : IScreenCapture, IDisposable
     {
-        private const int BLOCK_SIZE = 64; // Size of each block for change detection
+        private int BLOCK_SIZE = DEFAULT_BLOCK_SIZE; // Size of each block for change detection
         private bool _isDisposed = false;
         private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
-        //private ConcurrentBag<ScreenBlock> blocks = new ConcurrentBag<ScreenBlock>();
 
         private Bitmap _previousFrame;
         private object _lock;
@@ -43,7 +45,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
             encoderParams = new EncoderParameters(1);
             encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
         }
-        #region Properties
         public void Renew()
         {
             lock (_lock)
@@ -51,49 +52,21 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 _previousFrame = null;
             }
         }
-        public ScreenRegion GetCurrentScreen()
+        public List<ScreenRegion> GetCurrentScreen()
         {
             lock (_lock)
             {
-                if (_previousFrame != null)
+                using (Bitmap currentScreen = CaptureWindowsScreen1())
                 {
-                    using (var stream = new MemoryStream())
-                    {
-                        _previousFrame.Save(stream, encoder, encoderParams);
-                        ScreenRegion region = new ScreenRegion
-                        {
-                            IsFullScreen = true,
-                            Rectangle = new Rectangle(0, 0, _previousFrame.Width, _previousFrame.Height),
-                            Bytes = stream.ToArray()
-                        };
-                        return region;
-                    }
-                }
-                else
-                {
-                    using (Bitmap currentScreen = CaptureWindowsScreen1())
-                    {
-                        using (var stream = new MemoryStream())
-                        {
-                            currentScreen.Save(stream, encoder, encoderParams);
-                            ScreenRegion region = new ScreenRegion
-                            {
-                                IsFullScreen = true,
-                                Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                                Bytes = stream.ToArray()
-                            };
-                            _previousFrame = currentScreen.Clone(
-                                new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                                PixelFormat.Format24bppRgb
-                            );
-                            return region;
-                        }
-                    }
+                    _previousFrame = currentScreen.Clone(
+                          new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
+                          PixelFormat.Format24bppRgb
+                       );
+                    return FullScreenRegion(currentScreen);
                 }
             }
         }
-        #endregion
-        public List<ScreenRegion> GetScreenTest()
+        public List<ScreenRegion> GetScreen()
         {
             List<ScreenRegion> regions = new List<ScreenRegion>();
             lock (_lockObject)
@@ -178,81 +151,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     }
                 }
             }
-            return regions;
-        }
-
-        public List<ScreenRegion> GetScreen()
-        {
-            List<ScreenRegion> regions = new List<ScreenRegion>();
-            lock (_lockObject)
-            {
-                using (Bitmap currentScreen = CaptureWindowsScreen1())
-                {
-                    if (_previousFrame == null)
-                    {
-                        // First capture - send full screen
-                        using (var stream = new MemoryStream())
-                        {
-                            currentScreen.Save(stream, encoder, encoderParams);
-                            ScreenRegion region = new ScreenRegion
-                            {
-                                IsFullScreen = true,
-                                Rectangle = new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                                Bytes = stream.ToArray()
-                            };
-                            regions.Add(region);
-                        }
-                        // Store current frame as previous
-                        _previousFrame = currentScreen.Clone(
-                            new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                            PixelFormat.Format24bppRgb
-                        );
-                    }
-                    else
-                    {
-                        List<Rectangle> dirtyRegions = new List<Rectangle>();
-                        using (Bitmap cur = currentScreen.Clone(new Rectangle(0, 0, currentScreen.Width, currentScreen.Height), PixelFormat.Format24bppRgb))
-                        using (Bitmap pre = _previousFrame.Clone(new Rectangle(0, 0, _previousFrame.Width, _previousFrame.Height), PixelFormat.Format24bppRgb))
-                        {
-                            // Detect changes and create cells, 
-                            var skeRegions = GenerateRegions(cur, pre);
-                            dirtyRegions = DetectDirtyRegions(cur, pre, skeRegions);
-                        }
-
-                        if (dirtyRegions.Count > 0)
-                        {
-                            // Merge adjacent regions for efficiency
-                            List<Rectangle> mergedRegions = MergeAdjacentRectangles(dirtyRegions);
-
-                            for (int i = 0; i < mergedRegions.Count; i++)
-                            {
-                                using (Bitmap regionBitmap = CropBitmap(currentScreen, mergedRegions[i]))
-                                {
-                                    using (var stream = new MemoryStream())
-                                    {
-                                        regionBitmap.Save(stream, encoder, encoderParams);
-                                        ScreenRegion region = new ScreenRegion
-                                        {
-                                            IsFullScreen = false,
-                                            Rectangle = mergedRegions[i],
-                                            Bytes = stream.ToArray()
-                                        };
-                                        regions.Add(region);
-                                    }
-                                }
-                            }
-                            // Update previous frame
-                            _previousFrame?.Dispose();
-                            _previousFrame = currentScreen.Clone(
-                                new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                                PixelFormat.Format24bppRgb
-                            );
-                        }
-                        // If no changes, return empty list
-                    }
-                }
-            }
-            return regions;
+            return regions; 
         }
         private Bitmap CropBitmap(Bitmap source, Rectangle region)
         {
@@ -291,24 +190,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             return bitmap;
         }
-        private List<Rectangle> GenerateRegions(Bitmap curBitmap, Bitmap preBitmap)
-        {
-            var regions = new List<Rectangle>();
-
-            for (int y = 0; y < curBitmap.Height; y += BLOCK_SIZE)
-            {
-                for (int x = 0; x < curBitmap.Width; x += BLOCK_SIZE)
-                {
-                    int width = curBitmap.Width - x > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Width - x;
-                    int height = curBitmap.Height - y > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Height - y;
-                    Rectangle block = new Rectangle(x, y,
-                        width,
-                        height);
-                    regions.Add(block);
-                }
-            }
-            return regions;
-        }
         private List<Rectangle> GenerateRegions(BitmapData curBitmap, BitmapData preBitmap)
         {
             var regions = new List<Rectangle>();
@@ -346,43 +227,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             finally
             {
-                lock (_lockObject2)
-                {
-                    changedBlocks = new ConcurrentBag<Rectangle>();
-                }
-            }
-        }
-        private List<Rectangle> DetectDirtyRegions(Bitmap curBitmap, Bitmap preBitmap, List<Rectangle> regions)
-        {
-            BitmapData currentData = null;
-            BitmapData previousData = null;
-            var maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
-
-            try
-            {
-                currentData = curBitmap.LockBits(new Rectangle(0, 0, curBitmap.Width, curBitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-                previousData = preBitmap.LockBits(new Rectangle(0, 0, preBitmap.Width, preBitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format24bppRgb);
-
-                Parallel.ForEach(regions,
-                    new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
-                    block =>
-                    {
-                        if (IsBlockChanged(currentData, previousData, block))
-                            changedBlocks.Add(block);
-                    });
-                var result = changedBlocks.ToList();
-                return result;
-            }
-            finally
-            {
-                if (currentData != null)
-                {
-                    curBitmap.UnlockBits(currentData);
-                }
-                if (previousData != null)
-                {
-                    preBitmap.UnlockBits(previousData);
-                }
                 lock (_lockObject2)
                 {
                     changedBlocks = new ConcurrentBag<Rectangle>();

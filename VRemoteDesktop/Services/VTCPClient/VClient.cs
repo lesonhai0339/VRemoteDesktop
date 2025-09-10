@@ -39,7 +39,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         private BackgroundWorker _receiveBackgroundWorker;
         private BackgroundWorker _senderBackgroundWorker;
 
-        private ManualResetEvent _resetEvent;
+        private AutoResetEvent _sckConnect;
+        private AutoResetEvent _workAvailable;
+
         private CancellationTokenSource _cts;
         private CancellationToken _cancellationToken;
 
@@ -59,7 +61,8 @@ namespace VRemoteDesktop.Services.VTCPClient
             _socketId = socketId;
             _clientType = clientType;
 
-            _resetEvent = new ManualResetEvent(false);
+            _sckConnect = new AutoResetEvent(false);
+            _workAvailable = new AutoResetEvent(false);
 
             _cts = new CancellationTokenSource();
             _cancellationToken = _cts.Token;
@@ -191,22 +194,12 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 foreach (var task in _receivetasks.GetConsumingEnumerable(_cancellationToken))
                 {
-                    Stopwatch stopwatch = new Stopwatch();
-                    stopwatch.Start();
                     try
                     {
                         if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
                         {
                             var lastTask = task;
-
-                            //while (Tasks.TryTake(out var t, 0) 
-                            //    && t!= null 
-                            //    && (t.Type == DataType.Screen || t.Type == DataType.Chunks))
-                            //{
-                            //    lastTask = t;
-                            //}
                             P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(lastTask.Type, lastTask.Data));
-                            Log.ForContext("FileName", "ScreenCaptureReceived_logs").Info(DateTime.Now.ToString("dd:MM:yyyy HH:mm:ss:fff"));
                         }
                         else
                         {
@@ -225,8 +218,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
                     }
-                    stopwatch.Stop();
-                    Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Error("Type: " + task.Type + " - Elasped time: "+ stopwatch.Elapsed.TotalMilliseconds);
                 }
             }
             catch(OperationCanceledException ex)
@@ -262,7 +253,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                             Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
                         }
                     }
-                    Thread.Sleep(5);
+                    else
+                    {
+                        _workAvailable.WaitOne(10);
+                    }
                 }
             }
             catch (OperationCanceledException ex)
@@ -278,22 +272,22 @@ namespace VRemoteDesktop.Services.VTCPClient
                 return;
             }
 
-            if (task.IsSendHeader)
-            {
-                Send(task.TaskType, task.Data, task.SessionId, true);
-            }
-            else
-            {
-                Send(task.Data);
-            }
+            Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
         }
         public void AddWork(TaskObject task)
         {
             _senderTasks.Enqueue(task, (int)task.Priority);
+            _workAvailable.Set();
         }
         public void AddWorkGroup(List<TaskObject> tasks, SocketDataType type = SocketDataType.None)
         {
             _senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
+            _workAvailable.Set();
+        }
+        public void AddWorkGroup(TaskObject[] tasks, SocketDataType type = SocketDataType.None)
+        {
+            _senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
+            _workAvailable.Set();
         }
         /// <summary>
         /// Connect to remote server with default IP and port
@@ -304,7 +298,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
-                _resetEvent.Reset();
                 if (string.IsNullOrWhiteSpace(ip) || port <= 0)
                 {
                     Log.ForContext("FileName", nameof(Connect)).Error("Invalidate argument at Connect method");
@@ -323,7 +316,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     }
                     Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
                     Socket.BeginConnect(remoteEP, new AsyncCallback(ConnectCallback), Socket);
-                    _resetEvent.WaitOne(5000);
+                    _sckConnect.WaitOne(5000);
                 }
                 else
                 {
@@ -338,10 +331,6 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 Log.ForContext("FileName", nameof(Connect)).Error(ex, "Unexpected error when connect to relay server");
             }
-            finally
-            {
-
-            }
         }
         /// <summary>
         /// Callback method when the socket is connected to the remote server
@@ -351,7 +340,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
-                _resetEvent.Set();
+                _sckConnect.Set();
                 Socket.EndConnect(ar);
                 if (!Socket.Connected)
                 {
@@ -387,45 +376,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         public void UpdatePartnerInfo(ClientInfo partnerInfo)
         {
             Partner = partnerInfo;
-        }
-        public void SendScreen(SocketDataType type, List<byte[]> data, int totalSize)
-        {
-            try
-            {
-                if (data.Count == 0 || totalSize == 0)
-                {
-                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
-                    return;
-                }
-                byte[] socketId = Encoding.ASCII.GetBytes(SocketId);
-                var header = GenerateP2PHeader(type, totalSize, socketId);
-
-                List<TaskObject> tasks = new List<TaskObject>();
-                tasks.Add(new TaskObject
-                {
-                    TaskType = type,
-                    Data = header,
-                    IsSendHeader = false
-                });
-
-                //data
-                for (int i = 0; i < data.Count; i++)
-                {
-                    var task = new TaskObject
-                    {
-                        TaskType = type,
-                        Data = data[i],
-                        IsSendHeader = false
-                    };
-
-                    tasks.Add(task);
-                }
-                AddWorkGroup(tasks, SocketDataType.Screen);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
-            }
         }
         /// <summary>
         /// callback method when data is received from the remote server
@@ -556,10 +506,13 @@ namespace VRemoteDesktop.Services.VTCPClient
         /// <param name="data"></param>
         /// <param name="partnerId"></param>
         /// <param name="isSendHeader"></param>
-        public void Send(SocketDataType type, byte[] data,string partnerId = "00000000", bool isSendHeader = true)
+        public void Send(SocketDataType type, byte[] data,string partnerId, bool isSendHeader = true)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(partnerId))
+                    partnerId = this.SocketId;
+
                 if (isSendHeader)
                 {
                     data = PrepareHeader(type, partnerId, data);

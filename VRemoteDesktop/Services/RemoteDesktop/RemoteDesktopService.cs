@@ -71,7 +71,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if(client != null)
             {
                 byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
-                client.Send(SocketDataType.Login, encoder);
+                client.Send(SocketDataType.Login, encoder, null);
             }
         }
         public void P2PConnect(string partnerId, string partnerPassword)
@@ -218,10 +218,60 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)
         {
-            foreach (var connection in _vClientManager.Connections)
+            var connections = _vClientManager.Connections;
+            TaskObject[] tasks = GetScreenSnapshotData(e.Type, e.Data, e.TotalSize);
+
+            foreach(var connection in connections)
             {
                 if (connection.Value.ClientType == VClientType.Receiver)
-                    SendScreen(connection.Value, e.Type, e.Data, e.TotalSize);
+                {
+                    byte[] socketId = Encoding.ASCII.GetBytes(connection.Value.SocketId);
+                    var header = connection.Value.GenerateP2PHeader(e.Type, e.TotalSize, socketId);
+
+                    var payload = new TaskObject
+                    {
+                        TaskType = e.Type,
+                        Data = header,
+                        IsSendHeader = false,
+                        Priority = QueuePriority.Medium
+                    };
+                    var newTasks = new TaskObject[tasks.Length + 1];
+                    newTasks[0] = payload;
+                    Array.Copy(tasks, 0, newTasks, 1, tasks.Length);
+
+                    connection.Value.AddWorkGroup(newTasks);
+                }
+            }
+        }
+        public TaskObject[] GetScreenSnapshotData(SocketDataType type, List<byte[]> data, int totalSize)
+        {
+            try
+            {
+                if (data.Count == 0 || totalSize == 0)
+                {
+                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    return null;
+                }
+                TaskObject[] tasks = new TaskObject[data.Count];
+                //data
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var task = new TaskObject
+                    {
+                        TaskType = type,
+                        Data = data[i],
+                        IsSendHeader = false,
+                        Priority = QueuePriority.Medium
+                    };
+
+                    tasks[i] = task;
+                }
+                return tasks;
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+                return null;
             }
         }
         public void SendScreen(VClient  client, SocketDataType type, List<byte[]> data, int totalSize)

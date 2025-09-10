@@ -34,21 +34,15 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private bool _disposed = false;
         private byte[] _dataSend;
 
-        private IScreenCapture _capture;
-        private ScreenCaptureConfig _config;
+        private readonly IScreenCapture _capture;
         private BackgroundWorker _backgroundWorker;
         public event EventHandler<ScreenCaptureEventArgs> ScreenEvent;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
-        public ScreenCaptureService(ScreenCaptureConfig config, IScreenCapture screenCapture)
-        {
-            InitializeCapture(config, screenCapture);
-        }
-        private void InitializeCapture(ScreenCaptureConfig config, IScreenCapture screenCapture)
+        public ScreenCaptureService(IScreenCapture screenCapture)
         {
             IsCapturing = false;
             _dataSend = new byte[1024 * 1024];
-            _config = config ?? new ScreenCaptureConfig();
-            _capture = screenCapture ?? new ScreenCapture();
+            _capture = screenCapture;
             BackgroundWorker = new BackgroundWorker();
             BackgroundWorker.WorkerSupportsCancellation = true;
         }
@@ -120,15 +114,23 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         private void DoWork(object sender, DoWorkEventArgs e)
         {
-            Stopwatch stopwatch = new Stopwatch();
+            int frameTime = 1000 / FPS;
             while (!_cancel.IsCancellationRequested)
             {
-                stopwatch.Restart();
+                int start = Environment.TickCount;
                 var screens = _capture.GetScreen();
-                if (screens.Any())
+                if (screens.Count > 0)
                 {
-                    long totalSize = checked(screens.Sum(x => x.TotalSize));
-                    ScreenType screenEnum = screens.Count == 1 && screens[0].IsFullScreen ? ScreenType.FULLSCREEN : ScreenType.REGIONSCREENS;
+                    long totalSize = 0;
+                    for (int i = 0; i < screens.Count; i++)
+                    {
+                        totalSize = checked(totalSize + screens[i].TotalSize);
+                    }
+
+                    ScreenType screenEnum = screens.Count == 1 && screens[0].IsFullScreen 
+                        ? ScreenType.FULLSCREEN 
+                        : ScreenType.REGIONSCREENS;
+
                     switch (screenEnum)
                     {
                         case ScreenType.FULLSCREEN:
@@ -139,9 +141,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                             break;
                     }
                 }
-                stopwatch.Stop();
-                int elapsed = (int)stopwatch.ElapsedMilliseconds;
-                int frameTime = 1000 / FPS;
+                int elapsed = unchecked(Environment.TickCount - start); //ensure result always correct (it goes negative every 24 days)
                 int remainTime = frameTime - elapsed;
                 if (remainTime > 0)
                 {
@@ -214,6 +214,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             try
             {
+                int start = Environment.TickCount;
                 if (_dataSend.Length < totalChunksSize + 40)
                 {
                     _dataSend = new byte[totalChunksSize + 40];
@@ -239,6 +240,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     chunksArgs.Data = byteArrayToListByteArray;
                     ScreenEvent?.Invoke(null, chunksArgs);
                 }
+                int end = Environment.TickCount;
+                Log.ForContext("", "RegionsScreen").Info("Time: " + (end - start));
             }
             catch (Exception ex)
             {
@@ -304,8 +307,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         _backgroundWorker.DoWork -= DoWork;
                         _backgroundWorker.Dispose();
                     }
+                    _dataSend = null;
+                    _cancel.Dispose();
                 }
-                ScreenEvent = null;
                 _disposed = true;
             }
         }

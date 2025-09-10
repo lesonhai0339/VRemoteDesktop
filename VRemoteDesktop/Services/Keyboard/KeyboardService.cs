@@ -11,7 +11,16 @@ using static VRemoteDesktop.Interop.Win32Apis;
 
 namespace VRemoteDesktop.Services.Keyboard
 {
-    public class KeyboardService: IDisposable
+    public interface IKeyboardService
+    {
+        void Start(uint pId);
+        void Stop();
+        void AddHook(IntPtr handle);
+        void RemoveHook(IntPtr handle);
+        void Dispose();
+        event EventHandler<KeyboardEventArgs> KeyPressed;
+    }
+    public class KeyboardService: IKeyboardService, IDisposable
     {
         private readonly object _lockObject = new object();
         private bool _disposed;

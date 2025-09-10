@@ -20,11 +20,11 @@ namespace VRemoteDesktop.Services.SystemService
         private readonly object _lock;
         private bool _disposed;
 
-        private readonly KeyboardService _keyboardService;
+        private readonly IKeyboardService _keyboardService;
         private IScreenCaptureServiceListener _screenCaptureService;
         public event EventHandler<KeyboardEventArgs> KeyboardReceived;
         public event EventHandler<ScreenCaptureEventArgs> ScreenCaptureChanged;
-        public GlobalHookService(KeyboardService keyboardService, IScreenCaptureServiceListener screenCaptureService)
+        public GlobalHookService(IKeyboardService keyboardService, IScreenCaptureServiceListener screenCaptureService)
         {
             _lock = new object();
             _disposed = false;
@@ -32,8 +32,15 @@ namespace VRemoteDesktop.Services.SystemService
             _keyboardService.KeyPressed += KeyPressedEventHandler;
             Task.Factory.StartNew(() =>
             {
-                _screenCaptureService = new ScreenCaptureService(null, null);
-                _screenCaptureService.ScreenEvent += ScreenCaptureEventHandler;
+                try
+                {
+                    _screenCaptureService = screenCaptureService;
+                    _screenCaptureService.ScreenEvent += ScreenCaptureEventHandler;
+                }
+                catch(Exception ex)
+                {
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, "ScreenCaptureService ");
+                }
             }, TaskCreationOptions.LongRunning);
         }
         #region Properties

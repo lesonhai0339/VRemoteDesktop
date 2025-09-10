@@ -129,7 +129,6 @@
     <Compile Include="Models\KeyboardReceived.cs" />
     <Compile Include="Models\KeyboardState.cs" />
     <Compile Include="Models\MouseReceived.cs" />
-    <Compile Include="Models\ScreenCaptureConfig.cs" />
     <Compile Include="Models\ScreenRegion.cs" />
     <Compile Include="Models\StateObject.cs" />
     <Compile Include="Models\Sendstate.cs" />

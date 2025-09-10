@@ -21,10 +21,10 @@ namespace ScreenCaptureTest
             var screenCapture = new ScreenCapture();
             int count = 0;
             Stopwatch stopwatch = new Stopwatch();
-            while (count < 30)
+            while (count < 10)
             {
                 stopwatch.Restart();
-                var results =  screenCapture.GetScreenTest();
+                var results =  screenCapture.GetScreen();
                 stopwatch.Stop();
                 Console.WriteLine($"Capture {count + 1}: {stopwatch.ElapsedMilliseconds} ms, {results.Count} items");
                 count++;
