@@ -9,6 +9,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.VTCPClient;
 using static VRemoteDesktop.Utils.Logger;
+using static VRemoteDesktop.Utils.RandomLength;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -19,7 +20,6 @@ namespace VRemoteDesktop.ViewModels
         private string _myId;
         private string _myPassword;
         private bool _isConnected;
-
         private ManualResetEvent _resetEvent;
 
         private readonly RemoteDesktopService _remoteDesktopService;
@@ -33,12 +33,12 @@ namespace VRemoteDesktop.ViewModels
             _remoteDesktopService.DataReceivedEvent += TCPClientManagerEventHandler;
 
             MyId = _remoteDesktopService.GetMe().Id;
-            MyPassword = remoteDesktopService.GetMe().Password;
+            MyPassword = _remoteDesktopService.GetMe().Password;
             Init();
         }
         private void Init()
         {
-            _id = StringHelper.RandomStringNumber(8);
+            _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
             _remoteDesktopService.NewClient(_id, VClientType.None);
         }
         #region Properties

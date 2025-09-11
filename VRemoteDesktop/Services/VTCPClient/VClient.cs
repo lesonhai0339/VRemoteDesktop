@@ -21,12 +21,17 @@ using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Utils;
 using VRemoteDesktop.ViewModels;
 using VRemoteServer.Models;
-using static VRemoteDesktop.Utils.Logger;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
     public class VClient : IDisposable
     {
+        private readonly int INT32_LENGTH = ByteConstants.INT32_LENGTH;
+        private readonly int SOCKETID_LENGTH = RandomLength.SOCKET_ID_LENGTH;
+        private readonly int DATATYPE_LENGTH = RandomLength.DATA_TYPE_LENGTH;
+        private readonly int HEADER_SIZE;
+
         private bool _isSocketConnected;
         private bool _isP2PConnected;
         private volatile bool _isDisposed;
@@ -55,6 +60,8 @@ namespace VRemoteDesktop.Services.VTCPClient
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
         public VClient(string socketId, VClientType clientType)
         {
+            HEADER_SIZE = INT32_LENGTH + DATATYPE_LENGTH + SOCKETID_LENGTH;
+
             Partner = null;
             _isDisposed = false;
             _isP2PConnected = false;
@@ -218,13 +225,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                     }
                     catch (Exception ex)
                     {
-                        Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
+                        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
                     }
                 }
             }
             catch(OperationCanceledException ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
             }
         }
         private void SenderDoWork(object sender, DoWorkEventArgs e)
@@ -242,20 +249,20 @@ namespace VRemoteDesktop.Services.VTCPClient
                             {
                                 foreach (var t in taskGroup.Tasks)
                                 {
-                                    Log.ForContext("FileName", "DataSender").Info(string.Format("Group task item: type:{0} - length:{1} - {2}", t.TaskType, t.Data.Length, DateTime.Now.ToString("HH:mm:ss:fff")));
+                                    Logger.Log.ForContext("FileName", "DataSender").Info(string.Format("Group task item: type:{0} - length:{1} - {2}", t.TaskType, t.Data.Length, DateTime.Now.ToString("HH:mm:ss:fff")));
                                     ProcessTask(t);
                                 }
                             }
                             else if (taskObj is TaskObject task)
                             {
-                                Log.ForContext("FileName", "DataSender").Info(string.Format("Single item: type:{0} - length:{1} - {2}", task.TaskType, task.Data.Length, DateTime.Now.ToString("HH:mm:ss:fff")));
+                                Logger.Log.ForContext("FileName", "DataSender").Info(string.Format("Single item: type:{0} - length:{1} - {2}", task.TaskType, task.Data.Length, DateTime.Now.ToString("HH:mm:ss:fff")));
                                 ProcessTask(task);
                             }
 
                         }
                         catch (Exception ex)
                         {
-                            Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
+                            Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
                         }
                     }
                     Thread.Sleep(10);
@@ -263,7 +270,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             catch (OperationCanceledException ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
             }
         }
         private void ProcessTask(TaskObject task)
@@ -317,7 +324,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 if (string.IsNullOrWhiteSpace(ip) || port <= 0)
                 {
-                    Log.ForContext("FileName", nameof(Connect)).Error("Invalidate argument at Connect method");
+                    Logger.Log.ForContext("FileName", nameof(Connect)).Error("Invalidate argument at Connect method");
                     return;
                 }
 
@@ -337,16 +344,16 @@ namespace VRemoteDesktop.Services.VTCPClient
                 }
                 else
                 {
-                    Log.ForContext("FileName", nameof(Connect)).Error("Invalid IP address: {Ip}", ip);
+                    Logger.Log.ForContext("FileName", nameof(Connect)).Error("Invalid IP address: {Ip}", ip);
                 }
             }
             catch (SocketException ex)
             {
-                Log.ForContext("FileName", nameof(Connect)).Error(ex, "Error when connect to relay server");
+                Logger.Log.ForContext("FileName", nameof(Connect)).Error(ex, "Error when connect to relay server");
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", nameof(Connect)).Error(ex, "Unexpected error when connect to relay server");
+                Logger.Log.ForContext("FileName", nameof(Connect)).Error(ex, "Unexpected error when connect to relay server");
             }
         }
         /// <summary>
@@ -363,7 +370,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     //Connected?.Invoke(this, new ConnectEventArgs(false));
                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, false, new byte[0]));
-                    Log.ForContext("FileName", this.GetType().Name).Error("Cannot connect to server");
+                    Logger.Log.ForContext("FileName", this.GetType().Name).Error("Cannot connect to server");
                     return;
                 }
 
@@ -379,15 +386,15 @@ namespace VRemoteDesktop.Services.VTCPClient
                 stateObject.SckId = _socketId;
 
                 Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
-                Log.ForContext("FileName", this.GetType().Name).Info("Connected to {RemoteEndPoint}, starting receive loop");
+                Logger.Log.ForContext("FileName", this.GetType().Name).Info("Connected to {RemoteEndPoint}, starting receive loop");
             }
             catch (SocketException ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "SocketException when connecting to remote server");
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SocketException when connecting to remote server");
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when connecting to remote server");
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when connecting to remote server");
             }
         }
         public void UpdatePartnerInfo(ClientInfo partnerInfo)
@@ -414,7 +421,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             break;
                         }
-                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, 4).ToArray(), 0);
+                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, INT32_LENGTH).ToArray(), 0);
                         if (!(stateObject.ByteArrayBuilder.Length >= length))
                         {
                             break;
@@ -434,60 +441,64 @@ namespace VRemoteDesktop.Services.VTCPClient
                 }
                 catch (SocketException ex)
                 {
-                    Log.ForContext("FileName", this.GetType().Name).Error(ex, "Begin receive error");
+                    Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Begin receive error");
                 }
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when receiving data from remote server");
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when receiving data from remote server");
             }
         }
         private void ProcessReceiveData(byte[] bytes)
         {
             try
             {
-                int length = BitConverter.ToInt32(bytes, 0);
+                int dataLength = BitConverter.ToInt32(bytes, 0);
 
-                SocketDataType commandType = (SocketDataType)bytes[4];
+                SocketDataType dataType = (SocketDataType)bytes[4];
 
-                string socketId = BitConverter.ToString(bytes, 5, 8);
+                string socketId = BitConverter.ToString(bytes, 5, SOCKETID_LENGTH);
 
-                byte[] data = new byte[bytes.Length - 13];
-                Buffer.BlockCopy(bytes, 13, data, 0, data.Length);
+                byte[] data = new byte[bytes.Length - HEADER_SIZE];
+                Buffer.BlockCopy(bytes, HEADER_SIZE, data, 0, data.Length);
 
                 _receivedQueue.Add(new DataReceive
                 {
-                    Type = commandType,
-                    Length = length,
+                    Type = dataType,
+                    Length = dataLength,
                     Data = data
                 });
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
         private byte[] PrepareHeader(SocketDataType type, string partnerId, byte[] data)
         {
-            byte[] resultBytes = new byte[data.Length + 13];
-
-            Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 0, 4);
-
+            byte[] resultBytes = new byte[data.Length + HEADER_SIZE];
+            
+            //Data length
+            Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 0, INT32_LENGTH);
+            //Data type
             resultBytes[4] = (byte)type;
-            Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, resultBytes, 5, 8);
-            Buffer.BlockCopy(data, 0, resultBytes, 13, data.Length);
+            //Data
+            Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, resultBytes, 5, SOCKETID_LENGTH);
+            Buffer.BlockCopy(data, 0, resultBytes, HEADER_SIZE, data.Length);
 
             return resultBytes;
         }
-        public byte[] GenerateP2PHeader(SocketDataType type, int dataSize , byte[] socketId)
+        public byte[] GenerateP2PHeader(SocketDataType type, int dataSize, string socketId)
         {
-            int totalSize = dataSize + SocketId.Length + 5; // 5 bytes added are 4 for totalSize and 1 for type
-            byte[] header = new byte[5 + SocketId.Length];
-
-            Buffer.BlockCopy(BitConverter.GetBytes(totalSize), 0, header, 0, 4);
-
+            int totalSize = dataSize + HEADER_SIZE;
+            byte[] header = new byte[HEADER_SIZE];
+            //Data length
+            Buffer.BlockCopy(BitConverter.GetBytes(totalSize), 0, header, 0, INT32_LENGTH);
+            //Data Type
             header[4] = (byte)type;
-            Buffer.BlockCopy(socketId, 0, header, 5, 8);
+            //Socket Id
+            byte[] socketIdBytes = Encoding.ASCII.GetBytes(socketId);
+            Buffer.BlockCopy(socketIdBytes, 0, header, 5, socketIdBytes.Length);
 
             return header;
         }
@@ -504,13 +515,19 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             else
             {
-                byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + 21];
-                chunkFileData[0] = task.Data[0]; //first byte is command type
-                Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, 1, 4);
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, 5, 16);
-                int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, 21, task.ChunkFileInfo.ChunkSize);
+                int headerSize = DATATYPE_LENGTH +  INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
 
-                if (chunkRead != chunkFileData.Length - 21)
+                byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
+
+                //Data type
+                chunkFileData[0] = task.Data[0];
+                //Data length
+                Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, 1, INT32_LENGTH);
+                //File Id
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, 5, RandomLength.FILE_ID_LENGTH);
+                int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, headerSize, task.ChunkFileInfo.ChunkSize);
+
+                if (chunkRead != chunkFileData.Length - headerSize)
                     throw new Exception("ByteRead not the same with bytes data expected");
 
                 Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
@@ -538,7 +555,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
             }
         }
         private void Send(byte[] data)
@@ -560,7 +577,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
             }
         }
         private void Send(Sendstate state)
@@ -597,11 +614,11 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             catch(SocketException ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback error on socketid: " + SocketId);
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback error on socketid: " + SocketId);
             }
         }
         private void Cancel()

@@ -21,6 +21,7 @@ using VRemoteDesktop.ViewModels;
 using static System.Net.Mime.MediaTypeNames;
 using static System.Net.WebRequestMethods;
 using static VRemoteDesktop.Utils.Logger;
+using static VRemoteDesktop.Utils.DefaultForm;
 
 namespace VRemoteDesktop.Views
 {
@@ -28,10 +29,6 @@ namespace VRemoteDesktop.Views
     {
         private static readonly Color SelectedColor = Color.LightSkyBlue;
         private static readonly Color DefaultColor = Color.White;
-        private const string SUCCESS_TITLE = "Thành công";
-        private const string FAILED_TITLE = "Thất bại";
-        private const string ERROR_TITLE = "Xảy ra lỗi";
-        private const string TIMEOUT_TITLE = "Timeout";
         private ChatViewModel _chatViewModel;
         private ConcurrentDictionary<string, FileAttachmentLayout> _attachments;
 
@@ -173,25 +170,25 @@ namespace VRemoteDesktop.Views
         {
             Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessSuccessHandler)).Info(respond.SystemMessage);
             if (!string.IsNullOrWhiteSpace(respond.Message))
-                MessageBox.Show(respond.Message, SUCCESS_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show(respond.Message, FORM_SUCCESS_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
         private void ProcessFailedHandler<T>(ChatRespond<T> respond)
         {
             Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessFailedHandler)).Error(respond.SystemMessage);
             if (!string.IsNullOrWhiteSpace(respond.Message))
-                MessageBox.Show(respond.Message, FAILED_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(respond.Message, FORM_FAILED_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         private void ProcessErrorHandler<T>(ChatRespond<T> respond)
         {
             Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessErrorHandler)).Error(respond.SystemMessage);
             if (!string.IsNullOrWhiteSpace(respond.Message))
-                MessageBox.Show(respond.Message, ERROR_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(respond.Message, FORM_ERROR_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         private void ProcessTimeoutHandler<T>(ChatRespond<T> respond)
         {
             Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessTimeoutHandler)).Error(respond.SystemMessage);
             if (!string.IsNullOrWhiteSpace(respond.Message))
-                MessageBox.Show(respond.Message, TIMEOUT_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(respond.Message, FORM_TIMEOUT_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         #endregion
         #region Custom Events
@@ -203,10 +200,10 @@ namespace VRemoteDesktop.Views
             {
                 case ChatErrorLevel.Critical:
                     logger.Error(e.Ex, e.Ex.Message);
-                    MessageBox.Show($"{e.Ex.GetType().Name}: {e.Ex.Message}",
-                                   "Lỗi nghiêm trọng",
-                                   MessageBoxButtons.OK,
-                                   MessageBoxIcon.Error);
+                    //MessageBox.Show($"{e.Ex.GetType().Name}: {e.Ex.Message}",
+                    //               "Lỗi nghiêm trọng",
+                    //               MessageBoxButtons.OK,
+                    //               MessageBoxIcon.Error);
                     break;
 
                 case ChatErrorLevel.Warning:
@@ -230,8 +227,9 @@ namespace VRemoteDesktop.Views
                         bool isSameConnection = (string.Compare(lb.Name, respond.Data, StringComparison.OrdinalIgnoreCase) == 0);
                         if (isSameConnection)
                         {
-                            if (fpnChat.Controls.Count == 0)
-                                _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
+                            //Load chat history on current connection
+                            //if (fpnChat.Controls.Count == 0)
+                            //    _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
                             return;
                         }
                     }
@@ -248,7 +246,8 @@ namespace VRemoteDesktop.Views
                         if(sp.IsSuccess)
                         {
                             lb.BackColor = SelectedColor;
-                            _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
+                            //Load chat history on current connection
+                            //_chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
                         }
                     }
                     else
@@ -379,7 +378,7 @@ namespace VRemoteDesktop.Views
                         RespondHandler(updatePathRespond);
                         if (updatePathRespond.IsSuccess)
                         {
-                            var savefileRepond =  _chatViewModel.SaveFileChat(parent.SocketId, parent.FileInfo.SavePath, parent.FileInfo.Filename, parent.FileInfo.FileSize);
+                            var savefileRepond =  _chatViewModel.SaveChatToFile(parent.SocketId, parent.FileInfo.SavePath, parent.FileInfo.Filename, parent.FileInfo.FileSize);
                             RespondHandler(savefileRepond);
                             if(savefileRepond.IsSuccess)
                             {

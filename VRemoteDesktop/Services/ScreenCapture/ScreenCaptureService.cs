@@ -12,7 +12,9 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Utils;
 using static VRemoteDesktop.Utils.Logger;
-using static VRemoteDesktop.Utils.DefaultValue;
+using static VRemoteDesktop.Utils.DefaultSocketPacket;
+using static VRemoteDesktop.Utils.DefaultScreen;
+
 using System.Windows.Forms;
 
 namespace VRemoteDesktop.Services.ScreenCapture

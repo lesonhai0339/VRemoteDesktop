@@ -10,7 +10,9 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
+using static VRemoteDesktop.Utils.DefaultSocketPacket;
 using static VRemoteDesktop.Utils.DefaultValue;
+
 
 namespace VRemoteDesktop.Services.FileService
 {
@@ -29,8 +31,6 @@ namespace VRemoteDesktop.Services.FileService
     internal class VChatAttachmentService: IVChatAttachmentService, IDisposable
     {
         private volatile bool _disposed = false;    
-        private volatile bool _disposing = false;   
-        private readonly object _lock = new object();
         private readonly int CHUNK_SIZE = DEFAULT_CHUNK_SIZE;
         private VAttachmentManager _attachmentManager;
         private ConcurrentDictionary<string, FileStream> _curStreams;
@@ -336,16 +336,16 @@ namespace VRemoteDesktop.Services.FileService
             {
                 if (!_disposed)
                 {
-                    _disposing = true;
                     if (_attachmentManager != null)
-                    {
                         _attachmentManager.FileRemoved -= FileRemovedEventHandler;
-                        _attachmentManager.Dispose();
-                    }
-                    foreach (var stream in _curStreams.Values.ToList())
+
+                   
+                    foreach (var stream in _curStreams.Values)
                     {
                         stream?.Dispose();
                     }
+                    _curStreams.Clear();
+                    _attachmentManager.Dispose();
                     _disposed = true;
                 }
             }

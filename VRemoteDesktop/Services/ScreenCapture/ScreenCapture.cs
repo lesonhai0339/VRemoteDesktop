@@ -11,7 +11,7 @@ using System.Windows.Forms;
 using static VRemoteDesktop.Interop.Win32Apis;
 using VRemoteDesktop.Models;
 using System.Diagnostics;
-using static VRemoteDesktop.Utils.DefaultValue;
+using static VRemoteDesktop.Utils.DefaultScreen;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {

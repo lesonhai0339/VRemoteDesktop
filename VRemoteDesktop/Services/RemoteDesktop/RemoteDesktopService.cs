@@ -228,8 +228,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if (connection.Value.ClientType == VClientType.Receiver)
                 {
-                    byte[] socketId = Encoding.ASCII.GetBytes(connection.Value.SocketId);
-                    var header = connection.Value.GenerateP2PHeader(e.Type, e.TotalSize, socketId);
+                    var header = connection.Value.GenerateP2PHeader(e.Type, e.TotalSize, connection.Value.SocketId);
 
                     var payload = new TaskObject
                     {
@@ -285,8 +284,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
                     return;
                 }
-                byte[] socketId = Encoding.ASCII.GetBytes(client.SocketId);
-                var header = client.GenerateP2PHeader(type, totalSize, socketId);
+                var header = client.GenerateP2PHeader(type, totalSize, client.SocketId);
 
                 List<TaskObject> tasks = new List<TaskObject>();
                 tasks.Add(new TaskObject

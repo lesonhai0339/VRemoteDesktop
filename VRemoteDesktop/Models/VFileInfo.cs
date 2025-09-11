@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using static VRemoteDesktop.Utils.RandomLength;
 
 namespace VRemoteDesktop.Models
 {
@@ -10,7 +11,7 @@ namespace VRemoteDesktop.Models
         public VFileInfo() { }
         public VFileInfo(string id,string filePath, string filename, string fileExtension, long fileSize, bool isSender)
         {
-            Id = id ?? Guid.NewGuid().ToString("N").Substring(0, 16);
+            Id = id ?? Guid.NewGuid().ToString("N").Substring(0, RANDOM_GUILD_LENGTH);
             FilePath = filePath ?? string.Empty;
             FileExtension = fileExtension;
             Filename = filename;

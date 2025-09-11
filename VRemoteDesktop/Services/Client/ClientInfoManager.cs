@@ -8,7 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
-using static VRemoteDesktop.Utils.Logger;
+using static VRemoteDesktop.Utils.RandomLength;
 using VRemoteServer.Models;
 
 namespace VRemoteDesktop.Services.ConnectionManager
@@ -61,8 +61,8 @@ namespace VRemoteDesktop.Services.ConnectionManager
             OperatingSystem os = Environment.OSVersion;
             ClientInfo info = new ClientInfo
             {
-                Id = StringHelper.RandomStringNumber(8),
-                Password = StringHelper.RandomStringNumber(4),
+                Id = StringHelper.RandomStringNumber(ID_LENGTH),
+                Password = StringHelper.RandomStringNumber(PASSWORD_LENGTH),
                 ComputerName = computerName,
                 Width = width,
                 Height = height,

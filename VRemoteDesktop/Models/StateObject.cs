@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
-using static VRemoteDesktop.Utils.DefaultValue;
+using static VRemoteDesktop.Utils.DefaultSocketPacket;
 
 namespace VRemoteDesktop.Models
 {
