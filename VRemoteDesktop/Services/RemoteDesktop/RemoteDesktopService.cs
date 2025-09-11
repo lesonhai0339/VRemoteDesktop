@@ -235,6 +235,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     {
                         TaskType = e.Type,
                         Data = header,
+                        SessionId = connection.Value.SocketId,
                         IsSendHeader = false
                     };
                     var newTasks = new TaskObject[tasks.Length + 1];
@@ -262,7 +263,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     {
                         TaskType = type,
                         Data = data[i],
-                        IsSendHeader = false
+                        IsSendHeader = false,
                     };
 
                     tasks[i] = task;
@@ -292,7 +293,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     TaskType = type,
                     Data = header,
-                    IsSendHeader = false
+                    IsSendHeader = false,
+                    SessionId = client.SocketId
                 });
 
                 //data
