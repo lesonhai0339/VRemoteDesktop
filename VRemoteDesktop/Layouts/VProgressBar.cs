@@ -6,7 +6,7 @@ using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
-
+using static VRemoteDesktop.Utils.DefaultValue;
 namespace VRemoteDesktop.Layouts
 {
     public class VProgressBar : ProgressBar
@@ -46,8 +46,8 @@ namespace VRemoteDesktop.Layouts
         private void CheckTimeOut(object obj)
         {
             DateTime curTime = DateTime.Now;
-            var elpased = (curTime - _time).TotalSeconds;
-            if(elpased > 30)
+            var elpased = (curTime - _time).TotalMinutes;
+            if(elpased > DEFAULT_TIMEOUT)
             {
                 _timeout?.Dispose();
                 ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Timeout));

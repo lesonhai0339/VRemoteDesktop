@@ -15,5 +15,6 @@ namespace VRemoteDesktop.Utils
         public static string DEFAULT_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
         public static int DEFAULT_MESSAGE_LOAD = 5;
         public static string DEFAULT_SEPRATOR = "|";
+        public static int DEFAULT_TIMEOUT = 30;
     }
 }

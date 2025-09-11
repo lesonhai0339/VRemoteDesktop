@@ -442,9 +442,8 @@ namespace VRemoteDesktop.ViewModels
                     Data = payload,
                     IsSendHeader = true,
                     SessionId = connection.SocketId,
-                    Priority = priority,
                     ChunkFileInfo = chunk
-                });
+                }, priority);
             }
             catch (Exception ex)
             {
@@ -532,7 +531,7 @@ namespace VRemoteDesktop.ViewModels
                 string message = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, Enums.EncodingType.UTF8).GetResult();
                 bool flag = SaveChat(client.SocketId, ChatContentTypeEnum.Message, ChatOwnerEnum.Partner, message);
                 if(flag)
-                    AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, client.SocketId, message, null));
+                    AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, client.SocketId, message, null, client.Partner.ComputerName));
             }
             catch(Exception ex)
             {

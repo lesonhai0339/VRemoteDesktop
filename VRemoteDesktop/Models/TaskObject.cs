@@ -18,12 +18,11 @@ namespace VRemoteDesktop.Models
             Data = data;
             IsSendHeader = isSendHeader;
         }
-        public TaskObject(SocketDataType type, string sessionId, bool isSendHeader,QueuePriority priority, ChunkFileInfo chunkFileInfo)
+        public TaskObject(SocketDataType type, string sessionId, bool isSendHeader,ChunkFileInfo chunkFileInfo)
         {
             TaskType = type;
             SessionId = sessionId;
             IsSendHeader = isSendHeader;
-            Priority = priority;
             ChunkFileInfo = chunkFileInfo;
         }
         public SocketDataType TaskType { get; set; } = SocketDataType.None;
@@ -31,7 +30,6 @@ namespace VRemoteDesktop.Models
         public byte[] Data { get; set; } = new byte[0];
         public int Length => Data?.Length ?? 0;
         public bool IsSendHeader { get; set; } = true;
-        public QueuePriority Priority { get; set; } = QueuePriority.Low;
         public ChunkFileInfo ChunkFileInfo { get; set; } = null;
     }
 }

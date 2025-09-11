@@ -268,9 +268,8 @@ namespace VRemoteDesktop.Services.FileService
                             TaskType = SocketDataType.Chat,
                             Data = dataSend,
                             SessionId = client.SocketId,
-                            IsSendHeader = true,
-                            Priority = QueuePriority.Low
-                        });
+                            IsSendHeader = true
+                        }, QueuePriority.Low);
                     //Notify sending progress
                     handledSize += bytesRead;
                 }

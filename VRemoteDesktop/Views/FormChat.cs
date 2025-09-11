@@ -334,7 +334,7 @@ namespace VRemoteDesktop.Views
                 }
                 else if (e.Type == ChatControlType.Message)
                 {
-                    ProcessMessageAdded(e.ConnectionId, e.Content);
+                    ProcessMessageAdded(e.ConnectionId, e.Content, e.ConnectionName);
                     RefeshUI(fpnChat);
                 }
                 else if (e.Type == ChatControlType.RequestAttachment || e.Type == ChatControlType.ReceivedAttachment)
@@ -461,11 +461,11 @@ namespace VRemoteDesktop.Views
             RefeshUI(fpnNumberChatConnection);
             fpnNumberChatConnection.ScrollControlIntoView(lbChat);
         }
-        private void ProcessMessageAdded(string connectionId, string message)
+        private void ProcessMessageAdded(string connectionId, string message, string connectionName)
         {
             Label lb = new Label
             {
-                Text = "Me: " + message,
+                Text = (connectionName ?? "Tôi") + ": " + message,
                 AutoSize = true,
                 TextAlign = ContentAlignment.TopLeft,
             };

@@ -235,14 +235,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     {
                         TaskType = e.Type,
                         Data = header,
-                        IsSendHeader = false,
-                        Priority = QueuePriority.Medium
+                        IsSendHeader = false
                     };
                     var newTasks = new TaskObject[tasks.Length + 1];
                     newTasks[0] = payload;
                     Array.Copy(tasks, 0, newTasks, 1, tasks.Length);
 
-                    connection.Value.AddWorkGroup(newTasks);
+                    connection.Value.AddWorkGroup(newTasks, QueuePriority.Medium);
                 }
             }
         }
@@ -263,8 +262,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     {
                         TaskType = type,
                         Data = data[i],
-                        IsSendHeader = false,
-                        Priority = QueuePriority.Medium
+                        IsSendHeader = false
                     };
 
                     tasks[i] = task;
@@ -294,8 +292,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     TaskType = type,
                     Data = header,
-                    IsSendHeader = false,
-                    Priority = QueuePriority.Medium
+                    IsSendHeader = false
                 });
 
                 //data
@@ -305,13 +302,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     {
                         TaskType = type,
                         Data = data[i],
-                        IsSendHeader = false,
-                        Priority = QueuePriority.Medium
+                        IsSendHeader = false
                     };
 
                     tasks.Add(task);
                 }
-                client.AddWorkGroup(tasks, SocketDataType.Screen);
+                client.AddWorkGroup(tasks, QueuePriority.Medium);
             }
             catch (Exception ex)
             {
@@ -366,9 +362,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                             Data = data,
                             SessionId = connection.Value.SocketId,
                             IsSendHeader = true,
-                            Priority = QueuePriority.High,
                             ChunkFileInfo = null
-                        });
+                        }, QueuePriority.High);
                 }
             }
             else

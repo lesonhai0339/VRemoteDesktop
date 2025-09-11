@@ -106,6 +106,8 @@ namespace VRemoteDesktop.Helpers
                 return bytesRead;
             }
         }
+        //Can improve by using something like private ConcurrentDictionary<string, FileStream> _curStreams; at VChatAttachmentService
+        //To keep filestream open util copy full or timeout
         public static int GetChunkFileDataByOffset(string filePath, int fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
         {
             if (!File.Exists(filePath))

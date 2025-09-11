@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
+using static VRemoteDesktop.Utils.DefaultValue;
 
 namespace VRemoteDesktop.Services.FileService
 {
@@ -26,9 +27,12 @@ namespace VRemoteDesktop.Services.FileService
         {
             if(_files.IsEmpty)
                 return;
+
+            var now = DateTime.Now;
             foreach(var file in _files)
             {
-                if(DateTime.Now.Subtract(file.Value.LastWriteTime).TotalMinutes > 3)
+                //remove file if last write time exceed over 30 minutes
+                if(now -  file.Value.LastWriteTime  > TimeSpan.FromMinutes(DEFAULT_TIMEOUT))
                 {
                     FileRemoved?.Invoke(this, new ChatFileRemovedEventArgs(file.Value.Id));
                     _files.TryRemove(file.Key, out _);

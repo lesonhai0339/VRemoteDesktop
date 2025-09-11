@@ -46,7 +46,6 @@ namespace VRemoteDesktop.Utils
             lock (_lock)
             {
                 _list.Add(new Test<T, TPriority>(t, i));
-
                 int index = _list.Count - 1;
                 while (index > 0)
                 {
@@ -62,30 +61,46 @@ namespace VRemoteDesktop.Utils
                 }
             }
         }
-        /// <summary>
-        /// Take item out VPriority queue
-        /// </summary>
-        /// <param name="value">Item</param>
-        /// <returns></returns>
-        public bool Dequeue(out T value)
+        public int RemoveAll(Func<T, bool> match)
         {
             lock (_lock)
             {
-                value = default(T);
-            if (_list.Count == 0) return false;
+                int removed = 0;
+                //int lowest = _list.Count - 1;
 
-            if(_list.Count == 1)
-            {
-                value = _list[0].Value;
-                _list.Clear();
-                return true;
+                for(int i= _list.Count -1; i>= 0; i--)
+                {
+                    //if condition ay item[i] is true, assign last item to item[i] and remove last item
+                    if (match(_list[i].Value))
+                    {
+                        int last = _list.Count - 1;
+
+                        if(i != last)
+                        {
+                            _list[i] = _list[last];
+                            //lowest = Math.Min(lowest, i);
+                        }
+                        _list.RemoveAt(last);
+                        removed++;
+                    }
+                }
+                for (int i = (_list.Count / 2) - 1; i >= 0; i--)
+                {
+                    HeapifyDown(i);
+                }
+                //if (removed > 0 && lowest < _list.Count)
+                //{
+                //    for (int i = (_list.Count / 2) - 1; i >= lowest; i--)
+                //    {
+                //        HeapifyDown(i);
+                //    }
+                //}
+
+                return removed;
             }
-
-            var root = _list[0];
-            _list[0] = _list[_list.Count - 1];
-            _list.RemoveAt(_list.Count - 1);
-
-            int index = 0;
+        }
+        private void HeapifyDown(int index)
+        {
             while (true)
             {
                 int left = 2 * index + 1;
@@ -94,7 +109,7 @@ namespace VRemoteDesktop.Utils
 
                 if (left < _list.Count && _comparer.Compare(_list[left].Priority, _list[smallest].Priority) < 0)
                     smallest = left;
-                if (right < _list.Count && _comparer.Compare(_list[right].Priority, _list[smallest].Priority) < 0 )
+                if (right < _list.Count && _comparer.Compare(_list[right].Priority, _list[smallest].Priority) < 0)
                     smallest = right;
 
 
@@ -107,9 +122,55 @@ namespace VRemoteDesktop.Utils
 
                 index = smallest;
             }
+        }
+        /// <summary>
+        /// Take item out VPriority queue
+        /// </summary>
+        /// <param name="value">Item</param>
+        /// <returns></returns>
+        public bool Dequeue(out T value)
+        {
+            lock (_lock)
+            {
+                value = default(T);
+                if (_list.Count == 0) return false;
 
-            value = root.Value;
-            return true;
+                if(_list.Count == 1)
+                {
+                    value = _list[0].Value;
+                    _list.Clear();
+                    return true;
+                }
+
+                var root = _list[0];
+                _list[0] = _list[_list.Count - 1];
+                _list.RemoveAt(_list.Count - 1);
+
+                int index = 0;
+                while (true)
+                {
+                    int left = 2 * index + 1;
+                    int right = 2 * index + 2;
+                    int smallest = index;
+
+                    if (left < _list.Count && _comparer.Compare(_list[left].Priority, _list[smallest].Priority) < 0)
+                        smallest = left;
+                    if (right < _list.Count && _comparer.Compare(_list[right].Priority, _list[smallest].Priority) < 0 )
+                        smallest = right;
+
+
+                    if (index == smallest)
+                        break;
+
+                    var temp = _list[index];
+                    _list[index] = _list[smallest];
+                    _list[smallest] = temp;
+
+                    index = smallest;
+                }
+
+                value = root.Value;
+                return true;
             }
         }
     }
