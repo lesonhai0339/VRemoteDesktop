@@ -298,12 +298,12 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWorkGroup(List<TaskObject> tasks, QueuePriority priority)
         {
-            _senderQueue.Enqueue(tasks, priority);
+            _senderQueue.Enqueue(new TaskGroup(tasks), priority);
             //_senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
         }
         public void AddWorkGroup(TaskObject[] tasks, QueuePriority priority)
         {
-            _senderQueue.Enqueue(tasks, priority);
+            _senderQueue.Enqueue(new TaskGroup(tasks), priority);
             //_senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
         }
         /// <summary>
