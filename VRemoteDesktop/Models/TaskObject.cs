@@ -26,7 +26,7 @@ namespace VRemoteDesktop.Models
             ChunkFileInfo = chunkFileInfo;
         }
         public SocketDataType TaskType { get; set; } = SocketDataType.None;
-        public string SessionId { get; set; } = "0000000000000000";
+        public string SessionId { get; set; }
         public byte[] Data { get; set; } = new byte[0];
         public int Length => Data?.Length ?? 0;
         public bool IsSendHeader { get; set; } = true;
