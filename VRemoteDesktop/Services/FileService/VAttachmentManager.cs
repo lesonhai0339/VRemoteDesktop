@@ -81,7 +81,7 @@ namespace VRemoteDesktop.Services.FileService
             if(string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException("Id cannot be null or empty");
 
-            if (_files.TryGetValue(id, out var fileinfo))
+            if (_files.TryGetValue(id, out var fileinfo) && !fileinfo.IsSender)
             {
                 if (!string.IsNullOrWhiteSpace(fileinfo.SavePath))
                 {
