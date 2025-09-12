@@ -76,14 +76,14 @@ namespace VRemoteDesktop.Services.FileService
 
             return _files.TryGetValue(id, out VFileInfo file) ? file : null;
         }
-        public bool Remove(string id)
+        public bool Remove(string id, bool isRemoveFile = false)
         {
             if(string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException("Id cannot be null or empty");
 
-            if (_files.TryGetValue(id, out var fileinfo) && !fileinfo.IsSender)
+            if (_files.TryGetValue(id, out var fileinfo))
             {
-                if (!string.IsNullOrWhiteSpace(fileinfo.SavePath))
+                if (!string.IsNullOrWhiteSpace(fileinfo.SavePath) && !fileinfo.IsSender)
                 {
                     bool isSuccess = Helpers.FileHelper.RemoveFileByFilePath(fileinfo.SavePath);
                     if(isSuccess)

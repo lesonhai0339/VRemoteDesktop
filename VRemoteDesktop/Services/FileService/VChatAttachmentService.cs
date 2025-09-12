@@ -50,7 +50,7 @@ namespace VRemoteDesktop.Services.FileService
                 fileStream.Close();
                 fileStream?.Dispose();
             }
-            return _attachmentManager.Remove(id);
+            return _attachmentManager.Remove(id, true);
         }   
         public bool ReceivedFileInfo(byte[] rawData, bool isSender, out VFileInfo info)
         {
