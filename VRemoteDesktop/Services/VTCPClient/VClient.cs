@@ -276,6 +276,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             if (task.TaskType == SocketDataType.Chat)
             {
+                Console.WriteLine($"Process Send file: {task.ChunkFileInfo.FilePath} - offset:{task.ChunkFileInfo.Offset}");
                 ProcessFileTransfer(task);
                 return;
             }
