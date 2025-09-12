@@ -40,22 +40,22 @@ namespace VRemoteDesktop.Services.FileService
             }
         }
 
-        public string New(string fileName, string fileExtension, long fileSize , bool isSender)
-        {
-            if (string.IsNullOrWhiteSpace(fileName))
-                throw new ArgumentNullException("Filename cannot be null or empty");
-            if (string.IsNullOrWhiteSpace(fileExtension))
-                throw new ArgumentNullException("FileExtension cannot be null or empty");
-            if (fileSize <= 0)
-                throw new ArgumentOutOfRangeException("File size cannot equal 0 or negative");
-            VFileInfo fileInfo = new VFileInfo(id: null, filePath: null, fileExtension, fileName, fileSize, isSender);
-            bool flag = _files.TryAdd(fileInfo.Id, fileInfo);
+        //public string New(string fileName, string fileExtension, long fileSize , bool isSender)
+        //{
+        //    if (string.IsNullOrWhiteSpace(fileName))
+        //        throw new ArgumentNullException("Filename cannot be null or empty");
+        //    if (string.IsNullOrWhiteSpace(fileExtension))
+        //        throw new ArgumentNullException("FileExtension cannot be null or empty");
+        //    if (fileSize <= 0)
+        //        throw new ArgumentOutOfRangeException("File size cannot equal 0 or negative");
+        //    VFileInfo fileInfo = new VFileInfo(id: null, filePath: null, fileExtension, fileName, fileSize, isSender, null);
+        //    bool flag = _files.TryAdd(fileInfo.Id, fileInfo);
 
-            if(!flag)
-                throw new Exception("Cannot add new file info");
+        //    if(!flag)
+        //        throw new Exception("Cannot add new file info");
 
-            return fileInfo.Id;
-        }
+        //    return fileInfo.Id;
+        //}
         public bool Add(VFileInfo file)
         {
             if (file == null)

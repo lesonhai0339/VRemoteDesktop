@@ -8,7 +8,8 @@ namespace VRemoteDesktop.Events
     public enum FileStatus
     {
         NewReceived,
-        Finished
+        Finished,
+        CheckSumFailed
     }
     public class FileEventArgs: EventArgs
     {

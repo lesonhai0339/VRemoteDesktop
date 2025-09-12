@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -62,6 +63,23 @@ namespace VRemoteDesktop.Helpers
             using (var sha = SHA1.Create())
             {
                 var hash = sha.ComputeHash(data);
+                var stringBuilder = new StringBuilder(hash.Length * 2);
+                foreach (var item in hash)
+                {
+                    stringBuilder.Append(item.ToString("X2"));
+                }
+                return stringBuilder.ToString();
+            }
+        }
+        public static string SHAHash(string filePath)
+        {
+            if (!File.Exists(filePath))
+                return string.Empty;
+
+            using (var sha = SHA1.Create())
+            using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                var hash = sha.ComputeHash(stream);
                 var stringBuilder = new StringBuilder(hash.Length * 2);
                 foreach (var item in hash)
                 {

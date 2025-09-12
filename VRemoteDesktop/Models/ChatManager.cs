@@ -92,6 +92,8 @@ namespace VRemoteDesktop.Models
         }
         public string GetLastConnectionId()
         {
+            if (_curChat.Count == 0)
+                return string.Empty;
             return _curChat.Last().Key;
         }
         public VClient GetClientById(string id)
@@ -161,7 +163,6 @@ namespace VRemoteDesktop.Models
         {
             if(sender is VClient client)
             {
-                Remove(client.SocketId);
                 ChatDisconnected?.Invoke(this, new ChatDisconnectedEventArgs(client.SocketId));
             }
         }

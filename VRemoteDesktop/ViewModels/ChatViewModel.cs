@@ -10,6 +10,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
+using static System.Net.WebRequestMethods;
 namespace VRemoteDesktop.ViewModels
 {
     public class ChatViewModel: IDisposable
@@ -116,7 +117,9 @@ namespace VRemoteDesktop.ViewModels
                     message: string.Format("Xảy ra lỗi khi xóa chat connection"),
                     systemMessage: string.Format("Cannot remove connection with id {0} from chat connections", connectionId));
             }
-            SetCurrentConnectionActivate(_chatConnections.GetLastConnectionId());
+            //posible empty
+            string id = _chatConnections.GetLastConnectionId();
+            SetCurrentConnectionActivate(id);
             RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(ChatControlType.Connection, connectionId));
 
             return ChatRespondHelper.Success<bool>(
@@ -403,7 +406,7 @@ namespace VRemoteDesktop.ViewModels
                         systemMessage: "Cannot get file info");
                 }
 
-                string data = Helpers.StringHelper.StringBuilderWithSeparator(SEPRATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize);
+                string data = Helpers.StringHelper.StringBuilderWithSeparator(SEPRATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize, fileInfo.Checksum);
                 byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
                 Send(null, SocketDataType.Chat, ChatDataType.RequestSendFile, byteArray);
 
@@ -581,6 +584,11 @@ namespace VRemoteDesktop.ViewModels
         //Event event handler from FileService, this event is used to update progress bar UI when received file data, finally remove file out attachments when finished
         private void FileDataReceivedEventHandler(object sender, FileEventArgs e)
         {
+            if(e.Status == FileStatus.CheckSumFailed)
+            {
+                _chatAttachmentService.CleanUpFileInfo(e.FileId);
+                return;
+            }
             ProgressBarUpdateEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(e.FileId, e.Size, e.Status));
         }
         //Chat data received from partner from VClient

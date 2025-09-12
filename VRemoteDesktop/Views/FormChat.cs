@@ -310,11 +310,20 @@ namespace VRemoteDesktop.Views
         {
             if (_attachments.TryGetValue(e.FileId, out var attachment))
             {
-                if (e.Status == FileStatus.Finished)
+                if(e.Status == FileStatus.CheckSumFailed)
+                {
+                    //This only check 
+                    attachment.UpdateRequestSendFileStatus("File lỗi");
                     _attachments.TryRemove(e.FileId, out _);
+                }
+                else
+                {
+                    if (e.Status == FileStatus.Finished)
+                        _attachments.TryRemove(e.FileId, out _);
 
-                InvokeAction(() 
-                    => UpdateBar(attachment, e.Num));  
+                    InvokeAction(()
+                        => UpdateBar(attachment, e.Num));
+                }
             }
         }
         private void UpdateBar(FileAttachmentLayout f, int num)

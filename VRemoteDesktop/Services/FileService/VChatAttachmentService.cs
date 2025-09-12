@@ -73,7 +73,7 @@ namespace VRemoteDesktop.Services.FileService
             string[] fileInfo = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(rawData), DEFAULT_SEPRATOR);
 
             //At least for value (id, filename, fileExtension, file size)
-            if (fileInfo.Length < 4)
+            if (fileInfo.Length < 5)
                 throw new InvalidOperationException("Missing some data");
             //File id
             if (string.IsNullOrWhiteSpace(fileInfo[0]))
@@ -94,9 +94,19 @@ namespace VRemoteDesktop.Services.FileService
             {
                 throw new InvalidDataException("Invalid file size");
             }
+            //File checksum
+            if (string.IsNullOrWhiteSpace(fileInfo[4]))
+                throw new ArgumentNullException("File checksum cannot be null or empty");
             try
             {
-                info = new VFileInfo(id: fileInfo[0], filePath: null, filename: fileInfo[1], fileExtension: fileInfo[2], fileSize: size, isSender: false);
+                info = new VFileInfo(
+                    id: fileInfo[0], 
+                    filePath: null, 
+                    filename: fileInfo[1], 
+                    fileExtension: fileInfo[2], 
+                    fileSize: size, 
+                    isSender: false,
+                    checksum: fileInfo[4]);
                 return _attachmentManager.Add(info);
             }
             catch (Exception ex)
@@ -112,7 +122,18 @@ namespace VRemoteDesktop.Services.FileService
                 throw new ArgumentNullException(nameof(fileInfo));
             try
             {
-                info = new VFileInfo(id: null, filePath: fileInfo.FullName, filename: fileInfo.Name, fileExtension: fileInfo.Extension, fileSize: fileInfo.Length, isSender);
+                string checkSum = Helpers.StringHelper.SHAHash(fileInfo.FullName);
+                if (string.IsNullOrWhiteSpace(checkSum))
+                    return false;
+
+                info = new VFileInfo(
+                    id: null, 
+                    filePath: fileInfo.FullName, 
+                    filename: fileInfo.Name, 
+                    fileExtension: fileInfo.Extension, 
+                    fileSize: fileInfo.Length, 
+                    isSender: isSender,
+                    checksum: checkSum);
                 return _attachmentManager.Add(info);
             }
             catch (Exception ex)
@@ -192,6 +213,16 @@ namespace VRemoteDesktop.Services.FileService
                     WriteToFile(fileStream, offset, data, flush);
                     if (flush)
                     {
+                        string checkSum = Helpers.StringHelper.SHAHash(filePath);
+                        if (!string.IsNullOrWhiteSpace(checkSum))
+                        {
+                            var file = _attachmentManager.Get(fileId);
+                            if(!file.Checksum.Equals(checkSum))
+                            {
+                                FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.CheckSumFailed, fileId, data.Length, filePath));
+                                return;
+                            }
+                        }
                         //Received enough data
                         FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length, filePath));
                         //Remove stream

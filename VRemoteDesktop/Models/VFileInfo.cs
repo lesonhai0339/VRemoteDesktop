@@ -9,7 +9,7 @@ namespace VRemoteDesktop.Models
     public class VFileInfo
     {
         public VFileInfo() { }
-        public VFileInfo(string id,string filePath, string filename, string fileExtension, long fileSize, bool isSender)
+        public VFileInfo(string id,string filePath, string filename, string fileExtension, long fileSize, bool isSender, string checksum)
         {
             Id = id ?? Guid.NewGuid().ToString("N").Substring(0, FILE_ID_LENGTH);
             FilePath = filePath ?? string.Empty;
@@ -17,6 +17,7 @@ namespace VRemoteDesktop.Models
             Filename = filename;
             FileSize = fileSize;
             IsSender = isSender;
+            Checksum = checksum;
         }
         public string Id { get; set; }
 
@@ -28,6 +29,7 @@ namespace VRemoteDesktop.Models
         public long ReceivedSize { get; set; } = 0; 
         public DateTime LastWriteTime { get;set; } = DateTime.Now;
         public bool IsSender { get; set; }
+        public string Checksum { get; set; }
         public bool UpdateWriteTime(DateTime newTime)
         {
             if (newTime == null)
