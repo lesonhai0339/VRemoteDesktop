@@ -276,7 +276,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             if (task.TaskType == SocketDataType.Chat)
             {
-                Console.WriteLine($"Process Send file: {task.ChunkFileInfo.FilePath} - offset:{task.ChunkFileInfo.Offset}");
                 ProcessFileTransfer(task);
                 return;
             }
@@ -528,6 +527,8 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             else
             {
+                Console.WriteLine($"Process Send file: {task.ChunkFileInfo.FilePath} - offset:{task.ChunkFileInfo.Offset}");
+
                 int headerSize = DATATYPE_LENGTH +  INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
 
                 byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];

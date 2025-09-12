@@ -19,6 +19,7 @@ namespace VRemoteDesktop.Services.FileService
     public interface IVChatAttachmentService
     {
         event EventHandler<FileEventArgs> FileDataReceivedEvent;
+        bool CleanUpFileInfo(string id);
         bool RemoveFileInfo(string id);
         bool ReceivedFileInfo(byte[] rawData, bool isSender, out VFileInfo info);
         bool BuildSenderFileInfo(FileInfo fileInfo, bool isSender, out VFileInfo info);
@@ -50,8 +51,19 @@ namespace VRemoteDesktop.Services.FileService
                 fileStream.Close();
                 fileStream?.Dispose();
             }
-            return _attachmentManager.Remove(id, true);
-        }   
+            return _attachmentManager.Remove(id);
+        }
+        public bool CleanUpFileInfo(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id))
+                throw new ArgumentNullException("Id cannot be null or empty");
+            if (_curStreams.TryGetValue(id, out var fileStream))
+            {
+                fileStream.Close();
+                fileStream?.Dispose();
+            }
+            return _attachmentManager.CleanUpFile(id);
+        }
         public bool ReceivedFileInfo(byte[] rawData, bool isSender, out VFileInfo info)
         {
             info = null;
@@ -326,7 +338,7 @@ namespace VRemoteDesktop.Services.FileService
         {
             if(!string.IsNullOrWhiteSpace(e.FileId))
             {
-                _curStreams.TryRemove(e.FileId, out FileStream stream);
+                CleanUpFileInfo(e.FileId);
             }
         }
         public void Dispose()

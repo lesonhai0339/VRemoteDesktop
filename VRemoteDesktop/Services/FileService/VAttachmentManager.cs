@@ -76,22 +76,26 @@ namespace VRemoteDesktop.Services.FileService
 
             return _files.TryGetValue(id, out VFileInfo file) ? file : null;
         }
-        public bool Remove(string id, bool isRemoveFile = false)
+        public bool CleanUpFile(string fileId)
+        {
+            if (_files.TryGetValue(fileId, out var fileinfo))
+            {
+                if (!string.IsNullOrWhiteSpace(fileinfo.SavePath))
+                {
+                    bool isSuccess = Helpers.FileHelper.RemoveFileByFilePath(fileinfo.SavePath);
+                    if (isSuccess)
+                        return false;
+                }
+                return _files.TryRemove(fileId, out _);
+            }
+            return false;
+        }
+        public bool Remove(string id)
         {
             if(string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException("Id cannot be null or empty");
 
-            if (_files.TryGetValue(id, out var fileinfo))
-            {
-                if (!string.IsNullOrWhiteSpace(fileinfo.SavePath) && !fileinfo.IsSender)
-                {
-                    bool isSuccess = Helpers.FileHelper.RemoveFileByFilePath(fileinfo.SavePath);
-                    if(isSuccess)
-                        return false;
-                }
-                return _files.TryRemove(id, out _);
-            }
-            return false;
+            return _files.TryRemove(id, out _);
         }
         public bool Update(string id, VFileInfo file)
         {

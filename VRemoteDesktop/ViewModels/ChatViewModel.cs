@@ -331,7 +331,7 @@ namespace VRemoteDesktop.ViewModels
                 }
                 byte[] data = ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
                 Send(connection, SocketDataType.Chat, ChatDataType.StopReceivedFileData, data);
-                _chatAttachmentService.RemoveFileInfo(fileId);
+                _chatAttachmentService.CleanUpFileInfo(fileId);
                 return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("DeclinedFile send file on connection with id {0} success", _currentConnectionActivate),
                     data: true);
