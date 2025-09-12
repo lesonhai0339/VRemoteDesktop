@@ -296,10 +296,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                             {
                                 if (task.TaskType == SocketDataType.Chat)
                                 {
-                                    ChatDataType chatType = (ChatDataType)task.Data[1];
+                                    ChatDataType chatType = (ChatDataType)task.Data[0];
                                     if(chatType == ChatDataType.FileData)
                                     {
-                                        string id = ByteArrayHelper.ConvertByteArrayToString(task.Data, 1, RandomLength.FILE_ID_LENGTH, EncodingType.ASCII).GetResult();
+                                        string id = task.ChunkFileInfo.FileId;
                                         return id == fileId;
                                     }
                                 }

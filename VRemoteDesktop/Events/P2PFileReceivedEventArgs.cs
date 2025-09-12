@@ -7,6 +7,7 @@ namespace VRemoteDesktop.Events
 {
     public enum ChatFileType
     {
+        None,
         Accept, 
         Reject,
         Stop

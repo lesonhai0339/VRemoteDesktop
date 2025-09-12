@@ -8,8 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
-using static System.Net.Mime.MediaTypeNames;
-
+using static VRemoteDesktop.Utils.DefaultForm;
 namespace VRemoteDesktop.Layouts
 {
     public class FileAttachmentLayout: TableLayoutPanel
@@ -105,19 +104,8 @@ namespace VRemoteDesktop.Layouts
                     Text = "Cancel",
                     Name = "btnCancel"
                 };
-                _save.Click += (s, e) =>
-                {
-                    string savePath = Helpers.FileHelper.OpenFileDialogAndSaveFile(_fileInfo.Filename);
-                    if (!string.IsNullOrWhiteSpace(savePath))
-                    {
-                        _fileInfo.SavePath = savePath;
-                        AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(ChatFileType.Accept, savePath));
-                    }
-                };
-                _cancel.Click += (s, e) =>
-                {
-                    AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(ChatFileType.Reject, null));
-                };
+                _save.Click += ClickedEventHandler;
+                _cancel.Click += ClickedEventHandler;
 
                 this.Controls.Add(_save, 2, 0);
                 this.Controls.Add(_cancel, 2, 1);
@@ -127,7 +115,7 @@ namespace VRemoteDesktop.Layouts
                 _waitingPartnerAccept = new Label
                 {
                     AutoSize = false,
-                    Text = "Chờ đối tác xác nhận...",
+                    Text = FORM_WAITING_PARTNER_ACCEPTED,
                     Font = _defaultFont,
                     Dock = DockStyle.Fill
                 };
@@ -145,10 +133,7 @@ namespace VRemoteDesktop.Layouts
                     Text = "Stop",
                     Name = "btnStop",
                 };
-                _stop.Click += (s, e) =>
-                {
-                    AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(ChatFileType.Stop, _fileInfo.SavePath));
-                };
+                _stop.Click += ClickedEventHandler;
                 DisableControl(_cancel);
                 this.Controls.Remove(this._save);
                 this.Controls.Remove(this._fileSize);
@@ -173,7 +158,7 @@ namespace VRemoteDesktop.Layouts
                 this.Controls.Remove(_fileSize);
                 Label rj = new Label
                 {
-                    Text = "Đã từ chối file",
+                    Text = FORM_REJECT_FILE,
                     Name = "lbRejectFile",
                     AutoSize = false,
                     Font = _defaultFont,
@@ -220,6 +205,17 @@ namespace VRemoteDesktop.Layouts
             }
             ProgressBarCompletedTask(e.Type);
         }
+        public void RemoveProgressBar()
+        {
+            if (_progressbar != null)
+            {
+                _progressbar.ProgressBarEvent -= ProgressCompletedEventHandler;
+                this.Controls.Remove(_progressbar);
+                _progressbar.Dispose();
+                _progressbar = null;
+            }
+            ProgressBarCompletedTask(ProgressbarEnum.Stop);
+        }
         private void ProgressBarCompletedTask(ProgressbarEnum type)
         {
             var oldControl = this.GetControlFromPosition(1, 1);
@@ -230,7 +226,12 @@ namespace VRemoteDesktop.Layouts
             }
             Label btn = new Label
             {
-                Text = (type == ProgressbarEnum.Finished) ? "Hoàn thành" : "Xảy ra lỗi",
+                Text = type == ProgressbarEnum.Finished ? FORM_COMPLETED
+                : type == ProgressbarEnum.Error ? FORM_ERROR
+                : type == ProgressbarEnum.Timeout ? FORM_TIMEOUT_TITLE
+                : type == ProgressbarEnum.Stop ? FORM_STOP                                                                                                                                                              
+                : "Lỗi",
+
                 AutoSize = false,
                 Font = _defaultFont,
                 Dock = DockStyle.Fill,
@@ -241,12 +242,44 @@ namespace VRemoteDesktop.Layouts
         {
             _waitingPartnerAccept.Text = text;
         }
+        private void ClickedEventHandler(object sender, EventArgs e)
+        {
+            string savePath = string.Empty;
+            ChatFileType type = ChatFileType.None;
+            if (sender is Button btnStop && btnStop == _stop)
+            {
+                type = ChatFileType.Stop;
+            }
+            if (sender is Button btnSave && btnSave == _save)
+            {
+                savePath = Helpers.FileHelper.OpenFileDialogAndSaveFile(_fileInfo.Filename);
+                type = ChatFileType.Accept;
+            }
+            if (sender is Button btnCancel && btnCancel == _cancel)
+            {
+                type = ChatFileType.Reject;
+            }
+
+            AcceptSaveFile?.Invoke(sender, new P2PFileReceivedEventArgs(type, savePath));
+        }
         protected override void Dispose(bool disposing)
         {
             if (disposing)
             {
                 if(_progressbar != null)
                     _progressbar.ProgressBarEvent -= ProgressCompletedEventHandler;
+
+                if(_save != null)
+                    _save.Click -= ClickedEventHandler;
+
+                if (_cancel != null)
+                    _cancel.Click -= ClickedEventHandler;
+
+                if (_stop != null)
+                    _stop.Click -= ClickedEventHandler;
+
+                _fileImage?.Image?.Dispose();
+                _defaultFont?.Dispose();
             }
             base.Dispose(disposing);
         }

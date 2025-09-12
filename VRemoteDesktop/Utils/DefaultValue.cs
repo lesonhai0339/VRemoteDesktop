@@ -37,6 +37,12 @@ namespace VRemoteDesktop.Utils
     }
     public static class DefaultForm
     {
+        public static string FORM_COMPLETED = "Hoàn thành";
+        public static string FORM_ERROR = "Xảy ra lỗi";
+        public static string FORM_STOP = "Dừng";
+        public static string FORM_REJECT_FILE = "Đã từ chối file";
+        public static string FORM_WAITING = "Vui lòng chờ...";
+        public static string FORM_WAITING_PARTNER_ACCEPTED = "Vui lòng đối tác xác nhận...";
         public static string FORM_SUCCESS_TITLE = "Thành công";
         public static string FORM_FAILED_TITLE = "Thất bại";
         public static string FORM_ERROR_TITLE = "Xảy ra lỗi";

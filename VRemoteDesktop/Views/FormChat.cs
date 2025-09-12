@@ -404,7 +404,7 @@ namespace VRemoteDesktop.Views
                         var respond = _chatViewModel.StopReceivedFileDataByFileId(parent.Id);
                         RespondHandler(respond);
                         if (respond.IsSuccess)
-                            parent.RejectSendFile();
+                            parent.RemoveProgressBar();
 
                         _attachments.TryRemove(parent.Id, out _);
                     }

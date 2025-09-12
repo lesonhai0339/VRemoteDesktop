@@ -9,6 +9,7 @@ namespace VRemoteDesktop.Events
     {
         Finished,
         Timeout,
+        Stop,
         Error
     }
     public class ChatProgressBarEventArgs: EventArgs

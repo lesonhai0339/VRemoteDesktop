@@ -45,7 +45,11 @@ namespace VRemoteDesktop.Services.FileService
         {
             if (string.IsNullOrWhiteSpace(id))
                 throw new ArgumentNullException("Id cannot be null or empty");
-
+            if(_curStreams.TryGetValue(id, out var fileStream))
+            {
+                fileStream.Close();
+                fileStream?.Dispose();
+            }
             return _attachmentManager.Remove(id);
         }   
         public bool ReceivedFileInfo(byte[] rawData, bool isSender, out VFileInfo info)

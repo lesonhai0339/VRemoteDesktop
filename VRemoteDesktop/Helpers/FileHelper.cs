@@ -296,5 +296,20 @@ namespace VRemoteDesktop.Helpers
                 }
             }
         }
+        public static bool RemoveFileByFilePath(string filepath)
+        {
+            if (!File.Exists(filepath)) return false;
+            try
+            {
+                using (FileStream stream = new FileStream(filepath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+                File.Delete(filepath);
+                return true;
+            }
+            catch
+            {
+                //File opened on another process
+                return false;
+            }
+        }
     }
 }
