@@ -195,7 +195,7 @@ namespace VRemoteDesktop.Services.FileService
                 byte[] data = new byte[rawData.Length - 20];
                 Buffer.BlockCopy(rawData, 20, data, 0, data.Length);
 
-                string filePath = _attachmentManager.Get(fileId)?.FilePath;
+                string filePath = _attachmentManager.Get(fileId)?.SavePath;
                 var fileStream = FindFileStream(fileId);
                 if (fileStream == null)
                     throw new InvalidOperationException("Does not exist file stream with id: " + fileId);
@@ -213,6 +213,11 @@ namespace VRemoteDesktop.Services.FileService
                     WriteToFile(fileStream, offset, data, flush);
                     if (flush)
                     {
+                        if (_curStreams.TryGetValue(fileId, out var s))
+                        {
+                            s.Close();
+                            s?.Dispose();
+                        }
                         string checkSum = Helpers.StringHelper.SHAHash(filePath);
                         if (!string.IsNullOrWhiteSpace(checkSum))
                         {
@@ -222,6 +227,11 @@ namespace VRemoteDesktop.Services.FileService
                                 FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.CheckSumFailed, fileId, data.Length, filePath));
                                 return;
                             }
+                        }
+                        else
+                        {
+                            FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.CheckSumFailed, fileId, data.Length, filePath));
+                            return;
                         }
                         //Received enough data
                         FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length, filePath));
