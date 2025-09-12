@@ -44,7 +44,7 @@ namespace VRemoteDesktop
             }
             finally
             {
-                _remoteDesktopService.Dispose();
+                _remoteDesktopService?.Dispose();
             }
         }
     }

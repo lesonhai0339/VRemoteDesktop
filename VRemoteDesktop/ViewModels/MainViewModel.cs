@@ -13,8 +13,9 @@ using static VRemoteDesktop.Utils.RandomLength;
 
 namespace VRemoteDesktop.ViewModels
 {
-    public class MainViewModel : INotifyPropertyChanged
+    public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
+        private bool _disposed = false;
         private bool _isLogged = false;
         private string _id;
         private string _myId;
@@ -172,5 +173,22 @@ namespace VRemoteDesktop.ViewModels
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
         #endregion
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_disposed) return;
+
+                if(_remoteDesktopService != null)
+                    _remoteDesktopService.DataReceivedEvent -= TCPClientManagerEventHandler;
+
+                _resetEvent.Dispose();
+            }
+        }
     }
 }

@@ -28,6 +28,7 @@ namespace VRemoteDesktop.Models
         int GetMessageCountById(string id);
         List<T> GetMessages(string id);
         List<T> GetMessages(string id, int offset, int length);
+        List<VClient> GetAllConnection();
         bool ContainsKey(string id);
         event EventHandler<ChatDisconnectedEventArgs> ChatDisconnected;
         void Dispose();
@@ -39,6 +40,10 @@ namespace VRemoteDesktop.Models
         public ChatManager()
         {
             _curChat = new ConcurrentDictionary<string, VChat<T>>();
+        }
+        public List<VClient> GetAllConnection()
+        {
+            return _curChat.Values.ToArray().Select(x => x.Client).ToList();
         }
         public bool Add(string id, VClient client)
         {

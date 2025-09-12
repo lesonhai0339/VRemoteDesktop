@@ -103,7 +103,12 @@ namespace VRemoteDesktop
         {
            Connect();
         }
-
+        private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if(_viewModel != null)
+                _viewModel.ClientAcceptRequestRemote -= ClientAcceptRequestRemoteEventHandler;
+            _viewModel.Dispose();
+        }
         private void btnConnect_Click(object sender, EventArgs e)
         {
             string partnetId = txtPartnerId.Text.Replace(" ", "");

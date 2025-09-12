@@ -16,7 +16,7 @@ namespace VRemoteDesktop.Utils
         public static int ID_LENGTH = 8;
         public static int PASSWORD_LENGTH = 4;
         public static int SOCKET_ID_LENGTH = 8;
-        public static int FILE_ID_LENGTH = 1;
+        public static int FILE_ID_LENGTH = 16;
         public static int RANDOM_STRING_LENGTH = 8;
         public static int RANDOM_GUILD_LENGTH = 16;
     }

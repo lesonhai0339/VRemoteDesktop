@@ -2,19 +2,22 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Text;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
 using VRemoteDesktop.Services.VTCPClient;
-using static VRemoteDesktop.Utils.DefaultChat;
-using static VRemoteDesktop.Utils.DefaultValue;
-
+using VRemoteDesktop.Utils;
 namespace VRemoteDesktop.ViewModels
 {
     public class ChatViewModel: IDisposable
     {
+        private readonly int NUMBER_OF_MESSAGE_LOADED = DefaultChat.DEFAULT_MESSAGE_LOAD;
+        private readonly string DEFAULT_CHAT_FOLDER = DefaultChat.DEFAULT_CHAT_FOLDER;
+        private readonly string SEPRATOR = DefaultValue.DEFAULT_SEPRATOR;
+        private readonly int FILEID_LENGTH = RandomLength.FILE_ID_LENGTH;
         private bool _disposed = false;
         private readonly object _lock = new object();
         private string _currentConnectionActivate;
@@ -39,7 +42,8 @@ namespace VRemoteDesktop.ViewModels
                 { ChatDataType.RequestSendFile, ProcessRequestSendFile },
                 { ChatDataType.AcceptedSendFile, ProcessAcceptSendFile },
                 { ChatDataType.DeclinedSendFile, ProcessDeclineSendFile },
-                { ChatDataType.FileData, ProcessFileDataReceived }
+                { ChatDataType.FileData, ProcessFileDataReceived },
+                { ChatDataType.StopReceivedFileData, ProcessPartnerStopReceiveFile },
             };
             _saveChat = new SaveChat(); 
             _chatAttachmentService = new VChatAttachmentService();
@@ -306,6 +310,38 @@ namespace VRemoteDesktop.ViewModels
                        message: string.Format("Xảy ra lỗi", nameof(DeclinedFile)),
                        systemMessage: string.Format("Unexcepted error on {0}, error: {1}", nameof(DeclinedFile), ex.Message));
             }
+        }/// <summary>
+         /// Stop received file data from specified file by fileId
+         /// </summary>
+         /// <param name="fileId"></param>
+         /// <returns><see cref="ChatRespond{T}"/><see cref="bool"/></returns>
+        public ChatRespond<bool> StopReceivedFileDataByFileId(string fileId)
+        {
+            try
+            {
+                if (!StringValidate<bool>(fileId, nameof(fileId), out var respond))
+                    return respond;
+
+                var connection = _chatConnections.GetClientById(_currentConnectionActivate);
+                if (connection == null)
+                {
+                    return ChatRespondHelper.Failed<bool>(
+                     message: string.Format("Xảy ra lỗi", nameof(AcceptedFile)),
+                     systemMessage: string.Format("Cannot find conncetion on current id {0}", _currentConnectionActivate));
+                }
+                byte[] data = ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
+                Send(connection, SocketDataType.Chat, ChatDataType.StopReceivedFileData, data);
+                _chatAttachmentService.RemoveFileInfo(fileId);
+                return ChatRespondHelper.Success<bool>(
+                    systemMessage: string.Format("DeclinedFile send file on connection with id {0} success", _currentConnectionActivate),
+                    data: true);
+            }
+            catch (Exception ex)
+            {
+                return ChatRespondHelper.Error<bool>(
+                       message: string.Format("Xảy ra lỗi", nameof(DeclinedFile)),
+                       systemMessage: string.Format("Unexcepted error on {0}, error: {1}", nameof(DeclinedFile), ex.Message));
+            }
         }
         /// <summary>
         /// Get current connection id
@@ -367,7 +403,7 @@ namespace VRemoteDesktop.ViewModels
                         systemMessage: "Cannot get file info");
                 }
 
-                string data = Helpers.StringHelper.StringBuilderWithSeparator(DEFAULT_SEPRATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize);
+                string data = Helpers.StringHelper.StringBuilderWithSeparator(SEPRATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize);
                 byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
                 Send(null, SocketDataType.Chat, ChatDataType.RequestSendFile, byteArray);
 
@@ -430,7 +466,7 @@ namespace VRemoteDesktop.ViewModels
             string chatHistoryFilePath = GetChatPath(connectionId);
             if (StringValidate<bool>(chatHistoryFilePath, nameof(chatHistoryFilePath), out var fileRespond))
             {
-                object[] messages = _saveChat.ReadLastMessagesObject(chatHistoryFilePath, DEFAULT_MESSAGE_LOAD);
+                object[] messages = _saveChat.ReadLastMessagesObject(chatHistoryFilePath, NUMBER_OF_MESSAGE_LOADED);
                 if (messages == null || messages.Length == 0)
                 {
                     return ChatRespondHelper.Error<bool>(
@@ -529,31 +565,6 @@ namespace VRemoteDesktop.ViewModels
             {
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
                 return;
-            }
-        }
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                if(_disposed) return;
-
-                if (_chatAttachmentService != null)
-                    _chatAttachmentService.FileDataReceivedEvent -= FileDataReceivedEventHandler;
-
-                if (_chatConnections != null)
-                    _chatConnections.ChatDisconnected -= ChatDisconnectedEventHandler;
-
-                _chatAttachmentService.Dispose();
-                _chatConnections.Dispose();
-                _saveChat.Dispose();
-
-                _handlers.Clear();
-                _disposed = true;
             }
         }
         #endregion
@@ -689,6 +700,50 @@ namespace VRemoteDesktop.ViewModels
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
             }
         }
+        private void ProcessPartnerStopReceiveFile(VClient client, byte[] arg2)
+        {
+            try
+            {
+                string fileId = Encoding.ASCII.GetString(arg2, 0, FILEID_LENGTH);
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.StopSendingAttachment, fileId));
+
+                //Need to find which Vclient sending this file but now using for to send stop send file with specific file id to all Vclient
+                var connections = _chatConnections.GetAllConnection();
+                foreach (var connection in connections)
+                {
+                    connection.RemoveTaskByType(SocketDataType.Chat, ChatDataType.StopReceivedFileData, fileId);
+                }
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
         #endregion
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_disposed) return;
+
+                if (_chatAttachmentService != null)
+                    _chatAttachmentService.FileDataReceivedEvent -= FileDataReceivedEventHandler;
+
+                if (_chatConnections != null)
+                    _chatConnections.ChatDisconnected -= ChatDisconnectedEventHandler;
+
+                _chatAttachmentService.Dispose();
+                _chatConnections.Dispose();
+                _saveChat.Dispose();
+
+                _handlers.Clear();
+                _disposed = true;
+            }
+        }
     }
 }

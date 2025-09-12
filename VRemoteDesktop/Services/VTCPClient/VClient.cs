@@ -21,7 +21,6 @@ using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Utils;
 using VRemoteDesktop.ViewModels;
 using VRemoteServer.Models;
-using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
@@ -283,20 +282,33 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
         }
-        public void RemoveTaskByType(string fileId)
+        public void RemoveTaskByType(SocketDataType socketType, object dataType, object data)
         {
-            int removed = _senderQueue.RemoveAll(item =>
+            if(socketType == SocketDataType.Chat)
             {
-                if (item is TaskObject task)
+                if(dataType is ChatDataType chat && chat == ChatDataType.StopReceivedFileData)
                 {
-                    if(task.TaskType == SocketDataType.Chat)
+                    if(data is string fileId)
                     {
-                        string id = Helpers.ByteArrayHelper.ConvertByteArrayToString(task.Data, 1, 16, EncodingType.ASCII).GetResult();
-                        return id == fileId;
+                        int removed = _senderQueue.RemoveAll(QueuePriority.Low,item =>
+                        {
+                            if (item is TaskObject task)
+                            {
+                                if (task.TaskType == SocketDataType.Chat)
+                                {
+                                    ChatDataType chatType = (ChatDataType)task.Data[1];
+                                    if(chatType == ChatDataType.FileData)
+                                    {
+                                        string id = ByteArrayHelper.ConvertByteArrayToString(task.Data, 1, RandomLength.FILE_ID_LENGTH, EncodingType.ASCII).GetResult();
+                                        return id == fileId;
+                                    }
+                                }
+                            }
+                            return false;
+                        });
                     }
-                }
-                return false;
-            });
+                }             
+            }     
         }
         public void AddWork(TaskObject task, QueuePriority priority)
         {
@@ -677,6 +689,18 @@ namespace VRemoteDesktop.Services.VTCPClient
                     if(_senderQueue != null)
                     {
                         _senderQueue.Dispose();
+                    }
+                    lock (_lockObject)
+                    {
+                        try
+                        {
+                            Send(SocketDataType.P2PDisconnect, new byte[0], null, true);
+                            Thread.Sleep(50);
+                        }
+                        catch (Exception ex)
+                        {
+                            Logger.Log.ForContext("", this.GetType().Name).Error(ex, "Send disconnection at dispose error: ");
+                        }
                     }
                     try
                     {

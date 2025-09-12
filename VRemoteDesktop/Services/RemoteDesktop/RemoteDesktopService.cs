@@ -23,14 +23,16 @@ using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
+using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
-using static VRemoteDesktop.Utils.DefaultValue;
-using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public class RemoteDesktopService : IDisposable
     {
+        
+        private readonly int SOCKETID_LENGTH = RandomLength.SOCKET_ID_LENGTH;
+        private readonly string SEPRATOR = DefaultValue.DEFAULT_SEPRATOR;
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.Getvalue("RemoteServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.Getvalue("RemoteServerPort");
         private volatile bool _disposed;
@@ -50,7 +52,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             _globalHook = globalHook;
             _vClientManager = vClientManager;
-
 
             _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
             _globalHook.KeyboardReceived += KeyboardEventHandler;
@@ -86,7 +87,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
             _reset.WaitOne(5000);
-            string dataString = StringHelper.StringBuilderWithSeparator(DEFAULT_SEPRATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+            string dataString = StringHelper.StringBuilderWithSeparator(SEPRATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
             newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
@@ -184,7 +185,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if(sender is VClient client)
                 {
-                    string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, 8, EncodingType.ASCII).GetResult();
+                    string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, SOCKETID_LENGTH, EncodingType.ASCII).GetResult();
                     byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
  
                     client.Send(SocketDataType.P2PRejectConnect, dataBytes, client.SocketId, true);
@@ -198,7 +199,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 if(sender is VClient client)
                 {
                     string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                    string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, DEFAULT_SEPRATOR);
+                    string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, SEPRATOR);
                     ClientInfo partnerInfo = new ClientInfo
                     {
                         Id = stringArray[0],
@@ -251,7 +252,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if (data.Count == 0 || totalSize == 0)
                 {
-                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    Logger.Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
                     return null;
                 }
                 TaskObject[] tasks = new TaskObject[data.Count];
@@ -271,7 +272,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
                 return null;
             }
         }
@@ -281,7 +282,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if (data.Count == 0 || totalSize == 0)
                 {
-                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    Logger.Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
                     return;
                 }
                 var header = client.GenerateP2PHeader(type, totalSize, client.SocketId);
@@ -311,7 +312,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
         }
         private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)
@@ -322,7 +323,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing mouse data");
+                Logger.Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing mouse data");
             }
         }
         private void KeyboardReceivedEventHandler(object sender, P2PClientDataReceived e)
@@ -333,7 +334,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", nameof(KeyboardReceivedEventHandler)).Error(ex, "Error processing keyboard data");
+                Logger.Log.ForContext("FileName", nameof(KeyboardReceivedEventHandler)).Error(ex, "Error processing keyboard data");
             }
         }
         private void ProcessP2PDisconnect(object sender, P2PClientDataReceived e)
@@ -411,23 +412,24 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (disposing)
             {
-                if (disposing)
+
+                if (_disposed) return;
+
+                StopKeyboardListener();
+                if (_globalHook != null)
                 {
-                    StopKeyboardListener();
-                    if(_globalHook != null)
-                    {
-                        _globalHook.ScreenCaptureChanged -= ScreenCaptureEventHandler;
-                        _globalHook.KeyboardReceived -= KeyboardEventHandler;
-                        _globalHook.Dispose();
-                    }
-                    if(_vClientManager != null)
-                    {
-                        _vClientManager.ClientDataReceived -= ClientDataReceivedEventHandler;
-                        _vClientManager.Dispose();
-                    }
+                    _globalHook.ScreenCaptureChanged -= ScreenCaptureEventHandler;
+                    _globalHook.KeyboardReceived -= KeyboardEventHandler;
+                    _globalHook.Dispose();
                 }
+                if (_vClientManager != null)
+                {
+                    _vClientManager.ClientDataReceived -= ClientDataReceivedEventHandler;
+                    _vClientManager.Dispose();
+                }
+                _disposed = true;
             }
         }
     }

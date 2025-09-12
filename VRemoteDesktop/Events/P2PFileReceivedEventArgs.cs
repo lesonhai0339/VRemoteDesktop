@@ -5,14 +5,20 @@ using System.Text;
 
 namespace VRemoteDesktop.Events
 {
+    public enum ChatFileType
+    {
+        Accept, 
+        Reject,
+        Stop
+    }
     public class P2PFileReceivedEventArgs : EventArgs
     {
-        public P2PFileReceivedEventArgs(bool acceptSave, string filePath)
+        public P2PFileReceivedEventArgs(ChatFileType type, string filePath)
         {
-            this.AcceptSave = acceptSave;
+            this.Type = type;
             this.FilePath = filePath;
         }
-        public bool AcceptSave { get; set; }
+        public ChatFileType Type { get; set; }
         public string FilePath { get; set; }
     }
 }

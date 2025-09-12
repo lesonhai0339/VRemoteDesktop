@@ -22,6 +22,7 @@ namespace VRemoteDesktop.Layouts
         private Label _fileSize;
         private Button _save;
         private Button _cancel;
+        private Button _stop;
         private Label _waitingPartnerAccept;
         private VFileInfo _fileInfo;
         private VProgressBar _progressbar;
@@ -107,11 +108,15 @@ namespace VRemoteDesktop.Layouts
                 _save.Click += (s, e) =>
                 {
                     string savePath = Helpers.FileHelper.OpenFileDialogAndSaveFile(_fileInfo.Filename);
-                    AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(true, savePath));
+                    if (!string.IsNullOrWhiteSpace(savePath))
+                    {
+                        _fileInfo.SavePath = savePath;
+                        AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(ChatFileType.Accept, savePath));
+                    }
                 };
                 _cancel.Click += (s, e) =>
                 {
-                    AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(false, null));
+                    AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(ChatFileType.Reject, null));
                 };
 
                 this.Controls.Add(_save, 2, 0);
@@ -135,12 +140,22 @@ namespace VRemoteDesktop.Layouts
         {
             try
             {
-                DisableControl(_save);
+                _stop = new Button
+                {
+                    Text = "Stop",
+                    Name = "btnStop",
+                };
+                _stop.Click += (s, e) =>
+                {
+                    AcceptSaveFile?.Invoke(s, new P2PFileReceivedEventArgs(ChatFileType.Stop, _fileInfo.SavePath));
+                };
                 DisableControl(_cancel);
+                this.Controls.Remove(this._save);
                 this.Controls.Remove(this._fileSize);
 
                 _progressbar = new VProgressBar(_fileInfo);
                 _progressbar.ProgressBarEvent += ProgressCompletedEventHandler;
+                this.Controls.Add(_stop, 2, 0);
                 this.Controls.Add(_progressbar, 1, 1);
             }
             finally

@@ -11,7 +11,7 @@ namespace VRemoteDesktop.Models
         public VFileInfo() { }
         public VFileInfo(string id,string filePath, string filename, string fileExtension, long fileSize, bool isSender)
         {
-            Id = id ?? Guid.NewGuid().ToString("N").Substring(0, RANDOM_GUILD_LENGTH);
+            Id = id ?? Guid.NewGuid().ToString("N").Substring(0, FILE_ID_LENGTH);
             FilePath = filePath ?? string.Empty;
             FileExtension = fileExtension;
             Filename = filename;

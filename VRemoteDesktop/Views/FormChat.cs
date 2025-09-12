@@ -390,7 +390,16 @@ namespace VRemoteDesktop.Views
                         }
                     }
                     //Reject file
-                    if (string.Compare(btn.Name, "btnCancel") == 0)
+                    else if (string.Compare(btn.Name, "btnCancel") == 0)
+                    {
+                        var respond = _chatViewModel.DeclinedFile(parent.Id);
+                        RespondHandler(respond);
+                        if (respond.IsSuccess)
+                            parent.RejectSendFile();
+
+                        _attachments.TryRemove(parent.Id, out _);
+                    }
+                    else if (string.Compare(btn.Name, "btnStop") == 0)
                     {
                         var respond = _chatViewModel.DeclinedFile(parent.Id);
                         RespondHandler(respond);
@@ -411,8 +420,11 @@ namespace VRemoteDesktop.Views
                     if (e.Type == ChatControlType.AcceptAttachment)
                         attachment.UpdateRequestSendFileStatus("Đối tác đã chấp nhận");
 
-                    if (e.Type == ChatControlType.RejectAttachment)
+                    else if (e.Type == ChatControlType.RejectAttachment)
                         attachment.UpdateRequestSendFileStatus("Đối tác đã từ chối");
+
+                    else if(e.Type == ChatControlType.StopSendingAttachment)
+                        attachment.UpdateRequestSendFileStatus("Đối tác hủy nhận file");
                 }
                 else
                 {

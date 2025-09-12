@@ -14,5 +14,6 @@ namespace VRemoteDesktop.Enums
         AcceptedSendFile,
         DeclinedSendFile,
         FileData,
+        StopReceivedFileData,
     }
 }

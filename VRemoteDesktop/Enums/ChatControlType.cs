@@ -12,6 +12,7 @@ namespace VRemoteDesktop.Enums
         RequestAttachment,
         ReceivedAttachment,
         AcceptAttachment,
-        RejectAttachment
+        RejectAttachment,
+        StopSendingAttachment
     }
 }
