@@ -26,7 +26,7 @@ namespace VRemoteDesktop.Models
         public string FilePath { get; set; }
         public string SavePath { get; set; } = string.Empty;
         public long ReceivedSize { get; set; } = 0; 
-        public DateTime LastWriteTime { get;set; } = DateTime.MinValue;
+        public DateTime LastWriteTime { get;set; } = DateTime.Now;
         public bool IsSender { get; set; }
         public bool UpdateWriteTime(DateTime newTime)
         {

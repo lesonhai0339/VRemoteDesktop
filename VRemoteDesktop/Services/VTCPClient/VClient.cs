@@ -527,7 +527,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             else
             {
-                Console.WriteLine($"Process Send file: {task.ChunkFileInfo.FilePath} - offset:{task.ChunkFileInfo.Offset}");
+                Console.WriteLine($"Process Send file: {task.ChunkFileInfo.FilePath} - offset:{task.ChunkFileInfo.Offset} - id:{SocketId}");
 
                 int headerSize = DATATYPE_LENGTH +  INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
 
