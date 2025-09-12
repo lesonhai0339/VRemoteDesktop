@@ -401,7 +401,7 @@ namespace VRemoteDesktop.Views
                     }
                     else if (string.Compare(btn.Name, "btnStop") == 0)
                     {
-                        var respond = _chatViewModel.DeclinedFile(parent.Id);
+                        var respond = _chatViewModel.StopReceivedFileDataByFileId(parent.Id);
                         RespondHandler(respond);
                         if (respond.IsSuccess)
                             parent.RejectSendFile();
