@@ -7,6 +7,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Models;
 using static VRemoteDesktop.Interop.Win32Apis;
 using static VRemoteDesktop.Utils.Logger;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Services.Mouse
 {
@@ -25,42 +26,62 @@ namespace VRemoteDesktop.Services.Mouse
         /// <returns><b>scaleX</b> and <b>scaleY</b></returns>
         private static Tuple<float, float> CalculateMouseCoordinate(int senderWidth, int senderHeight, int meWidth, int meHeight)
         {
+            if (senderWidth < 0 || senderHeight < 0 || meWidth < 0 || meHeight < 0)
+                return null;
+
             float scaleX = (float)meWidth / senderWidth;
             float scaleY = (float)meHeight / senderHeight;
             return new Tuple<float, float>(item1: scaleX, item2: scaleY);
         }
         public static MouseReceived BytesToCustomMouseEvent(byte[] data, int width, int height)
         {
+            if (data == null || data.Length == 0)
+                return null;
+
+            if (width < 0 || height < 0)
+                return null;
+
             string[] mouseData = Encoding.ASCII.GetString(data).Trim().Split('|');
-            if (mouseData.Length != 6)
-            {
-                Log.ForContext("FileName", "MouseHook").Error("Number of elements not exaclly");
-                throw new ArgumentException("Invalid arguments exception");
-            }
-            int senderSceenWidth = int.Parse(mouseData[0]);
-            int senderScreenHeight = int.Parse(mouseData[1]);
-            int receiverScreenWidth = width;
-            int receiverScreenHeight = height;
-            WindowsMouseMessage button = (WindowsMouseMessage)Enum.Parse(typeof(WindowsMouseMessage), mouseData[2]);
-            MouseAction action = (MouseAction)Enum.Parse(typeof(MouseAction), mouseData[3]);
-            int mouseX = int.Parse(mouseData[4]);
-            int mouseY = int.Parse(mouseData[5]);
+
+            if (mouseData.Length != DefaultMouse.MOUSE_MIN_FIELDS)
+                return null;
+            if (!int.TryParse(mouseData[DefaultMouse.MOUSE_PARTNET_WIDTH_INDEX], out int partnerWidth)
+                || partnerWidth < 0)
+                return null;
+            if (!int.TryParse(mouseData[DefaultMouse.MOUSE_PARTNER_HEIGHT_INDEX], out int partnerHeight)
+                || partnerHeight < 0)
+                return null;
+            if (!Enum.TryParse(mouseData[DefaultMouse.MOUSE_MESSAGE], out WindowsMouseMessage message)
+                || !Enum.IsDefined(typeof(WindowsMouseMessage), message))
+                return null;
+            if (!Enum.TryParse(mouseData[DefaultMouse.MOUSE_ACTION], out MouseAction action)
+                || !Enum.IsDefined(typeof(MouseAction), action))
+                return null;
+            if (!int.TryParse(mouseData[DefaultMouse.MOUSE_X], out int x)
+                || x < 0)
+                return null;
+            if (!int.TryParse(mouseData[DefaultMouse.MOUSE_Y], out int y)
+                || y < 0)
+                return null;
 
             return new MouseReceived
             {
-                SenderWidth = senderSceenWidth,
-                SenderHeight = senderScreenHeight,
-                ReceiverWidth = receiverScreenWidth,
-                ReceiverHeight = receiverScreenHeight,
-                Button = button,
+                SenderWidth = partnerWidth,
+                SenderHeight = partnerHeight,
+                ReceiverWidth = width,
+                ReceiverHeight = height,
+                Button = message,
                 Action = action,
-                X = mouseX,
-                Y = mouseY
+                X = x,
+                Y = y
             };
         }
         public static bool MouseEvent(MouseReceived mouseEvent)
         {
             Tuple<float, float> scales = CalculateMouseCoordinate(mouseEvent.SenderWidth, mouseEvent.SenderHeight, mouseEvent.ReceiverWidth, mouseEvent.ReceiverHeight);
+            if (scales == null)
+                return false;
+
             bool flag = false;
             List<WindowsMouseEvent> mouseEvents = new List<WindowsMouseEvent>();
             switch (mouseEvent.Button)

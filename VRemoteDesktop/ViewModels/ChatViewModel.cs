@@ -15,10 +15,6 @@ namespace VRemoteDesktop.ViewModels
 {
     public class ChatViewModel: IDisposable
     {
-        private readonly int NUMBER_OF_MESSAGE_LOADED = DefaultChat.DEFAULT_MESSAGE_LOAD;
-        private readonly string DEFAULT_CHAT_FOLDER = DefaultChat.DEFAULT_CHAT_FOLDER;
-        private readonly string SEPRATOR = DefaultValue.DEFAULT_SEPRATOR;
-        private readonly int FILEID_LENGTH = RandomLength.FILE_ID_LENGTH;
         private bool _disposed = false;
         private readonly object _lock = new object();
         private string _currentConnectionActivate;
@@ -406,7 +402,7 @@ namespace VRemoteDesktop.ViewModels
                         systemMessage: "Cannot get file info");
                 }
 
-                string data = Helpers.StringHelper.StringBuilderWithSeparator(SEPRATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize, fileInfo.Checksum);
+                string data = Helpers.StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPRATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize, fileInfo.Checksum);
                 byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
                 Send(null, SocketDataType.Chat, ChatDataType.RequestSendFile, byteArray);
 
@@ -469,7 +465,7 @@ namespace VRemoteDesktop.ViewModels
             string chatHistoryFilePath = GetChatPath(connectionId);
             if (StringValidate<bool>(chatHistoryFilePath, nameof(chatHistoryFilePath), out var fileRespond))
             {
-                object[] messages = _saveChat.ReadLastMessagesObject(chatHistoryFilePath, NUMBER_OF_MESSAGE_LOADED);
+                object[] messages = _saveChat.ReadLastMessagesObject(chatHistoryFilePath, DefaultChat.DEFAULT_MESSAGE_LOAD);
                 if (messages == null || messages.Length == 0)
                 {
                     return ChatRespondHelper.Error<bool>(
@@ -509,11 +505,12 @@ namespace VRemoteDesktop.ViewModels
                 {
                     return string.Empty;
                 }
-                string savePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DEFAULT_CHAT_FOLDER, connection.Partner.ComputerName + ".txt");
+                string savePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DefaultChat.DEFAULT_CHAT_FOLDER, connection.Partner.ComputerName + ".txt");
                 return savePath;
             }
             catch(Exception ex)
             {
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
                 return string.Empty;
             }
         }
@@ -660,8 +657,12 @@ namespace VRemoteDesktop.ViewModels
                 UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.AcceptAttachment, fileId));
 
                 //Caculate number of chunks need to send, offset and size each chunk
-                List<ChunkFileInfo> chunks =  _chatAttachmentService.GetFileChunksInfo(fileId);
- 
+                List<ChunkFileInfo> chunks =  _chatAttachmentService.CalculateNumberOfChunksFromFileByFileId(fileId);
+                if(chunks.Count == 0)
+                {
+                    ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException(string.Format("Cannot calcutate chunks file from file with id {0}", fileId))));
+                    return;
+                }
                 for (int i = 0; i< chunks.Count; i++)
                 {
                     Send(client, SocketDataType.Chat, ChatDataType.FileData, null, chunks[i]);
@@ -693,7 +694,6 @@ namespace VRemoteDesktop.ViewModels
             catch (Exception ex)
             {
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
-                return;
             }
         }
         //Handler file data received from partner
@@ -712,7 +712,7 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                string fileId = Encoding.ASCII.GetString(arg2, 0, FILEID_LENGTH);
+                string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(arg2, 0, RandomLength.FILE_ID_LENGTH, EncodingType.ASCII).GetResult();
                 UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.StopSendingAttachment, fileId));
 
                 //Need to find which Vclient sending this file but now using for to send stop send file with specific file id to all Vclient
@@ -724,7 +724,7 @@ namespace VRemoteDesktop.ViewModels
             }
             catch (Exception ex)
             {
-
+                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
             }
         }
         #endregion

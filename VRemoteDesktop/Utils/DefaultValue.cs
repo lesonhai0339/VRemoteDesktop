@@ -5,6 +5,43 @@ using System.Text;
 
 namespace VRemoteDesktop.Utils
 {
+    public static class DefaultMouse
+    {
+        public static int MOUSE_MIN_FIELDS = 6;
+        public static int MOUSE_PARTNET_WIDTH_INDEX = 0;
+        public static int MOUSE_PARTNER_HEIGHT_INDEX = 1;
+        public static int MOUSE_MESSAGE = 2;
+        public static int MOUSE_ACTION = 3;
+        public static int MOUSE_X = 4;
+        public static int MOUSE_Y = 5;
+    }
+    public static class DefaultKeyboard
+    {
+        public static int KEYBOARD_MIN_FIELDS = 4;
+        public static int KEYBOARD_COMMAND_INDEX = 0;
+        public static int KEYBOARD_MODIFIER_INDEX = 1;
+        public static int KEYBOARD_KEY_INDEX = 2;
+        public static int KEYBOARD_TYPE_INDEX = 3;
+    }
+    public static class DefaultClipboard
+    {
+        /// <summary>
+        /// Maximun characters clipboard can copy
+        /// </summary>
+        public static int MAX_CLIPBOARD_LENGTH = 1000000;
+    }
+    public static class DefaultFileInfo
+    {
+        public static int DEFAULT_CHUNK_FILE_SIZE = 1024 * 32;
+        public static int OFFSET_INT32_LENGTH = 4;
+        public static int FILE_ID_LENGTH = 16;
+        public static int FILE_INFO_MIN_FIELDS = 5;
+        public static int FILE_ID_INDEX = 0;
+        public static int FILE_NAME_INDEX = 1;
+        public static int FILE_EXTENSION_INDEX = 2;
+        public static int FILE_SIZE_INDEX = 3;
+        public static int FILE_CHECKSUM_INDEX = 4;
+    }
     public static class ByteConstants
     {
         public static int INT32_LENGTH = 4;

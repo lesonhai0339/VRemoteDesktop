@@ -67,7 +67,7 @@ namespace VRemoteDesktop.Services.SystemService
             }
             catch (Exception ex)
             {
-
+                Log.ForContext("Filename", GetType().Name).Error(ex, "StartKeyboardListener error");
             }
         }
         /// <summary>
@@ -82,7 +82,7 @@ namespace VRemoteDesktop.Services.SystemService
             }
             catch (Exception ex)
             {
-
+                Log.ForContext("Filename", GetType().Name).Error(ex, "StopKeyboardListener error");
             }
         }
         /// <summary>
@@ -97,7 +97,7 @@ namespace VRemoteDesktop.Services.SystemService
             }
             catch (Exception ex)
             {
-
+                Log.ForContext("Filename", GetType().Name).Error(ex, "AddKeyboardHook error");
             }
         }
         /// <summary>
@@ -112,7 +112,7 @@ namespace VRemoteDesktop.Services.SystemService
             }
             catch (Exception ex)
             {
-
+                Log.ForContext("Filename", GetType().Name).Error(ex, "RemoveKeyboardHook error");
             }
         }
         public bool CheckClipboard(KeyboardEventArgs e, out byte[] clipboardBytes, out SocketDataType type)
@@ -130,15 +130,20 @@ namespace VRemoteDesktop.Services.SystemService
         public void MouseReceivedEventHandler(int width, int height, byte[] data)
         {
             var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(data, width, height);
+            if (mouseEvent == null)
+                return;
+
             bool flag = VirtualMouse.MouseEvent(mouseEvent);
             if (!flag)
             {
-                throw new Exception("Failed handler mouse event");
+                Log.ForContext("Filename", GetType().Name).Error("Failed handler mouse event");
             }
         }
         public void KeyboardReceivedEventHandler(byte[] data)
         {
             var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(data);
+            if (keyEvent == null)
+                return;
             VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
         }
         public string GetClipboard()
@@ -200,7 +205,7 @@ namespace VRemoteDesktop.Services.SystemService
             }
             catch(Exception ex)
             {
-
+                Log.ForContext("Filename", GetType().Name).Error(ex, "StartScreenCapture error");
             }
         }
         public void StopScreenCapture()
@@ -212,7 +217,7 @@ namespace VRemoteDesktop.Services.SystemService
             }
             catch (Exception ex)
             {
-
+                Log.ForContext("Filename", GetType().Name).Error(ex, "StopScreenCapture error");
             }
         }
         public List<byte[]> GetFirstScreen()

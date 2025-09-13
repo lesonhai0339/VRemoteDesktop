@@ -7,7 +7,7 @@ namespace VRemoteDesktop.Models
 {
     public class ChunkFileInfo
     {
-        public ChunkFileInfo(string fileId, string filePath, int offset, int chunkSize)
+        public ChunkFileInfo(string fileId, string filePath, long offset, int chunkSize)
         {
             FileId = fileId;
             FilePath = filePath;
@@ -17,7 +17,7 @@ namespace VRemoteDesktop.Models
     
         public string FileId { get; set; }
         public string FilePath { get; set; }
-        public int Offset { get; set; }
+        public long Offset { get; set; }
         public int ChunkSize { get; set; }  
     }
 }

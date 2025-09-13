@@ -89,6 +89,31 @@ namespace VRemoteDesktop.Helpers
                    ex: new ArgumentException("Unexpected encoding type")
             );
         }
+        public static BaseResponse<byte[]> ConvertStringToByteArray(string data,int offset, int length, EncodingType encoding)
+        {
+            if (string.IsNullOrWhiteSpace(data))
+                return BaseResponse<byte[]>.Error(
+                  message: nameof(ConvertStringToByteArray),
+                  ex: new ArgumentException("Data cannot be null or empty")
+                );
+
+            Encoding encoder = (encoding == EncodingType.ASCII) ? Encoding.ASCII :
+                (encoding == EncodingType.UTF8) ? Encoding.UTF8 :
+                null;
+
+            if (encoder != null)
+            {
+                return BaseResponse<byte[]>.Success(
+                    data: encoder.GetBytes(data.ToCharArray(), offset, length),
+                    message: nameof(ConvertStringToByteArray)
+                );
+            }
+
+            return BaseResponse<byte[]>.Error(
+                   message: nameof(ConvertStringToByteArray),
+                   ex: new ArgumentException("Unexpected encoding type")
+            );
+        }
         public static BaseResponse<byte[]> BitmapToByteArray(Bitmap bitmap)
         {
             BitmapData bmpdata = null;
