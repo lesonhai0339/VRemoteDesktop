@@ -539,8 +539,15 @@ namespace VRemoteDesktop.Services.VTCPClient
                 int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, headerSize, task.ChunkFileInfo.ChunkSize);
 
                 if (chunkRead != chunkFileData.Length - headerSize)
-                    throw new Exception("ByteRead not the same with bytes data expected");
-
+                {
+                    if (Enum.IsDefined(typeof(ChatDataType), task.Data[0]))
+                    {
+                        var type = (ChatDataType)task.Data[0];
+                        RemoveTaskByType(task.TaskType, type, task.ChunkFileInfo.FileId);
+                        return;
+                    }
+                    Logger.Log.ForContext("FileName", this.GetType().Name).Error("Error when ProcessFileTransfer send file data error, remove remain send file task");
+                }
                 Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
             }
         }

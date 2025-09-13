@@ -177,7 +177,7 @@ namespace VRemoteDesktop.Layouts
             if (_progressbar != null)
                 _progressbar.SetStep(num);
         }
-        private void DisableControl(Control control)
+        public void DisableControl(Control control)
         {
             if(control is Button btn)
             {

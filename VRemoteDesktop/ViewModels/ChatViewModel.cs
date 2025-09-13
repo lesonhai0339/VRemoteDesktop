@@ -400,7 +400,6 @@ namespace VRemoteDesktop.ViewModels
                     return ChatRespondHelper.Failed<bool>(
                         systemMessage: "Cannot get file info");
                 }
-
                 string data = Helpers.StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPRATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize, fileInfo.Checksum);
                 byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
                 Send(null, SocketDataType.Chat, ChatDataType.RequestSendFile, byteArray);
