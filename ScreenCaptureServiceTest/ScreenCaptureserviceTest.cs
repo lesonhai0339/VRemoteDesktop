@@ -6,6 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ScreenCapture;
+using VRemoteDesktop.Utils;
 namespace ScreenCaptureServiceTest
 {
     public class ScreenCaptureserviceTest
@@ -44,7 +45,7 @@ namespace ScreenCaptureServiceTest
                 screenCaptureService.StartCapture();
                 Assert.True(screenCaptureService.IsCapturing);
                 Thread.Sleep(TimeSpan.FromSeconds(30));
-                Console.WriteLine($"Number screen capture call in 30 second with fps {VRemoteDesktop.Utils.DefaultValue.DEFAULT_FPS}: "+ count);
+                Console.WriteLine($"Number screen capture call in 30 second with fps {DefaultScreen.DEFAULT_FPS}: "+ count);
             }
             catch (Exception ex)
             {
