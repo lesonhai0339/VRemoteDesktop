@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
-using System.Linq;
 using System.Text;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Utils;
 using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Services.ScreenCapture
@@ -18,11 +18,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             try
             {
-                string stringHashReceived = Encoding.ASCII.GetString(data, 0, 40);
+                string stringHashReceived = Encoding.ASCII.GetString(data, 0, DefaultValue.SHA_CHECKSUM_LENGTH);
 
-                var compressedLength = data.Length - 40;
+                var compressedLength = data.Length - DefaultValue.SHA_CHECKSUM_LENGTH;
                 var compressedData = new byte[compressedLength];
-                Buffer.BlockCopy(data, 40, compressedData, 0, compressedLength);
+                Buffer.BlockCopy(data, DefaultValue.SHA_CHECKSUM_LENGTH, compressedData, 0, compressedLength);
 
                 string screenHash = StringHelper.SHAHash(compressedData);
 
@@ -43,11 +43,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
             List<ScreenRegion> regions = new List<ScreenRegion>();
             try
             {
-                string stringHashReceived = Encoding.ASCII.GetString(data, 0, 40);
+                string stringHashReceived = Encoding.ASCII.GetString(data, 0, DefaultValue.SHA_CHECKSUM_LENGTH);
 
-                var compressedLength = data.Length - 40;
+                var compressedLength = data.Length - DefaultValue.SHA_CHECKSUM_LENGTH;
                 var compressedData = new byte[compressedLength];
-                Buffer.BlockCopy(data, 40, compressedData, 0, compressedLength);
+                Buffer.BlockCopy(data, DefaultValue.SHA_CHECKSUM_LENGTH, compressedData, 0, compressedLength);
 
                 string screenHash = StringHelper.SHAHash(compressedData);
 
@@ -58,7 +58,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     int offset = 0;
                     while (offset < chunksDecompressed.Length)
                     {
-                        if (offset + 20 > chunksDecompressed.Length)
+                        if (offset + DefaultScreen.DEFAULT_CHUNK_HEADER_LENGTH > chunksDecompressed.Length)
                             break;
 
                         int length = BitConverter.ToInt32(chunksDecompressed, offset + 0);
@@ -67,13 +67,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         int width = BitConverter.ToInt32(chunksDecompressed, offset + 12);
                         int height = BitConverter.ToInt32(chunksDecompressed, offset + 16);
 
-                        if (offset + 20 + length > chunksDecompressed.Length)
+                        if (offset + DefaultScreen.DEFAULT_CHUNK_HEADER_LENGTH + length > chunksDecompressed.Length)
                             break;
 
                         byte[] chunk = new byte[length];
-                        Buffer.BlockCopy(chunksDecompressed, offset + 20, chunk, 0, length);
+                        Buffer.BlockCopy(chunksDecompressed, offset + DefaultScreen.DEFAULT_CHUNK_HEADER_LENGTH, chunk, 0, length);
 
-                        offset += length + 20;
+                        offset += length + DefaultScreen.DEFAULT_CHUNK_HEADER_LENGTH;
                         regions.Add(new ScreenRegion
                         {
                             IsFullScreen = false,

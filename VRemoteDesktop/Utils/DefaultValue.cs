@@ -64,8 +64,10 @@ namespace VRemoteDesktop.Utils
     }
     public static class DefaultScreen
     {
+        public static int DEFAULT_CHUNK_SIZE = 1024 * 8;
         public static int DEFAULT_BLOCK_SIZE = 64;
         public static int DEFAULT_FPS = 20;
+        public static int DEFAULT_CHUNK_HEADER_LENGTH = 20;
     }
     public static class DefaultChat
     {
@@ -90,5 +92,6 @@ namespace VRemoteDesktop.Utils
         public static string DEFAULT_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
         public static string DEFAULT_SEPRATOR = "|";
         public static int DEFAULT_TIMEOUT = 30;
+        public static int SHA_CHECKSUM_LENGTH = 40;
     }
 }

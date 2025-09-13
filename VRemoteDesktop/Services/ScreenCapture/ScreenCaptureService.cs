@@ -30,8 +30,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
     public class ScreenCaptureService : IScreenCaptureServiceListener
     {
         private readonly object _lock = new object(); // For thread safety. Can use ReadWriteLockSlim instead
-        private readonly int CHUNK_SIZE = DEFAULT_CHUNK_SIZE;
-        private readonly int FPS = DEFAULT_FPS;
         private volatile bool _isCapturing;
         private bool _disposed = false;
         private byte[] _dataSend;
@@ -116,7 +114,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         private void DoWork(object sender, DoWorkEventArgs e)
         {
-            int frameTime = 1000 / FPS;
+            int frameTime = 1000 / DefaultScreen.DEFAULT_FPS;
             while (!_cancel.IsCancellationRequested)
             {
                 int start = Environment.TickCount;
@@ -157,9 +155,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
             {
                 var screens = _capture.GetScreen();
                 long totalSize = checked(screens.Sum(x => x.TotalSize));
-                if (_dataSend.Length < totalSize + 40)
+                if (_dataSend.Length < totalSize + DefaultValue.SHA_CHECKSUM_LENGTH)
                 {
-                    _dataSend = new byte[totalSize + 40];
+                    _dataSend = new byte[totalSize + DefaultValue.SHA_CHECKSUM_LENGTH];
                 }
                 lock (_lock)
                 {
@@ -169,7 +167,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     var byteCombined = ByteArrayHelper.Combine(checksum, screenCaptureCompressed).GetResult();
                     _dataSend = byteCombined;
-                    var listByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataLength, CHUNK_SIZE).GetResult();
+                    var listByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
                     return listByteArray;
                 }
             }
@@ -184,9 +182,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             try
             {
-                if (_dataSend.Length < totalChunksSize + 40)
+                if (_dataSend.Length < totalChunksSize + DefaultValue.SHA_CHECKSUM_LENGTH)
                 {
-                    _dataSend = new byte[totalChunksSize + 40];
+                    _dataSend = new byte[totalChunksSize + DefaultValue.SHA_CHECKSUM_LENGTH];
                 }
                 lock (_lock)
                 {
@@ -201,7 +199,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         totalSize: dataLength
                     );
 
-                    var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataLength, CHUNK_SIZE).GetResult();
+                    var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
                     screenArgs.Data = byteArrayToListByteArray;
                     ScreenEvent?.Invoke(null, screenArgs);
                 }
@@ -217,9 +215,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
             try
             {
                 int start = Environment.TickCount;
-                if (_dataSend.Length < totalChunksSize + 40)
+                if (_dataSend.Length < totalChunksSize + DefaultValue.SHA_CHECKSUM_LENGTH)
                 {
-                    _dataSend = new byte[totalChunksSize + 40];
+                    _dataSend = new byte[totalChunksSize + DefaultValue.SHA_CHECKSUM_LENGTH];
                 }
                 lock (_lock)
                 {
@@ -238,7 +236,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                        totalSize: dataSendLength
                     );
 
-                    var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataSendLength, CHUNK_SIZE).GetResult();
+                    var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataSendLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
                     chunksArgs.Data = byteArrayToListByteArray;
                     ScreenEvent?.Invoke(null, chunksArgs);
                 }

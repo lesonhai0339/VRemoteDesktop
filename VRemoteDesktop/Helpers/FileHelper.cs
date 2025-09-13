@@ -71,7 +71,7 @@ namespace VRemoteDesktop.Helpers
                 return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
         }     
-        public static byte[] GetChunkFileDataByOffset(string filePath, int offset, int size = 8192)
+        public static byte[] GetChunkFileDataByOffset(string filePath, long offset, int size = 8192)
         {
             if (!File.Exists(filePath))
                 throw new ArgumentException(string.Format("Does not existed {0}", filePath));
@@ -91,7 +91,7 @@ namespace VRemoteDesktop.Helpers
             }
             return data.ToArray();
         }
-        public static int GetChunkFileDataByOffset(string filePath, int fileOffset, ref byte[] buffer, int size = 8192)
+        public static int GetChunkFileDataByOffset(string filePath, long fileOffset, ref byte[] buffer, int size = 8192)
         {
             if (!File.Exists(filePath))
                 throw new ArgumentException(string.Format("Does not existed {0}", filePath));
@@ -108,7 +108,7 @@ namespace VRemoteDesktop.Helpers
         }
         //Can improve by using something like private ConcurrentDictionary<string, FileStream> _curStreams; at VChatAttachmentService
         //To keep filestream open util copy full or timeout
-        public static int GetChunkFileDataByOffset(string filePath, int fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
+        public static int GetChunkFileDataByOffset(string filePath, long fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
         {
             if (!File.Exists(filePath))
                 throw new ArgumentException(string.Format("Does not existed {0}", filePath));
