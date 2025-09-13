@@ -108,6 +108,8 @@ namespace VRemoteDesktop.Services.FileService
 
             if (fileInfo == null)
                 throw new ArgumentNullException(nameof(fileInfo));
+            // Computing SHA checksum of the whole file.
+            // For large files this may take noticeable time due to reading all bytes.
             string checkSum = Helpers.StringHelper.SHAHash(fileInfo.FullName);
             if (string.IsNullOrWhiteSpace(checkSum))
                 return false;

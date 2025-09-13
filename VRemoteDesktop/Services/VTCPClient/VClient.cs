@@ -6,6 +6,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
@@ -198,7 +199,17 @@ namespace VRemoteDesktop.Services.VTCPClient
                             switch (task.Type)
                             {
                                 case SocketDataType.Chat:
-                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
+                                    Task.Factory.StartNew(() =>
+                                    {
+                                        try
+                                        {
+                                            P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
+                                        }
+                                        catch (Exception ex)
+                                        {
+                                            Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
+                                        }
+                                    });
                                     break;
                                 default:                                  
                                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));

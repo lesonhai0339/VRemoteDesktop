@@ -230,7 +230,7 @@ namespace VRemoteDesktop.Layouts
                 : type == ProgressbarEnum.Error ? FORM_ERROR
                 : type == ProgressbarEnum.Timeout ? FORM_TIMEOUT_TITLE
                 : type == ProgressbarEnum.Stop ? FORM_STOP                                                                                                                                                              
-                : "Lỗi",
+                : FORM_ERROR,
 
                 AutoSize = false,
                 Font = _defaultFont,
