@@ -35,6 +35,18 @@ namespace VRemoteDesktop.Helpers
             }
             return stringBuilder.ToString();
         }
+        public static bool StringValidate(string[] inputs)
+        {
+            return inputs.All(x => StringValidate(x));
+        }
+        public static bool StringValidate(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return false;
+            }
+            return true;
+        }
         public static string GenerateStringShortcut(string input, int maxLength = 20)
         {
             if (string.IsNullOrEmpty(input) || input.Length <= maxLength)

@@ -30,9 +30,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public class RemoteDesktopService : IDisposable
     {
-        
-        private readonly int SOCKETID_LENGTH = RandomLength.SOCKET_ID_LENGTH;
-        private readonly string SEPRATOR = DefaultValue.DEFAULT_SEPRATOR;
+       
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.Getvalue("RemoteServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.Getvalue("RemoteServerPort");
         private volatile bool _disposed;
@@ -87,7 +85,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
             _reset.WaitOne(5000);
-            string dataString = StringHelper.StringBuilderWithSeparator(SEPRATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPRATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
             newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
@@ -185,7 +183,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if(sender is VClient client)
                 {
-                    string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, SOCKETID_LENGTH, EncodingType.ASCII).GetResult();
+                    string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII).GetResult();
                     byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
  
                     client.Send(SocketDataType.P2PRejectConnect, dataBytes, client.SocketId, true);
@@ -198,26 +196,37 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if(sender is VClient client)
                 {
+                    ClientInfo partnerInfo = null;
+
                     string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                    string[] stringArray = Helpers.StringHelper.StringToStringArrayWithSeparator(data, SEPRATOR);
-                    ClientInfo partnerInfo = new ClientInfo
+                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPRATOR);
+                    if(stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
                     {
-                        Id = stringArray[0],
-                        Password = stringArray[1],
-                        ComputerName = stringArray[2],
-                        Width = int.Parse(stringArray[3]),
-                        Height = int.Parse(stringArray[4]),
-                        MajorVersion = stringArray[5],
-                        MinorVersion = stringArray[6],
-                        Ip = stringArray[7],
-                        Port = stringArray[8],
-                        PublicIP = stringArray[9],
-                    };
+                        if (StringHelper.StringValidate(stringArray))
+                        {
+                            partnerInfo = new ClientInfo
+                            {
+                                Id = stringArray[DefaultClientInfo.CLIENT_INFO_ID_INDEX],
+                                Password = stringArray[DefaultClientInfo.CLIENT_INFO_PASSWORD_INDEX],
+                                ComputerName = stringArray[DefaultClientInfo.CLIENT_INFO_COMPUTER_NAME_INDEX],
+                                Width = int.Parse(stringArray[DefaultClientInfo.CLIENT_INFO_WIDTH_INDEX]),
+                                Height = int.Parse(stringArray[DefaultClientInfo.CLIENT_INFO_HEIGHT_INDEX]),
+                                MajorVersion = stringArray[DefaultClientInfo.CLIENT_INFO_MAJOR_VERSION_INDEX],
+                                MinorVersion = stringArray[DefaultClientInfo.CLIENT_INFO_MINOR_VERSION_INDEX],
+                                Ip = stringArray[DefaultClientInfo.CLIENT_INFO_IP_INDEX],
+                                Port = stringArray[DefaultClientInfo.CLIENT_INFO_PORT_INDEX],
+                                PublicIP = stringArray[DefaultClientInfo.CLIENT_INFO_PUBLIC_IP_INDEX],
+                            };
+                            client.UpdatePartnerInfo(partnerInfo);
+                            return;
+                        }
+                    }
                     client.UpdatePartnerInfo(partnerInfo);
                 }
             }
             catch (Exception ex)
             {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
             }
         }
         private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)

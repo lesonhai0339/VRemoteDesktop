@@ -6,7 +6,7 @@ using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
-using static VRemoteDesktop.Utils.DefaultValue;
+using VRemoteDesktop.Utils;
 namespace VRemoteDesktop.Layouts
 {
     public class VProgressBar : ProgressBar
@@ -29,7 +29,7 @@ namespace VRemoteDesktop.Layouts
                 throw new ArgumentOutOfRangeException(nameof(fileInfo.FileSize), "FileSize must be greater than zero");
 
             InitializeComponent(fileInfo);
-            _timeout = new System.Threading.Timer(CheckTimeOut, null, 0, 5000);
+            _timeout = new System.Threading.Timer(CheckTimeOut, null, TimeSpan.FromSeconds(5), TimeSpan.FromSeconds(5));
         }
         private void InitializeComponent(VFileInfo fileInfo)
         {
@@ -47,7 +47,7 @@ namespace VRemoteDesktop.Layouts
         {
             DateTime curTime = DateTime.Now;
             var elpased = (curTime - _time).TotalMinutes;
-            if(elpased > DEFAULT_TIMEOUT)
+            if (elpased > DefaultValue.DEFAULT_TIMEOUT_MINUTES)
             {
                 _timeout?.Dispose();
                 ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Timeout));

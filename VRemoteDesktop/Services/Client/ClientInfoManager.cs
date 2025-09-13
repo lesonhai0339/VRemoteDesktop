@@ -10,6 +10,7 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using static VRemoteDesktop.Utils.RandomLength;
 using VRemoteServer.Models;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Services.ConnectionManager
 {
@@ -128,18 +129,29 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 return false;
 
             connectionId = data[0];
+            //Note: data at index[0,1,2] are ConnectionId, MyId and MyPassword then partner info start at DefaultClientInfo.field + 3 instead DefaultClientInfo.field
             clientInfo = new ClientInfo
             {
-                Id = data[3],
-                Password = data[4],
-                ComputerName = data[5],
-                Width = int.TryParse(data[6], out int width) ? width : 0,
-                Height = int.TryParse(data[7], out int height) ? height : 0,
-                MajorVersion = data[8],
-                MinorVersion = data[9],
-                Ip = data[10],
-                Port = data[11],
-                PublicIP = data[12],
+                Id = data[DefaultClientInfo.CLIENT_INFO_ID_INDEX + 3],
+                Password = data[DefaultClientInfo.CLIENT_INFO_PASSWORD_INDEX + 3],
+                ComputerName = data[DefaultClientInfo.CLIENT_INFO_COMPUTER_NAME_INDEX + 3],
+                Width = int.Parse(data[DefaultClientInfo.CLIENT_INFO_WIDTH_INDEX + 3]),
+                Height = int.Parse(data[DefaultClientInfo.CLIENT_INFO_HEIGHT_INDEX + 3]),
+                MajorVersion = data[DefaultClientInfo.CLIENT_INFO_MAJOR_VERSION_INDEX + 3],
+                MinorVersion = data[DefaultClientInfo.CLIENT_INFO_MINOR_VERSION_INDEX + 3],
+                Ip = data[DefaultClientInfo.CLIENT_INFO_IP_INDEX + 3],
+                Port = data[DefaultClientInfo.CLIENT_INFO_PORT_INDEX + 3],
+                PublicIP = data[DefaultClientInfo.CLIENT_INFO_PUBLIC_IP_INDEX + 3],
+                //Id = data[3],
+                //Password = data[4],
+                //ComputerName = data[5],
+                //Width = int.TryParse(data[6], out int width) ? width : 0,
+                //Height = int.TryParse(data[7], out int height) ? height : 0,
+                //MajorVersion = data[8],
+                //MinorVersion = data[9],
+                //Ip = data[10],
+                //Port = data[11],
+                //PublicIP = data[12],
             };
 
             return true;

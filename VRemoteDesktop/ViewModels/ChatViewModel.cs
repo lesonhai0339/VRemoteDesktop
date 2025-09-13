@@ -398,7 +398,6 @@ namespace VRemoteDesktop.ViewModels
                 if(fileInfo == null)
                 {
                     return ChatRespondHelper.Failed<bool>(
-                        message: string.Format("Xảy ra lỗi", nameof(RequestSendFile)),
                         systemMessage: "Cannot get file info");
                 }
 

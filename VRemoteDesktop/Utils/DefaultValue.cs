@@ -5,6 +5,20 @@ using System.Text;
 
 namespace VRemoteDesktop.Utils
 {
+    public static class DefaultClientInfo
+    {
+        public static int CLIENT_INFO_MIN_FIELDS = 10;
+        public static int CLIENT_INFO_ID_INDEX = 0;
+        public static int CLIENT_INFO_PASSWORD_INDEX = 1;
+        public static int CLIENT_INFO_COMPUTER_NAME_INDEX = 2;
+        public static int CLIENT_INFO_WIDTH_INDEX = 3;
+        public static int CLIENT_INFO_HEIGHT_INDEX = 4;
+        public static int CLIENT_INFO_MAJOR_VERSION_INDEX = 5;
+        public static int CLIENT_INFO_MINOR_VERSION_INDEX = 6;
+        public static int CLIENT_INFO_IP_INDEX = 7;
+        public static int CLIENT_INFO_PORT_INDEX = 8;
+        public static int CLIENT_INFO_PUBLIC_IP_INDEX = 9;
+    }
     public static class DefaultMouse
     {
         public static int MOUSE_MIN_FIELDS = 6;
@@ -91,7 +105,8 @@ namespace VRemoteDesktop.Utils
     {
         public static string DEFAULT_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
         public static string DEFAULT_SEPRATOR = "|";
-        public static int DEFAULT_TIMEOUT = 30;
+        public static int DEFAULT_TIMEOUT_SECONDS = 30;
+        public static int DEFAULT_TIMEOUT_MINUTES = 30;
         public static int SHA_CHECKSUM_LENGTH = 40;
     }
 }

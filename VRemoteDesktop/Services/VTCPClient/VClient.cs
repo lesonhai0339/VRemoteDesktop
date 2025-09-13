@@ -1,36 +1,22 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Configuration;
-using System.Diagnostics;
-using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Reflection;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
-using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Utils;
-using VRemoteDesktop.ViewModels;
 using VRemoteServer.Models;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
     public class VClient : IDisposable
     {
-        private readonly int INT32_LENGTH = ByteConstants.INT32_LENGTH;
-        private readonly int SOCKETID_LENGTH = RandomLength.SOCKET_ID_LENGTH;
-        private readonly int DATATYPE_LENGTH = RandomLength.DATA_TYPE_LENGTH;
-        private readonly int HEADER_SIZE;
-
         private bool _isSocketConnected;
         private bool _isP2PConnected;
         private volatile bool _isDisposed;
@@ -59,8 +45,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
         public VClient(string socketId, VClientType clientType)
         {
-            HEADER_SIZE = INT32_LENGTH + DATATYPE_LENGTH + SOCKETID_LENGTH;
-
             Partner = null;
             _isDisposed = false;
             _isP2PConnected = false;
@@ -411,7 +395,16 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void UpdatePartnerInfo(ClientInfo partnerInfo)
         {
-            Partner = partnerInfo;
+            if(partnerInfo == null)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error("Missing some partner value, dispose VClient with id: "+ SocketId);
+                //Info invalid, dispose this class
+                this.Dispose();
+            }
+            else
+            {
+                Partner = partnerInfo;
+            }
         }
         /// <summary>
         /// callback method when data is received from the remote server
@@ -433,7 +426,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             break;
                         }
-                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, INT32_LENGTH).ToArray(), 0);
+
+                        int length = BitConverter.ToInt32(stateObject.ByteArrayBuilder.lsByte.GetRange(0, ByteConstants.INT32_LENGTH).ToArray(), 0);
                         if (!(stateObject.ByteArrayBuilder.Length >= length))
                         {
                             break;
@@ -465,14 +459,15 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
+                int headerSize = ByteConstants.INT32_LENGTH + RandomLength.SOCKET_ID_LENGTH + RandomLength.DATA_TYPE_LENGTH;
                 int dataLength = BitConverter.ToInt32(bytes, 0);
 
                 SocketDataType dataType = (SocketDataType)bytes[4];
 
-                string socketId = BitConverter.ToString(bytes, 5, SOCKETID_LENGTH);
+                string socketId = BitConverter.ToString(bytes, 5, RandomLength.SOCKET_ID_LENGTH);
 
-                byte[] data = new byte[bytes.Length - HEADER_SIZE];
-                Buffer.BlockCopy(bytes, HEADER_SIZE, data, 0, data.Length);
+                byte[] data = new byte[bytes.Length - headerSize];
+                Buffer.BlockCopy(bytes, headerSize, data, 0, data.Length);
 
                 _receivedQueue.Add(new DataReceive
                 {
@@ -488,24 +483,26 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private byte[] PrepareHeader(SocketDataType type, string partnerId, byte[] data)
         {
-            byte[] resultBytes = new byte[data.Length + HEADER_SIZE];
+            int headerSize = ByteConstants.INT32_LENGTH + RandomLength.SOCKET_ID_LENGTH + RandomLength.DATA_TYPE_LENGTH;
+            byte[] resultBytes = new byte[data.Length + headerSize];
             
             //Data length
-            Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 0, INT32_LENGTH);
+            Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 0, ByteConstants.INT32_LENGTH);
             //Data type
             resultBytes[4] = (byte)type;
             //Data
-            Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, resultBytes, 5, SOCKETID_LENGTH);
-            Buffer.BlockCopy(data, 0, resultBytes, HEADER_SIZE, data.Length);
+            Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, resultBytes, 5, RandomLength.SOCKET_ID_LENGTH);
+            Buffer.BlockCopy(data, 0, resultBytes, headerSize, data.Length);
 
             return resultBytes;
         }
         public byte[] GenerateP2PHeader(SocketDataType type, int dataSize, string socketId)
         {
-            int totalSize = dataSize + HEADER_SIZE;
-            byte[] header = new byte[HEADER_SIZE];
+            int headerSize = ByteConstants.INT32_LENGTH + RandomLength.SOCKET_ID_LENGTH + RandomLength.DATA_TYPE_LENGTH;
+            int totalSize = dataSize + headerSize;
+            byte[] header = new byte[headerSize];
             //Data length
-            Buffer.BlockCopy(BitConverter.GetBytes(totalSize), 0, header, 0, INT32_LENGTH);
+            Buffer.BlockCopy(BitConverter.GetBytes(totalSize), 0, header, 0, ByteConstants.INT32_LENGTH);
             //Data Type
             header[4] = (byte)type;
             //Socket Id
@@ -529,14 +526,14 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 Console.WriteLine($"Process Send file: {task.ChunkFileInfo.FilePath} - offset:{task.ChunkFileInfo.Offset} - id:{SocketId}");
 
-                int headerSize = DATATYPE_LENGTH +  INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
+                int headerSize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
 
                 byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
 
                 //Data type
                 chunkFileData[0] = task.Data[0];
                 //Data length
-                Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, 1, INT32_LENGTH);
+                Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, 1, ByteConstants.INT32_LENGTH);
                 //File Id
                 Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, 5, RandomLength.FILE_ID_LENGTH);
                 int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, headerSize, task.ChunkFileInfo.ChunkSize);
@@ -600,7 +597,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
             }
-            if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > 30)
+            if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
             {
                 throw new TimeoutException("Send timeout");
             }
