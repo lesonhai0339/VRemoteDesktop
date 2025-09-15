@@ -338,12 +338,12 @@ namespace VRemoteDesktop.Services.FileService
         public List<ChunkFileInfo> CalculateNumberOfChunksFromFileByFileId(string id)
         {
             List<ChunkFileInfo> chunks = new List<ChunkFileInfo>();
-            //Find VFileinfo
+            //Find VFileInfo
             var info = _attachmentManager.Get(id);
             if (info == null)
                 throw new InvalidOperationException("Does not exists file with id: " + id);
 
-            //Get System.IO.Fileinfo
+            //Get System.IO.VFileInfo
             FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(info.FilePath);
             if (fileInfo == null)
                 throw new InvalidOperationException("Does not exists file: " + info.FilePath);

@@ -44,18 +44,18 @@ namespace VRemoteDesktop.Helpers
         private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
         public static Icon GetFileIconFromFileExtension(string fileExtension)
         {
-            SHFILEINFO shinfo = new SHFILEINFO();
+            SHFILEINFO shInfo = new SHFILEINFO();
             SHGetFileInfo(
                 fileExtension,
                 FILE_ATTRIBUTE_NORMAL,
-                ref shinfo,
+                ref shInfo,
                 (uint)Marshal.SizeOf(typeof(SHFILEINFO)),
                 SHGFI_ICON | SHGFI_USEFILEATTRIBUTES);
-            if(shinfo.hIcon == IntPtr.Zero)
+            if(shInfo.hIcon == IntPtr.Zero)
             {
                 return null;
             }
-            return Icon.FromHandle(shinfo.hIcon);
+            return Icon.FromHandle(shInfo.hIcon);
         }
         public static string CreateFileChecksum(string filePath)
         {
@@ -77,7 +77,7 @@ namespace VRemoteDesktop.Helpers
                 throw new ArgumentException(string.Format("Does not existed {0}", filePath));
 
             if (offset < 0)
-                throw new ArgumentException("Offset cannot be neigative");
+                throw new ArgumentException("Offset cannot be negative");
 
             byte[] data = new byte[size];
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
@@ -97,7 +97,7 @@ namespace VRemoteDesktop.Helpers
                 throw new ArgumentException(string.Format("Does not existed {0}", filePath));
 
             if (fileOffset < 0)
-                throw new ArgumentException("Offset cannot be neigative");
+                throw new ArgumentException("Offset cannot be negative");
 
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
@@ -107,14 +107,14 @@ namespace VRemoteDesktop.Helpers
             }
         }
         //Can improve by using something like private ConcurrentDictionary<string, FileStream> _curStreams; at VChatAttachmentService
-        //To keep filestream open util copy full or timeout
+        //To keep fileStream open util copy full or timeout
         public static int GetChunkFileDataByOffset(string filePath, long fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
         {
             if (!File.Exists(filePath))
                 throw new ArgumentException(string.Format("Does not existed {0}", filePath));
 
             if (fileOffset < 0)
-                throw new ArgumentException("Offset cannot be neigative");
+                throw new ArgumentException("Offset cannot be negative");
 
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
@@ -296,13 +296,13 @@ namespace VRemoteDesktop.Helpers
                 }
             }
         }
-        public static bool RemoveFileByFilePath(string filepath)
+        public static bool RemoveFileByFilePath(string filePath)
         {
-            if (!File.Exists(filepath)) return false;
+            if (!File.Exists(filePath)) return false;
             try
             {
-                using (FileStream stream = new FileStream(filepath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
-                File.Delete(filepath);
+                using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+                File.Delete(filePath);
                 return true;
             }
             catch

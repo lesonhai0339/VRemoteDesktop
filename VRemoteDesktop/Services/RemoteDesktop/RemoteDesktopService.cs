@@ -1,26 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Configuration;
-using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
-using VRemoteDesktop.Services.Keyboard;
-using VRemoteDesktop.Services.Mouse;
-using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
@@ -31,8 +18,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
     public class RemoteDesktopService : IDisposable
     {
        
-        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.Getvalue("RemoteServerIP");
-        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.Getvalue("RemoteServerPort");
+        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("RemoteServerIP");
+        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemoteServerPort");
         private volatile bool _disposed;
 
         private readonly IClientInfoManager _clientInfo;
@@ -176,6 +163,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 var screen = _globalHook.GetFirstScreen();
                 int length = screen.Sum(x=> x.Length);
                 SendScreen(newClient, SocketDataType.Screen, screen, length);
+
                 if (_vClientManager.HasClientOfType(VClientType.Receiver))
                     StartScreenCapture();
             }

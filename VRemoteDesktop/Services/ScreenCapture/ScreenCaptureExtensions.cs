@@ -28,7 +28,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                 if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    byte[] screenData = ByteArrayHelper.DecompressGzip(compressedData).GetResult();
+                    byte[] screenData = ByteArrayHelper.DecompressGZip(compressedData).GetResult();
                     return screenData;
                 }
             }
@@ -53,7 +53,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                 if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    byte[] chunksDecompressed = ByteArrayHelper.DecompressGzip(compressedData).GetResult();
+                    byte[] chunksDecompressed = ByteArrayHelper.DecompressGZip(compressedData).GetResult();
 
                     int offset = 0;
                     while (offset < chunksDecompressed.Length)

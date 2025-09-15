@@ -12,6 +12,7 @@ using System.Windows.Forms.VisualStyles;
 using System.Runtime.Serialization;
 using static VRemoteDesktop.Utils.DefaultValue;
 using System.Globalization;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Services.FileService
 {
@@ -433,7 +434,7 @@ namespace VRemoteDesktop.Services.FileService
             }
             catch(IOException ex)
             {
-                throw;
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "WriteToFile error ");
             }
         }
         public void Dispose()

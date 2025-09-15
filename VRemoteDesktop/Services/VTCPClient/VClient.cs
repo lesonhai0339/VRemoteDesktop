@@ -200,17 +200,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                             switch (task.Type)
                             {
                                 case SocketDataType.Chat:
-                                    Task.Factory.StartNew(() =>
-                                    {
-                                        try
-                                        {
-                                            P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DoWork error");
-                                        }
-                                    });
+                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                     break;
                                 default:                                  
                                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
@@ -244,13 +234,11 @@ namespace VRemoteDesktop.Services.VTCPClient
                             {
                                 foreach (var t in taskGroup.Tasks)
                                 {
-                                    Logger.Log.ForContext("FileName", "DataSender").Info(string.Format("Group task item: type:{0} - length:{1} - {2}", t.TaskType, t.Data.Length, DateTime.Now.ToString("HH:mm:ss:fff")));
                                     ProcessTask(t);
                                 }
                             }
                             else if (taskObj is TaskObject task)
                             {
-                                Logger.Log.ForContext("FileName", "DataSender").Info(string.Format("Single item: type:{0} - length:{1} - {2}", task.TaskType, task.Data.Length, DateTime.Now.ToString("HH:mm:ss:fff")));
                                 ProcessTask(task);
                             }
 
@@ -412,7 +400,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 stateObject.SckId = _socketId;
 
                 Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
-                Logger.Log.ForContext("FileName", this.GetType().Name).Info("Connected to {RemoteEndPoint}, starting receive loop");
             }
             catch (SocketException ex)
             {
@@ -545,7 +532,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 return null;
             if (string.IsNullOrEmpty(socketId) || socketId.Length != RandomLength.SOCKET_ID_LENGTH)
                 return null;
-            if (includeData && (data == null || data.Length == 0))
+            if (includeData && (data == null))
                 return null;
             if (!includeData && dataSize < 0)
                 return null;
@@ -651,9 +638,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                 if (type == SocketDataType.None)
                     throw new ArgumentException("Missing arguments");
                 
-                if (data == null || data.Length == 0)
-                    throw new ArgumentException("Missing arguments");
-                
+                //if (data == null)
+                //    throw new ArgumentException("Missing arguments");
+
                 if (string.IsNullOrWhiteSpace(partnerId))
                     partnerId = this.SocketId;
 
@@ -740,79 +727,77 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (!_isDisposed)
+            if (disposing)
             {
-                if (disposing)
+                if (_isDisposed) return;
+                if (_cts != null)
                 {
-                    if (_cts != null)
-                    {
-                        try
-                        {
-                            _cts.Cancel();
-                            _cts.Dispose();
-                            _cts = null;
-                        }
-                        catch (ObjectDisposedException)
-                        {
-                        }
-                    }
-                    //background worker
-                    _receiveBackgroundWorker.CancelAsync();
-
-                    _receiveBackgroundWorker.DoWork -= DataReceivedWork;
-                    _receiveBackgroundWorker.Dispose();
-
-
-                    //background worker
-                    _senderBackgroundWorker.CancelAsync();
-
-                    _senderBackgroundWorker.DoWork -= SenderDoWork;
-                    _senderBackgroundWorker.Dispose();
-
-                    //queue
-                    if (_receivedQueue != null)
-                    {
-                        _receivedQueue.CompleteAdding();
-                        foreach (var item in _receivedQueue.GetConsumingEnumerable())
-                        {
-                            if (item is IDisposable disposableItem)
-                            {
-                                disposableItem.Dispose();
-                            }
-                        }
-                    }
-                    if(_senderQueue != null)
-                    {
-                        _senderQueue.Dispose();
-                    }
-                    lock (_lockObject)
-                    {
-                        try
-                        {
-                            Send(SocketDataType.P2PDisconnect, new byte[0], null, true);
-                            Thread.Sleep(50);
-                        }
-                        catch (Exception ex)
-                        {
-                            Logger.Log.ForContext("", this.GetType().Name).Error(ex, "Send disconnection at dispose error: ");
-                        }
-                    }
                     try
                     {
-                        _socket?.Shutdown(SocketShutdown.Both);
-                        _socket?.Close();
-                        _socket?.Dispose();
+                        _cts.Cancel();
+                        _cts.Dispose();
+                        _cts = null;
                     }
-                    catch (Exception)
+                    catch (ObjectDisposedException)
                     {
                     }
-                    // Set flags
-                    _isSocketConnected = false;
-                    _isP2PConnected = false;
-                    _isDisposed = true;
-                    _sckConnect.Dispose();
-                    _workAvailable.Dispose();
                 }
+                //background worker
+                _receiveBackgroundWorker.CancelAsync();
+
+                _receiveBackgroundWorker.DoWork -= DataReceivedWork;
+                _receiveBackgroundWorker.Dispose();
+
+
+                //background worker
+                _senderBackgroundWorker.CancelAsync();
+
+                _senderBackgroundWorker.DoWork -= SenderDoWork;
+                _senderBackgroundWorker.Dispose();
+
+                //queue
+                if (_receivedQueue != null)
+                {
+                    _receivedQueue.CompleteAdding();
+                    foreach (var item in _receivedQueue.GetConsumingEnumerable())
+                    {
+                        if (item is IDisposable disposableItem)
+                        {
+                            disposableItem.Dispose();
+                        }
+                    }
+                }
+                if (_senderQueue != null)
+                {
+                    _senderQueue.Dispose();
+                }
+                lock (_lockObject)
+                {
+                    try
+                    {
+                        Send(SocketDataType.Disconnect, new byte[0], null, true);
+                        Thread.Sleep(50);
+                    }
+                    catch (Exception ex)
+                    {
+                        Logger.Log.ForContext("", this.GetType().Name).Error(ex, "Send disconnection at dispose error: ");
+                    }
+                }
+                try
+                {
+                    _socket?.Shutdown(SocketShutdown.Both);
+                    _socket?.Close();
+                    _socket?.Dispose();
+                }
+                catch (Exception)
+                {
+                }
+                // Set flags
+                _isSocketConnected = false;
+                _isP2PConnected = false;
+                _isDisposed = true;
+                _sckConnect.Dispose();
+                _workAvailable.Dispose();
             }
             _isDisposed = true;
         }

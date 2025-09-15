@@ -313,11 +313,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             return false;
         }
-        // Cleanup method
-        ~ScreenCapture()
-        {
-            Dispose(false);
-        }
         public void Dispose()
         {
             Dispose(true);
@@ -335,6 +330,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     while (changedBlocks.TryTake(out _)) { }
                 }
+                encoder = null;
+                encoderParams?.Dispose();
                 _isDisposed = true;
             }
         }

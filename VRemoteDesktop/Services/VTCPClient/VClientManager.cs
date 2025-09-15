@@ -1,28 +1,13 @@
 ﻿using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Net;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
-using System.Reflection;
-using System.Security.Policy;
-using System.Text;
-using System.Threading;
-using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
-using VRemoteDesktop.Helpers;
-using VRemoteDesktop.Models;
-using VRemoteDesktop.Services.VTCPClient;
-using VRemoteServer.Models;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
-using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
     public class VClientManager : IDisposable
     {
+        private bool _disposed = false;
         private readonly ConcurrentDictionary<string, VClient> _connections;
         public EventHandler<P2PClientDataReceived> ClientDataReceived;
         public VClientManager()
@@ -116,7 +101,13 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             if (disposing)
             {
+                if(_disposed) return;
+                foreach(var connection in _connections)
+                {
+                    connection.Value?.Dispose();
+                }
                 _connections.Clear();
+                _disposed = true;
             }
         }
     }

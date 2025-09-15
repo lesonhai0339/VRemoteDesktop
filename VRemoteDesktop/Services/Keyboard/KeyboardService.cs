@@ -97,7 +97,7 @@ namespace VRemoteDesktop.Services.Keyboard
             using (Process curProcess = Process.GetCurrentProcess())
             using (ProcessModule curModule = curProcess.MainModule)
             {
-                ////get specifi windows handle
+                ////get specific windows handle
                 //return SetWindowsHookEx(WH_KEYBOARD_LL, proc,
                 //    GetModuleHandle(curModule.ModuleName), 0);
 

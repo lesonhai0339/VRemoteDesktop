@@ -17,7 +17,7 @@ namespace VRemoteDesktop.Services.Mouse
 
         #region Virtual mouse
         /// <summary>
-        /// caculate scales between current physical screen dimesion and remote physical screen dimesion
+        /// Calculate scales between current physical screen dimension and remote physical screen dimension
         /// </summary>
         /// <param name="senderWidth">remote width</param>
         /// <param name="senderHeight">remote height</param>
@@ -113,7 +113,7 @@ namespace VRemoteDesktop.Services.Mouse
                            WindowsMouseEvent.MOUSEEVENTF_RIGHTUP
                        });
                     break;
-                //left mouse dbclick
+                //left mouse double click
                 case WindowsMouseMessage.WM_LBUTTONDBLCLK:
                     mouseEvents.AddRange(
                        new List<WindowsMouseEvent>
@@ -124,7 +124,7 @@ namespace VRemoteDesktop.Services.Mouse
                            WindowsMouseEvent.MOUSEEVENTF_LEFTUP
                        });
                     break;
-                // middle mouse dbclick
+                // middle mouse double click
                 case WindowsMouseMessage.WM_MBUTTONDBLCLK:
                     mouseEvents.AddRange(
                         new List<WindowsMouseEvent>
@@ -135,7 +135,7 @@ namespace VRemoteDesktop.Services.Mouse
                             WindowsMouseEvent.MOUSEEVENTF_MIDDLEUP
                         });
                     break;
-                // right mouse dbclick
+                // right mouse double click
                 case WindowsMouseMessage.WM_RBUTTONDBLCLK:
                     mouseEvents.AddRange(
                         new List<WindowsMouseEvent>
@@ -205,8 +205,8 @@ namespace VRemoteDesktop.Services.Mouse
         {
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);
-            bool cusorFlag = MouseApis.SetCursorPos(pointX, pointY);
-            if (!cusorFlag) return false;
+            bool cursorFlag = MouseApis.SetCursorPos(pointX, pointY);
+            if (!cursorFlag) return false;
 
             INPUT[] inputs = new INPUT[1];
             inputs[0].type = INPUT_MOUSE;
@@ -226,15 +226,15 @@ namespace VRemoteDesktop.Services.Mouse
             int eventCount = mouseEvents.Count;
             int pointX = (int)Math.Round(scaleX * x);
             int pointY = (int)Math.Round(scaleY * y);
-            ////or you do not want use SetcursorPos, you can use this code
+            ////or you do not want use SetcursorPos(), you can use this code
             //int normalizedX = x * 65535 / Screen.PrimaryScreen.Bounds.Width;
             //int normalizedY = y * 65535 / Screen.PrimaryScreen.Bounds.Height;
             ////and set 
             //inputs[0].u.mi.dx = normalizedX;
             //inputs[0].u.mi.dy = normalizedY;
 
-            bool cusorFlag = MouseApis.SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
-            if (!cusorFlag) return false;
+            bool cursorFlag = MouseApis.SetCursorPos(pointX, pointY); // Set the cursor position to the specified coordinates
+            if (!cursorFlag) return false;
 
 
             INPUT[] inputs = new INPUT[eventCount];

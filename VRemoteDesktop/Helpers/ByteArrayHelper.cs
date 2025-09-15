@@ -116,15 +116,15 @@ namespace VRemoteDesktop.Helpers
         }
         public static BaseResponse<byte[]> BitmapToByteArray(Bitmap bitmap)
         {
-            BitmapData bmpdata = null;
+            BitmapData bmpData = null;
 
             try
             {
-                bmpdata = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
-                int stride = bmpdata.Stride;
-                int numbytes = bmpdata.Stride * bitmap.Height;
-                byte[] bytedata = new byte[numbytes];
-                IntPtr ptr = bmpdata.Scan0;
+                bmpData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
+                int stride = bmpData.Stride;
+                int numBytes = bmpData.Stride * bitmap.Height;
+                byte[] byteData = new byte[numBytes];
+                IntPtr ptr = bmpData.Scan0;
 
                 Marshal.Copy(ptr, byteData, 0, numBytes);
 
@@ -142,8 +142,8 @@ namespace VRemoteDesktop.Helpers
             }
             finally
             {
-                if (bmpdata != null)
-                    bitmap.UnlockBits(bmpdata);
+                if (bmpData != null)
+                    bitmap.UnlockBits(bmpData);
             }
         }
         public static BaseResponse<byte[]> RemoveFirstInSource(byte[] data, int cutLength)
@@ -261,7 +261,7 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
-        public static BaseResponse<byte[]> CompressGzip(byte[] data)
+        public static BaseResponse<byte[]> CompressGZip(byte[] data)
         {
             if (data == null || data.Length == 0)
                 return BaseResponse<byte[]>.Error(
@@ -279,14 +279,14 @@ namespace VRemoteDesktop.Helpers
                     }
                     return BaseResponse<byte[]>.Success(
                         data: stream.ToArray(),
-                        message: nameof(CompressGzip)
+                        message: nameof(CompressGZip)
                     );
                 }
             }
             catch (Exception ex)
             {
                 return BaseResponse<byte[]>.Error(
-                    message: nameof(CompressGzip),
+                    message: nameof(CompressGZip),
                     ex: ex
                 );
             }
@@ -297,9 +297,9 @@ namespace VRemoteDesktop.Helpers
             {
                 MemoryStream input = new MemoryStream(data);
                 MemoryStream output = new MemoryStream();
-                using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress, true))
+                using (DeflateStream dsStream = new DeflateStream(input, CompressionMode.Decompress, true))
                 {
-                    dstream.CopyTo(output);
+                    dsStream.CopyTo(output);
                 }
                 return BaseResponse<byte[]>.Success(
                         data: output.ToArray(),
@@ -314,7 +314,7 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
-        public static BaseResponse<byte[]> DecompressGzip(byte[] data)
+        public static BaseResponse<byte[]> DecompressGZip(byte[] data)
         {
 
             try
@@ -326,14 +326,14 @@ namespace VRemoteDesktop.Helpers
                     compressionStream.CopyTo(output);
                     return BaseResponse<byte[]>.Success(
                         data: output.ToArray(),
-                        message: nameof(DecompressGzip)
+                        message: nameof(DecompressGZip)
                     );
                 }
             }
             catch (Exception ex)
             {
                 return BaseResponse<byte[]>.Error(
-                    message: nameof(DecompressGzip),
+                    message: nameof(DecompressGZip),
                     ex: ex
                 );
             }

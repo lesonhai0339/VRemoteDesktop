@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Helpers
 {
@@ -20,8 +21,11 @@ namespace VRemoteDesktop.Helpers
 
             return input.Split(new[] { separator }, StringSplitOptions.RemoveEmptyEntries);
         }
-        public static string StringBuilderWithSeparator(string separator = "|", params object[] array)
+        public static string StringBuilderWithSeparator(string separator, params object[] array)
         {
+            if (string.IsNullOrWhiteSpace(separator))
+                separator = DefaultValue.DEFAULT_SEPRATOR;
+
             if (array == null || array.Length == 0)
                 return string.Empty;
 
@@ -108,7 +112,7 @@ namespace VRemoteDesktop.Helpers
                 stringBuilder.Append(data[i]);
                 if (i != data.Length - 1)
                 {
-                    stringBuilder.Append("|");
+                    stringBuilder.Append(DefaultValue.DEFAULT_SEPRATOR);
                 }
             }
             return stringBuilder.ToString();

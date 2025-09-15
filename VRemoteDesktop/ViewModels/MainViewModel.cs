@@ -74,8 +74,8 @@ namespace VRemoteDesktop.ViewModels
         #region Methods
         public void Connect(VClient client = null)
         {
-            string ip = AppSettingHelper.Getvalue("RemoteServerIP");
-            string port = AppSettingHelper.Getvalue("RemoteServerPort");
+            string ip = AppSettingHelper.GetValue("RemoteServerIP");
+            string port = AppSettingHelper.GetValue("RemoteServerPort");
 
             if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
             {
@@ -86,8 +86,8 @@ namespace VRemoteDesktop.ViewModels
             {
                 if(client == null)
                 {
-                    var clientx = _remoteDesktopService.GetClientById(_id);
-                    clientx.Connect(ip, validPort);
+                    var client1 = _remoteDesktopService.GetClientById(_id);
+                    client1.Connect(ip, validPort);
                 }
                 else
                 {

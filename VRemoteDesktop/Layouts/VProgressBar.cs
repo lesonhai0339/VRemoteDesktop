@@ -46,8 +46,8 @@ namespace VRemoteDesktop.Layouts
         private void CheckTimeOut(object obj)
         {
             DateTime curTime = DateTime.Now;
-            var elpased = (curTime - _time).TotalMinutes;
-            if (elpased > DefaultValue.DEFAULT_TIMEOUT_MINUTES)
+            var elapsed = (curTime - _time).TotalMinutes;
+            if (elapsed > DefaultValue.DEFAULT_TIMEOUT_MINUTES)
             {
                 _timeout?.Dispose();
                 ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Timeout));

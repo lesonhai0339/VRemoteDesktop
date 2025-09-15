@@ -13,6 +13,7 @@ namespace VRemoteDesktop.Services.FileService
 {
     public class VAttachmentManager: IDisposable
     {
+        private bool _disposed = false;
         private readonly object _lock= new object();
         private ConcurrentDictionary<string, VFileInfo> _files;
         private System.Threading.Timer _timer;
@@ -78,11 +79,11 @@ namespace VRemoteDesktop.Services.FileService
         }
         public bool CleanUpFile(string fileId)
         {
-            if (_files.TryGetValue(fileId, out var fileinfo))
+            if (_files.TryGetValue(fileId, out var fileInfo))
             {
-                if (!string.IsNullOrWhiteSpace(fileinfo.SavePath))
+                if (!string.IsNullOrWhiteSpace(fileInfo.SavePath))
                 {
-                    bool isSuccess = Helpers.FileHelper.RemoveFileByFilePath(fileinfo.SavePath);
+                    bool isSuccess = Helpers.FileHelper.RemoveFileByFilePath(fileInfo.SavePath);
                     if (isSuccess)
                         return false;
                 }
@@ -121,7 +122,10 @@ namespace VRemoteDesktop.Services.FileService
         {
             if (disposing)
             {
+                if (_disposed) return;
                 _files.Clear();
+                _timer?.Dispose();
+                _disposed = true;
             }
         }
     }

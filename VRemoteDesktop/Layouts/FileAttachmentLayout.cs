@@ -24,7 +24,7 @@ namespace VRemoteDesktop.Layouts
         private Button _stop;
         private Label _waitingPartnerAccept;
         private VFileInfo _fileInfo;
-        private VProgressBar _progressbar;
+        private VProgressBar _progressBar;
 
         public event EventHandler<P2PFileReceivedEventArgs> AcceptSaveFile;
         public FileAttachmentLayout(string id, string socketId)
@@ -138,10 +138,10 @@ namespace VRemoteDesktop.Layouts
                 this.Controls.Remove(this._save);
                 this.Controls.Remove(this._fileSize);
 
-                _progressbar = new VProgressBar(_fileInfo);
-                _progressbar.ProgressBarEvent += ProgressCompletedEventHandler;
+                _progressBar = new VProgressBar(_fileInfo);
+                _progressBar.ProgressBarEvent += ProgressCompletedEventHandler;
                 this.Controls.Add(_stop, 2, 0);
-                this.Controls.Add(_progressbar, 1, 1);
+                this.Controls.Add(_progressBar, 1, 1);
             }
             finally
             {
@@ -174,8 +174,8 @@ namespace VRemoteDesktop.Layouts
         }
         public void UpdateProgressBar(int num)
         {
-            if (_progressbar != null)
-                _progressbar.SetStep(num);
+            if (_progressBar != null)
+                _progressBar.SetStep(num);
         }
         public void DisableControl(Control control)
         {
@@ -196,23 +196,23 @@ namespace VRemoteDesktop.Layouts
                 this.Invoke(new Action<object, ChatProgressBarEventArgs>(ProgressCompletedEventHandler), sender, e);
                 return;
             }
-            if (_progressbar != null)
+            if (_progressBar != null)
             {
-                _progressbar.ProgressBarEvent -= ProgressCompletedEventHandler;
-                this.Controls.Remove(_progressbar);
-                _progressbar.Dispose();
-                _progressbar = null;
+                _progressBar.ProgressBarEvent -= ProgressCompletedEventHandler;
+                this.Controls.Remove(_progressBar);
+                _progressBar.Dispose();
+                _progressBar = null;
             }
             ProgressBarCompletedTask(e.Type);
         }
         public void RemoveProgressBar()
         {
-            if (_progressbar != null)
+            if (_progressBar != null)
             {
-                _progressbar.ProgressBarEvent -= ProgressCompletedEventHandler;
-                this.Controls.Remove(_progressbar);
-                _progressbar.Dispose();
-                _progressbar = null;
+                _progressBar.ProgressBarEvent -= ProgressCompletedEventHandler;
+                this.Controls.Remove(_progressBar);
+                _progressBar.Dispose();
+                _progressBar = null;
             }
             ProgressBarCompletedTask(ProgressbarEnum.Stop);
         }
@@ -266,8 +266,8 @@ namespace VRemoteDesktop.Layouts
         {
             if (disposing)
             {
-                if(_progressbar != null)
-                    _progressbar.ProgressBarEvent -= ProgressCompletedEventHandler;
+                if(_progressBar != null)
+                    _progressBar.ProgressBarEvent -= ProgressCompletedEventHandler;
 
                 if(_save != null)
                     _save.Click -= ClickedEventHandler;

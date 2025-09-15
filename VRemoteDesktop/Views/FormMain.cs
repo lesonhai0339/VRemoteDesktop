@@ -111,11 +111,11 @@ namespace VRemoteDesktop
         }
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            string partnetId = txtPartnerId.Text.Replace(" ", "");
-            string partnetPassword = txtPartnerPassword.Text.Replace(" ","");
-            if(!string.IsNullOrWhiteSpace(partnetId) && !string.IsNullOrWhiteSpace(partnetPassword))
+            string partnerId = txtPartnerId.Text.Replace(" ", "");
+            string partnerPassword = txtPartnerPassword.Text.Replace(" ","");
+            if(!string.IsNullOrWhiteSpace(partnerId) && !string.IsNullOrWhiteSpace(partnerPassword))
             {
-                P2PConnec(partnetId, partnetPassword);
+                P2PConnect(partnerId, partnerPassword);
             }
             else
             {
@@ -126,7 +126,7 @@ namespace VRemoteDesktop
         {
             ViewModel.Connect();
         }
-        private void P2PConnec(string id, string password)
+        private void P2PConnect(string id, string password)
         {
             ViewModel.RequestP2PConnect(id, password);
         }

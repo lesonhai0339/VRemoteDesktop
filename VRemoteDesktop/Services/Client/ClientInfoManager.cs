@@ -70,7 +70,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 MajorVersion = os.Version.Major.ToString(),
                 MinorVersion = os.Version.Minor.ToString(),
                 Ip = GetLocalIPAddress(),
-                Port = AppSettingHelper.Getvalue("RemoteServerPort"),
+                Port = AppSettingHelper.GetValue("RemoteServerPort"),
                 PublicIP = ""
             };
             return info;
@@ -121,7 +121,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 return false;
 
             string[] data = StringHelper.StringToStringArrayWithSeparator(dataString);
-            if (data.Length != 13)
+            if (data.Length != DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + 3)
                 return false;
 
             bool isIdAndPasswordCorrect = string.Compare(data[1], Me.Id) == 0 && string.Compare(data[2], Me.Password) == 0;

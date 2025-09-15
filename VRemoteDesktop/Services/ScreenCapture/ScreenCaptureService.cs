@@ -161,7 +161,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 {
                     return null;
                 }
-                byte[] screenCaptureCompressed = ByteArrayHelper.CompressGzip(screens[0].Bytes).GetResult();
+                byte[] screenCaptureCompressed = ByteArrayHelper.CompressGZip(screens[0].Bytes).GetResult();
                 byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
                 int dataSendLength = checked(screenCaptureCompressed.Length + checksum.Length);
                 if (_dataSend.Length < dataSendLength)
@@ -209,7 +209,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             try
             {
-                byte[] screenCaptureCompressed = ByteArrayHelper.CompressGzip(screen.Bytes).GetResult();
+                byte[] screenCaptureCompressed = ByteArrayHelper.CompressGZip(screen.Bytes).GetResult();
                 byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
                 int dataLength = checked(screenCaptureCompressed.Length + checksum.Length);
                 if (_dataSend.Length < dataLength)
@@ -261,7 +261,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 if (mergedChangedRegions.Length == 0)
                     return;
 
-                byte[] changedRegionsCompressed = ByteArrayHelper.CompressGzip(mergedChangedRegions).GetResult();
+                byte[] changedRegionsCompressed = ByteArrayHelper.CompressGZip(mergedChangedRegions).GetResult();
 
                 byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(changedRegionsCompressed)); //add hash to ensure data is correct
 
@@ -338,28 +338,27 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (disposing)
             {
-                if (disposing)
+                if (_disposed) return;
+
+                if (_capture != null)
                 {
-                    if (_capture != null)
-                    {
-                        _capture.Dispose();
-                    }
-
-                    StopCapture();
-                    int count = 0;
-                    while (_backgroundWorker.IsBusy && count++ < 20)
-                        Thread.Sleep(100);
-
-                    if (!_backgroundWorker.IsBusy)
-                    {
-                        _backgroundWorker.DoWork -= DoWork;
-                        _backgroundWorker.Dispose();
-                    }
-                    _dataSend = null;
-                    _cancel.Dispose();
+                    _capture.Dispose();
                 }
+
+                StopCapture();
+                int count = 0;
+                while (_backgroundWorker.IsBusy && count++ < 20)
+                    Thread.Sleep(100);
+
+                if (!_backgroundWorker.IsBusy)
+                {
+                    _backgroundWorker.DoWork -= DoWork;
+                    _backgroundWorker.Dispose();
+                }
+                _dataSend = null;
+                _cancel.Dispose();
                 _disposed = true;
             }
         }
