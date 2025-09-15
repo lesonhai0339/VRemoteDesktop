@@ -30,18 +30,20 @@ namespace VRemoteDesktop.Services.SystemService
             _disposed = false;
             _keyboardService = keyboardService;
             _keyboardService.KeyPressed += KeyPressedEventHandler;
-            Task.Factory.StartNew(() =>
-            {
-                try
-                {
-                    _screenCaptureService = screenCaptureService;
-                    _screenCaptureService.ScreenEvent += ScreenCaptureEventHandler;
-                }
-                catch(Exception ex)
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error(ex, "ScreenCaptureService ");
-                }
-            }, TaskCreationOptions.LongRunning);
+            _screenCaptureService = screenCaptureService;
+            _screenCaptureService.ScreenEvent += ScreenCaptureEventHandler;
+            //Task.Factory.StartNew(() =>
+            //{
+            //    try
+            //    {
+            //        _screenCaptureService = screenCaptureService;
+            //        _screenCaptureService.ScreenEvent += ScreenCaptureEventHandler;
+            //    }
+            //    catch(Exception ex)
+            //    {
+            //        Log.ForContext("FileName", this.GetType().Name).Error(ex, "ScreenCaptureService ");
+            //    }
+            //}, TaskCreationOptions.LongRunning);
         }
         #region Properties
         #endregion

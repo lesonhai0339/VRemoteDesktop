@@ -67,7 +67,10 @@ namespace VRemoteDesktop.Utils
             {
                 lock (_mediumTasks)
                 {
-                    while (_mediumTasks.TryDequeue(out _)) ;
+                   if(_mediumTasks.Count > 0)
+                    {
+                        while (_mediumTasks.TryDequeue(out _)) ;
+                    }
                     _mediumTasks.Enqueue(tasks);
                 }
             }
