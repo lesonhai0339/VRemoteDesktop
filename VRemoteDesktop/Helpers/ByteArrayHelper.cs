@@ -126,10 +126,10 @@ namespace VRemoteDesktop.Helpers
                 byte[] bytedata = new byte[numbytes];
                 IntPtr ptr = bmpdata.Scan0;
 
-                Marshal.Copy(ptr, bytedata, 0, numbytes);
+                Marshal.Copy(ptr, byteData, 0, numBytes);
 
                 return BaseResponse<byte[]>.Success(
-                       data: bytedata,
+                       data: byteData,
                        message: nameof(BitmapToByteArray)
                    );
             }
