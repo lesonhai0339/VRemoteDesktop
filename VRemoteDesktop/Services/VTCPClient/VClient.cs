@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
@@ -207,7 +208,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                                         }
                                         catch (Exception ex)
                                         {
-                                            Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
+                                            Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DoWork error");
                                         }
                                     });
                                     break;
@@ -219,7 +220,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     }
                     catch (Exception ex)
                     {
-                        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
+                        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DoWork error");
                     }
                 }
             }
@@ -256,7 +257,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         }
                         catch (Exception ex)
                         {
-                            Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Dowork error");
+                            Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DoWork error");
                         }
                     }
                     Thread.Sleep(10);
@@ -274,12 +275,26 @@ namespace VRemoteDesktop.Services.VTCPClient
                 ProcessFileTransfer(task);
                 return;
             }
-
             Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
         }
         public void RemoveTaskByType(SocketDataType socketType, object dataType, object data)
         {
-            if(socketType == SocketDataType.Chat)
+            if (socketType == SocketDataType.None)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error("SocketDataType is none, pass");
+                return;
+            }
+            if (dataType == null)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error("dataType is null, pass");
+                return;
+            }
+            if (data == null)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error("data is null, pass");
+                return;
+            }
+            if (socketType == SocketDataType.Chat)
             {
                 if(dataType is ChatDataType chat && chat == ChatDataType.StopReceivedFileData)
                 {
@@ -307,16 +322,20 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWork(TaskObject task, QueuePriority priority)
         {
+            if (task == null) return;
             _senderQueue.Enqueue(task, priority);
             //_senderTasks.Enqueue(task, (int)task.Priority);
         }
         public void AddWorkGroup(List<TaskObject> tasks, QueuePriority priority)
         {
+            if (tasks == null || tasks.Count == 0) return;
+
             _senderQueue.Enqueue(new TaskGroup(tasks), priority);
             //_senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
         }
         public void AddWorkGroup(TaskObject[] tasks, QueuePriority priority)
         {
+            if (tasks == null || tasks.Length == 0) return;
             _senderQueue.Enqueue(new TaskGroup(tasks), priority);
             //_senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
         }
@@ -329,7 +348,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
-                if (string.IsNullOrWhiteSpace(ip) || port <= 0)
+                if (string.IsNullOrWhiteSpace(ip) || port < 0)
                 {
                     Logger.Log.ForContext("FileName", nameof(Connect)).Error("Invalidate argument at Connect method");
                     return;
@@ -367,7 +386,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         /// Callback method when the socket is connected to the remote server
         /// </summary>
         /// <param name="ar"></param>
-        public void ConnectCallback(IAsyncResult ar)
+        private void ConnectCallback(IAsyncResult ar)
         {
             try
             {
@@ -471,56 +490,97 @@ namespace VRemoteDesktop.Services.VTCPClient
             try
             {
                 int headerSize = ByteConstants.INT32_LENGTH + RandomLength.SOCKET_ID_LENGTH + RandomLength.DATA_TYPE_LENGTH;
-                int dataLength = BitConverter.ToInt32(bytes, 0);
 
-                SocketDataType dataType = (SocketDataType)bytes[4];
+                if (bytes.Length < headerSize)
+                {
+                    Logger.Log.ForContext("", this.GetType().Name).Error("Data received less than header size, not handler");
+                    return;
+                }
+                int offset = 0;
 
-                string socketId = BitConverter.ToString(bytes, 5, RandomLength.SOCKET_ID_LENGTH);
+                int dataLength = BitConverter.ToInt32(bytes, offset);
+                if(dataLength <= 0)
+                {
+                    Logger.Log.ForContext("", this.GetType().Name).Error("Data length mismatch");
+                    return;
+                }
+                offset += ByteConstants.INT32_LENGTH;
+
+                SocketDataType dataType = (SocketDataType)bytes[offset];
+                if(!Enum.IsDefined(typeof(SocketDataType), dataType))
+                {
+                    Logger.Log.ForContext("", this.GetType().Name).Error("Invalid SocketDataType");
+                    return;
+                }
+                offset += RandomLength.DATA_TYPE_LENGTH;
+
+                var result = ByteArrayHelper.ConvertByteArrayToString(bytes, offset, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII);
+                if (!result.IsSuccess)
+                {
+                    Logger.Log.ForContext("", this.GetType().Name).Error("Cannot convert byte array to string");
+                    return;
+                }
+                string socketId = result.GetResult();
+                offset += RandomLength.SOCKET_ID_LENGTH;
 
                 byte[] data = new byte[bytes.Length - headerSize];
-                Buffer.BlockCopy(bytes, headerSize, data, 0, data.Length);
+                Buffer.BlockCopy(bytes, offset, data, 0, data.Length);
 
                 _receivedQueue.Add(new DataReceive
-                {
-                    Type = dataType,
-                    Length = dataLength,
-                    Data = data
-                });
+                (
+                    type: dataType,
+                    length: dataLength,
+                    data: data,
+                    socketId: socketId
+                ));
             }
             catch (Exception ex)
             {
-                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ProcessReceiveData error");
+                Logger.Log.ForContext("", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
-        private byte[] PrepareHeader(SocketDataType type, string partnerId, byte[] data)
+        public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0)
         {
-            int headerSize = ByteConstants.INT32_LENGTH + RandomLength.SOCKET_ID_LENGTH + RandomLength.DATA_TYPE_LENGTH;
-            byte[] resultBytes = new byte[data.Length + headerSize];
-            
-            //Data length
-            Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 0, ByteConstants.INT32_LENGTH);
-            //Data type
-            resultBytes[4] = (byte)type;
-            //Data
-            Buffer.BlockCopy(Encoding.ASCII.GetBytes(partnerId), 0, resultBytes, 5, RandomLength.SOCKET_ID_LENGTH);
-            Buffer.BlockCopy(data, 0, resultBytes, headerSize, data.Length);
+            if (type == SocketDataType.None) 
+                return null;
+            if (string.IsNullOrEmpty(socketId) || socketId.Length != RandomLength.SOCKET_ID_LENGTH)
+                return null;
+            if (includeData && (data == null || data.Length == 0))
+                return null;
+            if (!includeData && dataSize < 0)
+                return null;
+            try
+            {
+                int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.SOCKET_ID_LENGTH;
+                int actualDataSize = includeData ? data.Length : dataSize;
+                int totalMessageSize = headerOnlySize + actualDataSize;
+                int headerSize = includeData ? totalMessageSize : headerOnlySize;
 
-            return resultBytes;
-        }
-        public byte[] GenerateP2PHeader(SocketDataType type, int dataSize, string socketId)
-        {
-            int headerSize = ByteConstants.INT32_LENGTH + RandomLength.SOCKET_ID_LENGTH + RandomLength.DATA_TYPE_LENGTH;
-            int totalSize = dataSize + headerSize;
-            byte[] header = new byte[headerSize];
-            //Data length
-            Buffer.BlockCopy(BitConverter.GetBytes(totalSize), 0, header, 0, ByteConstants.INT32_LENGTH);
-            //Data Type
-            header[4] = (byte)type;
-            //Socket Id
-            byte[] socketIdBytes = Encoding.ASCII.GetBytes(socketId);
-            Buffer.BlockCopy(socketIdBytes, 0, header, 5, socketIdBytes.Length);
+                byte[] header = new byte[headerSize];
+                int offset = 0;
 
-            return header;
+                Buffer.BlockCopy(BitConverter.GetBytes(totalMessageSize), 0, header, offset, ByteConstants.INT32_LENGTH);
+                offset += ByteConstants.INT32_LENGTH;
+
+                header[offset] = (byte)type;
+                offset += RandomLength.DATA_TYPE_LENGTH;
+
+                byte[] idByteArray = ByteArrayHelper.ConvertStringToByteArray(socketId, EncodingType.ASCII).GetResult();
+                Buffer.BlockCopy(idByteArray, 0, header, offset, idByteArray.Length);
+                offset += idByteArray.Length;
+
+                if (includeData)
+                {
+                    Buffer.BlockCopy(data, 0, header, offset, data.Length);
+                    offset += data.Length;
+                }
+                return header;
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "Generate header error ");
+                return null;
+            }
         }
         /// <summary>
         /// Get chunk file data and send to remote server
@@ -535,31 +595,46 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             else
             {
-                Console.WriteLine($"Process Send file: {task.ChunkFileInfo.FilePath} - offset:{task.ChunkFileInfo.Offset} - id:{SocketId}");
-
-                int headerSize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
-
-                byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
-
-                //Data type
-                chunkFileData[0] = task.Data[0];
-                //Data length
-                Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, 1, ByteConstants.INT32_LENGTH);
-                //File Id
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, 5, RandomLength.FILE_ID_LENGTH);
-                int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, headerSize, task.ChunkFileInfo.ChunkSize);
-
-                if (chunkRead != chunkFileData.Length - headerSize)
+                try
                 {
-                    if (Enum.IsDefined(typeof(ChatDataType), task.Data[0]))
+                    int headerSize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
+
+                    byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
+
+                    if (!Enum.IsDefined(typeof(ChatDataType), (int)task.Data[0]))
                     {
-                        var type = (ChatDataType)task.Data[0];
+                        Logger.Log.ForContext("FileName", this.GetType().Name).Error("Invalid ChatDataType, not handler");
+                        return;
+                    }
+                    int offset = 0;
+                    //Data type
+                    ChatDataType type = (ChatDataType)task.Data[0];
+                    chunkFileData[offset] = (byte)type;
+                    offset += RandomLength.DATA_TYPE_LENGTH;
+
+                    //Chunk offset
+                    Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, offset, ByteConstants.INT32_LENGTH);
+                    offset += ByteConstants.INT32_LENGTH;
+
+                    //File Id
+                    Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, offset, RandomLength.FILE_ID_LENGTH);
+                    offset += RandomLength.FILE_ID_LENGTH;
+
+                    //File data
+                    int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
+
+                    if (chunkRead != chunkFileData.Length - headerSize)
+                    {
+                        Logger.Log.ForContext("FileName", this.GetType().Name).Error("Error when ProcessFileTransfer send file data error, remove remain send file task");
                         RemoveTaskByType(task.TaskType, type, task.ChunkFileInfo.FileId);
                         return;
                     }
-                    Logger.Log.ForContext("FileName", this.GetType().Name).Error("Error when ProcessFileTransfer send file data error, remove remain send file task");
+                    Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
                 }
-                Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
+                catch(Exception ex)
+                {
+                    Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Send chunk file on socket id "+ this.SocketId + "error ");
+                }
             }
         }
         /// <summary>
@@ -573,12 +648,19 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
+                if (type == SocketDataType.None)
+                    throw new ArgumentException("Missing arguments");
+                
+                if (data == null || data.Length == 0)
+                    throw new ArgumentException("Missing arguments");
+                
                 if (string.IsNullOrWhiteSpace(partnerId))
                     partnerId = this.SocketId;
 
+
                 if (isSendHeader)
                 {
-                    data = PrepareHeader(type, partnerId, data);
+                    data = HeaderGenerate(type, partnerId, true, data);
                 }
                 Send(data);
             }
@@ -591,10 +673,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
-                if(data == null || data.Length == 0)
-                {
-                    throw new ArgumentException("Missing arguments");
-                }
                 Sendstate state = new Sendstate
                 {
                     Data = data,

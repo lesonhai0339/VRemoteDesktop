@@ -2,6 +2,9 @@ using Moq;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Drawing;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using VRemoteDesktop.Models;
@@ -11,47 +14,75 @@ namespace ScreenCaptureServiceTest
 {
     public class ScreenCaptureserviceTest
     {
+        private IScreenCaptureServiceListener _screenCaptureService;
         [SetUp]
         public void Setup()
         {
+            var screenCapture = new Mock<IScreenCapture>();
+
+            screenCapture.Setup(x => x.GetScreen())
+                .Returns(new List<ScreenRegion>() {
+                    new ScreenRegion{
+                        Bytes = new byte[0],
+                        IsFullScreen = true,
+                        Rectangle = new System.Drawing.Rectangle(new Point(0,0), new Size(0,0)),
+                    }
+                });
+
+            _screenCaptureService = new ScreenCaptureService(screenCapture.Object);
         }
         [Test]
-        public void TestCaptureElapsedTime()
+        public void StartCaptureTest()
         {
-            //var screencapture = new Mock<IScreenCapture>();
-
-            //screencapture.Setup(x => x.GetScreen())
-            //    .Returns(new List<ScreenRegion> {
-            //    new ScreenRegion{
-            //        IsFullScreen = true,
-            //        Rectangle = new System.Drawing.Rectangle(),
-            //        Bytes = new byte[0]
-            //    }
-            //});
-
-            //var screenCaptureService = new ScreenCaptureService(screencapture.Object);
-            var screencapture = new ScreenCapture();
-
-            var screenCaptureService = new ScreenCaptureService(screencapture);
-            int count = 0;
-            screenCaptureService.ScreenEvent += (s, e) =>
-            {
-                Console.WriteLine($"ScreenEvent received: {e.Type} at: {DateTime.Now.ToString("HH:mm:ss:fff")}");
-                count++;
-            };
             try
             {
-                Assert.False(screenCaptureService.IsCapturing);
-                screenCaptureService.StartCapture();
-                Assert.True(screenCaptureService.IsCapturing);
-                Thread.Sleep(TimeSpan.FromSeconds(30));
-                Console.WriteLine($"Number screen capture call in 30 second with fps {DefaultScreen.DEFAULT_FPS}: "+ count);
+                Assert.IsFalse(_screenCaptureService.IsCapturing);
+                _screenCaptureService.StartCapture();
+                Assert.IsTrue(_screenCaptureService.IsCapturing);
             }
             catch (Exception ex)
             {
                 Console.WriteLine($"StartCapture failed: {ex.Message}");
                 throw;
             }
+        }
+        [Test]
+        public void StopCaptureTest()
+        {
+            try
+            {
+                _screenCaptureService.StartCapture();
+                Thread.Sleep(100);
+                Assert.IsTrue(_screenCaptureService.IsCapturing);
+                _screenCaptureService.StopCapture();
+                Thread.Sleep(100);
+                Assert.IsFalse(_screenCaptureService.IsCapturing);
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine("Stop capture error: ", ex);
+                throw;
+            }
+        }
+        [Test]
+        public void GetScreenPacketsTest_ValueNotNull()
+        {
+            var screenCaptureService = new Mock<IScreenCaptureServiceListener>();
+            screenCaptureService.Setup(x => x.GetScreenPackets())
+                .Returns(() => new List<byte[]>());
+
+            var value = screenCaptureService.Object.GetScreenPackets();
+            Assert.IsNotNull(value);
+        }
+        [Test]
+        public void GetScreenPacketsTest_ValueIsNull()
+        {
+            var screenCaptureService = new Mock<IScreenCaptureServiceListener>();
+            screenCaptureService.Setup(x => x.GetScreenPackets())
+                .Returns(() => null);
+
+            var value = screenCaptureService.Object.GetScreenPackets();
+            Assert.IsNull(value);
         }
     }
 }

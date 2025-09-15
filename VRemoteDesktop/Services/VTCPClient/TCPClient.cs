@@ -502,11 +502,12 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Buffer.BlockCopy(bytes, 13, data, 0, data.Length);
 
                 Tasks.TryAdd(new DataReceive
-                {
-                    Type = commandType,
-                    Length = length,
-                    Data = data
-                });
+                (
+                    type : commandType,
+                    length : length,
+                    data : data,
+                    socketId: socketId
+                ));
             }
             catch (Exception ex)
             {

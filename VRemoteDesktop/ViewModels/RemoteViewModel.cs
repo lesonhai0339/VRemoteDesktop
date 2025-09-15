@@ -136,8 +136,9 @@ namespace VRemoteDesktop.ViewModels
                 if(_vClient != null)
                 {
                     _vClient.P2PScreenReceived -= P2PScreenReceivedEventHandler;
-                    _vClient.Dispose();
                 }
+                _vClient.Dispose();
+
             }
         }
         #endregion

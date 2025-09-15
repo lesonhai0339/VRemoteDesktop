@@ -327,17 +327,15 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if (disposing)
             {
-                if (!_isDisposed)
+                if (_isDisposed) return;
+                lock (_lockObject)
                 {
-                    lock (_lockObject)
-                    {
-                        _previousFrame?.Dispose();
-                        _previousFrame = null;
+                    _previousFrame?.Dispose();
+                    _previousFrame = null;
 
-                        while (changedBlocks.TryTake(out _)) { }
-                    }
-                    _isDisposed = true;
+                    while (changedBlocks.TryTake(out _)) { }
                 }
+                _isDisposed = true;
             }
         }
     }

@@ -16,6 +16,8 @@ using static VRemoteDesktop.Utils.DefaultSocketPacket;
 using static VRemoteDesktop.Utils.DefaultScreen;
 
 using System.Windows.Forms;
+using System.Threading.Tasks;
+using System.Collections.Concurrent;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -68,7 +70,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             get => _disposed;
         }
-        public BackgroundWorker BackgroundWorker
+        private BackgroundWorker BackgroundWorker
         {
             get => _backgroundWorker;
             set
@@ -121,7 +123,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 var screens = _capture.GetScreen();
                 if (screens.Count > 0)
                 {
-                    long totalSize = 0;
+                    //Impossible screen capture can exceed Int.MaxValue(~2GB)
+                    int totalSize = 0;
                     for (int i = 0; i < screens.Count; i++)
                     {
                         totalSize = checked(totalSize + screens[i].TotalSize);
@@ -154,21 +157,29 @@ namespace VRemoteDesktop.Services.ScreenCapture
             try
             {
                 var screens = _capture.GetScreen();
-                long totalSize = checked(screens.Sum(x => x.TotalSize));
-                if (_dataSend.Length < totalSize + DefaultValue.SHA_CHECKSUM_LENGTH)
+                if (screens[0].Bytes == null || screens[0].Bytes.Length == 0)
                 {
-                    _dataSend = new byte[totalSize + DefaultValue.SHA_CHECKSUM_LENGTH];
+                    return null;
+                }
+                byte[] screenCaptureCompressed = ByteArrayHelper.CompressGzip(screens[0].Bytes).GetResult();
+                byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
+                int dataSendLength = checked(screenCaptureCompressed.Length + checksum.Length);
+                if (_dataSend.Length < dataSendLength)
+                {
+                    _dataSend = new byte[dataSendLength];
                 }
                 lock (_lock)
-                {
-                    byte[] screenCaptureCompressed = ByteArrayHelper.CompressGzip(screens[0].Bytes).GetResult();
-                    byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
-                    int dataLength = screenCaptureCompressed.Length + checksum.Length;
+                { 
+                    int offset = 0; 
+                    
+                    Buffer.BlockCopy(checksum, 0, _dataSend, offset, checksum.Length); 
+                    offset += checksum.Length; 
 
-                    var byteCombined = ByteArrayHelper.Combine(checksum, screenCaptureCompressed).GetResult();
-                    _dataSend = byteCombined;
-                    var listByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
-                    return listByteArray;
+                    Buffer.BlockCopy(screenCaptureCompressed, 0, _dataSend, offset, screenCaptureCompressed.Length); 
+                    offset += screenCaptureCompressed.Length; 
+
+                    var listByteArray = ByteArrayHelper.ToListByteArray(_dataSend, offset, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult(); 
+                    return listByteArray; 
                 }
             }
             catch (Exception ex)
@@ -178,22 +189,44 @@ namespace VRemoteDesktop.Services.ScreenCapture
             return null;
         }
         // Send full screen to sender at first connect
-        private void ScreenToPackets(ScreenRegion screen, long totalChunksSize)
+        private void ScreenToPackets(ScreenRegion screen, int totalChunksSize)
         {
+            if(screen == null || totalChunksSize < 0)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets Arguments are null or empty");
+                return;
+            }
+            if (screen.Bytes == null || screen.Bytes.Length == 0)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: data is null or empty");
+                return;
+            }
+            if (screen.Rectangle == null)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: rectangle is null or empty");
+                return;
+            }
+
             try
             {
-                if (_dataSend.Length < totalChunksSize + DefaultValue.SHA_CHECKSUM_LENGTH)
+                byte[] screenCaptureCompressed = ByteArrayHelper.CompressGzip(screen.Bytes).GetResult();
+                byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
+                int dataLength = checked(screenCaptureCompressed.Length + checksum.Length);
+                if (_dataSend.Length < dataLength)
                 {
-                    _dataSend = new byte[totalChunksSize + DefaultValue.SHA_CHECKSUM_LENGTH];
+                    _dataSend = new byte[dataLength];
                 }
                 lock (_lock)
                 {
-                    byte[] screenCaptureCompressed = ByteArrayHelper.CompressGzip(screen.Bytes).GetResult();
-                    byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
-                    int dataLength = screenCaptureCompressed.Length + checksum.Length;
 
-                    var byteCombined = ByteArrayHelper.Combine(checksum, screenCaptureCompressed).GetResult();
-                    _dataSend = byteCombined;
+                    int offset = 0;
+
+                    Buffer.BlockCopy(checksum, 0, _dataSend, offset, checksum.Length);
+                    offset += checksum.Length;
+
+                    Buffer.BlockCopy(screenCaptureCompressed, 0, _dataSend, offset, screenCaptureCompressed.Length);
+                    offset += screenCaptureCompressed.Length;
+
                     ScreenCaptureEventArgs screenArgs = new ScreenCaptureEventArgs(
                         type: SocketDataType.Screen,
                         totalSize: dataLength
@@ -201,7 +234,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
                     screenArgs.Data = byteArrayToListByteArray;
-                    ScreenEvent?.Invoke(null, screenArgs);
+                    ScreenEvent?.Invoke(this, screenArgs);
                 }
             }
             catch (Exception ex)
@@ -210,45 +243,59 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
         }
         //Capture and send screen region change to sender
-        private void ScreenRegionsChangedToPackets(List<ScreenRegion> regions, long totalChunksSize)
+        private void ScreenRegionsChangedToPackets(List<ScreenRegion> regions, int totalChunksSize)
         {
+            if (regions == null || totalChunksSize < 0)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets Arguments are null or empty");
+                return;
+            }
+            if (regions.Count == 0 )
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets error: regions is null or empty");
+                return;
+            }
             try
             {
-                int start = Environment.TickCount;
-                if (_dataSend.Length < totalChunksSize + DefaultValue.SHA_CHECKSUM_LENGTH)
+                byte[] mergedChangedRegions = ConvertChangedRegionsToByteArray(regions);
+                if (mergedChangedRegions.Length == 0)
+                    return;
+
+                byte[] changedRegionsCompressed = ByteArrayHelper.CompressGzip(mergedChangedRegions).GetResult();
+
+                byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(changedRegionsCompressed)); //add hash to ensure data is correct
+
+                int dataSendLength = changedRegionsCompressed.Length + checksum.Length;
+
+                if (_dataSend.Length < dataSendLength)
                 {
-                    _dataSend = new byte[totalChunksSize + DefaultValue.SHA_CHECKSUM_LENGTH];
+                    _dataSend = new byte[dataSendLength];
                 }
                 lock (_lock)
                 {
-                    byte[] mergedChangedRegions = ConvertChangedRegionsToByteArray(regions);
-                    byte[] changedRegionsCompressed = ByteArrayHelper.CompressGzip(mergedChangedRegions).GetResult();
-                    byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(changedRegionsCompressed)); //add hash to ensure data is correct
+                    int offset = 0;
 
-                    int dataSendLength = changedRegionsCompressed.Length + checksum.Length;
+                    Buffer.BlockCopy(checksum, 0, _dataSend, offset, checksum.Length);
+                    offset += checksum.Length ;
 
-                    var byteCombined = ByteArrayHelper.Combine(checksum, changedRegionsCompressed).GetResult(); ;
-                    _dataSend = byteCombined;
-
+                    Buffer.BlockCopy(changedRegionsCompressed, 0, _dataSend, offset, changedRegionsCompressed.Length);
+                    offset += changedRegionsCompressed.Length;
 
                     ScreenCaptureEventArgs chunksArgs = new ScreenCaptureEventArgs(
                        type: SocketDataType.Chunks,
                        totalSize: dataSendLength
                     );
-
                     var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataSendLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
                     chunksArgs.Data = byteArrayToListByteArray;
-                    ScreenEvent?.Invoke(null, chunksArgs);
+                    ScreenEvent?.Invoke(this, chunksArgs);
                 }
-                int end = Environment.TickCount;
-                Log.ForContext("", "RegionsScreen").Info("Time: " + (end - start));
             }
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "ScreenHook").Error(ex, "Chunks event error");
             }
         }
-        //private unsafe byte[] ConverChangedRegionsToByteArray(List<ScreenRegion> regions)
+        //private unsafe byte[] ConvertChangedRegionsToByteArray(List<ScreenRegion> regions)
         private byte[] ConvertChangedRegionsToByteArray(List<ScreenRegion> regions)
         {
             using (var ms = new MemoryStream())
@@ -257,7 +304,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                 for (int i = 0; i < count; i++)
                 {
+                    var region = regions[i];
 
+                    if (region == null || region.Bytes == null || region.Bytes.Length == 0 || region.Rectangle == null)
+                        continue;
                     //fixed (byte* p = _buffer)
                     //{
                     //    int* pInt = (int*)p;
@@ -271,12 +321,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     //}
                     //ms.Write(_buffer, 0, _buffer.Length); // Write the header
                     //ms.Write(regions[i].Bytes, 0, regions[i].Bytes.Length); // Write the chunk data
-                    ms.Write(BitConverter.GetBytes(regions[i].Bytes.Length), 0, 4);
-                    ms.Write(BitConverter.GetBytes(regions[i].Rectangle.X), 0, 4);
-                    ms.Write(BitConverter.GetBytes(regions[i].Rectangle.Y), 0, 4);
-                    ms.Write(BitConverter.GetBytes(regions[i].Rectangle.Width), 0, 4);
-                    ms.Write(BitConverter.GetBytes(regions[i].Rectangle.Height), 0, 4);
-                    ms.Write(regions[i].Bytes, 0, regions[i].Bytes.Length);
+                    ms.Write(BitConverter.GetBytes(region.Bytes.Length), 0, ByteConstants.INT32_LENGTH);
+                    ms.Write(BitConverter.GetBytes(region.Rectangle.X), 0, ByteConstants.INT32_LENGTH);
+                    ms.Write(BitConverter.GetBytes(region.Rectangle.Y), 0, ByteConstants.INT32_LENGTH);
+                    ms.Write(BitConverter.GetBytes(region.Rectangle.Width), 0, ByteConstants.INT32_LENGTH);
+                    ms.Write(BitConverter.GetBytes(region.Rectangle.Height), 0, ByteConstants.INT32_LENGTH);
+                    ms.Write(region.Bytes, 0, region.Bytes.Length);
                 }
                 return ms.ToArray();
             }

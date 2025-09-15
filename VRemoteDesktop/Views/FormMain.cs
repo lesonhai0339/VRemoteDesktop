@@ -178,6 +178,8 @@ namespace VRemoteDesktop
                 this.Invoke(new Action<VClient>(AddChat), client);
                 return;
             }
+            if (client == null) return;
+
             if (!isShow || chatForm.IsDisposed)
             {
                 //need to cal event from ChatForm to this to set isShow = false when Chat form disposed

@@ -147,20 +147,15 @@ namespace VRemoteDesktop.Views
             if (_mouseExtension != null)
                 _mouseExtension.Dispose();
 
-            if(_curScreen != null)
-                _curScreen.Dispose();
+            _curScreen.Dispose();
 
-            if(_screenGraphics != null)
-                _screenGraphics.Dispose();
+            _screenGraphics.Dispose();
 
             _pendingSender?.Dispose();
 
-            _isP2PDisconnectCallback?.Dispose(); 
+            _isP2PDisconnectCallback?.Dispose();
 
-            if (_vClient != null)
-            {
-                _vClient.Dispose();
-            }
+            _vClient?.Dispose();
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {
