@@ -12,9 +12,6 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Utils;
 using static VRemoteDesktop.Utils.Logger;
-using static VRemoteDesktop.Utils.DefaultSocketPacket;
-using static VRemoteDesktop.Utils.DefaultScreen;
-
 using System.Windows.Forms;
 using System.Threading.Tasks;
 using System.Collections.Concurrent;

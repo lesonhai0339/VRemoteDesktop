@@ -29,16 +29,22 @@ namespace ScreenCaptureServiceTest
                     }
                 });
 
-            _screenCaptureService = new ScreenCaptureService(screenCapture.Object);
+            var capture = new ScreenCapture();
+            _screenCaptureService = new ScreenCaptureService(capture);
         }
         [Test]
         public void StartCaptureTest()
         {
             try
             {
+                _screenCaptureService.ScreenEvent += (s, e) =>
+                {
+                    Console.WriteLine(string.Format("Type:{0} - Length:{1} - Time:{2}", e.Type, e.TotalSize, DateTime.Now.ToString("HH:mm:ss:fff")));
+                };
                 Assert.IsFalse(_screenCaptureService.IsCapturing);
                 _screenCaptureService.StartCapture();
                 Assert.IsTrue(_screenCaptureService.IsCapturing);
+                Thread.Sleep(TimeSpan.FromSeconds(10));
             }
             catch (Exception ex)
             {

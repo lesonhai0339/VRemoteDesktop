@@ -14,6 +14,7 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
@@ -192,8 +193,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
                         {
-                            var lastTask = task;
-                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(lastTask.Type, lastTask.Data));
+                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                         }
                         else
                         {
@@ -232,10 +232,11 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             if (taskObj is TaskGroup taskGroup)
                             {
-                                foreach (var t in taskGroup.Tasks)
+                                int length = taskGroup.Tasks.Count;
+                                for(int i= 0; i < length; i++)
                                 {
-                                    ProcessTask(t);
-                                }
+                                    ProcessTask(taskGroup.Tasks[i]);
+                                }                              
                             }
                             else if (taskObj is TaskObject task)
                             {
@@ -528,17 +529,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0)
         {
-            if (type == SocketDataType.None) 
-                return null;
-            if (string.IsNullOrEmpty(socketId) || socketId.Length != RandomLength.SOCKET_ID_LENGTH)
-                return null;
-            if (includeData && (data == null))
-                return null;
-            if (!includeData && dataSize < 0)
-                return null;
             try
             {
-                int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.SOCKET_ID_LENGTH;
+                int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + socketId.Length;
                 int actualDataSize = includeData ? data.Length : dataSize;
                 int totalMessageSize = headerOnlySize + actualDataSize;
                 int headerSize = includeData ? totalMessageSize : headerOnlySize;
@@ -647,7 +640,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
                 if (isSendHeader)
                 {
-                    data = HeaderGenerate(type, partnerId, true, data);
+                    data = HeaderGenerate(type: type,socketId: partnerId, true, data);
                 }
                 Send(data);
             }

@@ -63,10 +63,20 @@ namespace VRemoteDesktop.Utils
             if (IsDispose()) return;
 
             if (tasks == null) return;
-
-            lock (_locks[priority])
+            if(priority == QueuePriority.Medium)
             {
-                _keyValuePairs[priority].Enqueue(tasks);
+                lock (_mediumTasks)
+                {
+                    while (_mediumTasks.TryDequeue(out _)) ;
+                    _mediumTasks.Enqueue(tasks);
+                }
+            }
+            else
+            {
+                lock (_locks[priority])
+                {
+                    _keyValuePairs[priority].Enqueue(tasks);
+                }
             }
         }
         public bool Dequeue(out T task)
