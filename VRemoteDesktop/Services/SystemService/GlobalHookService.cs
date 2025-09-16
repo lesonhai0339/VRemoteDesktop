@@ -235,16 +235,15 @@ namespace VRemoteDesktop.Services.SystemService
             if (disposing)
             {
                 if (_disposed) return;
+
                 if (_keyboardService != null)
-                {
                     _keyboardService.KeyPressed -= KeyPressedEventHandler;
-                    _keyboardService.Dispose();
-                }
+
                 if (_screenCaptureService != null)
-                {
                     _screenCaptureService.ScreenEvent -= ScreenCaptureEventHandler;
-                    _screenCaptureService.Dispose();
-                }
+
+                _keyboardService?.Dispose();
+                _screenCaptureService?.Dispose();
                 _disposed = true;
             }
         }

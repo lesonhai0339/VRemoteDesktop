@@ -18,7 +18,7 @@ using System.Collections.Concurrent;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
-    public interface IScreenCaptureServiceListener : IDisposable
+    public interface IScreenCaptureServiceListener
     {
         void StartCapture();
         void StopCapture();
@@ -26,9 +26,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
         bool IsCapturing { get; set; }
         List<byte[]> GetScreenPackets();
         List<byte[]> GetScreenPacketsWithoutChecksum();
+        void Dispose();
 
     }
-    public class ScreenCaptureService : IScreenCaptureServiceListener
+    public class ScreenCaptureService : IScreenCaptureServiceListener, IDisposable
     {
         private readonly object _lock = new object(); // For thread safety. Can use ReadWriteLockSlim instead
         private volatile bool _isCapturing;

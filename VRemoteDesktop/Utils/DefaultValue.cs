@@ -40,7 +40,7 @@ namespace VRemoteDesktop.Utils
     public static class DefaultClipboard
     {
         /// <summary>
-        /// Maximun characters clipboard can copy
+        /// Maximum characters clipboard can copy
         /// </summary>
         public static int MAX_CLIPBOARD_LENGTH = 1000000;
     }

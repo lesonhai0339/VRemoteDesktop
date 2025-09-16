@@ -16,6 +16,7 @@ namespace VRemoteDesktop.Services.Mouse
         RectangleF TransformImageToDisplay(Size sourceSize, Size imageSize, Rectangle rectangle);
         Point GetImagePointFromMouse(UISizeMode mode,Size sourceSize,Size imageSize,int x,int y);
         string MouseEventToString(MouseEventType mouseEvent,int width,int height,MouseData e,WindowsMouseMessage mouseMsg = WindowsMouseMessage.None,MouseAction mouseType = MouseAction.None);
+        void Dispose();
     }
     public class MouseExtensions: IMouseExtensions,IDisposable
     {

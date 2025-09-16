@@ -32,7 +32,7 @@ namespace VRemoteDesktop.Views
         private readonly RemoteViewModel _remoteViewModel;
         private readonly RemoteDesktopService _remoteDesktopService;
 
-        private readonly MouseExtensions _mouseExtension;
+        private readonly IMouseExtensions _mouseExtension;
         private readonly IScreenCaptureExtensions _screenCaptureExtension;
 
         private bool _isDrag;
@@ -93,19 +93,21 @@ namespace VRemoteDesktop.Views
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
+            //Stop keyboard listener on form
             StopFormKeyboardListener();
-
+            //Unregister events
             if(_remoteViewModel != null)
             {
                 _remoteViewModel.screenEvent -= ScreenEventHandler;
                 _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
                 _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;
             }
-
+            //Form
             _curScreen?.Dispose();
             _screenGraphics?.Dispose();
             _pendingSender?.Dispose();
             _isP2PDisconnectCallback?.Dispose();
+            _clickTimer?.Dispose();
 
             //DI
             _mouseExtension?.Dispose();
@@ -251,6 +253,7 @@ namespace VRemoteDesktop.Views
             }
             catch (Exception ex)
             {
+                Log.ForContext("", this.GetType().Name).Error(ex, "InvalidateRegion error ");
             }
         }
         public void ScreenEventHandler(Bitmap image)
@@ -265,7 +268,7 @@ namespace VRemoteDesktop.Views
                     }
                     catch (Exception ex)
                     {
-                        Log.ForContext("", this.GetType().Name).Error(ex, "Screen event error ");
+                        Log.ForContext("", this.GetType().Name).Error(ex, "ScreenEventHandler error ");
                     }
                 }));
                 return;
@@ -296,6 +299,8 @@ namespace VRemoteDesktop.Views
         private void ScreenRegionsChangedEventHandler(List<ScreenRegion> regions)
         {
             Rectangle rect = _screenCaptureExtension.MergeRegions(_screenGraphics, regions);
+            if (rect == null)
+                return;
             if (this.InvokeRequired)
             {
                 this.BeginInvoke(new Action(() =>
@@ -322,7 +327,9 @@ namespace VRemoteDesktop.Views
                 this.BeginInvoke(new Action<object, KeyboardEventArgs>(KeyboardReceivedEventHandler), sender, e);
                 return;
             }
-            if (e.Combination == KeyCombination.Copy)
+            try
+            {
+                 if (e.Combination == KeyCombination.Copy)
             {
                 _remoteViewModel.GetClipboard(e);
             }
@@ -333,6 +340,11 @@ namespace VRemoteDesktop.Views
                     return;
                 }
                 _remoteViewModel.ProcessKeyboard(e);
+            }
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("", this.GetType().Name).Error(ex, "KeyboardReceivedEventHandler error ");
             }
         }
         #endregion

@@ -17,8 +17,8 @@ namespace VRemoteDesktop.Services.Keyboard
         void Stop();
         void AddHook(IntPtr handle);
         void RemoveHook(IntPtr handle);
-        void Dispose();
         event EventHandler<KeyboardEventArgs> KeyPressed;
+        void Dispose();
     }
     public class KeyboardService: IKeyboardService, IDisposable
     {
@@ -209,6 +209,8 @@ namespace VRemoteDesktop.Services.Keyboard
                         WindowsHandle.Clear();
                     }
                     Stop();
+                    _hookID = IntPtr.Zero;
+                    _proc = null;
                     _disposed = true;
                 }
             }

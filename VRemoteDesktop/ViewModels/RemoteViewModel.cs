@@ -54,7 +54,7 @@ namespace VRemoteDesktop.ViewModels
         }
         private Bitmap ParseScreenByteArrayToBitmapImage(byte[] bytes)
         {
-            var screenData = _screenCaptureExtension.RawScreenToScreenData(bytes);
+            var screenData = _screenCaptureExtension.RawScreenToScreenDataWithoutChecksum(bytes);
 
             Bitmap image = _screenCaptureExtension.WriteToBitmap(screenData);
 
@@ -67,7 +67,7 @@ namespace VRemoteDesktop.ViewModels
         }
         private List<ScreenRegion> ParseScreenRegionsChangedByteArrayToList(byte[] bytes)
         {
-            var regions = _screenCaptureExtension.RawChunksToRegions(bytes);
+            var regions = _screenCaptureExtension.RawChunksToRegionsWithoutChecksum(bytes);
 
             if (regions == null || regions.Count == 0)
                 return null;

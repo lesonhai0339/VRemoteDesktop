@@ -419,13 +419,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     _globalHook.ScreenCaptureChanged -= ScreenCaptureEventHandler;
                     _globalHook.KeyboardReceived -= KeyboardEventHandler;
-                    _globalHook.Dispose();
                 }
                 if (_vClientManager != null)
-                {
                     _vClientManager.ClientDataReceived -= ClientDataReceivedEventHandler;
-                    _vClientManager.Dispose();
-                }
+
+                _globalHook?.Dispose();
+                _vClientManager?.Dispose();
+                _reset?.Dispose();
                 _disposed = true;
             }
         }
