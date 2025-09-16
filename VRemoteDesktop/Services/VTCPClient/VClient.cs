@@ -205,6 +205,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 foreach (var task in _receivedQueue.GetConsumingEnumerable(_cancellationToken))
                 {
+                    int start = Environment.TickCount;
                     try
                     {
                         if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
@@ -228,6 +229,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DoWork error");
                     }
+                    int end = Environment.TickCount - start;
+                    Logger.Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Info(string.Format("Elapsed: {0} - {1}\n", end, DateTime.Now.ToString("HH:mm:ss:fff")));
                 }
             }
             catch(OperationCanceledException ex)
