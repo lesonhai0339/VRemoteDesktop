@@ -687,7 +687,7 @@ namespace VRemoteDesktop.ViewModels
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
                     return;
                 }
-                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.RejectAttachment, fileId));
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.RefuseAttachment, fileId));
             }
             catch (Exception ex)
             {

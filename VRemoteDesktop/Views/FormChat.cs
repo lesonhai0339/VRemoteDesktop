@@ -432,7 +432,7 @@ namespace VRemoteDesktop.Views
                     if (e.Type == ChatControlType.AcceptAttachment)
                         attachment.UpdateRequestSendFileStatus("Đối tác đã chấp nhận");
 
-                    else if (e.Type == ChatControlType.RejectAttachment)
+                    else if (e.Type == ChatControlType.RefuseAttachment)
                         attachment.UpdateRequestSendFileStatus("Đối tác đã từ chối");
 
                     else if(e.Type == ChatControlType.StopSendingAttachment)
