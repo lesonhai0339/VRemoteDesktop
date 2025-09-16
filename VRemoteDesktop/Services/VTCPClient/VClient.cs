@@ -46,6 +46,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         public event EventHandler<P2PClientDataReceived> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
+
+        private System.Threading.Timer _timer;
+        private int bytesPerSecond;
         public VClient(string socketId, VClientType clientType)
         {
             Partner = null;
@@ -72,6 +75,19 @@ namespace VRemoteDesktop.Services.VTCPClient
             if (!SenderWorker.IsBusy)
             {
                 SenderWorker.RunWorkerAsync();
+            }
+            bytesPerSecond = 0;
+            _timer = new System.Threading.Timer(BandWidth, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+        }
+
+        private void BandWidth(object state)
+        {
+            lock (_lockObject)
+            {
+                double bandWidth = (bytesPerSecond * 8) * 1.0 / 1000000; 
+                if(bandWidth > 0)
+                    Logger.Log.ForContext("", this.GetType().Name + "_BandWidth").Info(string.Format("{0} - {1} Mbps",this.SocketId, bandWidth));
+                bytesPerSecond = 0;
             }
         }
         #region Properties
@@ -687,6 +703,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                 checked
                 {
                     int num = Socket.EndSend(ar);
+                    lock (_lockObject)
+                    {
+                        bytesPerSecond += num;
+                    }
                     if (num <= 0)
                     {
                         throw new InvalidOperationException("Send error on socket with socket Id: " + SocketId.ToString());

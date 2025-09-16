@@ -25,6 +25,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
         event EventHandler<ScreenCaptureEventArgs> ScreenEvent;
         bool IsCapturing { get; set; }
         List<byte[]> GetScreenPackets();
+        List<byte[]> GetScreenPacketsWithoutChecksum();
+
     }
     public class ScreenCaptureService : IScreenCaptureServiceListener
     {
@@ -134,10 +136,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     switch (screenEnum)
                     {
                         case ScreenType.FULLSCREEN:
-                            ScreenToPackets(screens[0], totalSize);
+                            ScreenToPacketsWithoutChecksum(screens[0], totalSize);
+                            //ScreenToPackets(screens[0], totalSize);
                             break;
                         case ScreenType.REGIONSCREENS:
-                            ScreenRegionsChangedToPackets(screens, totalSize);
+                            ScreenRegionsChangedToPacketsWithoutChecksum(screens, totalSize);
+                            //ScreenRegionsChangedToPackets(screens, totalSize);
                             break;
                     }
                 }
@@ -147,6 +151,146 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 {
                     Thread.Sleep(remainTime);
                 }
+            }
+        }
+        public List<byte[]> GetScreenPacketsWithoutChecksum()
+        {
+            try
+            {
+                var screens = _capture.GetScreen();
+                if (screens[0].Bytes == null || screens[0].Bytes.Length == 0)
+                {
+                    return null;
+                }
+                var result  = ByteArrayHelper.CompressGZip(screens[0].Bytes);
+                if (!result.IsSuccess)
+                    return null;
+
+                byte[] screenCaptureCompressed = result.Data;
+                int dataSendLength = checked(screenCaptureCompressed.Length);
+                if (_dataSend.Length < dataSendLength)
+                {
+                    _dataSend = new byte[dataSendLength];
+                }
+                lock (_lock)
+                {
+                    int offset = 0;
+
+                    Buffer.BlockCopy(screenCaptureCompressed, 0, _dataSend, offset, screenCaptureCompressed.Length);
+                    offset += screenCaptureCompressed.Length;
+
+                    var listByteArray = ByteArrayHelper.ToListByteArray(_dataSend, offset, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
+                    return listByteArray;
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "ScreenHook").Error(ex, "Screen event error");
+            }
+            return null;
+        }
+        private void ScreenToPacketsWithoutChecksum(ScreenRegion screen, int totalChunksSize)
+        {
+            if (screen == null || totalChunksSize < 0)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets Arguments are null or empty");
+                return;
+            }
+            if (screen.Bytes == null || screen.Bytes.Length == 0)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: data is null or empty");
+                return;
+            }
+            if (screen.Rectangle == null)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: rectangle is null or empty");
+                return;
+            }
+
+            try
+            {
+                var result = ByteArrayHelper.CompressGZip(screen.Bytes);
+                if (!result.IsSuccess)
+                    return;
+
+                byte[] screenCaptureCompressed = result.Data;
+                int dataLength = checked(screenCaptureCompressed.Length);
+                if (_dataSend.Length < dataLength)
+                {
+                    _dataSend = new byte[dataLength];
+                }
+                lock (_lock)
+                {
+
+                    int offset = 0;
+
+                    Buffer.BlockCopy(screenCaptureCompressed, 0, _dataSend, offset, screenCaptureCompressed.Length);
+                    offset += screenCaptureCompressed.Length;
+
+                    ScreenCaptureEventArgs screenArgs = new ScreenCaptureEventArgs(
+                        type: SocketDataType.Screen,
+                        totalSize: dataLength
+                    );
+
+                    var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
+                    screenArgs.Data = byteArrayToListByteArray;
+                    ScreenEvent?.Invoke(this, screenArgs);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "ScreenHook").Error(ex, "Screen event error");
+            }
+        }
+        private void ScreenRegionsChangedToPacketsWithoutChecksum(List<ScreenRegion> regions, int totalChunksSize)
+        {
+            if (regions == null || totalChunksSize < 0)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets Arguments are null or empty");
+                return;
+            }
+            if (regions.Count == 0)
+            {
+                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets error: regions is null or empty");
+                return;
+            }
+            try
+            {
+                byte[] mergedChangedRegions = ConvertChangedRegionsToByteArray(regions);
+                if (mergedChangedRegions.Length == 0)
+                    return;
+
+                var result = ByteArrayHelper.CompressGZip(mergedChangedRegions);
+                if (!result.IsSuccess)
+                    return;
+
+                byte[] changedRegionsCompressed = result.Data;
+
+                int dataSendLength = checked(changedRegionsCompressed.Length);
+
+                if (_dataSend.Length < dataSendLength)
+                {
+                    _dataSend = new byte[dataSendLength];
+                }
+                lock (_lock)
+                {
+                    int offset = 0;
+
+                    Buffer.BlockCopy(changedRegionsCompressed, 0, _dataSend, offset, changedRegionsCompressed.Length);
+                    offset += changedRegionsCompressed.Length;
+
+                    ScreenCaptureEventArgs chunksArgs = new ScreenCaptureEventArgs(
+                       type: SocketDataType.Chunks,
+                       totalSize: dataSendLength
+                    );
+                    var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataSendLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
+                    chunksArgs.Data = byteArrayToListByteArray;
+                    ScreenEvent?.Invoke(this, chunksArgs);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", "ScreenHook").Error(ex, "Chunks event error");
             }
         }
         public List<byte[]> GetScreenPackets()

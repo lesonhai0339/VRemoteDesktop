@@ -28,12 +28,12 @@ namespace VRemoteDesktop.Views
         private readonly object _lockObject = new object();
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
-        private VClient _vClient;
-        private RemoteViewModel _remoteViewModel;
-        private RemoteDesktopService _remoteDesktopService;
+        private readonly VClient _vClient;
+        private readonly RemoteViewModel _remoteViewModel;
+        private readonly RemoteDesktopService _remoteDesktopService;
 
         private readonly MouseExtensions _mouseExtension;
-        private readonly ScreenCaptureExtensions _screenService;
+        private readonly IScreenCaptureExtensions _screenCaptureExtension;
 
         private bool _isDrag;
         private Bitmap _curScreen;
@@ -51,15 +51,17 @@ namespace VRemoteDesktop.Views
             InitializeComponent();
             _vClient = vClient;
             _mouseExtension = new MouseExtensions();
-            _screenService = new ScreenCaptureExtensions();
+            _screenCaptureExtension = new ScreenCaptureExtensions();
             _remoteDesktopService = remoteDesktopService;
-            _remoteDesktopService.KeyboardEvent += KeyboardReceivedEventHandler;
-            RemoteViewModel = new RemoteViewModel(_vClient, _mouseExtension, _remoteDesktopService);
-            this.FormBorderStyle = FormBorderStyle.Fixed3D;
+            _remoteViewModel = new RemoteViewModel(_vClient ,_screenCaptureExtension, _mouseExtension, _remoteDesktopService);
+            _remoteViewModel.screenEvent += ScreenEventHandler;
+            _remoteViewModel.screenRegionsChangedEvent += ScreenRegionsChangedEventHandler;
+            _remoteViewModel.keyboardEvent += KeyboardReceivedEventHandler;
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
 
+            this.FormBorderStyle = FormBorderStyle.Fixed3D;
             base.AutoScaleDimensions = new SizeF(6f, 13f);
             this.Text = _vClient.Partner.Id + " - "+ _vClient.Partner.ComputerName;
             // PictureBox
@@ -79,50 +81,7 @@ namespace VRemoteDesktop.Views
             _clickTimer.Interval = interval;
             _clickTimer.Tick += ClickTimer_Tick;
         }
-        private void KeyboardReceivedEventHandler(object sender, KeyboardEventArgs e)
-        {
-            if (this.InvokeRequired)
-            {
-                this.BeginInvoke(new Action<object, KeyboardEventArgs>(KeyboardReceivedEventHandler), sender, e);
-                return;
-            }
-            if (e.Combination == KeyCombination.Copy)
-            {
-                RemoteViewModel.GetClipboard(e);
-            }
-            else
-            {
-                if (e.Handle != this.Handle && Form.ActiveForm != this)
-                {
-                    return;
-                }
-                RemoteViewModel.ProcessKeyboard(e);
-            }
-        }
         #region Properties
-        public RemoteViewModel RemoteViewModel
-        {
-            get
-            {
-                return _remoteViewModel;
-            }
-            set
-            {
-                if(_remoteViewModel != null)
-                {
-                    _remoteViewModel.ScreenEvent -= ScreenEvent;
-                    _remoteViewModel.ScreenChunksEvent -= ChunksEvent;
-
-                }
-                _remoteViewModel = value;
-                if (_remoteViewModel != null)
-                {
-                    _remoteViewModel.ScreenEvent += ScreenEvent;
-                    _remoteViewModel.ScreenChunksEvent += ChunksEvent;
-
-                }
-            }
-        }
         #endregion
         private void FormRemote_Load(object sender, EventArgs e)
         {
@@ -130,32 +89,37 @@ namespace VRemoteDesktop.Views
         }
         private void FormRemote_Shown(object sender, EventArgs e)
         {
-            _remoteDesktopService.AddKeyboardListenerOnFormByHandle(this.Handle);
+            StartFormKeyboardListener();
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (_remoteViewModel != null)
+            StopFormKeyboardListener();
+
+            if(_remoteViewModel != null)
             {
-                _remoteViewModel.ScreenEvent -= ScreenEvent;
-                _remoteViewModel.ScreenChunksEvent -= ChunksEvent;
+                _remoteViewModel.screenEvent -= ScreenEventHandler;
+                _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
+                _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;
             }
-            if(_remoteDesktopService != null)
-            {
-                _remoteDesktopService.RemoveKeyboardListenerOnFormByHandle(this.Handle);
-                _remoteDesktopService.KeyboardEvent -= KeyboardReceivedEventHandler;
-            }
-            if (_mouseExtension != null)
-                _mouseExtension.Dispose();
 
-            _curScreen.Dispose();
-
-            _screenGraphics.Dispose();
-
+            _curScreen?.Dispose();
+            _screenGraphics?.Dispose();
             _pendingSender?.Dispose();
-
             _isP2PDisconnectCallback?.Dispose();
 
+            //DI
+            _mouseExtension?.Dispose();
+            _screenCaptureExtension?.Dispose();
+            _remoteViewModel?.Dispose();
             _vClient?.Dispose();
+        }
+        private void StartFormKeyboardListener()
+        {
+            _remoteViewModel.StartKeyboardListener(this.Handle);
+        }
+        private void StopFormKeyboardListener()
+        {
+            _remoteViewModel.StopKeyboardListener(this.Handle);
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {
@@ -190,7 +154,7 @@ namespace VRemoteDesktop.Views
 
             if (_pendingClickArgs != null && !_isDrag && mouseType != MouseEventType.None)
             {
-                RemoteViewModel.ProcessMouseEvent(
+                _remoteViewModel.ProcessMouseEvent(
                    mouseType,
                    vPictureBox,
                    _pendingClickArgs
@@ -242,7 +206,7 @@ namespace VRemoteDesktop.Views
                     }
                 }
 
-                RemoteViewModel.ProcessMouseEvent(
+                _remoteViewModel.ProcessMouseEvent(
                     mouseEvent,
                     vPictureBox,
                     e,
@@ -258,7 +222,7 @@ namespace VRemoteDesktop.Views
 
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            RemoteViewModel.ProcessMouseEvent(
+            _remoteViewModel.ProcessMouseEvent(
                 MouseEventType.Wheel,
                 vPictureBox,
                 e
@@ -281,7 +245,7 @@ namespace VRemoteDesktop.Views
         {
             try
             {
-                RectangleF rectF = RemoteViewModel.TransformSize(vPictureBox.Size, vPictureBox.Image.Size, rectangle);
+                RectangleF rectF = _remoteViewModel.TransformSize(vPictureBox.Size, vPictureBox.Image.Size, rectangle);
                 Rectangle rect = Rectangle.Round(rectF);
                 vPictureBox.Invalidate(rect);
             }
@@ -289,37 +253,28 @@ namespace VRemoteDesktop.Views
             {
             }
         }
-        public void ScreenEvent(byte[] data)
+        public void ScreenEventHandler(Bitmap image)
         {
-            if (!this.IsDisposed && !this.Disposing)
+            if (this.InvokeRequired)
             {
-                if (this.InvokeRequired)
-                {
-                    //cannnot using beginInvoke because need sure this call before chunks event
-                    this.Invoke(new Action(() => {
-                        try
-                        {
-                            ScreenEvent(data);
-                        }
-                        catch (Exception ex)
-                        {
-                        }
-                    }));
-                    //this.Invoke(new Action<byte[]>(ScreenEvent), data);
-                    return;
-                }
+                //Cannot using beginInvoke because need sure this call before chunks event
+                this.Invoke(new Action(() => {
+                    try
+                    {
+                        ScreenEventHandler(image);
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("", this.GetType().Name).Error(ex, "Screen event error ");
+                    }
+                }));
+                return;
             }
-
             // UI thread code
             try
             {
                 lock (_screenLock)
                 {
-
-                    var screenData = _screenService.RawScreenToScreenData(data);
-
-                    Bitmap image = _screenService.WriteToBitmap(screenData);
-
                     // Dispose old image to prevent memory leak
                     var oldImage = vPictureBox.Image;
                     _screenGraphics?.Dispose();
@@ -332,48 +287,52 @@ namespace VRemoteDesktop.Views
                     oldImage?.Dispose();
                     image?.Dispose();
                 }
-
             }
             catch (Exception ex)
             {
+                Log.ForContext("", this.GetType().Name).Error(ex, "ScreenEventHandler error ");
             }
         }
-        private void ChunksEvent(byte[] data)
+        private void ScreenRegionsChangedEventHandler(List<ScreenRegion> regions)
         {
-            try
+            Rectangle rect = _screenCaptureExtension.MergeRegions(_screenGraphics, regions);
+            if (this.InvokeRequired)
             {
-                var regions = _screenService.RawChunksToRegions(data);
-
-                if (regions == null || regions.Count == 0)
-                    return;
-
-                Rectangle rect = _screenService.MergeRegions(_screenGraphics, regions);
-
-                // Invalidate last merge region
-                if (!this.IsDisposed && !this.Disposing)
+                this.BeginInvoke(new Action(() =>
                 {
-                    if (this.InvokeRequired)
-                    {
-                        this.BeginInvoke(new Action(() =>
-                        {
-                            try
-                            {
-                                InvalidateRegion(rect);
-                            }
-                            catch (Exception ex)
-                            {
-                            }
-                        }));
-                    }
-                    else
+                    try
                     {
                         InvalidateRegion(rect);
                     }
-                }
-
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("", this.GetType().Name).Error(ex, "ScreenRegionsChangedEventHandler error ");
+                    }
+                }));
             }
-            catch (Exception ex)
+            else
             {
+                InvalidateRegion(rect);
+            }
+        }
+        private void KeyboardReceivedEventHandler(object sender, KeyboardEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action<object, KeyboardEventArgs>(KeyboardReceivedEventHandler), sender, e);
+                return;
+            }
+            if (e.Combination == KeyCombination.Copy)
+            {
+                _remoteViewModel.GetClipboard(e);
+            }
+            else
+            {
+                if (e.Handle != this.Handle && Form.ActiveForm != this)
+                {
+                    return;
+                }
+                _remoteViewModel.ProcessKeyboard(e);
             }
         }
         #endregion

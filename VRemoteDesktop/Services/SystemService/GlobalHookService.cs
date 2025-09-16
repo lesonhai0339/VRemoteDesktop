@@ -32,18 +32,6 @@ namespace VRemoteDesktop.Services.SystemService
             _keyboardService.KeyPressed += KeyPressedEventHandler;
             _screenCaptureService = screenCaptureService;
             _screenCaptureService.ScreenEvent += ScreenCaptureEventHandler;
-            //Task.Factory.StartNew(() =>
-            //{
-            //    try
-            //    {
-            //        _screenCaptureService = screenCaptureService;
-            //        _screenCaptureService.ScreenEvent += ScreenCaptureEventHandler;
-            //    }
-            //    catch(Exception ex)
-            //    {
-            //        Log.ForContext("FileName", this.GetType().Name).Error(ex, "ScreenCaptureService ");
-            //    }
-            //}, TaskCreationOptions.LongRunning);
         }
         #region Properties
         #endregion
@@ -224,7 +212,7 @@ namespace VRemoteDesktop.Services.SystemService
         }
         public List<byte[]> GetFirstScreen()
         {
-            return _screenCaptureService.GetScreenPackets();
+            return _screenCaptureService.GetScreenPacketsWithoutChecksum();
         }
         #endregion
         #region Events
