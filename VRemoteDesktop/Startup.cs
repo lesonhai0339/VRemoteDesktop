@@ -18,7 +18,7 @@ namespace VRemoteDesktop
         private IScreenCaptureServiceListener _screenCaptureService;
         private IKeyboardService _keyboardHookService;
         private VClientManager _vClientManager;
-        private GlobalHookService _globalhook;
+        private GlobalHookService _globalHook;
         private ClientInfoManager _clientInfoManager;
         private RemoteDesktopService _remoteDesktopService;
         public Startup()
@@ -32,8 +32,8 @@ namespace VRemoteDesktop
             _vClientManager = new VClientManager();
             _clientInfoManager = new ClientInfoManager();
             _screenCaptureService = new ScreenCaptureService(_capture);
-            _globalhook = new GlobalHookService(_keyboardHookService, _screenCaptureService);
-            _remoteDesktopService = new RemoteDesktopService(_globalhook, _vClientManager, _clientInfoManager);
+            _globalHook = new GlobalHookService(_keyboardHookService, _screenCaptureService);
+            _remoteDesktopService = new RemoteDesktopService(_globalHook, _vClientManager, _clientInfoManager);
         }
         public void Run()
         {

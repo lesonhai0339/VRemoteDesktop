@@ -80,7 +80,7 @@ namespace VRemoteDesktop.Utils
     {
         public static int DEFAULT_CHUNK_SIZE = 1024 * 8;
         public static int DEFAULT_BLOCK_SIZE = 64;
-        public static int DEFAULT_FPS = 10;
+        public static int DEFAULT_FPS = 20;
         public static int DEFAULT_CHUNK_HEADER_LENGTH = 20;
     }
     public static class DefaultChat

@@ -113,6 +113,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
         }
         public bool IsAuthenticated(byte[] bytes, out ClientInfo clientInfo, out string connectionId)
         {
+            int indexAddedIncludesPartnerInfo = 3; //ConnectionId, my Id, my Password received from partner
             clientInfo = null;
             connectionId = null;
 
@@ -121,7 +122,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 return false;
 
             string[] data = StringHelper.StringToStringArrayWithSeparator(dataString);
-            if (data.Length != DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + 3)
+            if (data.Length != DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + indexAddedIncludesPartnerInfo)
                 return false;
 
             bool isIdAndPasswordCorrect = string.Compare(data[1], Me.Id) == 0 && string.Compare(data[2], Me.Password) == 0;
@@ -132,16 +133,16 @@ namespace VRemoteDesktop.Services.ConnectionManager
             //Note: data at index[0,1,2] are ConnectionId, MyId and MyPassword then partner info start at DefaultClientInfo.field + 3 instead DefaultClientInfo.field
             clientInfo = new ClientInfo
             {
-                Id = data[DefaultClientInfo.CLIENT_INFO_ID_INDEX + 3],
-                Password = data[DefaultClientInfo.CLIENT_INFO_PASSWORD_INDEX + 3],
-                ComputerName = data[DefaultClientInfo.CLIENT_INFO_COMPUTER_NAME_INDEX + 3],
-                Width = int.Parse(data[DefaultClientInfo.CLIENT_INFO_WIDTH_INDEX + 3]),
-                Height = int.Parse(data[DefaultClientInfo.CLIENT_INFO_HEIGHT_INDEX + 3]),
-                MajorVersion = data[DefaultClientInfo.CLIENT_INFO_MAJOR_VERSION_INDEX + 3],
-                MinorVersion = data[DefaultClientInfo.CLIENT_INFO_MINOR_VERSION_INDEX + 3],
-                Ip = data[DefaultClientInfo.CLIENT_INFO_IP_INDEX + 3],
-                Port = data[DefaultClientInfo.CLIENT_INFO_PORT_INDEX + 3],
-                PublicIP = data[DefaultClientInfo.CLIENT_INFO_PUBLIC_IP_INDEX + 3],
+                Id = data[DefaultClientInfo.CLIENT_INFO_ID_INDEX + indexAddedIncludesPartnerInfo],
+                Password = data[DefaultClientInfo.CLIENT_INFO_PASSWORD_INDEX + indexAddedIncludesPartnerInfo],
+                ComputerName = data[DefaultClientInfo.CLIENT_INFO_COMPUTER_NAME_INDEX + indexAddedIncludesPartnerInfo],
+                Width = int.Parse(data[DefaultClientInfo.CLIENT_INFO_WIDTH_INDEX + indexAddedIncludesPartnerInfo]),
+                Height = int.Parse(data[DefaultClientInfo.CLIENT_INFO_HEIGHT_INDEX + indexAddedIncludesPartnerInfo]),
+                MajorVersion = data[DefaultClientInfo.CLIENT_INFO_MAJOR_VERSION_INDEX + indexAddedIncludesPartnerInfo],
+                MinorVersion = data[DefaultClientInfo.CLIENT_INFO_MINOR_VERSION_INDEX + indexAddedIncludesPartnerInfo],
+                Ip = data[DefaultClientInfo.CLIENT_INFO_IP_INDEX + indexAddedIncludesPartnerInfo],
+                Port = data[DefaultClientInfo.CLIENT_INFO_PORT_INDEX + indexAddedIncludesPartnerInfo],
+                PublicIP = data[DefaultClientInfo.CLIENT_INFO_PUBLIC_IP_INDEX + indexAddedIncludesPartnerInfo],
                 //Id = data[3],
                 //Password = data[4],
                 //ComputerName = data[5],
