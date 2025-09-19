@@ -154,3 +154,4 @@ _NCrunch*
 /VRemoteServer/app.config
 /VRemoteClient/VRemoteClient.csproj
 /VRemote_Service/VRemote_Service.csproj
+/VRemoteDesktop/Configs/App.config
