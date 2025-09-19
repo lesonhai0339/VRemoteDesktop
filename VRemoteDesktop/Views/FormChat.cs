@@ -63,7 +63,7 @@ namespace VRemoteDesktop.Views
                 _chatViewModel.ErrorEvent -= ShowErrorEvent;
                 _chatViewModel.Dispose();
             }
-            this.txtChatContent.KeyDown -= KeydownEventHandler;
+            this.txtChatContent.KeyDown -= KeyDownEventHandler;
             _attachments.Clear();
         }
         private void btnSend_Click(object sender, EventArgs e)
@@ -85,7 +85,7 @@ namespace VRemoteDesktop.Views
                 }
             }
         }
-        private void KeydownEventHandler(object sender, KeyEventArgs e)
+        private void KeyDownEventHandler(object sender, KeyEventArgs e)
         {
             if (Form.ActiveForm == this)
             {
@@ -107,7 +107,7 @@ namespace VRemoteDesktop.Views
             _chatViewModel.UpdateChatHistoryEvent += UpdateChatHistoryEventHandler;
             _chatViewModel.ErrorEvent += ShowErrorEvent;
 
-            this.txtChatContent.KeyDown += KeydownEventHandler;
+            this.txtChatContent.KeyDown += KeyDownEventHandler;
 
             _attachments = new ConcurrentDictionary<string, FileAttachmentLayout>();
         }

@@ -184,11 +184,6 @@ namespace VRemoteDesktop.Services.FileService
         /// <exception cref="ArgumentNullException"></exception>
         public void Add(ChatMessage msg)
         {
-            if(msg == null)
-                throw new ArgumentNullException("msg cannot be null");
-            if(string.IsNullOrWhiteSpace(msg.SavePath))
-                throw new ArgumentNullException("FilePath cannot be null or empty");
-
             _chatMessage.Enqueue(msg);
 
             //option 1, using Interlocked
@@ -256,16 +251,6 @@ namespace VRemoteDesktop.Services.FileService
         /// <exception cref="FileNotFoundException"></exception>
         public string[] ReadLastMessages(string filePath, int numberOfMsg)
         {
-            if(string.IsNullOrWhiteSpace(filePath))
-                //throw new ArgumentNullException("FilePath cannot be null or empty");
-                return null;
-            if (numberOfMsg <=0)
-                //throw new ArgumentOutOfRangeException("Number of message must be greater than zero");
-                return null;
-            if (!File.Exists(filePath))
-                //throw new FileNotFoundException("File not found", filePath);
-                return null;
-
             try
             {
                 string[] messages = new string[numberOfMsg];

@@ -548,6 +548,10 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0)
         {
+            if (type == SocketDataType.None)
+                return null;
+            if (string.IsNullOrWhiteSpace(socketId))
+                socketId = this.SocketId;
             try
             {
                 int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + socketId.Length;
@@ -648,11 +652,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             try
             {
                 if (type == SocketDataType.None)
-                    throw new ArgumentException("Missing arguments");
-                
-                //if (data == null)
-                //    throw new ArgumentException("Missing arguments");
-
+                    return;
                 if (string.IsNullOrWhiteSpace(partnerId))
                     partnerId = this.SocketId;
 
