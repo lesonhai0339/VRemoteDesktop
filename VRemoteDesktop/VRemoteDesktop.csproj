@@ -204,8 +204,8 @@
     <EmbeddedResource Include="Views\FormRemote.resx">
       <DependentUpon>FormRemote.cs</DependentUpon>
     </EmbeddedResource>
+	 <None Include="Configs\app.config" />
     <None Include="Configs\app.manifest" />
-    <None Include="Configs\App1.config" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

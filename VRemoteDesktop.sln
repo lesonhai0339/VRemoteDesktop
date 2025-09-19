@@ -13,8 +13,6 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RemoteServer", "RemoteServe
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteDesktop", "VRemoteDesktop\VRemoteDesktop.csproj", "{521DB7AA-B8EC-4C48-8FC1-F288C1EA216D}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScreenCaptureTest", "ScreenCaptureServiceTest\ScreenCaptureTest.csproj", "{10910382-94D6-4788-B61A-16C8994EE221}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,18 +55,6 @@ Global
 		{521DB7AA-B8EC-4C48-8FC1-F288C1EA216D}.Release|Mixed Platforms.Build.0 = Release|x86
 		{521DB7AA-B8EC-4C48-8FC1-F288C1EA216D}.Release|x86.ActiveCfg = Release|x86
 		{521DB7AA-B8EC-4C48-8FC1-F288C1EA216D}.Release|x86.Build.0 = Release|x86
-		{10910382-94D6-4788-B61A-16C8994EE221}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Debug|x86.Build.0 = Debug|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Release|Any CPU.Build.0 = Release|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Release|Mixed Platforms.Build.0 = Release|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Release|x86.ActiveCfg = Release|Any CPU
-		{10910382-94D6-4788-B61A-16C8994EE221}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
