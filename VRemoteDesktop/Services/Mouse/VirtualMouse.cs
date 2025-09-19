@@ -76,7 +76,7 @@ namespace VRemoteDesktop.Services.Mouse
                 Y = y
             };
         }
-        private static bool MouseEvent(MouseReceived mouseEvent)
+        public static bool MouseEvent(MouseReceived mouseEvent)
         {
 
             Tuple<float, float> scales = CalculateMouseCoordinate(mouseEvent.SenderWidth, mouseEvent.SenderHeight, mouseEvent.ReceiverWidth, mouseEvent.ReceiverHeight);

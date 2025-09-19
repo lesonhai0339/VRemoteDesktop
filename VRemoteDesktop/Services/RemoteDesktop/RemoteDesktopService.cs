@@ -156,7 +156,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public VClient NewClient(string id, VClientType type)
         {
-            if (string.IsNullOrWhiteSpace(id) || type == VClientType.None) return null;
+            if (string.IsNullOrWhiteSpace(id)) return null;
 
             var newClient = _vClientManager.New(id, type);
             if (_vClientManager.Connections.Count > 0)
