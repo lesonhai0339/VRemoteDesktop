@@ -150,7 +150,3 @@ _NCrunch*
 /Client/
 /Server/
 /dll/
-/VRemoteServer/Models/Client - Copy.cs
-/VRemoteServer/Services/RemoteDesktopServer - Copy.cs
-/VRemoteServer/Services/RemoteDesktopServiceBackup.cs
-/VRemote_Service/app.config

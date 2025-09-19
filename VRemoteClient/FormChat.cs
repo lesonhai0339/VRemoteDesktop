@@ -14,9 +14,9 @@ using VRemoteClient.Models.CustomLayouts;
 using VRemoteClient.Models.DTOs;
 using VRemoteClient.Models.Entities;
 using VRemoteClient.Models.Enums;
+using VRemoteClient.Services.ConnectionService;
 using VRemoteClient.Services.RemoteDesktopService;
 using VRemoteClient.Utils;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.StartPanel;
 
 namespace VRemoteClient
 {
@@ -46,8 +46,8 @@ namespace VRemoteClient
             _connectionInfo ??= connectionInfo;
             _currentChat = new ConcurrentDictionary<string, ConnectionInfo>();
             _chatData = new ConcurrentDictionary<string, List<Control>>();
-            _currentChat.TryAdd(_connectionInfo.SessionId, _connectionInfo);
-            ShowConnection();
+            //_currentChat.TryAdd(_connectionInfo.SessionId, _connectionInfo);
+            //ShowConnection();
         }
         #region Properties
         public RemoteDesktop RemoteDesktop
@@ -321,7 +321,7 @@ namespace VRemoteClient
             {
                 if(btn.Name == "btnSave")
                 {
-                    AddWork(SocketDataType.AcceptSendFile, Encoding.ASCII.GetBytes(RemoteDesktop.OwnerInfo.Id));
+                    AddWork(SocketDataType.AcceptSendFile, Encoding.ASCII.GetBytes(ConnectionManagerment.Me.Id));
                 }
             }
         }

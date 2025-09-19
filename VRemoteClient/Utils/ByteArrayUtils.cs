@@ -11,12 +11,40 @@ using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteClient.Models.DTOs;
+using VRemoteClient.Models.Enums;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace VRemoteClient.Utils
 {
     public static class ByteArrayUtils
     {
+        public static BaseResponse<byte[]> ConvertStringToByteArray(string data, EncodingType encoding)
+        {
+            if (string.IsNullOrWhiteSpace(data))
+                return BaseResponse<byte[]>.Error(
+                  message: nameof(ConvertStringToByteArray),
+                  ex: new ArgumentException("Data cannot be null or empty")
+                );
+
+            Encoding? encoder = encoding switch
+            {
+                EncodingType.ASCII => Encoding.ASCII,
+                EncodingType.UTF8 => Encoding.UTF8,
+                _ => null
+            };
+            if(encoder != null)
+            {
+                return BaseResponse<byte[]>.Success(
+                    data:encoder.GetBytes(data),
+                    message: nameof(ConvertStringToByteArray)
+                );
+            }
+
+            return BaseResponse<byte[]>.Error(
+                   message: nameof(ConvertStringToByteArray),
+                   ex: new ArgumentException("Unexpected encoding type")
+            );
+        }
         public static BaseResponse<byte[]> BitmapToByteArray(Bitmap bitmap)
         {
             BitmapData bmpdata = null;

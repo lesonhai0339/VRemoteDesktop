@@ -1,4 +1,4 @@
-﻿using Serilog;
+﻿ using Serilog;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -24,7 +24,7 @@ namespace VRemoteServer.Models
         private readonly CancellationTokenSource _cts = new CancellationTokenSource();
 
         private Action<Client> _disconnectCallback;
-        private Func<string, Enums.CommandType ,Client, byte[], Task<bool>> _dataCallback;
+        private Func<string, SocketDataType ,Client, byte[], Task<bool>> _dataCallback;
         private object _lock = new object();
 
 
@@ -33,8 +33,9 @@ namespace VRemoteServer.Models
         private byte[] _remainingData;
         private int _dataExpected;
         private int _dataReceived;
+        private string _partnerId;
 
-        public Client(Socket socket, Action<Client> disconnectCallback, Func<string, Enums.CommandType, Client, byte[], Task<bool>> dataCallback)
+        public Client(Socket socket, Action<Client> disconnectCallback, Func<string, SocketDataType, Client, byte[], Task<bool>> dataCallback)
         {
             _lastSendTime = DateTime.Now; //init before check timeout
             Socket = socket;
@@ -138,14 +139,14 @@ namespace VRemoteServer.Models
             }, state: null);
             return tcs.Task;
         }
-        private async Task ProcessData(string sessionId, Enums.CommandType command, byte[] buffer)
+        private async Task ProcessData(string partnerId, SocketDataType command, byte[] buffer)
         {
             if (_dataCallback != null)
             {
-                await _dataCallback(sessionId, command,this, buffer);
+                await _dataCallback(partnerId, command,this, buffer);
             }
         }
-        public async Task StartReceiving(int bufferSize = 8192)
+        public async Task StartReceiving(int bufferSize = 1024 * 16)
         {
             try
             {
@@ -212,13 +213,13 @@ namespace VRemoteServer.Models
             {
                 if (_currentHeader == null)
                 {
-                    if (totalData.Length - bytesProcessed >= 21)
+                    if (totalData.Length - bytesProcessed >= 13)
                     {
-                        // Ignore the first 21 bytes: sessionId(16 first bytes), data length(4 next bytes), and data type(1 last byte)
-                        _currentHeader = new byte[21];
-                        Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 21);
+                        _currentHeader = new byte[13];
+                        Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, 13);
 
-                        _dataExpected = BitConverter.ToInt32(_currentHeader, 16);
+                        _dataExpected = BitConverter.ToInt32(_currentHeader, 0);
+                        _partnerId = Encoding.ASCII.GetString(_currentHeader, 5, 8);
                         _dataReceived = 0;
                     }
                     else
@@ -229,18 +230,15 @@ namespace VRemoteServer.Models
                 }
                 if (_currentHeader != null)
                 {
-                    byte[] sessionIdBytes = new byte[16];
-                    Buffer.BlockCopy(_currentHeader, 0, sessionIdBytes, 0, 16);
-                    string sessionId = Encoding.ASCII.GetString(sessionIdBytes);
-                    CommandType type = (CommandType)_currentHeader[20];
+                    SocketDataType type = (SocketDataType)_currentHeader[4];
 
                     //command packet
                     if (_dataExpected == 0)
                     {
-                        await ProcessData(sessionId, type, new byte[0]);
+                        await ProcessData(_partnerId, type, new byte[0]);
                         _dataExpected = 0;
                         _currentHeader = null;
-                        bytesProcessed += 21;
+                        bytesProcessed += 13;
                     }
                     else
                     {
@@ -256,9 +254,8 @@ namespace VRemoteServer.Models
                             _dataReceived += dataNeedtoReceive;
                             bytesProcessed += dataNeedtoReceive;
 
-                            Console.WriteLine($"Processing data: {_dataReceived}/{_dataExpected} bytes received at sessionId: {sessionId}");
 
-                            await ProcessData(sessionId, type, bytes);
+                            await ProcessData(_partnerId, type, bytes);
                             if (_dataReceived >= _dataExpected)
                             {
                                 Console.WriteLine($"Complete {_dataExpected} - {_dataReceived} - {(Socket.RemoteEndPoint as IPEndPoint).Address.ToString()}");
@@ -266,6 +263,7 @@ namespace VRemoteServer.Models
                                 _dataExpected = 0;
                                 _dataReceived = 0;
                                 _currentHeader = null;
+                                _partnerId = null;
                             }
                         }
                     }

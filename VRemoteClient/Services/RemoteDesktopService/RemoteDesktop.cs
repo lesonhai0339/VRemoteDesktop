@@ -32,13 +32,11 @@ namespace VRemoteClient.Services.RemoteDesktopService
         private Thread _screenThread;
         private ManualResetEvent _resetEvent;
 
-        private ClientInfo _ownerInfo;
-
         private GlobalKeyboardHook _globakKeyboardHook;
         private IGlobalScreenCapture _globakScreenHook;
         private RemoteClient _remoteClient;
         private ConnectionManager _connectionManager;
-
+        private ClientInfo _clientInfo;
 
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
@@ -57,8 +55,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
         public event Action<SendFileType,string, byte[]> SendFileEvent;
         public RemoteDesktop()
         {
-            OwnerInfo = StringBuilderUtils.InitInfo();
-
             ScreenTasks = new ConcurrentQueue<object>();
             CommandTasks = new ConcurrentQueue<object>();
 
@@ -72,8 +68,9 @@ namespace VRemoteClient.Services.RemoteDesktopService
         }
         public void InitializeCompoment()
         {
+            _clientInfo = ConnectionManagerment.Me;
             KeyboardHook ??= new GlobalKeyboardHook();
-            RemoteClient ??= new RemoteClient(OwnerInfo);
+            RemoteClient ??= new RemoteClient(_clientInfo);
             _connectionManager ??= new ConnectionManager();
             Task.Factory.StartNew(() =>
             {
@@ -89,14 +86,6 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             get => _isSocketConnectSuccess;
             private set => _isSocketConnectSuccess = value;
-        }
-        public ClientInfo OwnerInfo
-        {
-            get => _ownerInfo;
-            set
-            {
-                _ownerInfo = value;
-            }
         }
         public GlobalKeyboardHook KeyboardHook
         {
@@ -476,7 +465,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
 
                 string dataString = StringBuilderUtils.DataStringBuilder(
                     new string[] { 
-                        OwnerInfo.Id,
+                        _clientInfo.Id,
                         id,
                         password
                     }
@@ -510,6 +499,19 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 return string.Empty;
             }
         }
+        public byte[] GetClipboardByteArray()
+        {
+            try
+            {
+                string clipboard = VirtualClipboard.GetClipboardString();
+                return ByteArrayUtils.ConvertStringToByteArray(clipboard, EncodingType.ASCII).GetResult();
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("Filename", GetType().Name).Error(ex, "GetClipboard error");
+                return new byte[0];
+            }
+        }
         /// <summary>
         /// Default using CF_UNICODETEXT format then need to convert string data to UTF-16
         /// (like this: <c>byte[] formatted = Encoding.Unicode.GetBytes(<paramref name="data"/> + '\0');</c>)
@@ -532,7 +534,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
         {
             try
             {
-                string data = StringBuilderUtils.DataStringBuilder(new string[] { OwnerInfo.ToNetworkPacketString() });
+                string data = StringBuilderUtils.DataStringBuilder(new string[] { _clientInfo.ToNetworkPacketString() });
                 byte[] dataBytes = Encoding.ASCII.GetBytes(data);
                 AddWork(new TaskObject
                 {
@@ -616,7 +618,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 if (connectionInfo != null)
                 {
                     _connectionManager.AddConnection(connectionInfo.SessionId, connectionInfo);
-                    connectionInfo.Me = OwnerInfo;
+                    connectionInfo.Me = _clientInfo;
                     if (!connectionInfo.IsSender)
                     {
                         P2PConnectEvent?.Invoke(ClientType.RECEIVER, true, connectionInfo);
@@ -655,7 +657,7 @@ namespace VRemoteClient.Services.RemoteDesktopService
                 byte[] mouse = new byte[obj.Length - 1];
                 Buffer.BlockCopy(obj, 1, mouse, 0, obj.Length - 1);
 
-                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, OwnerInfo.Width, OwnerInfo.Height);
+                var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, _clientInfo.Width, _clientInfo.Height);
 
                 bool flag = VirtualMouse.MouseEvent(mouseEvent);
                 if (!flag)

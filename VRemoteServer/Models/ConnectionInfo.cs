@@ -8,19 +8,24 @@ namespace VRemoteServer.Models
 {
     public class ConnectionInfo
     {
-        public ConnectionInfo(ClientInfo sender, ClientInfo receiver)
+        public ConnectionInfo(string connectionId, Client sender)
+        {
+            ConnectionId = connectionId;
+            Sender = sender;
+        }
+        public ConnectionInfo(Client sender, Client receiver)
         {
             Sender = sender;
             Receiver = receiver;
         }
-        public ConnectionInfo(string sessionId, ClientInfo sender, ClientInfo receiver)
+        public ConnectionInfo(string connectionId, Client sender, Client receiver)
         {
-            SessionId = sessionId;
+            ConnectionId = connectionId;
             Sender = sender;
             Receiver = receiver;
         }
-        public string SessionId { get; set; } = Guid.NewGuid().ToString("N").Substring(0, 16);
-        public ClientInfo Sender { get; set; }
-        public ClientInfo Receiver { get; set; }
+        public string ConnectionId { get; set; } = Guid.NewGuid().ToString("N").Substring(0, 16);
+        public Client Sender { get; set; }
+        public Client Receiver { get; set; }
     }
 }

@@ -20,11 +20,11 @@ namespace VRemoteServer.Utils
             P2PCONNECT = 2,
             P2PDATASEND = 3,
         }
-        public enum CommandType: byte
+        public enum SocketDataType : byte
         {
             None = 0x00,
             Login = 0x01,
-            P2PConnect = 0x02,
+            P2PRequestConnect = 0x02,
             Disconnect = 0x03,
             Ping = 0x04,
             Pong = 0x05,
@@ -36,14 +36,15 @@ namespace VRemoteServer.Utils
             ScreenOk = 0x0C,
             ChunksOk = 0x0D,
             Clipboard = 0x0E,
-            Message = 0x0F,
-            FileTransfer = 0x10,
-            RequestSendFile = 0x11,
-            AcceptSendFile = 0x12,
+            Chat = 0x0F,
+            Connect = 0x13,
+            P2PDataSend = 0x14,
 
             LoginFailed = 0x90,
             P2PDisconnect = 0x91,
             P2PConnectFailed = 0x92,
+            P2PAcceptConnect = 0x93,
+            P2PRejectConnect = 0x94
         }
     }
 }
