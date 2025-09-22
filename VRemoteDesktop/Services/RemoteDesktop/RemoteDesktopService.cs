@@ -418,6 +418,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 case SocketDataType.P2PDisconnect:
                     ProcessP2PDisconnect(sender, e);
                     break;
+                case SocketDataType.Error:
+                    break;
                 default:
                     DataReceivedEvent?.Invoke(sender, e);
                     break;

@@ -17,6 +17,8 @@
 
   <ItemGroup>
     <Folder Include="Logs\" />
+    <Folder Include="RelayServer\Configs\" />
+    <Folder Include="RelayServer\Log\" />
   </ItemGroup>
 
 </Project>

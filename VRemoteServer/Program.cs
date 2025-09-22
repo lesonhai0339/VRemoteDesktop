@@ -4,15 +4,16 @@ using Serilog;
 using System;
 using System.Net;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Networking;
+using VRemoteServer.RelayServer.Services;
 using VRemoteServer.Services;
 using VRemoteServer.Utils;
-using static VRemoteServer.Services.RemoteDesktopConnectionServer;
 
 namespace VRemoteServer
 {
     internal class Program
     {
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             Logger.Config();
             Log.ForContext("FileName", "Main").Information("Start Service");
@@ -23,9 +24,12 @@ namespace VRemoteServer
             var host = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
-                    services.AddSingleton<RemoteDesktopServer>();
-                    services.AddSingleton<SocketListener>();
-                    services.AddSingleton<Server>();
+                    services.AddScoped<RemoteDesktopServer>();
+                    services.AddScoped<SocketListener>();
+                    services.AddScoped<IServer, Server>();
+                    services.AddScoped<IRemoteConnectionManager, RemoteConnectionManager>();
+                    services.AddScoped<ISocketConnectionManager, SocketConnectionManager>();
+                    services.AddSingleton<IRelayServerManager, RelayServerManager>();
                 })
                 .Build();
 
