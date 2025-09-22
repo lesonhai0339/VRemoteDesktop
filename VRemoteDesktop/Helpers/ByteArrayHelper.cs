@@ -261,6 +261,58 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
+        public static BaseResponse<byte[]> CompressDeflate(byte[] data)
+        {
+            if (data == null || data.Length == 0)
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(Combine),
+                    ex: new ArgumentException("Data cannot be null or empty")
+                ); ;
+            try
+            {
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    using (var compressionStream = new DeflateStream(stream, CompressionMode.Compress))
+                    {
+                        compressionStream.Write(data, 0, data.Length);
+                    }
+                    return BaseResponse<byte[]>.Success(
+                        data: stream.ToArray(),
+                        message: nameof(CompressDeflate)
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(CompressDeflate),
+                    ex: ex
+                );
+            }
+        }
+        public static BaseResponse<byte[]> DeCompressDeflate(byte[] data)
+        {
+            try
+            {
+                using (MemoryStream input = new MemoryStream(data))
+                using (MemoryStream output = new MemoryStream())
+                using (var compressionStream = new DeflateStream(input, CompressionMode.Decompress))
+                {
+                    compressionStream.CopyTo(output);
+                    return BaseResponse<byte[]>.Success(
+                        data: output.ToArray(),
+                        message: nameof(DeCompressDeflate)
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(DeCompressDeflate),
+                    ex: ex
+                );
+            }
+        }
         public static BaseResponse<byte[]> CompressGZip(byte[] data)
         {
             if (data == null || data.Length == 0)
@@ -275,7 +327,6 @@ namespace VRemoteDesktop.Helpers
                     using (var compressionStream = new GZipStream(stream, CompressionMode.Compress))
                     {
                         compressionStream.Write(data, 0, data.Length);
-                        compressionStream.Flush();
                     }
                     return BaseResponse<byte[]>.Success(
                         data: stream.ToArray(),

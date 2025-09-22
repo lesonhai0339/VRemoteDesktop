@@ -33,10 +33,10 @@ namespace VRemoteServer.Services
             sck.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             sck.NoDelay = true;
 
-            //init ipendpoint accept any ip and port 2399
+            //init ipEndpoint accept any ip and port 2399
             IPEndPoint ep = new IPEndPoint(IPAddress.Any, 2399);
 
-            //start listen incomming socket
+            //start listen inComing socket
             sck.Bind(ep);
             sck.Listen(100);
 

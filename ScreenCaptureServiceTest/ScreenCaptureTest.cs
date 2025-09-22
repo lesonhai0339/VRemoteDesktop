@@ -18,10 +18,12 @@ namespace ScreenCaptureTest
     public class ScreenCaptureTest
     {
         private ScreenCapture _screenCapture;
+        private ScreenCapture1 _screenCapture1;
         [SetUp]
         public void Setup()
         {
             _screenCapture = new ScreenCapture();
+            _screenCapture1 = new ScreenCapture1();
         }
         [Test]
         public void ScreenCapture_TestPerformance()
@@ -31,10 +33,10 @@ namespace ScreenCaptureTest
             while(count < stop)
             {
                 Stopwatch stopWatch = Stopwatch.StartNew();
-                var screens = _screenCapture.GetScreen();
+                var screens = _screenCapture1.GetScreen();
                 stopWatch.Stop();
                 var elapsed = stopWatch.Elapsed.TotalMilliseconds;
-                Console.WriteLine($"Elapsed: {elapsed} - Number: {screens.Count} - Count: {count}");
+                Console.WriteLine($"Elapsed: {elapsed} - Count: {count}");
                 count++;
             }
         }

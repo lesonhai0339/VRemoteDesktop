@@ -14,7 +14,7 @@ namespace VRemoteDesktop
 {
     public class Startup
     {
-        private IScreenCapture _capture;
+        private IScreenCapture1 _capture;
         private IScreenCaptureServiceListener _screenCaptureService;
         private IKeyboardService _keyboardHookService;
         private VClientManager _vClientManager;
@@ -27,7 +27,7 @@ namespace VRemoteDesktop
         }
         private void Initialize()
         {
-            _capture = new ScreenCapture();
+            _capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();
             _vClientManager = new VClientManager();
             _clientInfoManager = new ClientInfoManager();
