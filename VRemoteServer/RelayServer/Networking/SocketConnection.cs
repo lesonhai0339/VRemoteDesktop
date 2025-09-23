@@ -15,6 +15,7 @@ namespace VRemoteServer.RelayServer.Networking
 {
     public class SocketConnection : IDisposable
     {
+        private bool _receivedFirstPacket;
         private string _ip;
         private bool _disposed;
         private Socket _socket;
@@ -35,6 +36,7 @@ namespace VRemoteServer.RelayServer.Networking
         public event EventHandler<SocketConnectionEventArg> SocketConnectionEvent;
         public SocketConnection(Socket socket,SocketAsyncEventArgs socketAsyncEventArgs)
         {
+            _receivedFirstPacket = false;
             _disposed = false;
             _lastSendTime = DateTime.Now; //init before check timeout
             _socket = socket;
@@ -43,6 +45,23 @@ namespace VRemoteServer.RelayServer.Networking
             _timer = new Timer(CheckTimeOut, null, TimeSpan.FromSeconds(TIMEOUT), TimeSpan.FromSeconds(TIMEOUT));
         }
         #region Properties
+        public bool IsReceivedFirstPacket
+        {
+            get
+            {
+                lock (_lockProperty)
+                {
+                    return _receivedFirstPacket;
+                }
+            }
+            set
+            {
+                lock (_lockProperty)
+                {
+                    _receivedFirstPacket = value;
+                }
+            }
+        }
         public string IP
         {
             // if current ip is null, try to get it from RemoteEndPoint

@@ -1,13 +1,15 @@
 ﻿using Serilog;
 using System;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Text;
 using VRemoteServer.RelayServer.Domains;
+using VRemoteServer.RelayServer.Enums;
+using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
 using VRemoteServer.RelayServer.Networking;
-using ConnectionInfo = VRemoteServer.RelayServer.DTOs.ConnectionInfo;
 using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
-using VRemoteServer.RelayServer.Enums;
+using ConnectionInfo = VRemoteServer.RelayServer.DTOs.ConnectionInfo;
 
 
 namespace VRemoteServer.RelayServer.Services
@@ -21,6 +23,7 @@ namespace VRemoteServer.RelayServer.Services
     }
     public class SocketConnectionManager: BaseManagement<ConnectionInfo>, ISocketConnectionManager, IDisposable 
     {
+        public event EventHandler<SocketConnectionManagerEventArg> SocketConnectionManagerEvent;
         public bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo)
         {
             connectionInfo = null;
@@ -40,7 +43,37 @@ namespace VRemoteServer.RelayServer.Services
             }
             connectionInfo.PublicIP = socketConnection.IP;
             connectionInfo.SocketConnection = socketConnection;
+            connectionInfo.SocketConnection.IsReceivedFirstPacket = true;
+            socketConnection.SocketConnectionEvent += SocketConnectionEventHandler;
             return Add(connectionInfo.Id, connectionInfo);
+        }
+        /// <summary>
+        /// remove connectionInfo and unregister event
+        /// </summary>
+        /// <param name="id"></param>
+        /// <returns></returns>
+        public override bool Remove(string id)
+        {
+            if(base.TakeAndRemote(id, out var connectionInfo))
+            {
+                connectionInfo.SocketConnection.SocketConnectionEvent -= SocketConnectionEventHandler;
+                return true;
+            }
+            return false;
+        }
+        private void SocketConnectionEventHandler(object sender, SocketConnectionEventArg e)
+        {
+            SocketConnectionManagerEvent?.Invoke(sender, new SocketConnectionManagerEventArg(SocketConnectionManagerEventType.DataReceived, e));
+        }
+        public override void Dispose()
+        {
+            foreach(var connectionInfo in GetAll())
+            {
+                lock (connectionInfo)
+                {
+                    connectionInfo.SocketConnection.SocketConnectionEvent -= SocketConnectionEventHandler;    
+                }
+            }
         }
     }
 }

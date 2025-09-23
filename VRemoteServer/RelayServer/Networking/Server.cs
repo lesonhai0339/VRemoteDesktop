@@ -16,10 +16,30 @@ namespace VRemoteServer.RelayServer.Networking
 {
     public interface IServer
     {
+        /// <summary>
+        /// Cancel listening
+        /// </summary>
         void Cancel();
+        /// <summary>
+        /// Init Server Listener
+        /// </summary>
         void Init();
+        /// <summary>
+        /// Start listening on the specified endpoint.
+        /// </summary>
+        /// <param name="endpoint">The <see cref="System.Net.IPEndPoint"/> to listen on.</param>
         void Start(IPEndPoint endpoint);
-        void Send(SocketAsyncEventArgs e, byte[] data);
+        /// <summary>
+        /// Sends data to the specified <see cref="Socket"/> using the given <see cref="SocketConnection"/>.
+        /// </summary>
+        /// <param name="connection"></param>
+        /// <param name="data"></param>
+        void Send(SocketConnection connection, byte[] data);
+        /// <summary>
+        /// Release <see cref="SocketAsyncEventArgs"/>
+        /// </summary>
+        /// <param name="connection"></param>
+        void Close(SocketConnection connection);
         event EventHandler<ServerEventArg> ServerEvent;
         void Dispose();
     }
@@ -70,7 +90,7 @@ namespace VRemoteServer.RelayServer.Networking
         }
         public void Start(IPEndPoint endpoint)
         {
-            Console.WriteLine($"Start listening on IP: {endpoint.Address} - Port: {endpoint.Port}");
+            Log.ForContext("FileName", this.GetType().Name).Information($"Start listening on IP: {endpoint.Address} - Port: {endpoint.Port}");
             listenSocket = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             listenSocket.Bind(endpoint);
 
@@ -92,15 +112,19 @@ namespace VRemoteServer.RelayServer.Networking
                 listenSocket.Close();
             }
         }
-        public void Send(SocketAsyncEventArgs e, byte[] data)
+        public void Send(SocketConnection connection, byte[] data)
         {
-            SocketConnection connection = (SocketConnection)e.UserToken;
-            e.SetBuffer(data, 0, data.Length);
-            bool willRaiseEvent = connection.Socket.SendAsync(e);
+            connection.SAEA.SetBuffer(data, 0, data.Length);
+            bool willRaiseEvent = connection.Socket.SendAsync(connection.SAEA);
             if (!willRaiseEvent)
             {
-                ProcessSend(e);
+                ProcessSend(connection.SAEA);
             }
+        }
+        public void Close(SocketConnection connection)
+        {
+            SocketAsyncEventArgs e = connection.SAEA;
+            this.CloseClientSocket(e);
         }
         private void StartAccept(SocketAsyncEventArgs acceptEventArg)
         {
@@ -128,7 +152,7 @@ namespace VRemoteServer.RelayServer.Networking
                     ProcessSend(e);
                     break;
                 default:
-                    Console.WriteLine("The last operation completed on the socket was not receive or send");
+                    Log.ForContext("FileName", this.GetType().Name).Error("The last operation completed on the socket was not receive or send"));
                     break;
             }
         }
@@ -162,15 +186,14 @@ namespace VRemoteServer.RelayServer.Networking
                 Console.WriteLine("The server has read a total of {0} bytes", totalBytesRead);
                 SocketConnection connection = (SocketConnection)e.UserToken;
 
-                ServerEvent?.Invoke(connection, new ServerEventArg(ServerEventType.ReceivedData, e.Offset, e.BytesTransferred));
-
-                //if (e.BytesTransferred > 0)
-                //    connection.CalCuLateData(e.Offset, e.BytesTransferred);
-                //bool willRaiseEvent = connection.Socket.SendAsync(e);
-                //if (!willRaiseEvent)
-                //{
-                //    ProcessSend(e);
-                //}
+                if(!connection.IsReceivedFirstPacket)
+                {
+                    ServerEvent?.Invoke(connection, new ServerEventArg(ServerEventType.ReceivedData, e.Offset, e.BytesTransferred));
+                }
+                else
+                {
+                    connection.CalCuLateData(e.Offset, e.BytesTransferred);
+                }
             }
             else
             {
@@ -192,7 +215,7 @@ namespace VRemoteServer.RelayServer.Networking
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Error");
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessSend error");
                 }
             }
             else
@@ -210,11 +233,11 @@ namespace VRemoteServer.RelayServer.Networking
             }
             catch (SocketException socketEx)
             {
-                Console.WriteLine("Socket error: ", socketEx);
+                Log.ForContext("FileName", this.GetType().Name).Error(socketEx, "Socket error");
             }
             catch (Exception ex)
             {
-                Console.WriteLine("CloseClientSocket error: ", ex);
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "CloseClientSocket error");
             }
             socket.Close();
 
@@ -226,9 +249,8 @@ namespace VRemoteServer.RelayServer.Networking
 
 
             maxNumberAcceptedClients.Release();
-            Console.WriteLine("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
+            Log.ForContext("FileName", this.GetType().Name).Information("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
         }
-
         public void Dispose()
         {
             Dispose(true);

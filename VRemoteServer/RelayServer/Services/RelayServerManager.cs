@@ -48,6 +48,9 @@ namespace VRemoteServer.RelayServer.Services
             {
                 {SocketDataType.Connect, ProcessConnect },
                 {SocketDataType.Login, ProcessLogin},
+                {SocketDataType.P2PRequestConnect, ProcessRemoteRequestToConnect},
+                {SocketDataType.P2PAcceptConnect, ProcessRemoteAcceptedToConnect},
+                {SocketDataType.P2PRejectConnect, ProcessRemoteRefusedToConnect},
             };
         }
         #region Methods
@@ -84,6 +87,69 @@ namespace VRemoteServer.RelayServer.Services
             if(sender is SocketConnection connection)
             {
                 ProcessSocketData(connection, e);
+            }
+        }
+        private void ProcessRemoteRequestToConnect(SocketConnection connection, string id, byte[] data)
+        {
+            try
+            {
+                if (_socketConnectionManager.Get(id, out var validConnection))
+                {
+                    RemoteConnection remoteConnection = new RemoteConnection(id, connection);
+                    if (_remoteConnectionManager.Add(id, remoteConnection))
+                    {
+                        Send(validConnection.SocketConnection, data);
+                        return;
+                    }
+                }
+                byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, id);
+                Send(connection, packet);
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error on IP: {connection.IP} - Id: {id}");
+            }
+        }
+        private void ProcessRemoteAcceptedToConnect(SocketConnection connection, string id, byte[] data)
+        {
+            try
+            {
+                if (_remoteConnectionManager.Get(id, out var remoteConnection))
+                {
+                    lock (remoteConnection)
+                    {
+                        remoteConnection.Controlled = connection;
+                    }
+                    Send(remoteConnection.Controller, data);
+                }
+                else
+                {
+                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, id);
+                    Send(connection, packet);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteAcceptedToConnect error on IP: {connection.IP} - Id: {id}");
+            }
+        }
+        private void ProcessRemoteRefusedToConnect(SocketConnection connection, string id, byte[] data)
+        {
+            try
+            {
+                if (_remoteConnectionManager.TakeAndRemote(id, out var remoteConnection))
+                {
+                    Send(remoteConnection.Controller, data);
+                }
+                else
+                {
+                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.Error, id);
+                    Send(connection, packet);
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRefusedToConnect error on IP: {connection.IP} - Id: {id}");
             }
         }
         private void ProcessSocketData(SocketConnection connection, ServerEventArg e)
@@ -190,12 +256,11 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
         }
-
         private void Send(SocketConnection connection, byte[] data)
         {
             try
             {
-                _server.Send(connection.SAEA, data);
+                _server.Send(connection, data);
             }
             catch (Exception ex)
             {
@@ -212,7 +277,7 @@ namespace VRemoteServer.RelayServer.Services
                     Log.ForContext("FileName", this.GetType().Name).Error(new InvalidOperationException(nameof(partner)), "Cannot found partner");
                     return;
                 }
-                _server.Send(partner.SAEA, data);
+                _server.Send(partner, data);
             }
             catch(Exception ex)
             {

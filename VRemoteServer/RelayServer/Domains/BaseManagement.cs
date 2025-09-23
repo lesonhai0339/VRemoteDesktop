@@ -13,14 +13,17 @@ namespace VRemoteServer.RelayServer.Domains
     /// </summary>
     public interface IBaseManagement<T>
     {
-        T Get(Predicate<T> predicate);
         bool Add(string id, T obj);
         T Get(string id);
         T Get(string id, T obj);
+        T Get(Predicate<T> predicate);
+        IEnumerable<T> GetAll();
+        bool Get(string id, out T obj);
         string GetIdByValue(T obj);
         bool Update(string id, T obj);
         bool Remove(string id);
         T TakeAndRemote(string id);
+        bool TakeAndRemote(string id, out T obj);
         void Dispose();
     }
     public class BaseManagement<T> : IBaseManagement<T>, IDisposable where T: class
@@ -35,13 +38,13 @@ namespace VRemoteServer.RelayServer.Domains
         #region Properties
         #endregion
         #region Methods
-        public bool Add(string id, T obj)
+        public virtual bool Add(string id, T obj)
             => _keyValuePairs.TryAdd(id, obj);
-        public T Get(string id)
+        public virtual T Get(string id)
             => _keyValuePairs.TryGetValue(id, out var result) ? result : null;
-        public T Get(string id, T obj)
+        public virtual T Get(string id, T obj)
             => _keyValuePairs.GetOrAdd(id, obj);
-        public T Get(Predicate<T> predicate)
+        public virtual T Get(Predicate<T> predicate)
         {
             foreach(var v in _keyValuePairs.Values)
             {
@@ -50,18 +53,24 @@ namespace VRemoteServer.RelayServer.Domains
             }
             return null;
         }
-        public string GetIdByValue(T obj)
+        public virtual bool Get(string id, out T obj)
+           => _keyValuePairs.TryGetValue(id,out obj) ? true : false;
+        public virtual IEnumerable<T> GetAll()
+            => _keyValuePairs.Values;
+        public virtual string GetIdByValue(T obj)
             => _keyValuePairs.FirstOrDefault(x => ReferenceEquals(x.Value, obj)).Key;
-        public bool Update(string id, T newObj)
+        public virtual bool Update(string id, T newObj)
             => _keyValuePairs.AddOrUpdate(id, addValueFactory: _ => newObj, updateValueFactory: (_, old) => newObj) != null;
-        public bool Remove(string id)
+        public virtual bool Remove(string id)
             => _keyValuePairs.TryRemove(id, out _);
-        public T TakeAndRemote(string id)
+        public virtual T TakeAndRemote(string id)
             => _keyValuePairs.TryRemove(id, out var result) ? result : null;
+        public virtual bool TakeAndRemote(string id, out T obj)
+           => _keyValuePairs.TryRemove(id, out obj) ? true : false;
         #endregion
         #region Events
         #endregion
-        public void Dispose()
+        public virtual void Dispose()
         {
             Dispose(true);
             GC.SuppressFinalize(this);

@@ -9,10 +9,10 @@ namespace VRemoteServer.RelayServer.DTOs
 {
     public class RemoteConnection
     {
-        public RemoteConnection(string connectionId, SocketConnection sender)
+        public RemoteConnection(string connectionId, SocketConnection controller)
         {
             ConnectionId = connectionId;
-            Controller = sender;
+            Controller = controller;
         }
         public RemoteConnection(SocketConnection controller, SocketConnection controlled)
         {
