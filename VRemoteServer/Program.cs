@@ -2,9 +2,11 @@
 using Microsoft.Extensions.Hosting;
 using Serilog;
 using System;
+using System.Net;
 using System.Threading.Tasks;
 using VRemoteServer.Services;
 using VRemoteServer.Utils;
+using static VRemoteServer.Services.RemoteDesktopConnectionServer;
 
 namespace VRemoteServer
 {
@@ -23,11 +25,18 @@ namespace VRemoteServer
                 {
                     services.AddSingleton<RemoteDesktopServer>();
                     services.AddSingleton<SocketListener>();
+                    services.AddSingleton<Server>();
                 })
                 .Build();
 
-            var listener = host.Services.GetRequiredService<SocketListener>();
-            await listener.Listen();
+            //var listener = host.Services.GetRequiredService<SocketListener>();
+            //await listener.Listen();
+
+
+            var listener2 = host.Services.GetRequiredService<Server>();
+            IPEndPoint ep = new IPEndPoint(IPAddress.Any, 2399);
+            listener2.Init();
+            listener2.Start(ep);
         }
     }
 }

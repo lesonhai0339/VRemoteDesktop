@@ -12,22 +12,24 @@ using static VRemoteDesktop.Interop.Win32Apis;
 using VRemoteDesktop.Models;
 using System.Diagnostics;
 using static VRemoteDesktop.Utils.DefaultScreen;
+using System.Runtime.ConstrainedExecution;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
-    public interface IScreenCapture
+    public interface IScreenCapture1
     {
         List<ScreenRegion> GetCurrentScreen();
         List<ScreenRegion> GetScreen();
         void Renew();
         void Dispose();
     }
-    public class ScreenCapture : IScreenCapture, IDisposable
+    public class ScreenCapture1 : IScreenCapture1, IDisposable
     {
+        private int THRESHOLD = 10;
         private int BLOCK_SIZE = DEFAULT_BLOCK_SIZE; // Size of each block for change detection
         private bool _isDisposed = false;
         private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
-
+        private int maxDegreeOfParallelism;
         private Rectangle _bounds;
         private Bitmap _previousFrame;
         private List<Rectangle> regions;
@@ -36,7 +38,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private object _lockObject2;
         private ImageCodecInfo encoder;
         private EncoderParameters encoderParams;
-        public ScreenCapture()
+        public ScreenCapture1()
         {
             _bounds = Screen.PrimaryScreen.Bounds;
             _previousFrame = null;
@@ -48,6 +50,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             encoderParams = new EncoderParameters(1);
             encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
             regions = new List<Rectangle>();
+            maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
             InitRequirements(_bounds.Width, _bounds.Height);
         }
         private void InitRequirements(int width, int height)
@@ -67,15 +70,18 @@ namespace VRemoteDesktop.Services.ScreenCapture
             {
                 using (Bitmap currentScreen = CaptureWindowsScreen1())
                 {
-                    _previousFrame = currentScreen.Clone(
-                          new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                          PixelFormat.Format24bppRgb
-                       );
+                    if(_previousFrame == null)
+                        _previousFrame = new Bitmap(_bounds.Width, _bounds.Height, PixelFormat.Format24bppRgb);
+
+                    using (Graphics g = Graphics.FromImage(_previousFrame))
+                    {
+                        g.DrawImageUnscaled(currentScreen, 0, 0);
+                    }
                     return FullScreenRegion(currentScreen);
                 }
             }
         }
-        public List<ScreenRegion> GetScreen()
+        public unsafe List<ScreenRegion> GetScreen()
         {
             List<ScreenRegion> regions = new List<ScreenRegion>();
             lock (_lockObject)
@@ -84,10 +90,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 {
                     if (_previousFrame == null)
                     {
-                        _previousFrame = currentScreen.Clone(
-                           new Rectangle(0, 0, currentScreen.Width, currentScreen.Height),
-                           PixelFormat.Format24bppRgb
-                        );
+                        if (_previousFrame == null)
+                            _previousFrame = new Bitmap(_bounds.Width, _bounds.Height, PixelFormat.Format24bppRgb);
+
+                        using (Graphics g = Graphics.FromImage(_previousFrame))
+                        {
+                            g.DrawImageUnscaled(currentScreen, 0, 0);
+                        }
                         return FullScreenRegion(currentScreen);
                     }
                     List<Rectangle> dirtyRegions = new List<Rectangle>();
@@ -102,7 +111,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
                             ImageLockMode.ReadOnly,
                             PixelFormat.Format24bppRgb);
 
-                        dirtyRegions = DetectDirtyRegions(cur, pre);
+                        byte* currentPtr = (byte*)cur.Scan0;
+                        byte* previousPtr = (byte*)pre.Scan0;
+                        int stride = cur.Stride;
+
+                        dirtyRegions = DetectDirtyRegions(maxDegreeOfParallelism, currentPtr, previousPtr, stride);
                     }
                     finally
                     {
@@ -111,7 +124,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         if (pre != null)
                             _previousFrame.UnlockBits(pre);
                     }
-
                     using (Graphics g = Graphics.FromImage(_previousFrame))
                     {
                         g.DrawImageUnscaled(currentScreen, 0, 0);
@@ -134,7 +146,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 };
                 return new List<ScreenRegion> { region };
             }
-        }
+        }  
         private List<ScreenRegion> MakeScreenRegions(Bitmap currentScreen, List<Rectangle> dirtyRegions)
         {
             List<ScreenRegion> regions = new List<ScreenRegion>();
@@ -187,35 +199,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             return bitmap;
         }
-        /*private Bitmap CaptureWindowsScreen1()
-        {
-            var bounds = Screen.PrimaryScreen.Bounds;
-            Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
-            using (Graphics bitmapGraphics = Graphics.FromImage(bitmap))
-            {
-                IntPtr bitmapHdc = bitmapGraphics.GetHdc();
-                IntPtr screenHdc = CaptureApis.GetDC(IntPtr.Zero);
-
-                CaptureApis.BitBlt(bitmapHdc, 0, 0, bounds.Width, bounds.Height,
-                       screenHdc, bounds.X, bounds.Y, 0x00CC0020); // SRCCOPY
-
-                bitmapGraphics.ReleaseHdc(bitmapHdc);
-                CaptureApis.ReleaseDC(IntPtr.Zero, screenHdc);
-            }
-            return bitmap;
-        }*/
-        private Bitmap CaptureWindowsScreen()
-        {
-            Rectangle bounds = Screen.PrimaryScreen.Bounds;
-            Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
-
-            using (Graphics graphics = Graphics.FromImage(bitmap))
-            {
-                graphics.CopyFromScreen(bounds.X, bounds.Y, 0, 0, bounds.Size, CopyPixelOperation.SourceCopy);
-            }
-
-            return bitmap;
-        }
         private List<Rectangle> GenerateRegions(int width, int height)
         {
             var regions = new List<Rectangle>();
@@ -233,34 +216,15 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             return regions;
         }
-        //private List<Rectangle> GenerateRegions(BitmapData curBitmap, BitmapData preBitmap)
-        //{
-        //    var regions = new List<Rectangle>();
-
-        //    for (int y = 0; y < curBitmap.Height; y += BLOCK_SIZE)
-        //    {
-        //        for (int x = 0; x < curBitmap.Width; x += BLOCK_SIZE)
-        //        {
-        //            int width = curBitmap.Width - x > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Width - x;
-        //            int height = curBitmap.Height - y > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Height - y;
-        //            Rectangle block = new Rectangle(x, y,
-        //                width,
-        //                height);
-        //            regions.Add(block);
-        //        }
-        //    }
-        //    return regions;
-        //}
-        private List<Rectangle> DetectDirtyRegions(BitmapData curBitmap, BitmapData preBitmap)
+        private unsafe List<Rectangle> DetectDirtyRegions(int maxDegreeOfParallelism, byte* cur, byte* pre,int stride)
         {
-            var maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
             try
             {
                 Parallel.ForEach(regions,
                     new ParallelOptions { MaxDegreeOfParallelism = maxDegreeOfParallelism },
                     block =>
                     {
-                        if (IsBlockChanged(curBitmap, preBitmap, block))
+                        if (IsBlockChanged(block, cur, pre, stride))
                             changedBlocks.Add(block);
                     });
                 var result = changedBlocks.ToList();
@@ -268,10 +232,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             finally
             {
-                lock (_lockObject2)
-                {
-                    changedBlocks = new ConcurrentBag<Rectangle>();
-                }
+                changedBlocks = new ConcurrentBag<Rectangle>();
             }
         }
         private List<Rectangle> MergeAdjacentRectangles(List<Rectangle> rectangles)
@@ -315,13 +276,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         //this method same with Math.abs()
         private int AbsBitwise(int x) => x + (x >> 31) ^ x >> 31;
-        private unsafe bool IsBlockChanged(BitmapData currentData, BitmapData previousData, Rectangle block)
+        private unsafe bool IsBlockChanged(Rectangle block, byte* currentPtr, byte* previousPtr, int stride)
         {
-            byte* currentPtr = (byte*)currentData.Scan0;
-            byte* previousPtr = (byte*)previousData.Scan0;
-            int stride = currentData.Stride;
-            const int threshold = 10;
-
             // move pointer to start of the block
             currentPtr += block.Y * stride + block.X * 3;
             previousPtr += block.Y * stride + block.X * 3;
@@ -344,9 +300,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     int rDiff = currentRow[index + 2] - previousRow[index + 2];
 
 
-                    if (AbsBitwise(bDiff) > threshold ||
-                        AbsBitwise(gDiff) > threshold ||
-                        AbsBitwise(rDiff) > threshold)
+                    if (AbsBitwise(bDiff) > THRESHOLD ||
+                        AbsBitwise(gDiff) > THRESHOLD ||
+                        AbsBitwise(rDiff) > THRESHOLD)
                     {
                         return true;
                     }

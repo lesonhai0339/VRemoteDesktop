@@ -688,7 +688,8 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void Send(Sendstate state)
         {
-            if (!Socket.Connected)
+            if (_socket == null) return;
+            if (!_socket.Connected)
             {
                 throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
             }
@@ -696,7 +697,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 throw new TimeoutException("Send timeout");
             }
-            Socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
+            _socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
         }
         private void SendCallback(IAsyncResult ar)
         {
