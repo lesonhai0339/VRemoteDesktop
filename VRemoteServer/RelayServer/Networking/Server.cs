@@ -152,7 +152,7 @@ namespace VRemoteServer.RelayServer.Networking
                     ProcessSend(e);
                     break;
                 default:
-                    Log.ForContext("FileName", this.GetType().Name).Error("The last operation completed on the socket was not receive or send"));
+                    Log.ForContext("FileName", this.GetType().Name).Error("The last operation completed on the socket was not receive or send");
                     break;
             }
         }
@@ -225,11 +225,15 @@ namespace VRemoteServer.RelayServer.Networking
         }
         private void CloseClientSocket(SocketAsyncEventArgs e)
         {
-            Socket socket = ((SocketConnection)e.UserToken).Socket;
+            SocketConnection connection = (SocketConnection)e.UserToken;
+            ServerEvent?.Invoke(connection, new ServerEventArg(ServerEventType.LostConnection));
+
+            //Socket socket = ((SocketConnection)e.UserToken).Socket;
 
             try
             {
-                socket.Shutdown(SocketShutdown.Both);
+                //socket.Shutdown(SocketShutdown.Both);
+                connection.Socket.Shutdown(SocketShutdown.Both);
             }
             catch (SocketException socketEx)
             {
@@ -239,7 +243,8 @@ namespace VRemoteServer.RelayServer.Networking
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "CloseClientSocket error");
             }
-            socket.Close();
+            //socket.Close();
+            connection.Socket.Close();
 
             // decrement the counter keeping track of the total number of clients connected to the server
             Interlocked.Decrement(ref numberConnectedSockets);

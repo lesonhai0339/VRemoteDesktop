@@ -9,6 +9,7 @@ namespace VRemoteServer.RelayServer.Enums
     public enum ServerEventType
     {
         NewConnection,
-        ReceivedData
+        ReceivedData,
+        LostConnection
     }
 }
