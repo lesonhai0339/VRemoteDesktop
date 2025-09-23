@@ -76,7 +76,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
             _reset.WaitOne(5000);
-            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPRATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
             newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
@@ -209,7 +209,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     ClientInfo partnerInfo = null;
 
                     string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPRATOR);
+                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
                     if(stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
                     {
                         if (StringHelper.StringValidate(stringArray))

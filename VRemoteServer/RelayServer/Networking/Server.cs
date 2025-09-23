@@ -142,8 +142,6 @@ namespace VRemoteServer.RelayServer.Networking
             SocketConnection connection = new SocketConnection(e.AcceptSocket,readEventArg);
             readEventArg.UserToken = connection;
 
-            ServerEvent?.Invoke(connection, new ServerEventArg(ServerEventType.NewConnection));
-
             bool willRaiseEvent = e.AcceptSocket.ReceiveAsync(readEventArg);
             if (!willRaiseEvent)
             {

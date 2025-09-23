@@ -4,40 +4,26 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Domains;
 using VRemoteServer.RelayServer.DTOs;
+using VRemoteServer.RelayServer.Networking;
 
 namespace VRemoteServer.RelayServer.Services
 {
-    public interface IRemoteConnectionManager
+    /// <summary>
+    /// Manager remote desktop connection between two socket client
+    /// </summary>
+    public interface IRemoteConnectionManager: IBaseManagement<RemoteConnection>
     {
-        void Dispose();
+        SocketConnection GetPartner(SocketConnection owner);
     }
-    public class RemoteConnectionManager: IRemoteConnectionManager, IDisposable 
+    public class RemoteConnectionManager : BaseManagement<RemoteConnection>, IRemoteConnectionManager, IDisposable 
     {
-        private bool _disposed; 
-        private ConcurrentDictionary<string, RemoteConnection> _remoteConnection;
-        public RemoteConnectionManager()
+        public SocketConnection GetPartner(SocketConnection owner)
         {
-            _disposed = false;  
-            _remoteConnection = new ConcurrentDictionary<string, RemoteConnection>();
-        }
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposing || _disposed) return;
-
-            try
-            {
-
-            }
-            finally
-            {
-                _disposed = true;
-            }
+            var found = Get(v => ReferenceEquals(v.Controller, owner) | ReferenceEquals(v.Controlled, owner));
+            if (found == null) return null;
+            return ReferenceEquals(found.Controller, owner) ? found.Controlled : found.Controller;
         }
     }
 }

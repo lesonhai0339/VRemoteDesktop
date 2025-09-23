@@ -7,7 +7,7 @@ using VRemoteServer.RelayServer.Networking;
 
 namespace VRemoteServer.RelayServer.DTOs
 {
-    internal class RemoteConnection
+    public class RemoteConnection
     {
         public RemoteConnection(string connectionId, SocketConnection sender)
         {

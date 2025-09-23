@@ -37,10 +37,10 @@ namespace VRemoteServer
             //await listener.Listen();
 
 
-            var listener2 = host.Services.GetRequiredService<Server>();
+            var server = host.Services.GetRequiredService<IRelayServerManager>();
             IPEndPoint ep = new IPEndPoint(IPAddress.Any, 2399);
-            listener2.Init();
-            listener2.Start(ep);
+            server.InitServer();
+            server.StartServer(ep);
         }
     }
 }

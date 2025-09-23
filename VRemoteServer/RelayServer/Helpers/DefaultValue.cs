@@ -10,7 +10,8 @@ namespace VRemoteServer.RelayServer.Helpers
     {
         public static class Common
         {
-            public static char SEPRATOR = '|';
+            public static char SEPARATOR = '|';
+            public static int DEFAULT_PORT = 2399;
         }
         public static class SocketConnectionDefault
         {
@@ -22,6 +23,7 @@ namespace VRemoteServer.RelayServer.Helpers
             public static int PACKET_TYPE_INDEX = 4;
             public static int PACKET_ID_LENGTH = 8;
             public static int PACKET_ID_INDEX = 5;
+            public static string EMPTY_ID = "00000000";
         }
     }
 }
