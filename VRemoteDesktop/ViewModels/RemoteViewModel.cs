@@ -103,7 +103,7 @@ namespace VRemoteDesktop.ViewModels
         }
         public void ProcessKeyboard(KeyboardEventArgs e)
         {
-            string keyboard = Helpers.StringHelper.StringBuilderWithSeparator(DEFAULT_SEPRATOR,(int)e.Command, (int)e.KeyModifier, (int)e.KeyCode, (int)e.KeyType);
+            string keyboard = Helpers.StringHelper.StringBuilderWithSeparator(DEFAULT_SEPARATOR,(int)e.Command, (int)e.KeyModifier, (int)e.KeyCode, (int)e.KeyType);
 
             //return if data is empty
             if (string.IsNullOrEmpty(keyboard)) return;

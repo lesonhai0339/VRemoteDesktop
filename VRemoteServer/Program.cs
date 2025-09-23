@@ -6,7 +6,6 @@ using System.Net;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Networking;
 using VRemoteServer.RelayServer.Services;
-using VRemoteServer.Services;
 using VRemoteServer.Utils;
 
 namespace VRemoteServer
@@ -24,8 +23,8 @@ namespace VRemoteServer
             var host = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
-                    services.AddScoped<RemoteDesktopServer>();
-                    services.AddScoped<SocketListener>();
+                    //services.AddScoped<RemoteDesktopServer>();
+                    //services.AddScoped<SocketListener>();
                     services.AddScoped<IServer, Server>();
                     services.AddScoped<IRemoteConnectionManager, RemoteConnectionManager>();
                     services.AddScoped<ISocketConnectionManager, SocketConnectionManager>();

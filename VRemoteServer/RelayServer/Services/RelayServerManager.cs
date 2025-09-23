@@ -7,6 +7,8 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using VRemoteServer.Models;
+using VRemoteServer.RelayServer.DTOs;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
@@ -150,6 +152,7 @@ namespace VRemoteServer.RelayServer.Services
             {
                 if(_socketConnectionManager.NewConnectionInfo(data, connection, out var connectionInfo))
                 {
+                    ProcessLoginSucceeded(connection, connectionInfo);
                     Log.ForContext("FileName", this.GetType().Name).Information($"Login success on IP: {connection.IP}");
                 }
                 else
@@ -160,6 +163,19 @@ namespace VRemoteServer.RelayServer.Services
             catch (Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "Login error");
+            }
+        }
+        private void ProcessLoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo)
+        {
+            try
+            {
+                byte[] data = Encoding.ASCII.StringToByteArray(connectionInfo.ToNetworkString());
+                byte[] packet = PacketFactory.CreatePacket(SocketDataType.Login, connectionInfo.Id, data);
+                Send(connection, packet);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
         }
         private void ProcessLoginFailed(SocketConnection connection)

@@ -94,7 +94,13 @@ namespace VRemoteServer.RelayServer.Networking
         }
         public void Send(SocketAsyncEventArgs e, byte[] data)
         {
-            //TODO
+            SocketConnection connection = (SocketConnection)e.UserToken;
+            e.SetBuffer(data, 0, data.Length);
+            bool willRaiseEvent = connection.Socket.SendAsync(e);
+            if (!willRaiseEvent)
+            {
+                ProcessSend(e);
+            }
         }
         private void StartAccept(SocketAsyncEventArgs acceptEventArg)
         {
