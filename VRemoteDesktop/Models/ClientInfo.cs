@@ -71,7 +71,7 @@ namespace VRemoteServer.Models
             foreach (var prop in props)
             {
                 var value = prop.GetValue(this, null);
-                sb.Append(value ?? string.Empty).Append(DefaultValue.DEFAULT_SEPARATOR);
+                sb.Append(value ?? "-1").Append(DefaultValue.DEFAULT_SEPARATOR);
             }
             return sb.ToString().TrimEnd(DefaultValue.DEFAULT_SEPARATOR.ToCharArray());
         }

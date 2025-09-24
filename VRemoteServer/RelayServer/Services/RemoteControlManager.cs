@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Networking;
 
 namespace VRemoteServer.RelayServer.Services
@@ -26,6 +27,10 @@ namespace VRemoteServer.RelayServer.Services
             _disposed = false;
             _remoteControlServer = remoteControlServer;
             _remoteConnectionManager = remoteConnectionManager;
+
+            //Register events
+            _remoteControlServer.BaseEvent += RemoteControlEventHandler;
+
         }
         #region Properties
         #endregion
@@ -47,6 +52,10 @@ namespace VRemoteServer.RelayServer.Services
         }
         #endregion
         #region Events
+        private void RemoteControlEventHandler(object sender, BaseServerEventArgs e)
+        {
+            Console.WriteLine("RemoteControl event called");
+        }
         #endregion
         public void Dispose()
         {

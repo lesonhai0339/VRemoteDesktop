@@ -70,7 +70,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 MajorVersion = os.Version.Major.ToString(),
                 MinorVersion = os.Version.Minor.ToString(),
                 Ip = GetLocalIPAddress(),
-                Port = AppSettingHelper.GetValue("RemoteServerPort"),
+                Port = AppSettingHelper.GetValue("LoginPort"),
                 PublicIP = null
             };
             return info;
