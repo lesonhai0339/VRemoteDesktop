@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Domains;
 using VRemoteServer.RelayServer.DTOs;
+using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Networking;
 
 namespace VRemoteServer.RelayServer.Services
@@ -15,15 +16,87 @@ namespace VRemoteServer.RelayServer.Services
     /// </summary>
     public interface IRemoteConnectionManager: IBaseManagement<RemoteConnection>
     {
+        bool AddController(string id, SocketConnection controller);
+        bool AddControlled(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
         SocketConnection GetPartner(SocketConnection owner);
+        bool GetPartner(SocketConnection owner, out SocketConnection partner);
+        event EventHandler<RemoteConnectionEventArg> remoteSocketManagerEvent;
     }
     public class RemoteConnectionManager : BaseManagement<RemoteConnection>, IRemoteConnectionManager, IDisposable 
     {
+        public event EventHandler<RemoteConnectionEventArg> remoteSocketManagerEvent;
+        public bool AddController(string id, SocketConnection controller)
+        {
+            RemoteConnection remoteConnection = new RemoteConnection(id, controller);
+            if (base.Add(id, remoteConnection))
+            {
+                controller.SocketConnectionEvent += SocketConnectionEventHandler;
+                return true;
+            }
+            return false;
+        }
+        public bool AddControlled(string id, SocketConnection controlled, out RemoteConnection remoteConnection)
+        {
+            remoteConnection = null;
+
+            if (base.Get(id, out remoteConnection))
+            {
+                remoteConnection.Controlled = controlled;
+                controlled.SocketConnectionEvent += SocketConnectionEventHandler;
+                return true;
+            }
+            return false;
+        }
         public SocketConnection GetPartner(SocketConnection owner)
         {
             var found = Get(v => ReferenceEquals(v.Controller, owner) | ReferenceEquals(v.Controlled, owner));
             if (found == null) return null;
             return ReferenceEquals(found.Controller, owner) ? found.Controlled : found.Controller;
+        }
+        public bool GetPartner(SocketConnection owner, out SocketConnection partner)
+        {
+            partner = null;
+            var found = Get(v => ReferenceEquals(v.Controller, owner) | ReferenceEquals(v.Controlled, owner));
+
+            if (found == null)
+                return false;
+
+            partner = ReferenceEquals(found.Controller, owner) ? found.Controlled : found.Controller;
+            return true;
+        }
+        public override bool Remove(string id)
+        {
+            if(Get(id, out var remoteConnection))
+            {
+                if(remoteConnection.Controller != null)
+                {
+                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
+                }
+                if (remoteConnection.Controlled != null)
+                {
+                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
+                }
+            }
+            return base.Remove(id);
+        }
+        public override void Dispose()
+        {
+            foreach(var remoteConnection in this.GetAll())
+            {
+                if (remoteConnection.Controller != null)
+                {
+                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
+                }
+                if (remoteConnection.Controlled != null)
+                {
+                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
+                }
+            }
+            base.Dispose();
+        }
+        private void SocketConnectionEventHandler(object sender, SocketConnectionEventArg e)
+        {
+            remoteSocketManagerEvent?.Invoke(sender, new RemoteConnectionEventArg(e));
         }
     }
 }

@@ -19,7 +19,8 @@ namespace VRemoteServer.RelayServer.Networking
         private string _ip;
         private bool _disposed;
         private Socket _socket;
-        private SocketAsyncEventArgs _socketAsyncEventArgs;
+        private SocketAsyncEventArgs _readSocketAsyncEventArgs;
+        private SocketAsyncEventArgs _sendSocketAsyncEventArgs;
         private DateTime _lastSendTime { get; set; }
         private readonly TimeSpan _timeout = TimeSpan.FromSeconds(TIMEOUT);
         private Timer _timer;
@@ -34,15 +35,17 @@ namespace VRemoteServer.RelayServer.Networking
         private string _id;
 
         public event EventHandler<SocketConnectionEventArg> SocketConnectionEvent;
-        public SocketConnection(Socket socket,SocketAsyncEventArgs socketAsyncEventArgs)
+        public SocketConnection(SocketAsyncEventArgs readSocketAsyncEventArgs, SocketAsyncEventArgs sendSocketAsyncEventArgs, Socket socket)
         {
             _receivedFirstPacket = false;
             _disposed = false;
             _lastSendTime = DateTime.Now; //init before check timeout
             _socket = socket;
-            _socketAsyncEventArgs = socketAsyncEventArgs;
-            _socketAsyncEventArgs.UserToken = this;
-            _timer = new Timer(CheckTimeOut, null, TimeSpan.FromSeconds(TIMEOUT), TimeSpan.FromSeconds(TIMEOUT));
+            _readSocketAsyncEventArgs = readSocketAsyncEventArgs;
+            _sendSocketAsyncEventArgs = sendSocketAsyncEventArgs;
+            _readSocketAsyncEventArgs.UserToken = this;
+            _sendSocketAsyncEventArgs.UserToken = this;
+            _timer = new Timer(CheckTimeOut, null, TimeSpan.FromSeconds(SCHEDULE_TIME), TimeSpan.FromSeconds(SCHEDULE_TIME));
         }
         #region Properties
         public bool IsReceivedFirstPacket
@@ -65,7 +68,21 @@ namespace VRemoteServer.RelayServer.Networking
         public string IP
         {
             // if current ip is null, try to get it from RemoteEndPoint
-            get => _ip ??= (_socket.RemoteEndPoint as IPEndPoint)?.Address.ToString();
+            get
+            {
+                if (!string.IsNullOrEmpty(_ip))
+                {
+                    return _ip;
+                }
+                else if (_socket != null)
+                {
+                    return (_socket?.RemoteEndPoint as IPEndPoint)?.Address.ToString();
+                }
+                else
+                {
+                    return string.Empty;
+                }         
+            }
             private set
             {
                 if (!string.IsNullOrEmpty(value))
@@ -94,20 +111,37 @@ namespace VRemoteServer.RelayServer.Networking
         /// <summary>
         /// It's <see cref="SocketAsyncEventArgs"/>
         /// </summary>
-        public SocketAsyncEventArgs SAEA
+        public SocketAsyncEventArgs Reader
         {
             get
             {
                 lock (_lockProperty)
                 {
-                    return _socketAsyncEventArgs;
+                    return _readSocketAsyncEventArgs;
                 }
             }
             set
             {
                 lock (_lockProperty)
                 {
-                    _socketAsyncEventArgs = value;
+                    _readSocketAsyncEventArgs = value;
+                }
+            }
+        }
+        public SocketAsyncEventArgs Sender
+        {
+            get
+            {
+                lock (_lockProperty)
+                {
+                    return _sendSocketAsyncEventArgs;
+                }
+            }
+            set
+            {
+                lock (_lockProperty)
+                {
+                    _sendSocketAsyncEventArgs = value;
                 }
             }
         }
@@ -115,18 +149,29 @@ namespace VRemoteServer.RelayServer.Networking
         #region Methods
         private bool CheckAlive()
         {
-            bool flag = false;
             try
             {
-                bool part = _socket.Poll(1000, SelectMode.SelectRead);
-                bool part2 = _socket.Available == 0;
-                if (!part && !part2)
-                {
-                    flag = true;
-                }
+                // Check if socket is connected and not in an error state
+                if (_socket == null || !_socket.Connected)
+                    return false;
+
+                // Use a shorter poll time (1000 microseconds = 1ms) and check both conditions
+                bool hasDataToRead = _socket.Poll(1000, SelectMode.SelectRead);
+                bool hasAvailableData = _socket.Available > 0;
+
+                // Socket is alive if:
+                // - It has data to read AND available data > 0, OR
+                // - It doesn't have data to read (normal idle state)
+                return !hasDataToRead || hasAvailableData;
             }
-            catch (SocketException) { }
-            return flag;
+            catch (SocketException)
+            {
+                return false;
+            }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
         }
         private void CheckTimeOut(object obj)
         {
@@ -153,14 +198,14 @@ namespace VRemoteServer.RelayServer.Networking
         {
             lock (_lockMethod)
             {
-                if (_socketAsyncEventArgs.Buffer == null)
+                if (_readSocketAsyncEventArgs.Buffer == null)
                     return;
                 if (_remainingData == null)
                     _remainingData = new byte[0];
 
                 byte[] totalData = new byte[_remainingData.Length + dataLength];
                 Buffer.BlockCopy(_remainingData, 0, totalData, 0, _remainingData.Length);
-                Buffer.BlockCopy(_socketAsyncEventArgs.Buffer, offset, totalData, _remainingData.Length, dataLength);
+                Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, offset, totalData, _remainingData.Length, dataLength);
 
                 int bytesProcessed = 0;
 
@@ -263,7 +308,8 @@ namespace VRemoteServer.RelayServer.Networking
                 }
 
                 _timer?.Dispose();
-                _socketAsyncEventArgs?.Dispose();
+                _readSocketAsyncEventArgs?.Dispose();
+                _sendSocketAsyncEventArgs?.Dispose();   
                 _socket?.Dispose();
                 _currentHeader = null;
                 _remainingData = null;

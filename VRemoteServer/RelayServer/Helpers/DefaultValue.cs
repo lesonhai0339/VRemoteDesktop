@@ -15,7 +15,8 @@ namespace VRemoteServer.RelayServer.Helpers
         }
         public static class SocketConnectionDefault
         {
-            public static int TIMEOUT = 30; //Unit: second
+            public static int TIMEOUT = 300; //Unit: second
+            public static int SCHEDULE_TIME = 30;
             public static int PACKET_HEADER_LENGTH = 13;
             public static int PACKET_SIZE_LENGTH = 4;
             public static int PACKET_SIZE_INDEX = 0;

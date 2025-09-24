@@ -20,6 +20,7 @@ namespace VRemoteServer.RelayServer.Services
     public interface ISocketConnectionManager : IBaseManagement<ConnectionInfo>
     {
         bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo);
+        event EventHandler<SocketConnectionManagerEventArg> SocketConnectionManagerEvent;
     }
     public class SocketConnectionManager: BaseManagement<ConnectionInfo>, ISocketConnectionManager, IDisposable 
     {

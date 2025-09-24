@@ -25,7 +25,7 @@ namespace VRemoteServer.RelayServer.Enums
         Chat = 0x0F,
         Connect = 0x13,
         P2PDataSend = 0x14,
-
+        P2PDataSendError = 0x15,
         LoginFailed = 0x90,
         P2PDisconnect = 0x91,
         P2PConnectFailed = 0x92,

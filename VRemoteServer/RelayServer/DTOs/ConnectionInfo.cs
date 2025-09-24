@@ -65,13 +65,14 @@ namespace VRemoteServer.RelayServer.DTOs
         public string ToNetworkString()
         {
             StringBuilder sb = new StringBuilder();
-            var props = this.GetType().GetProperties(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Instance)
-                .Where(p => !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
-                .OrderBy(p =>
-                {
-                    var attr = p.GetCustomAttribute<DataMemberAttribute>();
-                    return attr?.Order ?? int.MaxValue;
-                });
+            var props = this.GetType()
+                            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
+                            .Where(p => !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
+                            .Select(p => new { prop = p, attr = p.GetCustomAttribute<DataMemberAttribute>() })
+                            .Where(p => p.attr != null)
+                            .OrderBy(p => p.attr.Order)
+                            .Select(p => p.prop)
+                            .ToArray();
 
             foreach (var prop in props)
             {
@@ -88,11 +89,10 @@ namespace VRemoteServer.RelayServer.DTOs
             var props = this.GetType()
                             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
                             .Where(p => !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
-                            .OrderBy(p =>
-                            {
-                                var attr = p.GetCustomAttribute<DataMemberAttribute>();
-                                return attr?.Order ?? int.MaxValue;
-                            })
+                            .Select(p => new { prop = p, attr = p.GetCustomAttribute<DataMemberAttribute>() })
+                            .Where(p => p.attr != null)
+                            .OrderBy(p => p.attr.Order)
+                            .Select(p => p.prop)
                             .ToArray();
 
             if (data.Length != props.Length)
