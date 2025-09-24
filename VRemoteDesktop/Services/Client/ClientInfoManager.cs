@@ -71,7 +71,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 MinorVersion = os.Version.Minor.ToString(),
                 Ip = GetLocalIPAddress(),
                 Port = AppSettingHelper.GetValue("RemoteServerPort"),
-                PublicIP = ""
+                PublicIP = null
             };
             return info;
         }

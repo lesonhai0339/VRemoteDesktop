@@ -33,7 +33,7 @@ namespace VRemoteServer.RelayServer.Domains
         private int numberOfConnections;
         private int receiveBufferSize;
         BufferManager bufferManager;
-        const int opsToPreAlloc = 2;
+        const int opsToPreAlloc = 2; //for reader and sender
         Socket listenSocket;
         SocketAsyncEventArgsPool readWritePool;
         SocketAsyncEventArgsPool sendWritePool;
@@ -50,11 +50,11 @@ namespace VRemoteServer.RelayServer.Domains
             this.numberConnectedSockets = 0;
             this.numberOfConnections = numberOfConnections;
             this.receiveBufferSize = receiveBufferSize;
-            bufferManager = new BufferManager(this.receiveBufferSize * this.numberOfConnections * opsToPreAlloc,
+            bufferManager = new BufferManager(this.receiveBufferSize * this.numberOfConnections * opsToPreAlloc * 2,
                             receiveBufferSize);
             readWritePool = new SocketAsyncEventArgsPool(numberOfConnections);
             sendWritePool = new SocketAsyncEventArgsPool(numberOfConnections);
-            maxNumberAcceptedClients = new Semaphore(numberOfConnections, numberOfConnections);
+            maxNumberAcceptedClients = new Semaphore(numberOfConnections * 2, numberOfConnections * 2);
         }
         public abstract T CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket);
         public abstract (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(T domain);
@@ -81,6 +81,7 @@ namespace VRemoteServer.RelayServer.Domains
                 bufferManager.SetBuffer(readWriteEventArg);
                 readWritePool.Push(readWriteEventArg);
 
+                //Sender
                 sendWriteEventArg = new SocketAsyncEventArgs();
                 sendWriteEventArg.Completed += new EventHandler<SocketAsyncEventArgs>(IOCompleted);
                 bufferManager.SetBuffer(sendWriteEventArg);
@@ -233,16 +234,16 @@ namespace VRemoteServer.RelayServer.Domains
                 {
                     T domain = (T)e.UserToken;
                     Socket socket = GetSocketFromDomain(domain);
-                    var read = GetReadSocketAsyncEventArgsFromDomain(domain);
+                    var send = GetSendSocketAsyncEventArgsFromDomain(domain);
                     if (socket == null)
                     {
                         //Remove if error
                         CloseClientSocket(e);
                     }
-                    bool willRaiseEvent = socket.ReceiveAsync(read);
+                    bool willRaiseEvent = socket.ReceiveAsync(send);
                     if (!willRaiseEvent)
                     {
-                        ProcessReceive(read);
+                        ProcessReceive(send);
                     }
                 }
                 catch (Exception ex)

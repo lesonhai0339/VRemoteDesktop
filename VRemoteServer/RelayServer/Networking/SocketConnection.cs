@@ -74,14 +74,14 @@ namespace VRemoteServer.RelayServer.Networking
                 {
                     return _ip;
                 }
-                else if (_socket != null)
+                try
                 {
-                    return (_socket?.RemoteEndPoint as IPEndPoint)?.Address.ToString();
+                    return (_socket?.RemoteEndPoint as IPEndPoint)?.Address?.ToString() ?? string.Empty;
                 }
-                else
+                catch
                 {
                     return string.Empty;
-                }         
+                }
             }
             private set
             {

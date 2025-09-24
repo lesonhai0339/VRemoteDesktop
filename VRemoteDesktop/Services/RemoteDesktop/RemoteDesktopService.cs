@@ -18,8 +18,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
     public class RemoteDesktopService : IDisposable
     {
        
-        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("RemoteServerIP");
-        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemoteServerPort");
+        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
+        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
 
         private readonly IClientInfoManager _clientInfo;
