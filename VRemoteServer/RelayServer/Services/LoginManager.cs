@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.DTOs;
 using VRemoteServer.RelayServer.Enums;
@@ -54,6 +55,7 @@ namespace VRemoteServer.RelayServer.Services
         }
         public async Task StartServer(IPEndPoint ep)
         {
+
             if (ep == null)
                 throw new ArgumentNullException(nameof(ep));
 
@@ -155,6 +157,11 @@ namespace VRemoteServer.RelayServer.Services
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
+            finally
+            {
+                //Continue receive data
+                Receive(connection);
+            }
         }
         private void ProcessLoginFailed(SocketConnection connection)
         {
@@ -173,6 +180,17 @@ namespace VRemoteServer.RelayServer.Services
             try
             {
                 _loginServer.Send(connection, data);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
+            }
+        }
+        private void Receive(SocketConnection connection)
+        {
+            try
+            {
+                _loginServer.Receive(connection);
             }
             catch (Exception ex)
             {
@@ -198,7 +216,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             if(sender is SocketConnection connection)
             {
-                ProcessLoginDataReceived(connection, e.Offset, e.Length);   
+                ProcessLoginDataReceived(connection, e.Offset, e.Length);
             }
             else
             {

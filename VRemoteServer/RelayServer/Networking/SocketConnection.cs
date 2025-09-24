@@ -301,6 +301,7 @@ namespace VRemoteServer.RelayServer.Networking
                     _socket?.Shutdown(SocketShutdown.Both);
                     _socket?.Close();
                 }
+                catch(ObjectDisposedException) { }
                 catch (Exception ex)
                 {
                     Log.ForContext("SocketConnectionIP", IP)

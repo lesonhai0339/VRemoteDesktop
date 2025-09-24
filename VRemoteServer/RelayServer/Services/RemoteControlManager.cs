@@ -1,8 +1,10 @@
-﻿using System;
+﻿using Serilog;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Networking;
@@ -50,11 +52,48 @@ namespace VRemoteServer.RelayServer.Services
         {
             _remoteControlServer.Cancel();
         }
+        private void Send(SocketConnection connection, byte[] data)
+        {
+            try
+            {
+                _remoteControlServer.Send(connection, data);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
+            }
+        }
+        private void Receive(SocketConnection connection)
+        {
+            try
+            {
+                _remoteControlServer.Receive(connection);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
+            }
+        }
         #endregion
         #region Events
         private void RemoteControlEventHandler(object sender, BaseServerEventArgs e)
         {
-            Console.WriteLine("RemoteControl event called");
+            if (sender is SocketConnection connection)
+            {
+                try
+                {
+                    Console.WriteLine("RemoteControl event called");
+                }
+                finally
+                {
+                    Receive(connection);
+                }
+            }
+            else
+            {
+                //TODO: invalid object
+                Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
+            }
         }
         #endregion
         public void Dispose()
