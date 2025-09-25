@@ -29,7 +29,8 @@ namespace VRemoteServer.RelayServer.Services
         Task StartServer(IPEndPoint ep);
         void CancelServer();
         void Send(SocketConnection connection, byte[] data);
-        void Send(SocketConnection connection, int offset, int length);
+        void Send(SocketConnection connection, byte[] data, bool acceptReceive);
+        void Send(SocketConnection connection, int offset, int length, bool acceptReceive);
         event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
         void Dispose();
     }
@@ -165,11 +166,22 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
             }
         }
-        public void Send(SocketConnection connection, int offset, int length)
+        public void Send(SocketConnection connection, byte[] data, bool acceptReceive)
         {
             try
             {
-                _remoteControlServer.Send(connection, offset, length);
+                _remoteControlServer.Send(connection, data, acceptReceive);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
+            }
+        }
+        public void Send(SocketConnection connection, int offset, int length, bool acceptReceive)
+        {
+            try
+            {
+                _remoteControlServer.Send(connection, offset, length, acceptReceive);
             }
             catch (Exception ex)
             {

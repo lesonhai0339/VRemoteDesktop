@@ -132,7 +132,7 @@ namespace VRemoteServer.RelayServer.Services
                 {
                     if(_remoteControlManager.GetPartner(remoteConnectionId, socketSender, out SocketConnection socketReceive))
                     {
-                        _remoteControlManager.Send(socketReceive, offset, length);
+                        _remoteControlManager.Send(socketReceive, offset, length, false);
                         return true;
                     }
                     else
@@ -158,7 +158,7 @@ namespace VRemoteServer.RelayServer.Services
                 {
                     if (_remoteControlManager.EstablishedRemoteConnection(remoteConnectionId, controlled, out var remoteConnection))
                     {
-                        _remoteControlManager.Send(remoteConnection.Controller, offset, length);
+                        _remoteControlManager.Send(remoteConnection.Controller, offset, length, true);
                         return true;
                     }
                     else
@@ -188,7 +188,7 @@ namespace VRemoteServer.RelayServer.Services
                     {
                         if (_remoteControlManager.InitRemoteConnection(connectionId, controller))
                         {
-                            _remoteControlManager.Send(validConnection.SocketConnection, data);
+                            _remoteControlManager.Send(validConnection.SocketConnection, data, false);
                             return true;
                         }
                     }
