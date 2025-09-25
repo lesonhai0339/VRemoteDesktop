@@ -78,7 +78,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _reset.WaitOne(5000);
             string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, partnerId, true);
+            newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, null);
         }
         public void UpdateMyInfo(byte[] data)
         {
@@ -407,6 +407,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
                 case SocketDataType.P2PAcceptConnect:
                     ProcessP2PConnectAccepted(sender, e);
+                    DataReceivedEvent?.Invoke(sender, e);
+                    break;
+                case SocketDataType.P2PConnectFailed:
                     DataReceivedEvent?.Invoke(sender, e);
                     break;
                 case SocketDataType.Mouse:

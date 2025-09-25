@@ -134,6 +134,7 @@ namespace VRemoteDesktop.ViewModels
                         break;
                     case SocketDataType.P2PRequestConnect:
                     case SocketDataType.P2PAcceptConnect:
+                    case SocketDataType.P2PConnectFailed:
                         PartnerAcceptP2PConnect(sender, e);
                         break;
                     case SocketDataType.Error:

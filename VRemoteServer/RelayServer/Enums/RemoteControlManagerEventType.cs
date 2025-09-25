@@ -6,11 +6,8 @@ using System.Threading.Tasks;
 
 namespace VRemoteServer.RelayServer.Enums
 {
-    public enum ServerEventType
+    public enum RemoteControlManagerEventType
     {
-        ConnectionEstablished,
-        ConnectionDisconnected,
-        ConnectionDataReceived,
-        P2PRequestConnect
+        Disconnect
     }
 }

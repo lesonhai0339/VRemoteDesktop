@@ -645,16 +645,16 @@ namespace VRemoteDesktop.Services.VTCPClient
         /// </summary>
         /// <param name="type"></param>
         /// <param name="data"></param>
-        /// <param name="partnerId"></param>
+        /// <param name="socketId"></param>
         /// <param name="isSendHeader"></param>
-        public void Send(SocketDataType type, byte[] data,string partnerId, bool isSendHeader = true)
+        public void Send(SocketDataType type, byte[] data, string socketId, bool isSendHeader = true)
         {
             try
             {
                 if (type == SocketDataType.None)
                     return;
-                if (string.IsNullOrWhiteSpace(partnerId))
-                    partnerId = this.SocketId;
+                if (string.IsNullOrWhiteSpace(socketId))
+                    socketId = this.SocketId;
 
 
                 if (isSendHeader)

@@ -5,14 +5,16 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Domains;
+using VRemoteServer.RelayServer.Enums;
+using VRemoteServer.RelayServer.Events;
 
 namespace VRemoteServer.RelayServer.Networking
 {
-    public interface IRemoteControlServer: IBaseServer<SocketConnection>
+    public interface IRemoteControlServer: IBaseServer<SocketConnection, RemoteControlEventArgs>
     {
 
     }
-    public class RemoteControlServer : BaseServer<SocketConnection>, IRemoteControlServer, IDisposable
+    public class RemoteControlServer : BaseServer<SocketConnection, RemoteControlEventArgs>, IRemoteControlServer, IDisposable
     {
         public RemoteControlServer(int numberOfConnections, int receiveBufferSize)
             : base(numberOfConnections, receiveBufferSize) { }
@@ -20,6 +22,11 @@ namespace VRemoteServer.RelayServer.Networking
         {
             SocketConnection connection = new SocketConnection(read, send, socket);
             return connection;
+        }
+
+        public override RemoteControlEventArgs CreateEventFromData(ServerEventType type, int offset, int length)
+        {
+            return new RemoteControlEventArgs(type, offset, length);
         }
 
         public override (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(SocketConnection domain)

@@ -8,6 +8,46 @@ namespace VRemoteServer.RelayServer.Networking
 {
     public static class PacketFactory
     {
+        public static (int length, SocketDataType type, string id) GetHeaderDataFromPacket(byte[] buffer, int packetOffset, int packetLength)
+        {
+            if(buffer == null || buffer.Length == 0)
+                throw new ArgumentNullException(nameof(buffer));
+
+            if(packetOffset <0)
+                throw new ArgumentOutOfRangeException(nameof(packetOffset)); 
+            
+            if (packetLength < PACKET_HEADER_LENGTH)
+                throw new ArgumentOutOfRangeException(nameof(packetLength));
+
+            try
+            {
+                int offset = packetOffset + PACKET_SIZE_INDEX;
+                int payloadLength = packetLength - PACKET_HEADER_LENGTH;
+
+                byte[] data = new byte[payloadLength];
+
+                //Packet size
+                int length = BitConverter.ToInt32(buffer, offset);
+                offset += PACKET_SIZE_LENGTH;
+                if (length != packetLength)
+                {
+                    throw new ArgumentOutOfRangeException(nameof(length));  
+                }
+
+                //Packet type
+                SocketDataType type = (SocketDataType)buffer[offset];
+                offset += PACKET_TYPE_LENGTH;
+
+                //Id
+                string id = Encoding.ASCII.ByteArrayToString(buffer, offset, PACKET_ID_LENGTH);
+
+                return (length, type, id);
+            }
+            catch(Exception)
+            {
+                throw;
+            }
+        }
         public static byte[] CreatePacket(SocketDataType type, string id, byte[] data = null)
         {
             if (type == SocketDataType.None)

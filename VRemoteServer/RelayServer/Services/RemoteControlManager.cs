@@ -6,6 +6,7 @@ using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Networking;
 
@@ -13,9 +14,13 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface IRemoteControlManager
     {
+        bool AddRemoteConnection(string id, SocketConnection controller);
+        void CloseConnection(SocketConnection connection);
         void InitServer();
         Task StartServer(IPEndPoint ep);
         void CancelServer();
+        void Send(SocketConnection connection, byte[] data);
+        event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
         void Dispose();
     }
     public class RemoteControlManager : IRemoteControlManager, IDisposable
@@ -23,7 +28,8 @@ namespace VRemoteServer.RelayServer.Services
         private bool _disposed;
         private readonly IRemoteControlServer _remoteControlServer;
         private readonly IRemoteConnectionManager _remoteConnectionManager;
-
+        private readonly Dictionary<SocketDataType, Action<SocketConnection, string, int, int>> _remoteControlMethods;
+        public event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
         public RemoteControlManager(IRemoteControlServer remoteControlServer, IRemoteConnectionManager remoteConnectionManager)
         {
             _disposed = false;
@@ -31,12 +37,70 @@ namespace VRemoteServer.RelayServer.Services
             _remoteConnectionManager = remoteConnectionManager;
 
             //Register events
-            _remoteControlServer.BaseEvent += RemoteControlEventHandler;
+            _remoteControlServer.ServerEvent += RemoteControlEventHandler;
+            _remoteConnectionManager.remoteSocketManagerEvent += RemoteSocketManagerEventHandler;
 
+            _remoteControlMethods = new Dictionary<SocketDataType, Action<SocketConnection, string, int, int>>
+            {
+                { SocketDataType.P2PRequestConnect, RemoteControlRequestToConnect },
+                { SocketDataType.P2PAcceptConnect, null },
+                { SocketDataType.P2PRejectConnect, null },
+                { SocketDataType.P2PDataSend, null },
+                { SocketDataType.Screen, null },
+                { SocketDataType.ScreenOk, null },
+                { SocketDataType.Chunks, null },
+                { SocketDataType.ChunksOk, null },
+                { SocketDataType.Keyboard, null },
+                { SocketDataType.Clipboard, null },
+                { SocketDataType.Mouse, null },
+                { SocketDataType.Chat, null },
+            };
         }
         #region Properties
         #endregion
         #region Methods
+        public bool AddRemoteConnection(string id, SocketConnection controller)
+            => _remoteConnectionManager.AddController(id, controller);
+        public void CloseConnection(SocketConnection connection)
+            => _remoteControlServer.Close(connection);
+        private void ParsePacketToData(SocketConnection connection, int dataOffset, int dataLength)
+        {
+            try
+            {
+                var (length, type, id) = PacketFactory.GetHeaderDataFromPacket(connection.Reader.Buffer, dataOffset, dataLength);
+                if(length < 0 || type == SocketDataType.None || string.IsNullOrEmpty(id))
+                {
+                    Log.ForContext("FileName", this.GetType().Name).Error("ParsePacketToData: Invalid packet header, ignore packet");
+                    return;
+                }    
+
+                if(_remoteControlMethods.TryGetValue(type, out var matchMethod))
+                {
+                    matchMethod(connection, id, dataOffset, dataLength);
+                }
+                else
+                {
+                    Log.ForContext("FileName", this.GetType().Name).Error("ParsePacketToData: Packet type doesn't matched any method, ignore");
+                }
+            }
+            catch(Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ParsePacketToData error");
+            }
+        }
+        private void RemoteControlRequestToConnect(SocketConnection connection, string id, int dataOffset, int dataLength)
+        {
+            try
+            {
+                byte[] data = new byte[dataLength];
+                Buffer.BlockCopy(connection.Reader.Buffer, dataOffset, data, 0, data.Length);
+                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(ServerEventType.P2PRequestConnect, id, data));
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"RemoteControlRequestToConnect error");
+            }
+        }
         public void InitServer()
         {
             _remoteControlServer.Init();
@@ -52,7 +116,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             _remoteControlServer.Cancel();
         }
-        private void Send(SocketConnection connection, byte[] data)
+        public void Send(SocketConnection connection, byte[] data)
         {
             try
             {
@@ -76,13 +140,13 @@ namespace VRemoteServer.RelayServer.Services
         }
         #endregion
         #region Events
-        private void RemoteControlEventHandler(object sender, BaseServerEventArgs e)
+        private void RemoteControlEventHandler(object sender, RemoteControlEventArgs e)
         {
             if (sender is SocketConnection connection)
             {
                 try
                 {
-                    Console.WriteLine("RemoteControl event called");
+                    ParsePacketToData(connection, e.Offset, e.Length);
                 }
                 finally
                 {
@@ -92,7 +156,26 @@ namespace VRemoteServer.RelayServer.Services
             else
             {
                 //TODO: invalid object
-                Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
+                Log.ForContext("FileName", this.GetType().Name).Error("RemoteControlEventHandler invalid object");
+            }
+        }
+        /// <summary>
+        /// This methods called when <see cref="SocketConnection.CalCuLateData(int, int)"/> received data and call 
+        /// <see cref="SocketConnection.SocketConnectionEvent"/> for each <see cref="SocketConnection"/>
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        /// <exception cref="NotImplementedException"></exception>
+        private void RemoteSocketManagerEventHandler(object sender, RemoteConnectionEventArg e)
+        {
+            if(sender is SocketConnection connection)
+            {
+                //TODO
+            }
+            else
+            {
+                //TODO: invalid object
+                Log.ForContext("FileName", this.GetType().Name).Error("RemoteSocketManagerEventHandler invalid object");
             }
         }
         #endregion
@@ -106,8 +189,15 @@ namespace VRemoteServer.RelayServer.Services
             if (!disposing || _disposed) return;
             try
             {
+                if(_remoteControlServer != null)
+                    _remoteControlServer.ServerEvent -= RemoteControlEventHandler;
+                if(_remoteConnectionManager != null)
+                    _remoteConnectionManager.remoteSocketManagerEvent -= RemoteSocketManagerEventHandler;
+
+
                 //TODO: dispose here
                 _remoteControlServer?.Dispose();
+                _remoteConnectionManager?.Dispose();
             }
             finally
             {
