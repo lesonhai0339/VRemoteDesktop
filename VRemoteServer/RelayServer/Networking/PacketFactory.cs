@@ -8,7 +8,7 @@ namespace VRemoteServer.RelayServer.Networking
 {
     public static class PacketFactory
     {
-        public static (int length, SocketDataType type, string id) GetHeaderDataFromPacket(byte[] buffer, int packetOffset, int packetLength)
+        public static (int length, SocketDataType type, string connectionId) GetHeaderDataFromPacket(byte[] buffer, int packetOffset, int packetLength)
         {
             if(buffer == null || buffer.Length == 0)
                 throw new ArgumentNullException(nameof(buffer));
@@ -38,10 +38,10 @@ namespace VRemoteServer.RelayServer.Networking
                 SocketDataType type = (SocketDataType)buffer[offset];
                 offset += PACKET_TYPE_LENGTH;
 
-                //Id
-                string id = Encoding.ASCII.ByteArrayToString(buffer, offset, PACKET_ID_LENGTH);
+                //Connection Id
+                string connectionId = Encoding.ASCII.ByteArrayToString(buffer, offset, PACKET_ID_LENGTH);
 
-                return (length, type, id);
+                return (length, type, connectionId);
             }
             catch(Exception)
             {

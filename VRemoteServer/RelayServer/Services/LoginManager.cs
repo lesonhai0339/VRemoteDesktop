@@ -160,11 +160,6 @@ namespace VRemoteServer.RelayServer.Services
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
-            finally
-            {
-                //Continue receive data
-                Receive(connection);
-            }
         }
         private void ProcessLoginFailed(SocketConnection connection)
         {
