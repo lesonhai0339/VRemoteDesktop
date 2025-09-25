@@ -18,8 +18,9 @@ namespace VRemoteServer.RelayServer.Services
     {
         bool AddController(string id, SocketConnection controller);
         bool AddControlled(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
-        SocketConnection GetPartner(SocketConnection owner);
-        bool GetPartner(SocketConnection owner, out SocketConnection partner);
+        SocketConnection GetPartner(SocketConnection me);
+        bool GetPartner(SocketConnection me, out SocketConnection partner);
+        bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
         event EventHandler<RemoteConnectionEventArg> remoteSocketManagerEvent;
     }
     public class RemoteConnectionManager : BaseManagement<RemoteConnection>, IRemoteConnectionManager, IDisposable 
@@ -47,22 +48,35 @@ namespace VRemoteServer.RelayServer.Services
             }
             return false;
         }
-        public SocketConnection GetPartner(SocketConnection owner)
+        public SocketConnection GetPartner(SocketConnection me)
         {
-            var found = Get(v => ReferenceEquals(v.Controller, owner) | ReferenceEquals(v.Controlled, owner));
+            var found = Get(v => ReferenceEquals(v.Controller, me) | ReferenceEquals(v.Controlled, me));
             if (found == null) return null;
-            return ReferenceEquals(found.Controller, owner) ? found.Controlled : found.Controller;
+            return ReferenceEquals(found.Controller, me) ? found.Controlled : found.Controller;
         }
-        public bool GetPartner(SocketConnection owner, out SocketConnection partner)
+        public bool GetPartner(SocketConnection me, out SocketConnection partner)
         {
             partner = null;
-            var found = Get(v => ReferenceEquals(v.Controller, owner) | ReferenceEquals(v.Controlled, owner));
+            var found = Get(v => ReferenceEquals(v.Controller, me) | ReferenceEquals(v.Controlled, me));
 
             if (found == null)
                 return false;
 
-            partner = ReferenceEquals(found.Controller, owner) ? found.Controlled : found.Controller;
+            partner = ReferenceEquals(found.Controller, me) ? found.Controlled : found.Controller;
             return true;
+        }
+        public bool GetPartner(string id, SocketConnection me,  out SocketConnection partner)
+        {
+            partner = null;
+            if(Get(id, out var remoteConnection))
+            {
+                partner = ReferenceEquals(remoteConnection.Controller, me) ? remoteConnection.Controlled : remoteConnection.Controller;
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
         public override bool Remove(string id)
         {
@@ -96,7 +110,7 @@ namespace VRemoteServer.RelayServer.Services
         }
         private void SocketConnectionEventHandler(object sender, SocketConnectionEventArg e)
         {
-            remoteSocketManagerEvent?.Invoke(sender, new RemoteConnectionEventArg(e));
+            remoteSocketManagerEvent?.Invoke(sender, new RemoteConnectionEventArg(e.Type, e.Id, e.DataType, e.Data));
         }
     }
 }

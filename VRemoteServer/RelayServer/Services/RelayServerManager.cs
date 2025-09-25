@@ -110,8 +110,9 @@ namespace VRemoteServer.RelayServer.Services
         {
             bool status = e.Type switch
             {
-                ServerEventType.P2PRequestConnect => ProcessP2PConnect(sender, e.SocketId, e.PartnerId, e.DataOffset, e.DataLength),
-                _ => false
+                SocketDataType.P2PRequestConnect => ProcessP2PRequestConnect(sender, e.SocketId, e.PartnerId, e.Data),
+                SocketDataType.P2PAcceptConnect => ProcessP2PAcceptedConnect(sender, e.SocketId, e.DataOffset, e.DataLength),
+                SocketDataType.P2PDataSend => ProcessP2PDataTransfer(sender, e.SocketId, e.DataOffset, e.DataLength),
             };
             if (status)
             {
@@ -123,7 +124,61 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
-        private bool ProcessP2PConnect(object sender, string connectionId, string partnerId, int dataOffset, int dataLength)
+        private bool ProcessP2PDataTransfer(object sender, string remoteConnectionId, int offset, int length)
+        {
+            if (sender is SocketConnection socketSender)
+            {
+                try
+                {
+                    if(_remoteControlManager.GetPartner(remoteConnectionId, socketSender, out SocketConnection socketReceive))
+                    {
+                        _remoteControlManager.Send(socketReceive, offset, length);
+                        return true;
+                    }
+                    else
+                    {
+                        byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PDataSendError, remoteConnectionId);
+                        _remoteControlManager.Send(socketSender, packet);
+                    }
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+                }
+            }
+            return false;
+        }
+
+        private bool ProcessP2PAcceptedConnect(object sender, string remoteConnectionId, int offset, int length)
+        {
+            if (sender is SocketConnection controlled)
+            {
+                try
+                {
+                    if (_remoteControlManager.EstablishedRemoteConnection(remoteConnectionId, controlled, out var remoteConnection))
+                    {
+                        _remoteControlManager.Send(remoteConnection.Controller, offset, length);
+                        return true;
+                    }
+                    else
+                    {
+                        _remoteControlManager.RemoveRemoteConnection(remoteConnectionId);
+                    }
+                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, remoteConnectionId);
+                    _remoteControlManager.Send(controlled, packet);
+                    _remoteControlManager.CloseConnection(controlled);
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+                }
+            }
+            return false;
+        }
+
+        private bool ProcessP2PRequestConnect(object sender, string connectionId, string partnerId, byte[] data)
         {
             if(sender is SocketConnection controller)
             {
@@ -131,9 +186,9 @@ namespace VRemoteServer.RelayServer.Services
                 {
                     if (_loginManager.TryGetLoggedConnection(partnerId, out var validConnection))
                     {
-                        if (_remoteControlManager.AddRemoteConnection(connectionId, controller))
+                        if (_remoteControlManager.InitRemoteConnection(connectionId, controller))
                         {
-                            _remoteControlManager.Send(validConnection.SocketConnection, dataOffset, dataLength);
+                            _remoteControlManager.Send(validConnection.SocketConnection, data);
                             return true;
                         }
                     }

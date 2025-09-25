@@ -18,6 +18,18 @@ namespace VRemoteServer.RelayServer.Networking
     {
         public LoginServer(int numberOfConnections, int receiveBufferSize)
             : base(numberOfConnections, receiveBufferSize) { }
+        public override void SendToDomain(SocketConnection domain, int offset, int length)
+        {
+            domain.CalCuLateData(offset, length);
+        }
+        public override void SetFirstPacket(SocketConnection domain)
+        {
+            domain.IsReceivedFirstPacket = !domain.IsReceivedFirstPacket;
+        }
+        public override bool ReceivedFirstPacket(SocketConnection domain)
+        {
+            return domain.IsReceivedFirstPacket;
+        }
         public override SocketConnection CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket)
         {
             SocketConnection connection = new SocketConnection(read, send, socket);

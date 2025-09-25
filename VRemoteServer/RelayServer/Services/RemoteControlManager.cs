@@ -3,20 +3,27 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.DTOs;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
-using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
 using VRemoteServer.RelayServer.Networking;
+using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
 
 namespace VRemoteServer.RelayServer.Services
 {
     public interface IRemoteControlManager
     {
-        bool AddRemoteConnection(string id, SocketConnection controller);
+        SocketConnection GetPartner(SocketConnection me);
+        bool GetPartner(SocketConnection me, out SocketConnection partner);
+        bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
+        bool RemoveRemoteConnection(string id);
+        bool InitRemoteConnection(string id, SocketConnection controller);
+        bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
         void CloseConnection(SocketConnection connection);
         void InitServer();
         Task StartServer(IPEndPoint ep);
@@ -46,24 +53,49 @@ namespace VRemoteServer.RelayServer.Services
             _remoteControlMethods = new Dictionary<SocketDataType, Action<SocketConnection, string, int, int>>
             {
                 { SocketDataType.P2PRequestConnect, RemoteControlRequestToConnect },
-                { SocketDataType.P2PAcceptConnect, null },
-                { SocketDataType.P2PRejectConnect, null },
-                { SocketDataType.P2PDataSend, null },
-                { SocketDataType.Screen, null },
-                { SocketDataType.ScreenOk, null },
-                { SocketDataType.Chunks, null },
-                { SocketDataType.ChunksOk, null },
-                { SocketDataType.Keyboard, null },
-                { SocketDataType.Clipboard, null },
-                { SocketDataType.Mouse, null },
-                { SocketDataType.Chat, null },
+                { SocketDataType.P2PAcceptConnect, RemoteControlAcceptedToConnect },
+                { SocketDataType.P2PRejectConnect, RemoteControlRefusedToConnect },
+                { SocketDataType.P2PDataSend, RemoteControlP2PDataTransfer },
+                { SocketDataType.Screen, RemoteControlP2PDataTransfer },
+                { SocketDataType.ScreenOk, RemoteControlP2PDataTransfer },
+                { SocketDataType.Chunks, RemoteControlP2PDataTransfer },
+                { SocketDataType.ChunksOk, RemoteControlP2PDataTransfer },
+                { SocketDataType.Keyboard, RemoteControlP2PDataTransfer },
+                { SocketDataType.Clipboard, RemoteControlP2PDataTransfer },
+                { SocketDataType.Mouse, RemoteControlP2PDataTransfer },
+                { SocketDataType.Chat, RemoteControlP2PDataTransfer },
             };
+        }
+
+        private void RemoteControlP2PDataTransfer(SocketConnection connection, string connectionId, int offset, int length)
+        {
+            RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PDataSend, socketId: connectionId, dataOffset: offset, dataLength: length));
+        }
+
+        private void RemoteControlRefusedToConnect(SocketConnection connection, string arg2, int arg3, int arg4)
+        {
+            throw new NotImplementedException();
+        }
+
+        private void RemoteControlAcceptedToConnect(SocketConnection connection, string socketId, int offset, int length)
+        {
+            RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PAcceptConnect, socketId: socketId, dataOffset: offset, dataLength: length));
         }
         #region Properties
         #endregion
         #region Methods
-        public bool AddRemoteConnection(string id, SocketConnection controller)
+        public bool InitRemoteConnection(string id, SocketConnection controller)
             => _remoteConnectionManager.AddController(id, controller);
+        public bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection)
+            => _remoteConnectionManager.AddControlled(id, controlled, out remoteConnection);
+        public SocketConnection GetPartner(SocketConnection me)
+            => _remoteConnectionManager.GetPartner(me);
+        public bool GetPartner(SocketConnection me, out SocketConnection partner)
+            => _remoteConnectionManager.GetPartner(me, out partner);
+        public bool GetPartner(string id, SocketConnection me, out SocketConnection partner)
+            => _remoteConnectionManager.GetPartner(id, me, out partner);
+        public bool RemoveRemoteConnection(string id)
+            => _remoteConnectionManager.Remove(id);
         public void CloseConnection(SocketConnection connection)
             => _remoteControlServer.Close(connection);
         private void ParsePacketToData(SocketConnection connection, int dataOffset, int dataLength)
@@ -83,6 +115,7 @@ namespace VRemoteServer.RelayServer.Services
                 }
                 else
                 {
+                    Console.WriteLine($"Unknow method: " + type);
                     Log.ForContext("FileName", this.GetType().Name).Error("ParsePacketToData: Packet type doesn't matched any method, ignore");
                 }
             }
@@ -95,8 +128,11 @@ namespace VRemoteServer.RelayServer.Services
         {
             try
             {
-                string[] info = Encoding.ASCII.ByteArrayToStringWithSeparator(connection.Reader.Buffer, dataOffset + PACKET_HEADER_LENGTH, dataLength - PACKET_HEADER_LENGTH, DefaultValue.Common.SEPARATOR);
-                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(ServerEventType.P2PRequestConnect, socketId, info[1],  dataOffset, dataLength));
+                byte[] data = new byte[dataLength];
+                Buffer.BlockCopy(connection.Reader.Buffer, dataOffset, data, 0, dataLength);
+                string[] info = Encoding.ASCII.ByteArrayToStringWithSeparator(data, PACKET_HEADER_LENGTH, data.Length - PACKET_HEADER_LENGTH, DefaultValue.Common.SEPARATOR);
+
+                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PRequestConnect, socketId: socketId, partnerId: info[1], data: data));
             }
             catch (Exception ex)
             {
@@ -177,6 +213,7 @@ namespace VRemoteServer.RelayServer.Services
             if(sender is SocketConnection connection)
             {
                 //TODO
+                Console.WriteLine($"Received {e.Data.Length} bytes on connection id: {e.Id}");
             }
             else
             {
