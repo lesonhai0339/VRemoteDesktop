@@ -5,14 +5,16 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Domains;
+using VRemoteServer.RelayServer.Enums;
+using VRemoteServer.RelayServer.Events;
 
 namespace VRemoteServer.RelayServer.Networking
 {
-    public interface ILoginServer: IBaseServer<SocketConnection>
+    public interface ILoginServer: IBaseServer<SocketConnection, LoginEventArgs>
     {
 
     }
-    public class LoginServer : BaseServer<SocketConnection>, ILoginServer, IDisposable
+    public class LoginServer : BaseServer<SocketConnection, LoginEventArgs>, ILoginServer, IDisposable
     {
         public LoginServer(int numberOfConnections, int receiveBufferSize)
             : base(numberOfConnections, receiveBufferSize) { }
@@ -22,6 +24,10 @@ namespace VRemoteServer.RelayServer.Networking
             return connection;  
         }
 
+        public override LoginEventArgs CreateEventFromData(ServerEventType type, int offset, int length)
+        {
+            return new LoginEventArgs(type, offset, length);
+        }
         public override (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(SocketConnection domain)
         {
             return (domain.Reader, domain.Sender);

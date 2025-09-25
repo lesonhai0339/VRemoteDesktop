@@ -13,22 +13,23 @@ using VRemoteServer.RelayServer.Networking;
 
 namespace VRemoteServer.RelayServer.Domains
 {
-    public interface IBaseServer<T>
+    public interface IBaseServer<TDomain, TEvent>
     {
-        T CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket);
-        SocketAsyncEventArgs GetReadSocketAsyncEventArgsFromDomain(T domain);
-        SocketAsyncEventArgs GetSendSocketAsyncEventArgsFromDomain(T domain);
-        Socket GetSocketFromDomain(T domain);
+        TDomain CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket);
+        SocketAsyncEventArgs GetReadSocketAsyncEventArgsFromDomain(TDomain domain);
+        SocketAsyncEventArgs GetSendSocketAsyncEventArgsFromDomain(TDomain domain);
+        TEvent CreateEventFromData(ServerEventType type, int offset, int length);
+        Socket GetSocketFromDomain(TDomain domain);
         void Init();
         Task Start(IPEndPoint endpoint);
         void Cancel();
-        void Send(T domain, byte[] data);
-        void Receive(T domain);
-        void Close(T domain);
-        event EventHandler<BaseServerEventArgs> BaseEvent;
+        void Send(TDomain domain, byte[] data);
+        void Receive(TDomain domain);
+        void Close(TDomain domain);
+        event EventHandler<TEvent> ServerEvent;
         void Dispose();
     }
-    public abstract class BaseServer<T> : IBaseServer<T>, IDisposable where T : class
+    public abstract class BaseServer<TDomain, TEvent> : IBaseServer<TDomain, TEvent>, IDisposable where TDomain : class where TEvent : EventArgs
     {
         private bool _disposed;
         private int numberOfConnections;
@@ -43,7 +44,7 @@ namespace VRemoteServer.RelayServer.Domains
         Semaphore maxNumberAcceptedClients;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
 
-        public  event EventHandler<BaseServerEventArgs> BaseEvent;
+        public virtual event EventHandler<TEvent> ServerEvent;
         public  BaseServer(int numberOfConnections = 1000, int receiveBufferSize = 1024 * 8)
         {
             _disposed = false;
@@ -57,13 +58,14 @@ namespace VRemoteServer.RelayServer.Domains
             sendWritePool = new SocketAsyncEventArgsPool(numberOfConnections);
             maxNumberAcceptedClients = new Semaphore(numberOfConnections, numberOfConnections);
         }
-        public abstract T CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket);
-        public abstract (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(T domain);
+        public abstract TDomain CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket);
+        public abstract (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(TDomain domain);
 
-        public abstract SocketAsyncEventArgs GetReadSocketAsyncEventArgsFromDomain(T domain);
-        public abstract SocketAsyncEventArgs GetSendSocketAsyncEventArgsFromDomain(T domain);
+        public abstract SocketAsyncEventArgs GetReadSocketAsyncEventArgsFromDomain(TDomain domain);
+        public abstract SocketAsyncEventArgs GetSendSocketAsyncEventArgsFromDomain(TDomain domain);
+        public abstract TEvent CreateEventFromData(ServerEventType type, int offset, int length);
 
-        public abstract Socket GetSocketFromDomain(T domain);
+        public abstract Socket GetSocketFromDomain(TDomain domain);
         public virtual  void Cancel()
         {
             lock (_cancel) { _cancel.Cancel(); }
@@ -114,7 +116,7 @@ namespace VRemoteServer.RelayServer.Domains
                 listenSocket.Close();
             }
         }
-        public virtual  void Send(T domain, byte[] data)
+        public virtual  void Send(TDomain domain, byte[] data)
         {
             var send = GetSendSocketAsyncEventArgsFromDomain(domain);
             Socket socket = GetSocketFromDomain(domain);
@@ -130,7 +132,7 @@ namespace VRemoteServer.RelayServer.Domains
                 ProcessSend(send);
             }
         }
-        public virtual void Receive(T domain)
+        public virtual void Receive(TDomain domain)
         {
             try
             {
@@ -163,7 +165,7 @@ namespace VRemoteServer.RelayServer.Domains
                 Close(domain);
             }
         }
-        public virtual void Close(T domain)
+        public virtual void Close(TDomain domain)
         {
             this.CloseClientSocket(domain);
         }
@@ -211,7 +213,7 @@ namespace VRemoteServer.RelayServer.Domains
 
             SocketAsyncEventArgs readEventArg = readWritePool.Pop();
             SocketAsyncEventArgs sendEventArg = sendWritePool.Pop();
-            T domain = CreateDomainFromSocketAsyncEventArgs(readEventArg, sendEventArg, e.AcceptSocket);
+            TDomain domain = CreateDomainFromSocketAsyncEventArgs(readEventArg, sendEventArg, e.AcceptSocket);
             //readEventArg.UserToken = domain;
 
             Socket socket = GetSocketFromDomain(domain);
@@ -231,7 +233,7 @@ namespace VRemoteServer.RelayServer.Domains
         {
             try
             {
-                T domain = (T)e.UserToken;
+                TDomain domain = (TDomain)e.UserToken;
 
                 if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
@@ -239,7 +241,7 @@ namespace VRemoteServer.RelayServer.Domains
                     Console.WriteLine("The server has read a total of {0} bytes", totalBytesRead);
 
                     Socket socket = GetSocketFromDomain(domain);
-                    BaseEvent?.Invoke(domain, new BaseServerEventArgs(ServerEventType.ReceivedData, e.Offset, e.BytesTransferred));
+                    ServerEvent?.Invoke(domain, CreateEventFromData(ServerEventType.ConnectionDataReceived, e.Offset, e.BytesTransferred));
                 }
                 else
                 {
@@ -255,7 +257,7 @@ namespace VRemoteServer.RelayServer.Domains
         {
             try
             {
-                T domain = (T)e.UserToken;
+                TDomain domain = (TDomain)e.UserToken;
                 if (e.SocketError == SocketError.Success)
                 {
                     try
@@ -316,7 +318,7 @@ namespace VRemoteServer.RelayServer.Domains
             maxNumberAcceptedClients.Release();
             Log.ForContext("FileName", this.GetType().Name).Information("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
         }*/
-        private void CloseClientSocket(T domain)
+        private void CloseClientSocket(TDomain domain)
         {
             var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
             Socket socket = GetSocketFromDomain(domain);

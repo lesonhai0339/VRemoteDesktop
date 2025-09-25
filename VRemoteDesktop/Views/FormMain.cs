@@ -172,6 +172,10 @@ namespace VRemoteDesktop
                 {
                     AddChat(vClient);
                 }
+                else if(e.Type == Models.SocketDataType.P2PConnectFailed)
+                {
+                    MessageBox.Show("Kết nối đến máy khách thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
         private void OpenRemoteForm(VClient client)

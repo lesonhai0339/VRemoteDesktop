@@ -17,10 +17,11 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManager
     {
+        bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo);
         void InitServer();
         Task StartServer(IPEndPoint ep);
         void CancelServer();
-        event EventHandler<LoginManagerEventArgs> LoginManagerEvent;
+        event EventHandler<LoginEventArgs> LoginManagerEvent;
         void Dispose();
     }
     public class LoginManager : ILoginManager, IDisposable
@@ -30,7 +31,7 @@ namespace VRemoteServer.RelayServer.Services
         private readonly ISocketConnectionManager _loginConnectionManager;
         private readonly Dictionary<SocketDataType, Action<SocketConnection, byte[]>> _loginMethods;
 
-        public event EventHandler<LoginManagerEventArgs> LoginManagerEvent;
+        public event EventHandler<LoginEventArgs> LoginManagerEvent;
         public LoginManager(ILoginServer loginServer, ISocketConnectionManager loginConnectionManager)
         {
             _disposed = false;
@@ -43,12 +44,14 @@ namespace VRemoteServer.RelayServer.Services
             };
 
             //Register event
-            _loginServer.BaseEvent += LoginEventHandler;
+            _loginServer.ServerEvent += LoginEventHandler;
             _loginConnectionManager.SocketConnectionManagerEvent += LoginConnectionDataCallbackEventHandler;
         }
         #region Properties
         #endregion
         #region Methods
+        public bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo)
+            => _loginConnectionManager.Get(id, out connectionInfo);
         public void InitServer()
         {
             _loginServer.Init();
@@ -212,7 +215,7 @@ namespace VRemoteServer.RelayServer.Services
         }
         #endregion
         #region Events
-        private void LoginEventHandler(object sender, BaseServerEventArgs e)
+        private void LoginEventHandler(object sender, LoginEventArgs e)
         {
             if(sender is SocketConnection connection)
             {
@@ -249,7 +252,7 @@ namespace VRemoteServer.RelayServer.Services
                 try
                 {
                     if (_loginServer != null)
-                        _loginServer.BaseEvent -= LoginEventHandler;
+                        _loginServer.ServerEvent -= LoginEventHandler;
 
                     if (_loginConnectionManager != null)
                         _loginConnectionManager.SocketConnectionManagerEvent -= LoginConnectionDataCallbackEventHandler;

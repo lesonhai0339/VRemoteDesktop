@@ -4,9 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VRemoteServer.RelayServer.Events
+namespace VRemoteServer.RelayServer.Enums
 {
-    public class LoginManagerEventArgs: EventArgs   
+    public enum LoginManagerEventType
     {
+        Disconnect,
+        Ping
     }
 }

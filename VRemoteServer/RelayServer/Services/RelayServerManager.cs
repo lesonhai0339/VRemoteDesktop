@@ -39,6 +39,7 @@ namespace VRemoteServer.RelayServer.Services
             _remoteControlManager = remoteControlManager;
 
             //Register events
+            _remoteControlManager.RemoteControlManagerEvent += RemoteControlManagerEventHandler;
             //_server.ServerEvent += ServerEventHandler;
             //_socketConnectionManager.SocketConnectionManagerEvent += SocketConnectionManagerEventHandler;
             //_remoteConnectionManager.remoteSocketManagerEvent += RemoteSocketManagerEventHandler;
@@ -102,6 +103,53 @@ namespace VRemoteServer.RelayServer.Services
         {
             _remoteControlManager.CancelServer();
         }
+
+
+        #region Events
+        private void RemoteControlManagerEventHandler(object sender, RemoteControlManagerEventArgs e)
+        {
+            bool status = e.Type switch
+            {
+                ServerEventType.P2PRequestConnect => ProcessP2PConnect(sender, e.Id, e.Data),
+                _ => false
+            };
+            if (status)
+            {
+
+            }
+            else
+            {
+
+            }
+        }
+
+        private bool ProcessP2PConnect(object sender, string id, byte[] data)
+        {
+            if(sender is SocketConnection controller)
+            {
+                try
+                {
+                    if (_loginManager.TryGetLoggedConnection(id, out var validConnection))
+                    {
+                        if (_remoteControlManager.AddRemoteConnection(id, controller))
+                        {
+                            _remoteControlManager.Send(validConnection.SocketConnection, data);
+                            return true;
+                        }
+                    }
+                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, id);
+                    _remoteControlManager.Send(controller, packet);
+                    _remoteControlManager.CloseConnection(controller);
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+                }
+            }
+            return false;
+        }
+        #endregion
         //#region Methods
         //public void InitServer()
         //{
@@ -129,35 +177,7 @@ namespace VRemoteServer.RelayServer.Services
         //        Log.ForContext("FileName", this.GetType().Name).Error(ex, "StartServer Failed");
         //    }
         //}
-        ////Note: connection is a new connection(controller) created to using for remote control and does not the same with logged connection
-        ////then it still not register data received event callback
-        //private void ProcessRemoteRequestToConnect(SocketConnection connection, int dataOffset, int dataLength)
-        //{
-        //    var (type, id, data) = ParseSystemData(connection, dataOffset, dataLength);
-        //    try
-        //    {
-        //        if (type != SocketDataType.None && !string.IsNullOrEmpty(id) && data != null)
-        //        {
-        //            if (_socketConnectionManager.Get(id, out var validConnection))
-        //            {
-        //                if (_remoteConnectionManager.AddController(id, connection))
-        //                {
-        //                    Send(validConnection.SocketConnection, data);
-        //                    return;
-        //                }
-        //            }
-        //        }
-        //        byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, id);
-        //        Send(connection, packet);
-        //        CloseConnection(connection);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error on IP: {connection.IP} - Id: {id}");
-        //    }
-        //}
-        ////Note: connection is a new connection(controlled) created to using for remote control and does not the same with logged connection
-        ////then it still not register data received event callback
+      
         //private void ProcessRemoteAcceptedToConnect(SocketConnection connection, int dataOffset, int dataLength)
         //{
         //    var (type, id, data) = ParseSystemData(connection, dataOffset, dataLength);
