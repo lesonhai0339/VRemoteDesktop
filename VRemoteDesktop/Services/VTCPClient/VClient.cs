@@ -659,7 +659,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
                 if (isSendHeader)
                 {
-                    data = HeaderGenerate(type: type,socketId: partnerId, true, data);
+                    data = HeaderGenerate(type: type,socketId: socketId, true, data);
                 }
                 Send(data);
             }

@@ -110,7 +110,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             bool status = e.Type switch
             {
-                ServerEventType.P2PRequestConnect => ProcessP2PConnect(sender, e.Id, e.Data),
+                ServerEventType.P2PRequestConnect => ProcessP2PConnect(sender, e.SocketId, e.PartnerId, e.DataOffset, e.DataLength),
                 _ => false
             };
             if (status)
@@ -123,21 +123,21 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
-        private bool ProcessP2PConnect(object sender, string id, byte[] data)
+        private bool ProcessP2PConnect(object sender, string connectionId, string partnerId, int dataOffset, int dataLength)
         {
             if(sender is SocketConnection controller)
             {
                 try
                 {
-                    if (_loginManager.TryGetLoggedConnection(id, out var validConnection))
+                    if (_loginManager.TryGetLoggedConnection(partnerId, out var validConnection))
                     {
-                        if (_remoteControlManager.AddRemoteConnection(id, controller))
+                        if (_remoteControlManager.AddRemoteConnection(connectionId, controller))
                         {
-                            _remoteControlManager.Send(validConnection.SocketConnection, data);
+                            _remoteControlManager.Send(validConnection.SocketConnection, dataOffset, dataLength);
                             return true;
                         }
                     }
-                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, id);
+                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, connectionId);
                     _remoteControlManager.Send(controller, packet);
                     _remoteControlManager.CloseConnection(controller);
                     return false;

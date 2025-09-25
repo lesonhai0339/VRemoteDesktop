@@ -8,6 +8,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
+using VRemoteServer.RelayServer.Helpers;
+using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
 using VRemoteServer.RelayServer.Networking;
 
 namespace VRemoteServer.RelayServer.Services
@@ -20,6 +22,7 @@ namespace VRemoteServer.RelayServer.Services
         Task StartServer(IPEndPoint ep);
         void CancelServer();
         void Send(SocketConnection connection, byte[] data);
+        void Send(SocketConnection connection, int offset, int length);
         event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
         void Dispose();
     }
@@ -67,8 +70,8 @@ namespace VRemoteServer.RelayServer.Services
         {
             try
             {
-                var (length, type, id) = PacketFactory.GetHeaderDataFromPacket(connection.Reader.Buffer, dataOffset, dataLength);
-                if(length < 0 || type == SocketDataType.None || string.IsNullOrEmpty(id))
+                var (length, type, connectionId) = PacketFactory.GetHeaderDataFromPacket(connection.Reader.Buffer, dataOffset, dataLength);
+                if(length < 0 || type == SocketDataType.None || string.IsNullOrEmpty(connectionId))
                 {
                     Log.ForContext("FileName", this.GetType().Name).Error("ParsePacketToData: Invalid packet header, ignore packet");
                     return;
@@ -76,7 +79,7 @@ namespace VRemoteServer.RelayServer.Services
 
                 if(_remoteControlMethods.TryGetValue(type, out var matchMethod))
                 {
-                    matchMethod(connection, id, dataOffset, dataLength);
+                    matchMethod(connection, connectionId, dataOffset, dataLength);
                 }
                 else
                 {
@@ -88,13 +91,12 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ParsePacketToData error");
             }
         }
-        private void RemoteControlRequestToConnect(SocketConnection connection, string id, int dataOffset, int dataLength)
+        private void RemoteControlRequestToConnect(SocketConnection connection, string socketId, int dataOffset, int dataLength)
         {
             try
             {
-                byte[] data = new byte[dataLength];
-                Buffer.BlockCopy(connection.Reader.Buffer, dataOffset, data, 0, data.Length);
-                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(ServerEventType.P2PRequestConnect, id, data));
+                string[] info = Encoding.ASCII.ByteArrayToStringWithSeparator(connection.Reader.Buffer, dataOffset + PACKET_HEADER_LENGTH, dataLength - PACKET_HEADER_LENGTH, DefaultValue.Common.SEPARATOR);
+                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(ServerEventType.P2PRequestConnect, socketId, info[1],  dataOffset, dataLength));
             }
             catch (Exception ex)
             {
@@ -127,6 +129,17 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
             }
         }
+        public void Send(SocketConnection connection, int offset, int length)
+        {
+            try
+            {
+                _remoteControlServer.Send(connection, offset, length);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
+            }
+        }
         private void Receive(SocketConnection connection)
         {
             try
@@ -144,14 +157,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             if (sender is SocketConnection connection)
             {
-                try
-                {
-                    ParsePacketToData(connection, e.Offset, e.Length);
-                }
-                finally
-                {
-                    Receive(connection);
-                }
+                ParsePacketToData(connection, e.Offset, e.Length);
             }
             else
             {
