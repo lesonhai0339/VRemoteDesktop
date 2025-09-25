@@ -37,7 +37,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 var compressedData = new byte[compressedLength];
                 Buffer.BlockCopy(data, 0, compressedData, 0, compressedLength);
 
-                byte[] screenData = ByteArrayHelper.DecompressGZip(compressedData).GetResult();
+                byte[] screenData = ByteArrayHelper.DeCompressDeflate(compressedData).GetResult();
                 return screenData;
             }
             catch (Exception ex)
@@ -54,7 +54,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 var compressedLength = data.Length;
                 var compressedData = new byte[compressedLength];
                 Buffer.BlockCopy(data, 0, compressedData, 0, compressedLength);
-                byte[] chunksDecompressed = ByteArrayHelper.DecompressGZip(compressedData).GetResult();
+                byte[] chunksDecompressed = ByteArrayHelper.DeCompressDeflate(compressedData).GetResult();
 
                 int offset = 0;
                 while (offset < chunksDecompressed.Length)
@@ -103,7 +103,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                 if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    byte[] screenData = ByteArrayHelper.DecompressGZip(compressedData).GetResult();
+                    byte[] screenData = ByteArrayHelper.DeCompressDeflate(compressedData).GetResult();
                     return screenData;
                 }
             }
@@ -128,7 +128,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                 if (string.Compare(stringHashReceived, screenHash) == 0)
                 {
-                    byte[] chunksDecompressed = ByteArrayHelper.DecompressGZip(compressedData).GetResult();
+                    byte[] chunksDecompressed = ByteArrayHelper.DeCompressDeflate(compressedData).GetResult();
 
                     int offset = 0;
                     while (offset < chunksDecompressed.Length)

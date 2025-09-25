@@ -74,8 +74,8 @@ namespace VRemoteDesktop.ViewModels
         #region Methods
         public void Connect(VClient client = null)
         {
-            string ip = AppSettingHelper.GetValue("RemoteServerIP");
-            string port = AppSettingHelper.GetValue("RemoteServerPort");
+            string ip = AppSettingHelper.GetValue("ServerIP");// ?? "27.0.12.78";
+            string port = AppSettingHelper.GetValue("LoginPort");// ?? "2399";
 
             if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
             {

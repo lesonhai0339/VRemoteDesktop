@@ -24,7 +24,7 @@ namespace VRemoteDesktop.Helpers
         public static string StringBuilderWithSeparator(string separator, params object[] array)
         {
             if (string.IsNullOrWhiteSpace(separator))
-                separator = DefaultValue.DEFAULT_SEPRATOR;
+                separator = DefaultValue.DEFAULT_SEPARATOR;
 
             if (array == null || array.Length == 0)
                 return string.Empty;
@@ -112,7 +112,7 @@ namespace VRemoteDesktop.Helpers
                 stringBuilder.Append(data[i]);
                 if (i != data.Length - 1)
                 {
-                    stringBuilder.Append(DefaultValue.DEFAULT_SEPRATOR);
+                    stringBuilder.Append(DefaultValue.DEFAULT_SEPARATOR);
                 }
             }
             return stringBuilder.ToString();

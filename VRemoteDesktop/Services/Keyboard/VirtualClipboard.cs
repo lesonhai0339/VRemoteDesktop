@@ -20,7 +20,7 @@ namespace VRemoteDesktop.Services.Keyboard
                 Buffer.BlockCopy(data, offset, clipboardData, 0, length);
                 string dataString = Encoding.UTF8.GetString(clipboardData);
 
-                //default setclipboard use CF_UNICODETEXT(UTF-16), need to convert data to utf-16
+                //default set clipboard use CF_UNICODETEXT(UTF-16), need to convert data to utf-16
                 byte[] clipboardReformatted = Encoding.Unicode.GetBytes(dataString + '\0');
 
                 return clipboardReformatted;

@@ -205,6 +205,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 foreach (var task in _receivedQueue.GetConsumingEnumerable(_cancellationToken))
                 {
+                    int start = Environment.TickCount;
                     try
                     {
                         if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
@@ -228,6 +229,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DoWork error");
                     }
+                    int end = Environment.TickCount - start;
+                    Logger.Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Info(string.Format("Elapsed: {0} - {1}\n", end, DateTime.Now.ToString("HH:mm:ss:fff")));
                 }
             }
             catch(OperationCanceledException ex)
@@ -545,6 +548,10 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0)
         {
+            if (type == SocketDataType.None)
+                return null;
+            if (string.IsNullOrWhiteSpace(socketId))
+                socketId = this.SocketId;
             try
             {
                 int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + socketId.Length;
@@ -645,11 +652,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             try
             {
                 if (type == SocketDataType.None)
-                    throw new ArgumentException("Missing arguments");
-                
-                //if (data == null)
-                //    throw new ArgumentException("Missing arguments");
-
+                    return;
                 if (string.IsNullOrWhiteSpace(partnerId))
                     partnerId = this.SocketId;
 
@@ -685,7 +688,8 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void Send(Sendstate state)
         {
-            if (!Socket.Connected)
+            if (_socket == null) return;
+            if (!_socket.Connected)
             {
                 throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
             }
@@ -693,7 +697,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 throw new TimeoutException("Send timeout");
             }
-            Socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
+            _socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
         }
         private void SendCallback(IAsyncResult ar)
         {

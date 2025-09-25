@@ -67,9 +67,9 @@ namespace VRemoteDesktop.Services.FileService
                     ? ((DateTime)prop.GetValue(this, null)).ToString(DEFAULT_DATETIME_FORMAT)
                     : prop.GetValue(this, null).ToString() 
                     ?? string.Empty)
-                .Append(DEFAULT_SEPRATOR);
+                .Append(DEFAULT_SEPARATOR);
             }
-            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPRATOR));
+            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPARATOR));
         }
     }
     [DataContract]
@@ -121,9 +121,9 @@ namespace VRemoteDesktop.Services.FileService
                     ? ((DateTime)prop.GetValue(this, null)).ToString(DEFAULT_DATETIME_FORMAT)
                     : prop.GetValue(this, null).ToString()
                     ?? string.Empty)
-                .Append(DEFAULT_SEPRATOR);
+                .Append(DEFAULT_SEPARATOR);
             }
-            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPRATOR));
+            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPARATOR));
         }
     }
     public class ChatMessage
@@ -184,11 +184,6 @@ namespace VRemoteDesktop.Services.FileService
         /// <exception cref="ArgumentNullException"></exception>
         public void Add(ChatMessage msg)
         {
-            if(msg == null)
-                throw new ArgumentNullException("msg cannot be null");
-            if(string.IsNullOrWhiteSpace(msg.SavePath))
-                throw new ArgumentNullException("FilePath cannot be null or empty");
-
             _chatMessage.Enqueue(msg);
 
             //option 1, using Interlocked
@@ -256,16 +251,6 @@ namespace VRemoteDesktop.Services.FileService
         /// <exception cref="FileNotFoundException"></exception>
         public string[] ReadLastMessages(string filePath, int numberOfMsg)
         {
-            if(string.IsNullOrWhiteSpace(filePath))
-                //throw new ArgumentNullException("FilePath cannot be null or empty");
-                return null;
-            if (numberOfMsg <=0)
-                //throw new ArgumentOutOfRangeException("Number of message must be greater than zero");
-                return null;
-            if (!File.Exists(filePath))
-                //throw new FileNotFoundException("File not found", filePath);
-                return null;
-
             try
             {
                 string[] messages = new string[numberOfMsg];
@@ -329,7 +314,7 @@ namespace VRemoteDesktop.Services.FileService
         {
             chatText = null;
 
-            string[] data = rawString.Split(char.Parse(DEFAULT_SEPRATOR));
+            string[] data = rawString.Split(char.Parse(DEFAULT_SEPARATOR));
             if (data.Length != typeof(ChatText).GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
                 return false;
 
@@ -355,7 +340,7 @@ namespace VRemoteDesktop.Services.FileService
         {
             chatFile = null;
 
-            string[] data = rawString.Split(char.Parse(DEFAULT_SEPRATOR));
+            string[] data = rawString.Split(char.Parse(DEFAULT_SEPARATOR));
             if (data.Length != typeof(ChatFile).GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
                 return false;
             if (!Enum.TryParse(data[1], out ChatContentTypeEnum type))

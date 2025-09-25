@@ -28,7 +28,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private bool _isDisposed = false;
         private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
 
+        private Rectangle _bounds;
         private Bitmap _previousFrame;
+        private List<Rectangle> regions;
         private object _lock;
         private object _lockObject;
         private object _lockObject2;
@@ -36,6 +38,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private EncoderParameters encoderParams;
         public ScreenCapture()
         {
+            _bounds = Screen.PrimaryScreen.Bounds;
             _previousFrame = null;
             _lock = new object();
             _lockObject = new object();
@@ -44,6 +47,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
             encoderParams = new EncoderParameters(1);
             encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
+            regions = new List<Rectangle>();
+            InitRequirements(_bounds.Width, _bounds.Height);
+        }
+        private void InitRequirements(int width, int height)
+        {
+            regions = GenerateRegions(width, height);
         }
         public void Renew()
         {
@@ -111,6 +120,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
         }
+
         private List<ScreenRegion> FullScreenRegion(Bitmap fullScreen)
         {
             using (var stream = new MemoryStream())
@@ -128,7 +138,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private List<ScreenRegion> MakeScreenRegions(Bitmap currentScreen, List<Rectangle> dirtyRegions)
         {
             List<ScreenRegion> regions = new List<ScreenRegion>();
-            if(dirtyRegions.Count == 0)
+            if (dirtyRegions.Count == 0)
                 return new List<ScreenRegion>();
 
             // Merge adjacent regions for efficiency
@@ -151,7 +161,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     }
                 }
             }
-            return regions; 
+            return regions;
         }
         private Bitmap CropBitmap(Bitmap source, Rectangle region)
         {
@@ -162,6 +172,22 @@ namespace VRemoteDesktop.Services.ScreenCapture
             return source.Clone(region, source.PixelFormat);
         }
         private Bitmap CaptureWindowsScreen1()
+        {
+            Bitmap bitmap = new Bitmap(_bounds.Width, _bounds.Height, PixelFormat.Format24bppRgb);
+            using (Graphics bitmapGraphics = Graphics.FromImage(bitmap))
+            {
+                IntPtr bitmapHdc = bitmapGraphics.GetHdc();
+                IntPtr screenHdc = CaptureApis.GetDC(IntPtr.Zero);
+
+                CaptureApis.BitBlt(bitmapHdc, 0, 0, _bounds.Width, _bounds.Height,
+                       screenHdc, _bounds.X, _bounds.Y, 0x00CC0020); // SRCCOPY
+
+                bitmapGraphics.ReleaseHdc(bitmapHdc);
+                CaptureApis.ReleaseDC(IntPtr.Zero, screenHdc);
+            }
+            return bitmap;
+        }
+        /*private Bitmap CaptureWindowsScreen1()
         {
             var bounds = Screen.PrimaryScreen.Bounds;
             Bitmap bitmap = new Bitmap(bounds.Width, bounds.Height, PixelFormat.Format24bppRgb);
@@ -177,7 +203,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 CaptureApis.ReleaseDC(IntPtr.Zero, screenHdc);
             }
             return bitmap;
-        }
+        }*/
         private Bitmap CaptureWindowsScreen()
         {
             Rectangle bounds = Screen.PrimaryScreen.Bounds;
@@ -190,29 +216,44 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             return bitmap;
         }
-        private List<Rectangle> GenerateRegions(BitmapData curBitmap, BitmapData preBitmap)
+        private List<Rectangle> GenerateRegions(int width, int height)
         {
             var regions = new List<Rectangle>();
-
-            for (int y = 0; y < curBitmap.Height; y += BLOCK_SIZE)
+            for (int y = 0; y < height; y += BLOCK_SIZE)
             {
-                for (int x = 0; x < curBitmap.Width; x += BLOCK_SIZE)
+                for (int x = 0; x < width; x += BLOCK_SIZE)
                 {
-                    int width = curBitmap.Width - x > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Width - x;
-                    int height = curBitmap.Height - y > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Height - y;
+                    int w = width - x > BLOCK_SIZE ? BLOCK_SIZE : width - x;
+                    int h = height - y > BLOCK_SIZE ? BLOCK_SIZE : height - y;
                     Rectangle block = new Rectangle(x, y,
-                        width,
-                        height);
+                        w,
+                        h);
                     regions.Add(block);
                 }
             }
             return regions;
         }
+        //private List<Rectangle> GenerateRegions(BitmapData curBitmap, BitmapData preBitmap)
+        //{
+        //    var regions = new List<Rectangle>();
+
+        //    for (int y = 0; y < curBitmap.Height; y += BLOCK_SIZE)
+        //    {
+        //        for (int x = 0; x < curBitmap.Width; x += BLOCK_SIZE)
+        //        {
+        //            int width = curBitmap.Width - x > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Width - x;
+        //            int height = curBitmap.Height - y > BLOCK_SIZE ? BLOCK_SIZE : preBitmap.Height - y;
+        //            Rectangle block = new Rectangle(x, y,
+        //                width,
+        //                height);
+        //            regions.Add(block);
+        //        }
+        //    }
+        //    return regions;
+        //}
         private List<Rectangle> DetectDirtyRegions(BitmapData curBitmap, BitmapData preBitmap)
         {
-            var regions = GenerateRegions(curBitmap, preBitmap);
             var maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
-
             try
             {
                 Parallel.ForEach(regions,
@@ -325,11 +366,14 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 if (_isDisposed) return;
                 lock (_lockObject)
                 {
+
                     _previousFrame?.Dispose();
                     _previousFrame = null;
 
                     while (changedBlocks.TryTake(out _)) { }
                 }
+                regions.Clear();
+                regions = null;
                 encoder = null;
                 encoderParams?.Dispose();
                 _isDisposed = true;

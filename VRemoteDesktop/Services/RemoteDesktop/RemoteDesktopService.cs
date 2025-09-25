@@ -18,8 +18,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
     public class RemoteDesktopService : IDisposable
     {
        
-        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("RemoteServerIP");
-        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemoteServerPort");
+        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
+        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
 
         private readonly IClientInfoManager _clientInfo;
@@ -54,6 +54,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public void Login(string id)
         {
+            if (string.IsNullOrWhiteSpace(id)) return;
+
             var client = _vClientManager.GetByKey(id);
             if(client != null)
             {
@@ -63,6 +65,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public void P2PConnect(string partnerId, string partnerPassword)
         {
+            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
+
             _reset.Reset();
             string connectionId = StringHelper.RandomStringNumber(8);
             var newConnection = NewClient(connectionId, VClientType.Sender);
@@ -72,12 +76,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
             _reset.WaitOne(5000);
-            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPRATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
             newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, partnerId, true);
         }
         public void UpdateMyInfo(byte[] data)
         {
+            if (data == null || data.Length == 0) return;
+
             _clientInfo.UpdateMyInfo(data);
         }
         public void StartKeyboardListener()
@@ -90,10 +96,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public void AddKeyboardListenerOnFormByHandle(IntPtr handle)
         {
+            if (handle == IntPtr.Zero) return;
             _globalHook.AddKeyboardHook(handle);
         }
         public void RemoveKeyboardListenerOnFormByHandle(IntPtr handle)
         {
+            if (handle == IntPtr.Zero) return;
             _globalHook.RemoveKeyboardHook(handle);
         }
         public string GetClipboardString()
@@ -102,10 +110,18 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public bool SetClipboard(byte[] data)
         {
+            if (data == null || data.Length == 0) return false;
             return _globalHook.SetClipboard(data); ;
         }
         public bool SetClipboard(byte[] data, int index, int length)
         {
+            if (data == null || data.Length == 0)
+                return false;
+            if (index < 0)
+                return false;
+            if (length < 0)
+                return false;
+
             return _globalHook.SetClipboard(data, index, length); ;
         }
         public void StartScreenCapture()
@@ -118,6 +134,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public void RemoveClientById(string id)
         {
+            if (string.IsNullOrWhiteSpace(id)) return;
+
             _vClientManager.Remove(id);
             if (_vClientManager.Connections.Count == 0)
             {
@@ -131,11 +149,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public VClient GetClientById(string id)
         {
+            if (string.IsNullOrWhiteSpace(id)) return null;
+
             var client = _vClientManager.GetByKey(id);
             return client;
         }
         public VClient NewClient(string id, VClientType type)
         {
+            if (string.IsNullOrWhiteSpace(id)) return null;
+
             var newClient = _vClientManager.New(id, type);
             if (_vClientManager.Connections.Count > 0)
             {
@@ -187,7 +209,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     ClientInfo partnerInfo = null;
 
                     string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPRATOR);
+                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
                     if(stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
                     {
                         if (StringHelper.StringValidate(stringArray))
@@ -243,7 +265,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 }
             }
         }
-        public TaskObject[] GetScreenSnapshotData(SocketDataType type, List<byte[]> data, int totalSize)
+        private TaskObject[] GetScreenSnapshotData(SocketDataType type, List<byte[]> data, int totalSize)
         {
             try
             {
@@ -273,7 +295,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 return null;
             }
         }
-        public void SendScreen(VClient  client, SocketDataType type, List<byte[]> data, int totalSize)
+        private void SendScreen(VClient  client, SocketDataType type, List<byte[]> data, int totalSize)
         {
             try
             {
@@ -395,6 +417,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
                 case SocketDataType.P2PDisconnect:
                     ProcessP2PDisconnect(sender, e);
+                    break;
+                case SocketDataType.Error:
                     break;
                 default:
                     DataReceivedEvent?.Invoke(sender, e);

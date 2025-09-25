@@ -5,10 +5,12 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Forms;
 using VRemoteDesktop.Services.ScreenCapture;
 
 namespace ScreenCaptureTest
@@ -16,10 +18,27 @@ namespace ScreenCaptureTest
     public class ScreenCaptureTest
     {
         private ScreenCapture _screenCapture;
+        private ScreenCapture1 _screenCapture1;
         [SetUp]
         public void Setup()
         {
             _screenCapture = new ScreenCapture();
+            _screenCapture1 = new ScreenCapture1();
+        }
+        [Test]
+        public void ScreenCapture_TestPerformance()
+        {
+            int count = 0;
+            int stop = 500;
+            while(count < stop)
+            {
+                Stopwatch stopWatch = Stopwatch.StartNew();
+                var screens = _screenCapture1.GetScreen();
+                stopWatch.Stop();
+                var elapsed = stopWatch.Elapsed.TotalMilliseconds;
+                Console.WriteLine($"Elapsed: {elapsed} - Count: {count}");
+                count++;
+            }
         }
         [Test]
         public void GetScreenTest_ValidValues()

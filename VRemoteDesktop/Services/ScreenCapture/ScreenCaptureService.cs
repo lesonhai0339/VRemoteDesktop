@@ -36,11 +36,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private bool _disposed = false;
         private byte[] _dataSend;
 
-        private readonly IScreenCapture _capture;
+        private readonly IScreenCapture1 _capture;
         private BackgroundWorker _backgroundWorker;
         public event EventHandler<ScreenCaptureEventArgs> ScreenEvent;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
-        public ScreenCaptureService(IScreenCapture screenCapture)
+        public ScreenCaptureService(IScreenCapture1 screenCapture)
         {
             IsCapturing = false;
             _dataSend = new byte[1024 * 1024];
@@ -150,7 +150,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 int remainTime = frameTime - elapsed;
                 if (remainTime > 0)
                 {
-                    Thread.Sleep(remainTime);
+                    //Thread.Sleep(remainTime);
                 }
             }
         }
@@ -210,7 +210,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             try
             {
-                var result = ByteArrayHelper.CompressGZip(screen.Bytes);
+                var result = ByteArrayHelper.CompressDeflate(screen.Bytes);
                 if (!result.IsSuccess)
                     return;
 
@@ -261,10 +261,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 if (mergedChangedRegions.Length == 0)
                     return;
 
-                var result = ByteArrayHelper.CompressGZip(mergedChangedRegions);
+                Console.WriteLine("Regions data before compress: " + mergedChangedRegions.Length);
+                var result = ByteArrayHelper.CompressDeflate(mergedChangedRegions);
                 if (!result.IsSuccess)
                     return;
 
+                Console.WriteLine("Regions data after compressed: "+ result.Data.Length);
                 byte[] changedRegionsCompressed = result.Data;
 
                 int dataSendLength = checked(changedRegionsCompressed.Length);

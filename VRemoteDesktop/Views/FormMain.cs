@@ -32,7 +32,7 @@ namespace VRemoteDesktop
             _remoteDesktopService = remoteDesktopService;
             ViewModel = new MainViewModel(_remoteDesktopService);
             SetupBinding();
-            chatForm = new FormChat();
+            RegisterChatForm();
             isShow = false;
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
 
@@ -66,6 +66,11 @@ namespace VRemoteDesktop
 
 
         #endregion
+        private void RegisterChatForm()
+        {
+            chatForm = new FormChat();
+            chatForm.FormClosed += ChatForm_ClosedEventHandler;
+        }
         private void SetupBinding()
         {
             txtOwnerId.DataBindings.Add("Text", ViewModel, "MyId",
@@ -103,8 +108,17 @@ namespace VRemoteDesktop
         {
            Connect();
         }
+        private void ChatForm_ClosedEventHandler(object sender, FormClosedEventArgs e)
+        {
+            chatForm.FormClosed -= ChatForm_ClosedEventHandler;
+            chatForm = null;
+            isShow = false;
+        }
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
+            if (!chatForm.IsDisposed)
+                chatForm.Close();
+
             if(_viewModel != null)
                 _viewModel.ClientAcceptRequestRemote -= ClientAcceptRequestRemoteEventHandler;
             _viewModel.Dispose();
@@ -180,8 +194,12 @@ namespace VRemoteDesktop
             }
             if (client == null) return;
 
-            if (!isShow || chatForm.IsDisposed)
+            if (!isShow)
             {
+                if(chatForm == null)
+                {
+                    RegisterChatForm();
+                }
                 //need to cal event from ChatForm to this to set isShow = false when Chat form disposed
                 chatForm.Show();
                 isShow = true;
