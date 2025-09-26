@@ -39,14 +39,14 @@ namespace VRemoteServer.RelayServer.Networking
         byte[] previousData;
         int previousDataOffset = 0;
         int previousDataLength = 0;
-        int length = 0; //Do dai goi
-        SocketDataType type = SocketDataType.None; //Loai goi
-        string id = ""; //SocketId hoac connectionId can goi du lieu den
-        int remainingData = 0; //Du lieu con lai cua goi
-        int offsetDataWillBeSend = 0; //Vi tri data trong _readSocketAsyncEventArgs se duoc gui
-        int lengthDataWillBeSend = 0; //So luong data se duoc gui trong _readSocketAsyncEventArgs
-        int offsetDataRemaining = 0; //Vi tri data con lai se gui o goi tiep theo trong _readSocketAsyncEventArgs
-        int lengthDataRemaining = 0; //So luong data con lai se gui o goi tiep theo trong _readSocketAsyncEventArgs
+        int length = 0; 
+        SocketDataType type = SocketDataType.None; 
+        string id = ""; 
+        int remainingData = 0; 
+        int offsetDataWillBeSend = 0; 
+        int lengthDataWillBeSend = 0;
+        int offsetDataRemaining = 0; 
+        int lengthDataRemaining = 0; 
 
 
         public event EventHandler<SocketConnectionEventArg> SocketConnectionEvent;
@@ -219,114 +219,319 @@ namespace VRemoteServer.RelayServer.Networking
             return PacketFactory.GetHeaderDataFromPacket(header, 0, PACKET_HEADER_LENGTH);
         }
         //Complex, high performance
-        public void CalCuLateData(int comingOffset, int comingDataLength)
+/*        public void CalculateData(int comingOffset, int comingDataLength)
         {
+            // Consider using lock-free approaches or per-connection processing threads
             lock (_lockMethod)
             {
                 try
                 {
-                    if (_readSocketAsyncEventArgs.Buffer == null)
+                    if (_readSocketAsyncEventArgs.Buffer == null || comingDataLength <= 0)
                         return;
-                    if (_remainingData == null)
-                        _remainingData = new byte[0];
 
-                    //Previous packet still lack data, using previous header to send data
-                    if (remainingData != 0)
+                    // Initialize remaining data buffer only once
+                    _remainingData ??= Array.Empty<byte>();
+
+                    // Handle continuation of previous incomplete packet
+                    if (_remainingDataExpected > 0)
                     {
-                        //Current packet data bigger than data remainingData expect. Calculate data needed and send, finally calculate remaining data
-                        //and call this method again
-                        if (comingDataLength > remainingData)
-                        {
-                            offsetDataWillBeSend = comingOffset;
-                            lengthDataWillBeSend = remainingData;
-
-                            offsetDataRemaining = comingOffset + remainingData;
-                            lengthDataRemaining = comingDataLength - remainingData;
-
-                            remainingData = 0;
-                            ProcessData(type, id, offsetDataWillBeSend, lengthDataWillBeSend);
-                            CalCuLateData(offsetDataRemaining, lengthDataRemaining);
-                        }
-                        //Current packet smaller or equal remainingData, send full current data packet and subtract remainingData
-                        else
-                        {
-                            remainingData -= comingDataLength;
-                            ProcessData(type, id, comingOffset, comingDataLength);
-                        }
+                        ProcessContinuationPacket(comingOffset, comingDataLength);
+                        return;
                     }
-                    //Do not have remainingData, normal handle
+
+                    // Handle new packet(s) starting from current offset
+                    ProcessNewPackets(comingOffset, comingDataLength);
+                }
+                catch (Exception ex)
+                {
+                    // Use structured logging instead of Console.WriteLine in production
+                    Console.WriteLine($"CalculateData error: {ex}");
+                    ResetState(); // Reset state on error to prevent corruption
+                }
+            }
+        }
+
+        private void ProcessContinuationPacket(int offset, int length)
+        {
+            if (length >= _remainingDataExpected)
+            {
+                // Complete the previous packet
+                ProcessData(_currentPacketType, _currentPacketId, offset, _remainingDataExpected);
+
+                // Process any additional data in this buffer
+                int remainingOffset = offset + _remainingDataExpected;
+                int remainingLength = length - _remainingDataExpected;
+
+                ResetPacketState();
+
+                if (remainingLength > 0)
+                {
+                    ProcessNewPackets(remainingOffset, remainingLength);
+                }
+            }
+            else
+            {
+                // Still incomplete, process what we have
+                ProcessData(_currentPacketType, _currentPacketId, offset, length);
+                _remainingDataExpected -= length;
+            }
+        }
+
+        private void ProcessNewPackets(int offset, int length)
+        {
+            int currentOffset = offset;
+            int remainingLength = length;
+
+            // Handle incomplete header from previous packet
+            if (_incompleteHeaderLength > 0)
+            {
+                int headerBytesNeeded = PACKET_HEADER_LENGTH - _incompleteHeaderLength;
+                if (remainingLength >= headerBytesNeeded)
+                {
+                    // Complete the header
+                    Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, currentOffset,
+                                   _headerBuffer, _incompleteHeaderLength, headerBytesNeeded);
+
+                    var (packetLength, type, id) = ParseHeader(_headerBuffer, 0);
+
+                    currentOffset += headerBytesNeeded;
+                    remainingLength -= headerBytesNeeded;
+                    _incompleteHeaderLength = 0;
+
+                    // Calculate data expected (excluding header)
+                    int dataLength = packetLength - PACKET_HEADER_LENGTH;
+                    ProcessCompleteHeader(type, id, dataLength, currentOffset, remainingLength);
+                    return;
+                }
+                else
+                {
+                    // Still incomplete header, store what we have
+                    Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, currentOffset,
+                                   _headerBuffer, _incompleteHeaderLength, remainingLength);
+                    _incompleteHeaderLength += remainingLength;
+                    return;
+                }
+            }
+
+            // Process complete packets in the current buffer
+            while (remainingLength > 0)
+            {
+                // Check if we have enough data for a complete header
+                if (remainingLength < PACKET_HEADER_LENGTH)
+                {
+                    // Store incomplete header
+                    _headerBuffer ??= new byte[PACKET_HEADER_LENGTH];
+                    Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, currentOffset,
+                                   _headerBuffer, 0, remainingLength);
+                    _incompleteHeaderLength = remainingLength;
+                    break;
+                }
+
+                // Parse header directly from buffer
+                var (packetLength, type, id) = ParseHeader(_readSocketAsyncEventArgs.Buffer, currentOffset);
+
+                int dataLength = packetLength - PACKET_HEADER_LENGTH;
+                int totalAvailable = remainingLength - PACKET_HEADER_LENGTH;
+
+                if (totalAvailable >= dataLength)
+                {
+                    // Complete packet available
+                    if (dataLength > 0)
+                    {
+                        ProcessData(type, id, currentOffset + PACKET_HEADER_LENGTH, dataLength);
+                    }
                     else
                     {
-                        //Current packet data had length less than require length, store packet data and waiting next packet to combine
-                        //with current packet
-                        if (comingDataLength < PACKET_HEADER_LENGTH)
+                        ProcessData(type, id, Array.Empty<byte>());
+                    }
+
+                    currentOffset += packetLength;
+                    remainingLength -= packetLength;
+                }
+                else
+                {
+                    // Incomplete packet data
+                    _currentPacketType = type;
+                    _currentPacketId = id;
+                    _remainingDataExpected = dataLength - totalAvailable;
+
+                    if (totalAvailable > 0)
+                    {
+                        ProcessData(type, id, currentOffset + PACKET_HEADER_LENGTH, totalAvailable);
+                    }
+                    break;
+                }
+            }
+        }
+
+        private void ProcessCompleteHeader(SocketDataType type, string id, int dataLength,
+                                         int currentOffset, int remainingLength)
+        {
+            if (remainingLength >= dataLength)
+            {
+                // Complete packet
+                if (dataLength > 0)
+                {
+                    ProcessData(type, id, currentOffset, dataLength);
+                }
+                else
+                {
+                    ProcessData(type, id, Array.Empty<byte>());
+                }
+
+                // Continue processing remaining data
+                int nextOffset = currentOffset + dataLength;
+                int nextLength = remainingLength - dataLength;
+
+                if (nextLength > 0)
+                {
+                    ProcessNewPackets(nextOffset, nextLength);
+                }
+            }
+            else
+            {
+                // Incomplete packet
+                _currentPacketType = type;
+                _currentPacketId = id;
+                _remainingDataExpected = dataLength - remainingLength;
+
+                if (remainingLength > 0)
+                {
+                    ProcessData(type, id, currentOffset, remainingLength);
+                }
+            }
+        }
+
+        private (int length, SocketDataType type, string id) ParseHeader(byte[] buffer, int offset)
+        {
+            // Implement efficient header parsing
+            int length = BitConverter.ToInt32(buffer, offset);
+            SocketDataType type = (SocketDataType)buffer[offset + 4];
+            string id = Encoding.ASCII.GetString(buffer, offset + 5, PACKET_ID_LENGTH);
+            return (length, type, id);
+        }
+
+        private void ResetPacketState()
+        {
+            _remainingDataExpected = 0;
+            _currentPacketType = default;
+            _currentPacketId = null;
+        }
+
+        private void ResetState()
+        {
+            ResetPacketState();
+            _incompleteHeaderLength = 0;
+            _remainingData = Array.Empty<byte>();
+        }*/
+        public void CalCuLateData(int comingOffset, int comingDataLength)
+        {
+            try
+            {
+                if (_readSocketAsyncEventArgs.Buffer == null)
+                    return;
+                if (_remainingData == null)
+                    _remainingData = new byte[0];
+
+                _remainingData ??= Array.Empty<byte>();
+
+                //Previous packet still lack data, using previous header to send data
+                if (remainingData != 0)
+                {
+                    //Current packet data bigger than data remainingData expect. Calculate data needed and send, finally calculate remaining data
+                    //and call this method again
+                    if (comingDataLength > remainingData)
+                    {
+                        offsetDataWillBeSend = comingOffset;
+                        lengthDataWillBeSend = remainingData;
+
+                        offsetDataRemaining = comingOffset + remainingData;
+                        lengthDataRemaining = comingDataLength - remainingData;
+
+                        remainingData = 0;
+                        ProcessData(type, id, offsetDataWillBeSend, lengthDataWillBeSend);
+                        CalCuLateData(offsetDataRemaining, lengthDataRemaining);
+                    }
+                    //Current packet smaller or equal remainingData, send full current data packet and subtract remainingData
+                    else
+                    {
+                        remainingData -= comingDataLength;
+                        ProcessData(type, id, comingOffset, comingDataLength);
+                    }
+                }
+                //Do not have remainingData, normal handle
+                else
+                {
+                    //Current packet data had length less than require length, store packet data and waiting next packet to combine
+                    //with current packet
+                    if (comingDataLength < PACKET_HEADER_LENGTH)
+                    {
+                        //Still not optimize this, create every time
+                        if (previousData == null || previousData.Length < previousDataOffset + comingDataLength)
                         {
-                            //Still not optimize this, create every time
-                            if (previousData == null || previousData.Length < previousDataOffset + comingDataLength)
-                            {
-                                previousData = new byte[previousDataLength + comingDataLength];
-                            }
-                            //Combine with remaining data from previous packet
-                            Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, comingOffset, previousData, previousDataOffset, comingDataLength);
-                            previousDataOffset += comingDataLength;
-                            previousDataLength += comingDataLength;
-                            if (previousDataLength < PACKET_HEADER_LENGTH)
-                            {
-                                //Return and waiting next packet to combine
-                                return;
-                            }
-                            else
-                            {
-                                //Had reach the required length, handle data
-
-                                //Get header
-                                (length, type, id) = GetHeader(previousData, 0);
-
-                                //Calculate remaining data
-                                remainingData = Math.Abs(length - previousDataLength);
-                                //Send direct buffer
-                                ProcessData(type, id, previousData);
-
-                                //finally reset  previousData, previousDataOffset and previousDataLength
-                                previousData = Array.Empty<byte>();
-                                previousDataOffset = 0;
-                                previousDataLength = 0;
-                                //break
-                                return;
-                            }
+                            previousData = new byte[previousDataLength + comingDataLength];
                         }
-                        //Current packet size bigger than require length
-
-                        //Get header
-                        (length, type, id) = GetHeader(_readSocketAsyncEventArgs.Buffer, comingOffset);
-                        if (comingDataLength < length)
+                        //Combine with remaining data from previous packet
+                        Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, comingOffset, previousData, previousDataOffset, comingDataLength);
+                        previousDataOffset += comingDataLength;
+                        previousDataLength += comingDataLength;
+                        if (previousDataLength < PACKET_HEADER_LENGTH)
                         {
-                            //If comingDataLength < length calculate remaining data
-                            remainingData = checked(length - comingDataLength); //data remain
-                            //Send offset and length off data needed in bufferManager
-                            ProcessData(type, id, comingOffset, comingDataLength);
+                            //Return and waiting next packet to combine
+                            return;
                         }
                         else
                         {
-                            //If comingDataLength >= length, calculate offset,length data need to send, offset and length data remained
-                            //And recall this method to continue handle. Set remainingData = 0
-                            offsetDataWillBeSend = comingOffset;
-                            lengthDataWillBeSend = length;
+                            //Had reach the required length, handle data
 
-                            offsetDataRemaining = comingOffset + length;
-                            lengthDataRemaining = comingDataLength - length;
+                            //Get header
+                            (length, type, id) = GetHeader(previousData, 0);
 
-                            remainingData = 0;
-                            //Send offset and length off data needed in bufferManager
-                            ProcessData(type, id, offsetDataWillBeSend, lengthDataWillBeSend);
-                            CalCuLateData(offsetDataRemaining, lengthDataRemaining);
+                            //Calculate remaining data
+                            remainingData = Math.Abs(length - previousDataLength);
+                            //Send direct buffer
+                            ProcessData(type, id, previousData);
+
+                            //finally reset  previousData, previousDataOffset and previousDataLength
+                            previousData = Array.Empty<byte>();
+                            previousDataOffset = 0;
+                            previousDataLength = 0;
+                            //break
+                            return;
                         }
                     }
+                    //Current packet size bigger than require length
+
+                    //Get header
+                    (length, type, id) = GetHeader(_readSocketAsyncEventArgs.Buffer, comingOffset);
+                    if (comingDataLength < length)
+                    {
+                        //If comingDataLength < length calculate remaining data
+                        remainingData = checked(length - comingDataLength); //data remain
+                                                                            //Send offset and length off data needed in bufferManager
+                        ProcessData(type, id, comingOffset, comingDataLength);
+                    }
+                    else
+                    {
+                        //If comingDataLength >= length, calculate offset,length data need to send, offset and length data remained
+                        //And recall this method to continue handle. Set remainingData = 0
+                        offsetDataWillBeSend = comingOffset;
+                        lengthDataWillBeSend = length;
+
+                        offsetDataRemaining = comingOffset + length;
+                        lengthDataRemaining = comingDataLength - length;
+
+                        remainingData = 0;
+                        //Send offset and length off data needed in bufferManager
+                        ProcessData(type, id, offsetDataWillBeSend, lengthDataWillBeSend);
+                        CalCuLateData(offsetDataRemaining, lengthDataRemaining);
+                    }
                 }
-                catch(Exception ex)
-                {
-                    Console.WriteLine("CalCuLateData error: ",ex);
-                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("CalCuLateData error: ", ex);
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "CalCuLateData");
             }
         }
         //Simple, less performance

@@ -209,7 +209,6 @@ namespace VRemoteServer.RelayServer.Services
                 //TODO
                 if(_p2pMethods.TryGetValue(e.Type, out var method))
                 {
-                    Console.WriteLine("RemoteSocketManagerEventHandler Called");
                     method(connection, e.Id, e.Data, e.Offset, e.Length);
                 }
                 else
