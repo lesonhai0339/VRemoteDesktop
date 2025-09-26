@@ -27,12 +27,12 @@ namespace VRemoteServer.RelayServer.Services
         void CancelRemoteControlServer();
         void Dispose();
     }
-    public class RelayServerManager : IRelayServerManager, IDisposable
+    public class RelayServerManagerService : IRelayServerManager, IDisposable
     {
         private bool _disposed; 
         private readonly ILoginManager _loginManager;
         private readonly IRemoteControlManager _remoteControlManager;
-        public RelayServerManager(ILoginManager loginManager, IRemoteControlManager remoteControlManager)
+        public RelayServerManagerService(ILoginManager loginManager, IRemoteControlManager remoteControlManager)
         {
             _disposed = false;
             _loginManager = loginManager;
@@ -112,7 +112,7 @@ namespace VRemoteServer.RelayServer.Services
             {
                 SocketDataType.P2PRequestConnect => ProcessP2PRequestConnect(sender, e.SocketId, e.PartnerId, e.Data),
                 SocketDataType.P2PAcceptConnect => ProcessP2PAcceptedConnect(sender, e.SocketId, e.DataOffset, e.DataLength),
-                SocketDataType.P2PDataSend => ProcessP2PDataTransfer(sender, e.SocketId, e.DataOffset, e.DataLength),
+                SocketDataType.P2PDataSend => ProcessP2PDataTransfer(sender, e.SocketId, e.Data, e.DataOffset, e.DataLength),
             };
             if (status)
             {
@@ -124,7 +124,7 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
-        private bool ProcessP2PDataTransfer(object sender, string remoteConnectionId, int offset, int length)
+        private bool ProcessP2PDataTransfer(object sender, string remoteConnectionId, byte[] data, int offset, int length)
         {
             if (sender is SocketConnection socketSender)
             {
@@ -132,7 +132,16 @@ namespace VRemoteServer.RelayServer.Services
                 {
                     if(_remoteControlManager.GetPartner(remoteConnectionId, socketSender, out SocketConnection socketReceive))
                     {
-                        _remoteControlManager.Send(socketReceive, offset, length, false);
+                        if(data != null)
+                        {
+                            _remoteControlManager.Send(socketReceive, data);
+                        }
+                        else
+                        {
+                            if (offset < 0 || length < 0)
+                                return false;
+                            _remoteControlManager.Send(socketReceive, offset, length);
+                        }
                         return true;
                     }
                     else
@@ -158,7 +167,7 @@ namespace VRemoteServer.RelayServer.Services
                 {
                     if (_remoteControlManager.EstablishedRemoteConnection(remoteConnectionId, controlled, out var remoteConnection))
                     {
-                        _remoteControlManager.Send(remoteConnection.Controller, offset, length, true);
+                        _remoteControlManager.Send(remoteConnection.Controller, offset, length);
                         return true;
                     }
                     else
@@ -188,7 +197,7 @@ namespace VRemoteServer.RelayServer.Services
                     {
                         if (_remoteControlManager.InitRemoteConnection(connectionId, controller))
                         {
-                            _remoteControlManager.Send(validConnection.SocketConnection, data, false);
+                            _remoteControlManager.Send(validConnection.SocketConnection, data);
                             return true;
                         }
                     }

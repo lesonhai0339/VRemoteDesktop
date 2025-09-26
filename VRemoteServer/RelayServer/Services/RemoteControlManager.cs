@@ -1,265 +1,116 @@
-﻿using Serilog;
-using System;
+﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Net;
-using System.Net.Sockets;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Domains;
 using VRemoteServer.RelayServer.DTOs;
-using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
-using VRemoteServer.RelayServer.Helpers;
 using VRemoteServer.RelayServer.Networking;
-using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
 
 namespace VRemoteServer.RelayServer.Services
 {
-    public interface IRemoteControlManager
+    /// <summary>
+    /// Manager remote desktop connection between two socket client
+    /// </summary>
+    public interface IRemoteConnectionManager: IBaseManagement<RemoteConnection>
     {
+        bool AddController(string id, SocketConnection controller);
+        bool AddControlled(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
         SocketConnection GetPartner(SocketConnection me);
         bool GetPartner(SocketConnection me, out SocketConnection partner);
         bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
-        bool RemoveRemoteConnection(string id);
-        bool InitRemoteConnection(string id, SocketConnection controller);
-        bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
-        void CloseConnection(SocketConnection connection);
-        void InitServer();
-        Task StartServer(IPEndPoint ep);
-        void CancelServer();
-        void Send(SocketConnection connection, byte[] data);
-        void Send(SocketConnection connection, byte[] data, bool acceptReceive);
-        void Send(SocketConnection connection, int offset, int length, bool acceptReceive);
-        event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
-        void Dispose();
+        event EventHandler<RemoteConnectionEventArg> remoteSocketManagerEvent;
     }
-    public class RemoteControlManager : IRemoteControlManager, IDisposable
+    public class RemoteControlManager : BaseManagement<RemoteConnection>, IRemoteConnectionManager, IDisposable 
     {
-        private bool _disposed;
-        private readonly IRemoteControlServer _remoteControlServer;
-        private readonly IRemoteConnectionManager _remoteConnectionManager;
-        private readonly Dictionary<SocketDataType, Action<SocketConnection, string, int, int>> _remoteControlMethods;
-        public event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
-        public RemoteControlManager(IRemoteControlServer remoteControlServer, IRemoteConnectionManager remoteConnectionManager)
+        public event EventHandler<RemoteConnectionEventArg> remoteSocketManagerEvent;
+        public bool AddController(string id, SocketConnection controller)
         {
-            _disposed = false;
-            _remoteControlServer = remoteControlServer;
-            _remoteConnectionManager = remoteConnectionManager;
-
-            //Register events
-            _remoteControlServer.ServerEvent += RemoteControlEventHandler;
-            _remoteConnectionManager.remoteSocketManagerEvent += RemoteSocketManagerEventHandler;
-
-            _remoteControlMethods = new Dictionary<SocketDataType, Action<SocketConnection, string, int, int>>
+            RemoteConnection remoteConnection = new RemoteConnection(id, controller);
+            if (base.Add(id, remoteConnection))
             {
-                { SocketDataType.P2PRequestConnect, RemoteControlRequestToConnect },
-                { SocketDataType.P2PAcceptConnect, RemoteControlAcceptedToConnect },
-                { SocketDataType.P2PRejectConnect, RemoteControlRefusedToConnect },
-                { SocketDataType.P2PDataSend, RemoteControlP2PDataTransfer },
-                { SocketDataType.Screen, RemoteControlP2PDataTransfer },
-                { SocketDataType.ScreenOk, RemoteControlP2PDataTransfer },
-                { SocketDataType.Chunks, RemoteControlP2PDataTransfer },
-                { SocketDataType.ChunksOk, RemoteControlP2PDataTransfer },
-                { SocketDataType.Keyboard, RemoteControlP2PDataTransfer },
-                { SocketDataType.Clipboard, RemoteControlP2PDataTransfer },
-                { SocketDataType.Mouse, RemoteControlP2PDataTransfer },
-                { SocketDataType.Chat, RemoteControlP2PDataTransfer },
-            };
+                controller.SocketConnectionEvent += SocketConnectionEventHandler;
+                return true;
+            }
+            return false;
         }
-
-        private void RemoteControlP2PDataTransfer(SocketConnection connection, string connectionId, int offset, int length)
+        public bool AddControlled(string id, SocketConnection controlled, out RemoteConnection remoteConnection)
         {
-            RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PDataSend, socketId: connectionId, dataOffset: offset, dataLength: length));
-        }
+            remoteConnection = null;
 
-        private void RemoteControlRefusedToConnect(SocketConnection connection, string arg2, int arg3, int arg4)
-        {
-            throw new NotImplementedException();
+            if (base.Get(id, out remoteConnection))
+            {
+                remoteConnection.Controlled = controlled;
+                controlled.SocketConnectionEvent += SocketConnectionEventHandler;
+                return true;
+            }
+            return false;
         }
-
-        private void RemoteControlAcceptedToConnect(SocketConnection connection, string socketId, int offset, int length)
-        {
-            RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PAcceptConnect, socketId: socketId, dataOffset: offset, dataLength: length));
-        }
-        #region Properties
-        #endregion
-        #region Methods
-        public bool InitRemoteConnection(string id, SocketConnection controller)
-            => _remoteConnectionManager.AddController(id, controller);
-        public bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection)
-            => _remoteConnectionManager.AddControlled(id, controlled, out remoteConnection);
         public SocketConnection GetPartner(SocketConnection me)
-            => _remoteConnectionManager.GetPartner(me);
+        {
+            var found = Get(v => ReferenceEquals(v.Controller, me) | ReferenceEquals(v.Controlled, me));
+            if (found == null) return null;
+            return ReferenceEquals(found.Controller, me) ? found.Controlled : found.Controller;
+        }
         public bool GetPartner(SocketConnection me, out SocketConnection partner)
-            => _remoteConnectionManager.GetPartner(me, out partner);
-        public bool GetPartner(string id, SocketConnection me, out SocketConnection partner)
-            => _remoteConnectionManager.GetPartner(id, me, out partner);
-        public bool RemoveRemoteConnection(string id)
-            => _remoteConnectionManager.Remove(id);
-        public void CloseConnection(SocketConnection connection)
-            => _remoteControlServer.Close(connection);
-        private void ParsePacketToData(SocketConnection connection, int dataOffset, int dataLength)
         {
-            try
-            {
-                var (length, type, connectionId) = PacketFactory.GetHeaderDataFromPacket(connection.Reader.Buffer, dataOffset, dataLength);
-                Console.WriteLine("TotalLength Received: " + length);
+            partner = null;
+            var found = Get(v => ReferenceEquals(v.Controller, me) | ReferenceEquals(v.Controlled, me));
 
-                if (length < 0 || type == SocketDataType.None || string.IsNullOrEmpty(connectionId))
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error("ParsePacketToData: Invalid packet header, ignore packet");
-                    return;
-                }    
+            if (found == null)
+                return false;
 
-                if(_remoteControlMethods.TryGetValue(type, out var matchMethod))
-                {
-                    matchMethod(connection, connectionId, dataOffset, dataLength);
-                }
-                else
-                {
-                    Console.WriteLine($"Unknow method: " + type);
-                    Log.ForContext("FileName", this.GetType().Name).Error("ParsePacketToData: Packet type doesn't matched any method, ignore");
-                }
-            }
-            catch(Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ParsePacketToData error");
-            }
+            partner = ReferenceEquals(found.Controller, me) ? found.Controlled : found.Controller;
+            return true;
         }
-        private void RemoteControlRequestToConnect(SocketConnection connection, string socketId, int dataOffset, int dataLength)
+        public bool GetPartner(string id, SocketConnection me,  out SocketConnection partner)
         {
-            try
+            partner = null;
+            if(Get(id, out var remoteConnection))
             {
-                byte[] data = new byte[dataLength];
-                Buffer.BlockCopy(connection.Reader.Buffer, dataOffset, data, 0, dataLength);
-                string[] info = Encoding.ASCII.ByteArrayToStringWithSeparator(data, PACKET_HEADER_LENGTH, data.Length - PACKET_HEADER_LENGTH, DefaultValue.Common.SEPARATOR);
-
-                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PRequestConnect, socketId: socketId, partnerId: info[1], data: data));
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"RemoteControlRequestToConnect error");
-            }
-        }
-        public void InitServer()
-        {
-            _remoteControlServer.Init();
-        }
-        public async Task StartServer(IPEndPoint ep)
-        {
-            if (ep == null)
-                throw new ArgumentNullException(nameof(ep));
-
-            await _remoteControlServer.Start(ep);
-        }
-        public void CancelServer()
-        {
-            _remoteControlServer.Cancel();
-        }
-        public void Send(SocketConnection connection, byte[] data)
-        {
-            try
-            {
-                _remoteControlServer.Send(connection, data);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
-            }
-        }
-        public void Send(SocketConnection connection, byte[] data, bool acceptReceive)
-        {
-            try
-            {
-                _remoteControlServer.Send(connection, data, acceptReceive);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
-            }
-        }
-        public void Send(SocketConnection connection, int offset, int length, bool acceptReceive)
-        {
-            try
-            {
-                _remoteControlServer.Send(connection, offset, length, acceptReceive);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
-            }
-        }
-        private void Receive(SocketConnection connection)
-        {
-            try
-            {
-                _remoteControlServer.Receive(connection);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
-            }
-        }
-        #endregion
-        #region Events
-        private void RemoteControlEventHandler(object sender, RemoteControlEventArgs e)
-        {
-            if (sender is SocketConnection connection)
-            {
-                ParsePacketToData(connection, e.Offset, e.Length);
+                partner = ReferenceEquals(remoteConnection.Controller, me) ? remoteConnection.Controlled : remoteConnection.Controller;
+                return true;
             }
             else
             {
-                //TODO: invalid object
-                Log.ForContext("FileName", this.GetType().Name).Error("RemoteControlEventHandler invalid object");
+                return false;
             }
         }
-        /// <summary>
-        /// This methods called when <see cref="SocketConnection.CalCuLateData(int, int)"/> received data and call 
-        /// <see cref="SocketConnection.SocketConnectionEvent"/> for each <see cref="SocketConnection"/>
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        /// <exception cref="NotImplementedException"></exception>
-        private void RemoteSocketManagerEventHandler(object sender, RemoteConnectionEventArg e)
+        public override bool Remove(string id)
         {
-            if(sender is SocketConnection connection)
+            if(Get(id, out var remoteConnection))
             {
-                //TODO
-                Console.WriteLine($"Received {e.Data.Length} bytes on connection id: {e.Id}");
+                if(remoteConnection.Controller != null)
+                {
+                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
+                }
+                if (remoteConnection.Controlled != null)
+                {
+                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
+                }
             }
-            else
-            {
-                //TODO: invalid object
-                Log.ForContext("FileName", this.GetType().Name).Error("RemoteSocketManagerEventHandler invalid object");
-            }
+            return base.Remove(id);
         }
-        #endregion
-        public void Dispose()
+        public override void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
+            foreach(var remoteConnection in this.GetAll())
+            {
+                if (remoteConnection.Controller != null)
+                {
+                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
+                }
+                if (remoteConnection.Controlled != null)
+                {
+                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
+                }
+            }
+            base.Dispose();
         }
-        public virtual void Dispose(bool disposing)
+        private void SocketConnectionEventHandler(object sender, SocketConnectionEventArg e)
         {
-            if (!disposing || _disposed) return;
-            try
-            {
-                if(_remoteControlServer != null)
-                    _remoteControlServer.ServerEvent -= RemoteControlEventHandler;
-                if(_remoteConnectionManager != null)
-                    _remoteConnectionManager.remoteSocketManagerEvent -= RemoteSocketManagerEventHandler;
-
-
-                //TODO: dispose here
-                _remoteControlServer?.Dispose();
-                _remoteConnectionManager?.Dispose();
-            }
-            finally
-            {
-                _disposed = true;
-            }
+            remoteSocketManagerEvent?.Invoke(sender, new RemoteConnectionEventArg(e.Type, e.Id, e.Data, e.Offset, e.Length));
         }
     }
 }

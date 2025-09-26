@@ -13,8 +13,9 @@ using VRemoteServer.RelayServer.Networking;
 
 namespace VRemoteServer.RelayServer.Domains
 {
-    public interface IBaseServer<TDomain, TEvent>
+    public interface IBaseServer<TDomain, TEvent, TException>
     {
+        abstract TException CreateExceptionEvent(Exception ex, string note);
         void SendToDomain(TDomain domain, int offset, int length);
         void SetFirstPacket(TDomain domain);
         bool ReceivedFirstPacket(TDomain domain);
@@ -27,14 +28,13 @@ namespace VRemoteServer.RelayServer.Domains
         Task Start(IPEndPoint endpoint);
         void Cancel();
         void Send(TDomain domain, byte[] data);
-        void Send(TDomain domain, byte[] data, bool acceptReceive = true);
-        void Send(TDomain domain, int offset, int length, bool acceptReceive);
-        void Receive(TDomain domain);
+        void Send(TDomain domain, int offset, int length);
         void Close(TDomain domain);
         event EventHandler<TEvent> ServerEvent;
+        event EventHandler<TException> ServerErrorEvent;
         void Dispose();
     }
-    public abstract class BaseServer<TDomain, TEvent> : IBaseServer<TDomain, TEvent>, IDisposable where TDomain : class where TEvent : EventArgs
+    public abstract class BaseServer<TDomain, TEvent, TException> : IBaseServer<TDomain, TEvent, TException>, IDisposable where TDomain : class where TEvent : EventArgs
     {
         private bool _disposed;
         private int numberOfConnections;
@@ -50,6 +50,7 @@ namespace VRemoteServer.RelayServer.Domains
         private CancellationTokenSource _cancel = new CancellationTokenSource();
 
         public virtual event EventHandler<TEvent> ServerEvent;
+        public virtual event EventHandler<TException> ServerErrorEvent;
         public  BaseServer(int numberOfConnections = 1000, int receiveBufferSize = 1024 * 8)
         {
             _disposed = false;
@@ -63,6 +64,7 @@ namespace VRemoteServer.RelayServer.Domains
             sendWritePool = new SocketAsyncEventArgsPool(numberOfConnections);
             maxNumberAcceptedClients = new Semaphore(numberOfConnections, numberOfConnections);
         }
+        public abstract TException CreateExceptionEvent(Exception ex, string note);
         public abstract void SendToDomain(TDomain domain, int offset, int length);
         public abstract void SetFirstPacket(TDomain domain);
         public abstract bool ReceivedFirstPacket(TDomain domain);
@@ -126,37 +128,28 @@ namespace VRemoteServer.RelayServer.Domains
         }
         public virtual void Send(TDomain domain, byte[] data)
         {
-            var send = GetSendSocketAsyncEventArgsFromDomain(domain);
-            Socket socket = GetSocketFromDomain(domain);
-            if (socket == null)
+            try
             {
-                CloseClientSocket(domain);
-                return;
+                var send = GetSendSocketAsyncEventArgsFromDomain(domain);
+                Socket socket = GetSocketFromDomain(domain);
+                if (socket == null)
+                {
+                    CloseClientSocket(domain);
+                    return;
+                }
+                send.SetBuffer(data, 0, data.Length);
+                bool willRaiseEvent = socket.SendAsync(send);
+                if (!willRaiseEvent)
+                {
+                    ProcessSend(send);
+                }
             }
-            send.SetBuffer(data, 0, data.Length);
-            bool willRaiseEvent = socket.SendAsync(send);
-            if (!willRaiseEvent)
+            catch(Exception ex)
             {
-                ProcessSend(send);
-            }
-        }
-        public virtual void Send(TDomain domain, byte[] data, bool acceptReceive = true)
-        {
-            var send = GetSendSocketAsyncEventArgsFromDomain(domain);
-            Socket socket = GetSocketFromDomain(domain);
-            if (socket == null)
-            {
-                CloseClientSocket(domain);
-                return;
-            }
-            send.SetBuffer(data, 0, data.Length);
-            bool willRaiseEvent = socket.SendAsync(send);
-            if (!willRaiseEvent)
-            {
-                ProcessSend(send, acceptReceive);
+                ServerErrorEvent?.Invoke(domain, CreateExceptionEvent(ex, "Send error"));
             }
         }
-        public virtual void Send(TDomain domain, int offset, int length, bool acceptReceive = true)
+        public virtual void Send(TDomain domain, int offset, int length)
         {
             var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
             Socket socket = GetSocketFromDomain(domain);
@@ -167,58 +160,32 @@ namespace VRemoteServer.RelayServer.Domains
             }
             try
             {
-                if (send.Buffer == null || send.Buffer.Length < length)
-                {
-                    send.SetBuffer(new byte[length], 0, length);
-                }
-                else
-                {
-                    send.SetBuffer(send.Buffer, 0, length);
-                }
+                //if (send.Buffer == null || send.Buffer.Length < length)
+                //{
+                //    send.SetBuffer(new byte[length], 0, length);
+                //}
+                //else
+                //{
+                //    send.SetBuffer(send.Buffer, 0, length);
+                //}
 
-                Buffer.BlockCopy(read.Buffer, offset, send.Buffer, 0, length);
+                //Buffer.BlockCopy(read.Buffer, offset, send.Buffer, 0, length);
+
+                //Because both send and read place on the same buffer manager then no need copy, must ensure read.Buffer do not modify util send finished 
+                send.SetBuffer(send.Buffer, offset, length);
+
                 bool willRaiseEvent = socket.SendAsync(send);
                 if (!willRaiseEvent)
                 {
-                    ProcessSend(send, acceptReceive);
+                    ProcessSend(send);
                 }
             }
-            catch{}
-            
+            catch(Exception ex)
+            {
+                ServerErrorEvent?.Invoke(domain, CreateExceptionEvent(ex, "Send error"));
+            }
+
         }
-        public virtual void Receive(TDomain domain)
-        {
-            try
-            {
-                var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
-                Socket socket = GetSocketFromDomain(domain);
-                if (socket != null && socket.Connected)
-                {
-                    bool willRaiseEvent = socket.ReceiveAsync(read);
-                    if (!willRaiseEvent)
-                    {
-                        ProcessReceive(read); // Handle synchronous completion
-                    }
-                }
-                else
-                {
-                    Close(domain);
-                }
-            }
-            catch (ObjectDisposedException)
-            {
-                Close(domain);
-            }
-            catch (SocketException ex)
-            {
-                Close(domain);
-            }
-            catch (Exception ex)
-            {
-                //TODO
-                Close(domain);
-            }
-        }  
         public virtual void Close(TDomain domain)
         {
             this.CloseClientSocket(domain);
@@ -229,7 +196,6 @@ namespace VRemoteServer.RelayServer.Domains
             while (!willRaiseEvent)
             {
                 maxNumberAcceptedClients.WaitOne();
-
                 acceptEventArg.AcceptSocket = null;
                 willRaiseEvent = listenSocket.AcceptAsync(acceptEventArg);
                 if (!willRaiseEvent)
@@ -262,13 +228,13 @@ namespace VRemoteServer.RelayServer.Domains
         }
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
+            Interlocked.Increment(ref numberConnectedSockets);
+            Console.WriteLine("Client connection accepted. There are {0} clients connected to the server", numberConnectedSockets);
+
+            SocketAsyncEventArgs readEventArg = readWritePool.Pop();
+            SocketAsyncEventArgs sendEventArg = sendWritePool.Pop();
             try
             {
-                Interlocked.Increment(ref numberConnectedSockets);
-                Console.WriteLine("Client connection accepted. There are {0} clients connected to the server", numberConnectedSockets);
-
-                SocketAsyncEventArgs readEventArg = readWritePool.Pop();
-                SocketAsyncEventArgs sendEventArg = sendWritePool.Pop();
                 TDomain domain = CreateDomainFromSocketAsyncEventArgs(readEventArg, sendEventArg, e.AcceptSocket);
                 //readEventArg.UserToken = domain;
 
@@ -285,140 +251,103 @@ namespace VRemoteServer.RelayServer.Domains
                     ProcessReceive(readEventArg);
                 }
             }
-            catch { }
+            catch
+            {
+                readWritePool.Push(readEventArg); 
+                sendWritePool.Push(sendEventArg);
+            }
         }
         private void ProcessReceive(SocketAsyncEventArgs e)
         {
+            TDomain domain = (TDomain)e.UserToken;
             try
             {
-                TDomain domain = (TDomain)e.UserToken;
-
-                if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
+                if(e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
                     Interlocked.Add(ref totalBytesRead, e.BytesTransferred);
                     Console.WriteLine("The server has read a total of {0} bytes", totalBytesRead);
 
                     Socket socket = GetSocketFromDomain(domain);
-                    var code = socket.GetHashCode();
-                    Console.WriteLine($"Received from socket {code} - {e.BytesTransferred} bytes");
                     if (!ReceivedFirstPacket(domain))
                     {
-                        Console.WriteLine("Call event");
                         ServerEvent?.Invoke(domain, CreateEventFromData(ServerEventType.ConnectionDataReceived, e.Offset, e.BytesTransferred));
-                        SetFirstPacket(domain); 
+                        SetFirstPacket(domain);
                     }
                     else
                     {
-                        Console.WriteLine("Send to domain");
                         SendToDomain(domain, e.Offset, e.BytesTransferred);
                     }
                     e.SetBuffer(e.Offset, receiveBufferSize);
+                    bool willRaiseEvent = socket.ReceiveAsync(e);
+                    if (!willRaiseEvent)
+                    {
+                        ProcessReceive(e);
+                    }
                 }
                 else
                 {
                     CloseClientSocket(domain);
                 }
             }
-            catch
+            catch( Exception ex)
             {
-                
+                ServerErrorEvent?.Invoke(domain, CreateExceptionEvent(ex, "ProcessReceive error"));
             }
         }
         private void ProcessSend(SocketAsyncEventArgs e)
         {
+            TDomain domain = (TDomain)e.UserToken;
             try
             {
-                TDomain domain = (TDomain)e.UserToken;
                 if (e.SocketError == SocketError.Success)
                 {
-                    Receive(domain);
+                    //Receive(domain);
                 }
                 else
                 {
                     CloseClientSocket(domain);
                 }
             }
-            catch
+            catch(Exception ex)
             {
+                ServerErrorEvent?.Invoke(domain, CreateExceptionEvent(ex, "ProcessSend error"));
             }
         }
-        private void ProcessSend(SocketAsyncEventArgs e, bool acceptReceive = true)
-        {
-            try
-            {
-                TDomain domain = (TDomain)e.UserToken;
-                if (e.SocketError == SocketError.Success)
-                {
-                    if(acceptReceive)
-                        Receive(domain);
-                }
-                else
-                {
-                    CloseClientSocket(domain);
-                }
-            }
-            catch
-            {
-            }
-        }
-        /*  private void CloseClientSocket(SocketAsyncEventArgs e)
-          {
-              T domain = (T)e.UserToken;
-              Socket socket = (GetSocketFromDomain(domain));
-              //ServerEvent?.Invoke(connection, new ServerEventArg(ServerEventType.LostConnection));
-              try
-              {
-                  socket.Shutdown(SocketShutdown.Both);
-              }
-              catch (SocketException socketEx)
-              {
-                  Log.ForContext("FileName", this.GetType().Name).Error(socketEx, "Socket error");
-              }
-              catch (Exception ex)
-              {
-                  Log.ForContext("FileName", this.GetType().Name).Error(ex, "CloseClientSocket error");
-              }
-              socket.Close();
-
-              // decrement the counter keeping track of the total number of clients connected to the server
-              Interlocked.Decrement(ref numberConnectedSockets);
-
-              // Free the SocketAsyncEventArg so they can be reused by another client
-              readWritePool.Push(e);
-
-
-              maxNumberAcceptedClients.Release();
-              Log.ForContext("FileName", this.GetType().Name).Information("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
-          }*/
         private void CloseClientSocket(TDomain domain)
         {
-            var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
-            Socket socket = GetSocketFromDomain(domain);
-            //ServerEvent?.Invoke(connection, new ServerEventArg(ServerEventType.LostConnection));
             try
             {
-                socket.Shutdown(SocketShutdown.Both);
+                var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+                Socket socket = GetSocketFromDomain(domain);
+                try
+                {
+                    socket.Shutdown(SocketShutdown.Both);
+                }
+                catch (SocketException socketEx)
+                {
+                    ServerErrorEvent?.Invoke(domain, CreateExceptionEvent(socketEx, "CloseClientSocket error"));
+                }
+                catch (Exception ex)
+                {
+                    ServerErrorEvent?.Invoke(domain, CreateExceptionEvent(ex, "CloseClientSocket error"));
+                }
+                socket.Close();
+
+                // decrement the counter keeping track of the total number of clients connected to the server
+                Interlocked.Decrement(ref numberConnectedSockets);
+
+                // Free the SocketAsyncEventArg so they can be reused by another client
+                readWritePool.Push(read);
+                sendWritePool.Push(send);
+
+
+                maxNumberAcceptedClients.Release();
+                Log.ForContext("FileName", this.GetType().Name).Information("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
             }
-            catch (SocketException socketEx)
+            catch(Exception ex)
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(socketEx, "Socket error");
+                ServerErrorEvent?.Invoke(domain, CreateExceptionEvent(ex, "CloseClientSocket error"));
             }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "CloseClientSocket error");
-            }
-            socket.Close();
-
-            // decrement the counter keeping track of the total number of clients connected to the server
-            Interlocked.Decrement(ref numberConnectedSockets);
-
-            // Free the SocketAsyncEventArg so they can be reused by another client
-            readWritePool.Push(read);
-            sendWritePool.Push(send);
-
-
-            maxNumberAcceptedClients.Release();
-            Log.ForContext("FileName", this.GetType().Name).Information("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
         }
         public virtual  void Dispose()
         {

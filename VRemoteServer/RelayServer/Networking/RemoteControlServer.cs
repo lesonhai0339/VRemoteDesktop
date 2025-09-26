@@ -10,11 +10,11 @@ using VRemoteServer.RelayServer.Events;
 
 namespace VRemoteServer.RelayServer.Networking
 {
-    public interface IRemoteControlServer: IBaseServer<SocketConnection, RemoteControlEventArgs>
+    public interface IRemoteControlServer: IBaseServer<SocketConnection, RemoteControlEventArgs, RemoteControlErrorEventArgs>
     {
 
     }
-    public class RemoteControlServer : BaseServer<SocketConnection, RemoteControlEventArgs>, IRemoteControlServer, IDisposable
+    public class RemoteControlServer : BaseServer<SocketConnection, RemoteControlEventArgs, RemoteControlErrorEventArgs>, IRemoteControlServer, IDisposable
     {
         public RemoteControlServer(int numberOfConnections, int receiveBufferSize)
             : base(numberOfConnections, receiveBufferSize) { }
@@ -58,6 +58,11 @@ namespace VRemoteServer.RelayServer.Networking
         public override Socket GetSocketFromDomain(SocketConnection domain)
         {
             return domain.Socket;
+        }
+
+        public override RemoteControlErrorEventArgs CreateExceptionEvent(Exception ex, string note)
+        {
+            return new RemoteControlErrorEventArgs(ex, note);
         }
     }
 }

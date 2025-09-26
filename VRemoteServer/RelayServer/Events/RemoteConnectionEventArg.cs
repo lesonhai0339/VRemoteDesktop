@@ -9,23 +9,24 @@ namespace VRemoteServer.RelayServer.Events
 {
     public class RemoteConnectionEventArg: EventArgs
     {
-        public RemoteConnectionEventArg(SocketConnectionEventType type)
+        public RemoteConnectionEventArg(SocketDataType type)
         {
             Type = type;
             Id = string.Empty;
-            DataType = SocketDataType.None;
             Data = null;
         }
-        public RemoteConnectionEventArg(SocketConnectionEventType type, string id, SocketDataType dataType, byte[] data)
+        public RemoteConnectionEventArg(SocketDataType type, string id, byte[] data, int offset, int length)
         {
             Type = type;
             Id = id;
-            DataType = dataType;
             Data = data;
+            Offset = offset;
+            Length = length;
         }
-        public SocketConnectionEventType Type { get; set; }
+        public SocketDataType Type { get; set; }
         public string Id { get; set; }
-        public SocketDataType DataType { get; set; }
         public byte[] Data { get; set; }
+        public int Offset { get; set; }
+        public int Length { get; set; }
     }
 }

@@ -27,13 +27,13 @@ namespace VRemoteServer
                     //services.AddScoped<RemoteDesktopServer>();
                     //services.AddScoped<SocketListener>();
                     //services.AddScoped<IServer, Server>();
-                    services.AddScoped<ILoginServer>(sp =>new LoginServer(5, 1024 * 16));
-                    services.AddScoped<IRemoteControlServer>(sp => new RemoteControlServer(5, 1024 * 16));
-                    services.AddScoped<IRemoteConnectionManager, RemoteConnectionManager>();
-                    services.AddScoped<ISocketConnectionManager, SocketConnectionManager>();
-                    services.AddScoped<ILoginManager, LoginManager>();
-                    services.AddScoped<IRemoteControlManager, RemoteControlManager>();
-                    services.AddSingleton<IRelayServerManager, RelayServerManager>();
+                    services.AddScoped<ILoginServer>(sp =>new LoginServer(10, 1024 * 32));
+                    services.AddScoped<IRemoteControlServer>(sp => new RemoteControlServer(10, 1024 * 32));
+                    services.AddScoped<IRemoteConnectionManager, RemoteControlManager>();
+                    services.AddScoped<ISocketConnectionManager, LoginManager>();
+                    services.AddScoped<ILoginManager, LoginManagerService>();
+                    services.AddScoped<IRemoteControlManager, RemoteControlManagerService>();
+                    services.AddSingleton<IRelayServerManager, RelayServerManagerService>();
                 })
                 .Build();
 

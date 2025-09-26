@@ -10,23 +10,33 @@ namespace VRemoteServer.RelayServer.Events
 {
     public class SocketConnectionEventArg: EventArgs
     {
-        public SocketConnectionEventArg(SocketConnectionEventType type)
+        public SocketConnectionEventArg(SocketDataType type)
         {
             Type = type;
-            Id = string.Empty;
-            DataType = SocketDataType.None;
-            Data = null;    
         }
-        public SocketConnectionEventArg(SocketConnectionEventType type, string id, SocketDataType dataType, byte[] data) 
+        public SocketConnectionEventArg(SocketDataType type, string id)
         {
             Type = type;
             Id = id;
-            DataType = dataType;
-            Data = data;
         }
-        public SocketConnectionEventType Type { get;set; }   
-        public string Id { get; set; }
-        public SocketDataType DataType { get; set; }
-        public byte[] Data { get; set; }
+        public SocketConnectionEventArg(SocketDataType type, string id, byte[] data) 
+        {
+            Type = type;
+            Id = id;
+            Data = data;
+            Length = 0;
+        }
+        public SocketConnectionEventArg(SocketDataType type, string id, int offset, int length)
+        {
+            Type = type;
+            Id = id;
+            Offset = offset;
+            Length = length;
+        }
+        public SocketDataType Type { get;set; }
+        public string Id { get; set; } = string.Empty;
+        public byte[] Data { get; set; } = null;
+        public int Offset { get; set; } = 0;
+        public int Length { get; set; } = 0;
     }
 }

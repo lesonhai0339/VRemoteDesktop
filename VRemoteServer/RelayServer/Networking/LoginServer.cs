@@ -10,11 +10,11 @@ using VRemoteServer.RelayServer.Events;
 
 namespace VRemoteServer.RelayServer.Networking
 {
-    public interface ILoginServer: IBaseServer<SocketConnection, LoginEventArgs>
+    public interface ILoginServer: IBaseServer<SocketConnection, LoginEventArgs, LoginErrorEventArgs>
     {
 
     }
-    public class LoginServer : BaseServer<SocketConnection, LoginEventArgs>, ILoginServer, IDisposable
+    public class LoginServer : BaseServer<SocketConnection, LoginEventArgs, LoginErrorEventArgs>, ILoginServer, IDisposable
     {
         public LoginServer(int numberOfConnections, int receiveBufferSize)
             : base(numberOfConnections, receiveBufferSize) { }
@@ -57,6 +57,11 @@ namespace VRemoteServer.RelayServer.Networking
         public override Socket GetSocketFromDomain(SocketConnection domain)
         {
             return domain.Socket;
+        }
+
+        public override LoginErrorEventArgs CreateExceptionEvent(Exception ex, string note)
+        {
+            return new LoginErrorEventArgs(ex, note);
         }
     }
 }
