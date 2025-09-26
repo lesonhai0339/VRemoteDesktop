@@ -71,7 +71,9 @@ namespace VRemoteServer.RelayServer.Services
             try
             {
                 var (length, type, connectionId) = PacketFactory.GetHeaderDataFromPacket(connection.Reader.Buffer, dataOffset, dataLength);
-                if(length < 0 || type == SocketDataType.None || string.IsNullOrEmpty(connectionId))
+                Console.WriteLine("TotalLength Received: " + length);
+
+                if (length < 0 || type == SocketDataType.None || string.IsNullOrEmpty(connectionId))
                 {
                     Log.ForContext("FileName", this.GetType().Name).Error("ParsePacketToData: Invalid packet header, ignore packet");
                     return;

@@ -148,11 +148,17 @@ namespace VRemoteServer.RelayServer.Domains
             }
             try
             {
+                //Vấn đề nằm ở ProcessP2PConnect trong RelayServer manager, khi sender là socket dùng để login
+                //và buffer data của nó chứa dữ liệu login không phải dữ liệu p2p connect
+                //cần xử lý phần này(có thể truyền socket request p2p connection hoặc truyền địa chỉ buffer)
+                int datLength = BitConverter.ToInt32(read.Buffer, offset);
+                Console.WriteLine("TotalLength Send: " + datLength);
                 if (send.Buffer == null || send.Buffer.Length < length)
                 {
                     send.SetBuffer(new byte[length], 0, length);
                 }
-                Buffer.BlockCopy(read.Buffer, offset, send.Buffer, 0, length);
+                Array.Copy(read.Buffer, offset, send.Buffer, 0, length);
+                //Buffer.BlockCopy(read.Buffer, offset, send.Buffer, 0, length);
                 send.SetBuffer(send.Buffer, 0, length);
             }
             catch{}
@@ -268,7 +274,6 @@ namespace VRemoteServer.RelayServer.Domains
             try
             {
                 TDomain domain = (TDomain)e.UserToken;
-
                 if (e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
                     Interlocked.Add(ref totalBytesRead, e.BytesTransferred);

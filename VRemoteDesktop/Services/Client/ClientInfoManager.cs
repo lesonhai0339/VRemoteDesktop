@@ -90,7 +90,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
         public void UpdateMyInfo(byte[] data)
         {
             string rawInfo = ByteArrayHelper.ConvertByteArrayToString(data, Enums.EncodingType.ASCII).GetResult();
-            string[] info = StringHelper.StringToStringArrayWithSeparator(DefaultValue.DEFAULT_SEPARATOR);
+            string[] info = StringHelper.StringToStringArrayWithSeparator(rawInfo,  DefaultValue.DEFAULT_SEPARATOR);
             lock (_lock)
             {
                 _me.TryParseData(info);
