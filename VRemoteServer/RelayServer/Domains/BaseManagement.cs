@@ -19,9 +19,13 @@ namespace VRemoteServer.RelayServer.Domains
         T Get(Predicate<T> predicate);
         IEnumerable<T> GetAll();
         bool Get(string id, out T obj);
+        IEnumerable<T> GetAll(Predicate<T> predicate);
         string GetIdByValue(T obj);
         bool Update(string id, T obj);
         bool Remove(string id);
+        bool Remove(KeyValuePair<string, T> obj);
+        bool Remove(T obj);
+        bool Remove(Predicate<T> predicate);
         T TakeAndRemote(string id);
         bool TakeAndRemote(string id, out T obj);
         void Dispose();
@@ -53,6 +57,10 @@ namespace VRemoteServer.RelayServer.Domains
             }
             return null;
         }
+        public virtual IEnumerable<T> GetAll(Predicate<T> predicate)
+        {
+            return _keyValuePairs.Values.Where(x => predicate(x));
+        }
         public virtual bool Get(string id, out T obj)
            => _keyValuePairs.TryGetValue(id,out obj) ? true : false;
         public virtual IEnumerable<T> GetAll()
@@ -63,6 +71,42 @@ namespace VRemoteServer.RelayServer.Domains
             => _keyValuePairs.AddOrUpdate(id, addValueFactory: _ => newObj, updateValueFactory: (_, old) => newObj) != null;
         public virtual bool Remove(string id)
             => _keyValuePairs.TryRemove(id, out _);
+        public virtual bool Remove(KeyValuePair<string, T> obj)
+            => _keyValuePairs.TryRemove(obj);
+        public virtual bool Remove(T obj)
+        {
+            bool removed = false;
+
+            foreach (var kvp in _keyValuePairs.ToArray())
+            {
+                if (ReferenceEquals(kvp.Value, obj))
+                {
+                    if (_keyValuePairs.TryRemove(kvp.Key, out _))
+                    {
+                        removed = true;
+                    }
+                }
+            }
+
+            return removed;
+        }
+        public virtual bool Remove(Predicate<T> predicate)
+        {
+            bool removed = false;
+
+            foreach (var kvp in _keyValuePairs.ToArray())
+            {
+                if (predicate(kvp.Value))
+                {
+                    if (_keyValuePairs.TryRemove(kvp.Key, out _))
+                    {
+                        removed = true;
+                    }
+                }
+            }
+
+            return removed;
+        }
         public virtual T TakeAndRemote(string id)
             => _keyValuePairs.TryRemove(id, out var result) ? result : null;
         public virtual bool TakeAndRemote(string id, out T obj)

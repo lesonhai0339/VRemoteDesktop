@@ -21,17 +21,14 @@ namespace VRemoteServer.RelayServer.Services
         SocketConnection GetPartner(SocketConnection me);
         bool GetPartner(SocketConnection me, out SocketConnection partner);
         bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
-        event EventHandler<RemoteConnectionEventArg> remoteSocketManagerEvent;
     }
     public class RemoteControlManager : BaseManagement<RemoteConnection>, IRemoteConnectionManager, IDisposable 
     {
-        public event EventHandler<RemoteConnectionEventArg> remoteSocketManagerEvent;
         public bool AddController(string id, SocketConnection controller)
         {
             RemoteConnection remoteConnection = new RemoteConnection(id, controller);
             if (base.Add(id, remoteConnection))
             {
-                controller.SocketConnectionEvent += SocketConnectionEventHandler;
                 return true;
             }
             return false;
@@ -43,7 +40,6 @@ namespace VRemoteServer.RelayServer.Services
             if (base.Get(id, out remoteConnection))
             {
                 remoteConnection.Controlled = controlled;
-                controlled.SocketConnectionEvent += SocketConnectionEventHandler;
                 return true;
             }
             return false;
@@ -77,40 +73,6 @@ namespace VRemoteServer.RelayServer.Services
             {
                 return false;
             }
-        }
-        public override bool Remove(string id)
-        {
-            if(Get(id, out var remoteConnection))
-            {
-                if(remoteConnection.Controller != null)
-                {
-                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
-                }
-                if (remoteConnection.Controlled != null)
-                {
-                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
-                }
-            }
-            return base.Remove(id);
-        }
-        public override void Dispose()
-        {
-            foreach(var remoteConnection in this.GetAll())
-            {
-                if (remoteConnection.Controller != null)
-                {
-                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
-                }
-                if (remoteConnection.Controlled != null)
-                {
-                    remoteConnection.Controller.SocketConnectionEvent -= SocketConnectionEventHandler;
-                }
-            }
-            base.Dispose();
-        }
-        private void SocketConnectionEventHandler(object sender, SocketConnectionEventArg e)
-        {
-            remoteSocketManagerEvent?.Invoke(sender, new RemoteConnectionEventArg(e.Type, e.Id, e.Data, e.Offset, e.Length));
         }
     }
 }

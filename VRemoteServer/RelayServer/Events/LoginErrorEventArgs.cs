@@ -13,8 +13,7 @@ namespace VRemoteServer.RelayServer.Events
         {
             Exception = exception;
             Note = note;
-        }
-        public Exception Exception { get; set; }
+        }        public Exception Exception { get; set; }
         public string Note { get; set; }
     }  
 }

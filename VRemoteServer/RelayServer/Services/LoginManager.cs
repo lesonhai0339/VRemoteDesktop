@@ -1,5 +1,7 @@
 ﻿using Serilog;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -19,12 +21,39 @@ namespace VRemoteServer.RelayServer.Services
     /// </summary>
     public interface ISocketConnectionManager : IBaseManagement<ConnectionInfo>
     {
+        bool RemoveLoginInfoBySocketConnection(SocketConnection connection);
+        bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo);
         bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo);
-        event EventHandler<SocketConnectionManagerEventArg> SocketConnectionManagerEvent;
     }
     public class LoginManager: BaseManagement<ConnectionInfo>, ISocketConnectionManager, IDisposable 
     {
-        public event EventHandler<SocketConnectionManagerEventArg> SocketConnectionManagerEvent;
+        public bool RemoveLoginInfoBySocketConnection(SocketConnection connection)
+        {
+            try
+            {
+                var loginsInfo = GetAll(v => ReferenceEquals(v.SocketConnection, connection)).ToList();
+                bool removed = false;
+                foreach (var loginInfo in loginsInfo)
+                {
+                    if (base.Remove(loginInfo))
+                        removed = true;
+                }
+                return removed;
+            }
+            catch 
+            {
+                return false;
+            }
+        }
+        public bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo)
+        {
+            connectionsInfo = base.GetAll().Where(x => ReferenceEquals(x.SocketConnection, connection)).ToList();
+            if(connectionsInfo.Count > 0)
+            {
+                return true;
+            }
+            return false;
+        }
         public bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo)
         {
             connectionInfo = null;
@@ -44,37 +73,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             connectionInfo.PublicIP = socketConnection.IP;
             connectionInfo.SocketConnection = socketConnection;
-            connectionInfo.SocketConnection.IsReceivedFirstPacket = true;
-            socketConnection.SocketConnectionEvent += SocketConnectionEventHandler;
             return Add(connectionInfo.Id, connectionInfo);
-        }
-        /// <summary>
-        /// remove connectionInfo and unregister event
-        /// </summary>
-        /// <param name="id"></param>
-        /// <returns></returns>
-        public override bool Remove(string id)
-        {
-            if(base.TakeAndRemote(id, out var connectionInfo))
-            {
-                connectionInfo.SocketConnection.SocketConnectionEvent -= SocketConnectionEventHandler;
-                return true;
-            }
-            return false;
-        }
-        private void SocketConnectionEventHandler(object sender, SocketConnectionEventArg e)
-        {
-            SocketConnectionManagerEvent?.Invoke(sender, new SocketConnectionManagerEventArg(SocketConnectionManagerEventType.DataReceived, e));
-        }
-        public override void Dispose()
-        {
-            foreach(var connectionInfo in GetAll())
-            {
-                lock (connectionInfo)
-                {
-                    connectionInfo.SocketConnection.SocketConnectionEvent -= SocketConnectionEventHandler;    
-                }
-            }
         }
     }
 }

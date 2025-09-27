@@ -15,7 +15,6 @@ namespace VRemoteServer.RelayServer.Networking
 {
     public class SocketConnection : IDisposable
     {
-        private bool _receivedFirstPacket;
         private string _ip;
         private bool _disposed;
         private Socket _socket;
@@ -52,7 +51,6 @@ namespace VRemoteServer.RelayServer.Networking
         public event EventHandler<SocketConnectionEventArg> SocketConnectionEvent;
         public SocketConnection(SocketAsyncEventArgs readSocketAsyncEventArgs, SocketAsyncEventArgs sendSocketAsyncEventArgs, Socket socket)
         {
-            _receivedFirstPacket = false;
             _disposed = false;
             _lastSendTime = DateTimeOffset.UtcNow; //init before check timeout
             _socket = socket;
@@ -63,23 +61,6 @@ namespace VRemoteServer.RelayServer.Networking
             _timer = new Timer(CheckTimeOut, null, TimeSpan.FromSeconds(SCHEDULE_TIME), TimeSpan.FromSeconds(SCHEDULE_TIME));
         }
         #region Properties
-        public bool IsReceivedFirstPacket
-        {
-            get
-            {
-                lock (_lockProperty)
-                {
-                    return _receivedFirstPacket;
-                }
-            }
-            set
-            {
-                lock (_lockProperty)
-                {
-                    _receivedFirstPacket = value;
-                }
-            }
-        }
         public string IP
         {
             // if current ip is null, try to get it from RemoteEndPoint
@@ -195,22 +176,22 @@ namespace VRemoteServer.RelayServer.Networking
             {
                 Log.ForContext("SocketConnectionIP", IP)
                    .Warning("Client has been idle for too long, disconnecting...");
-                Dispose();
+                SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Disconnected));
             }
             else if (!CheckAlive())
             {
                 Log.ForContext("SocketConnectionIP", IP)
                    .Warning("Client is not connected anymore, disconnecting...");
-                Dispose();
+                SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Disconnected));
             }
         }
         private void ProcessData(SocketDataType type, string id, byte[] buffer)
         {
-            SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(type, id, buffer));
+            SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, buffer));
         }
         private void ProcessData(SocketDataType type, string id, int offset, int length)
         {
-            SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(type, id, offset, length));
+            SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, offset, length));
         }
         private (int length, SocketDataType type, string id) GetHeader(byte[] buffer, int offset)
         {
@@ -635,23 +616,7 @@ namespace VRemoteServer.RelayServer.Networking
 
             try
             {
-                SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketDataType.Disconnect));
-
-                try
-                {
-                    _socket?.Shutdown(SocketShutdown.Both);
-                    _socket?.Close();
-                }
-                catch(ObjectDisposedException) { }
-                catch (Exception ex)
-                {
-                    Log.ForContext("SocketConnectionIP", IP)
-                         .Error(ex, "An error occurred while disposing the client socket.");
-                }
-
-                _timer?.Dispose();
-                _readSocketAsyncEventArgs?.Dispose();
-                _sendSocketAsyncEventArgs?.Dispose();   
+                _timer?.Dispose(); 
                 _socket?.Dispose();
                 _currentHeader = null;
                 _remainingData = null;

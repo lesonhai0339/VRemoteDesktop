@@ -17,6 +17,8 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManager
     {
+        bool RemoveLogin(SocketConnection connection);
+        bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo);
         bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo);
         void InitServer();
         Task StartServer(IPEndPoint ep);
@@ -45,13 +47,17 @@ namespace VRemoteServer.RelayServer.Services
 
             //Register event
             _loginServer.ServerEvent += LoginEventHandler;
-            _loginConnectionManager.SocketConnectionManagerEvent += LoginConnectionDataCallbackEventHandler;
+            _loginServer.ServerErrorEvent += ServerErrorEventHandler;
         }
         #region Properties
         #endregion
         #region Methods
         public bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo)
             => _loginConnectionManager.Get(id, out connectionInfo);
+        public bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo)
+            => _loginConnectionManager.GetConnectionsInfoBySocketConnection(connection, out connectionsInfo);
+        public bool RemoveLogin(SocketConnection connection)
+            => _loginConnectionManager.RemoveLoginInfoBySocketConnection(connection);
         public void InitServer()
         {
             _loginServer.Init();
@@ -199,7 +205,7 @@ namespace VRemoteServer.RelayServer.Services
         }
         #endregion
         #region Events
-        private void LoginEventHandler(object sender, LoginEventArgs e)
+        private void LoginEventHandler(object sender, SocketConnectionEventArg e)
         {
             if(sender is SocketConnection connection)
             {
@@ -211,16 +217,24 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
             }
         }
-        private void LoginConnectionDataCallbackEventHandler(object sender, SocketConnectionManagerEventArg e)
+        private void ServerErrorEventHandler(object sender, LoginErrorEventArgs e)
         {
-            if (sender is SocketConnection connection)
+            if(sender is SocketConnection connection)
             {
-
+                if (_loginConnectionManager.RemoveLoginInfoBySocketConnection(connection))
+                {
+                    Console.WriteLine("Remove login info success");
+                }
+                else
+                {
+                    Console.WriteLine("Remove login info failed");
+                }
             }
             else
             {
-                Log.ForContext("FileName", this.GetType().Name).Error("LoginConnectionDataCallbackEventHandler invalid object");
+                Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
             }
+            // LoginManagerEvent?.Invoke(sender, new LoginEventArgs(ServerEventType.ConnectionDisconnected));
         }
         #endregion
         public void Dispose()
@@ -236,10 +250,10 @@ namespace VRemoteServer.RelayServer.Services
                 try
                 {
                     if (_loginServer != null)
+                    {
                         _loginServer.ServerEvent -= LoginEventHandler;
-
-                    if (_loginConnectionManager != null)
-                        _loginConnectionManager.SocketConnectionManagerEvent -= LoginConnectionDataCallbackEventHandler;
+                        _loginServer.ServerErrorEvent -= ServerErrorEventHandler;
+                    }
 
                     _loginServer?.Dispose();
                     _loginConnectionManager?.Dispose();

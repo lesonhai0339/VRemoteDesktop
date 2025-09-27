@@ -10,11 +10,11 @@ using VRemoteServer.RelayServer.Events;
 
 namespace VRemoteServer.RelayServer.Networking
 {
-    public interface IRemoteControlServer: IBaseServer<SocketConnection, RemoteControlEventArgs, RemoteControlErrorEventArgs>
+    public interface IRemoteControlServer: IBaseServer<SocketConnection, SocketConnectionEventArg, RemoteControlErrorEventArgs>
     {
 
     }
-    public class RemoteControlServer : BaseServer<SocketConnection, RemoteControlEventArgs, RemoteControlErrorEventArgs>, IRemoteControlServer, IDisposable
+    public class RemoteControlServer : BaseServer<SocketConnection, SocketConnectionEventArg, RemoteControlErrorEventArgs>, IRemoteControlServer, IDisposable
     {
         public RemoteControlServer(int numberOfConnections, int receiveBufferSize)
             : base(numberOfConnections, receiveBufferSize) { }
@@ -22,25 +22,12 @@ namespace VRemoteServer.RelayServer.Networking
         {
            domain.CalCuLateData(offset, length);
         }
-        public override void SetFirstPacket(SocketConnection domain)
-        {
-            domain.IsReceivedFirstPacket = !domain.IsReceivedFirstPacket;
-        }
-        public override bool ReceivedFirstPacket(SocketConnection domain)
-        {
-            return domain.IsReceivedFirstPacket;
-        }
-        public override SocketConnection CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket)
+        public override SocketConnection CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket, EventHandler<SocketConnectionEventArg> dataCallbackEvent)
         {
             SocketConnection connection = new SocketConnection(read, send, socket);
+            connection.SocketConnectionEvent += dataCallbackEvent;
             return connection;
         }
-
-        public override RemoteControlEventArgs CreateEventFromData(ServerEventType type, int offset, int length)
-        {
-            return new RemoteControlEventArgs(type, offset, length);
-        }
-
         public override (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(SocketConnection domain)
         {
             return (domain.Reader, domain.Sender);
@@ -59,8 +46,17 @@ namespace VRemoteServer.RelayServer.Networking
         {
             return domain.Socket;
         }
+        public override SocketConnectionEventType GetEventTypeFromDomainEvent(SocketConnectionEventArg domainEvent)
+        {
+            return domainEvent.EventType;
+        }
 
-        public override RemoteControlErrorEventArgs CreateExceptionEvent(Exception ex, string note)
+        public override void UnRegisterEvent(SocketConnection domain, EventHandler<SocketConnectionEventArg> domainEvent)
+        {
+            domain.SocketConnectionEvent -= domainEvent;
+        }
+
+        public override RemoteControlErrorEventArgs InitException(Exception ex, string note)
         {
             return new RemoteControlErrorEventArgs(ex, note);
         }

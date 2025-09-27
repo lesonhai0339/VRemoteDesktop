@@ -6,11 +6,10 @@ using System.Threading.Tasks;
 
 namespace VRemoteServer.RelayServer.Enums
 {
-    public enum SocketConnectionManagerEventType
+    public enum ErrorType
     {
-        None,
-        DataReceived,
-        Disconnected,
-        Dispose
+        Exception,
+        SocketDisconnected,
+
     }
 }

@@ -9,6 +9,10 @@ namespace VRemoteServer.RelayServer.Events
 {
     public class LoginEventArgs: EventArgs   
     {
+        public LoginEventArgs(ServerEventType type)
+        {
+            Type = type;
+        }
         public LoginEventArgs(ServerEventType type, int offset, int length)
         {
             Type = type;
@@ -17,7 +21,7 @@ namespace VRemoteServer.RelayServer.Events
         }
 
         public ServerEventType Type { get; set; }
-        public int Offset { get; set; }
-        public int Length { get; set; }
+        public int Offset { get; set; } = 0;
+        public int Length { get; set; } = 0;
     }
 }

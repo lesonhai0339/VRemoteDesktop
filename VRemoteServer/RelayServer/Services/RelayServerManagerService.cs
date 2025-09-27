@@ -39,6 +39,7 @@ namespace VRemoteServer.RelayServer.Services
             _remoteControlManager = remoteControlManager;
 
             //Register events
+            _loginManager.LoginManagerEvent += LoginManagerEventHandler;
             _remoteControlManager.RemoteControlManagerEvent += RemoteControlManagerEventHandler;
             //_server.ServerEvent += ServerEventHandler;
             //_socketConnectionManager.SocketConnectionManagerEvent += SocketConnectionManagerEventHandler;
@@ -112,7 +113,7 @@ namespace VRemoteServer.RelayServer.Services
             {
                 SocketDataType.P2PRequestConnect => ProcessP2PRequestConnect(sender, e.SocketId, e.PartnerId, e.Data),
                 SocketDataType.P2PAcceptConnect => ProcessP2PAcceptedConnect(sender, e.SocketId, e.DataOffset, e.DataLength),
-                SocketDataType.P2PDataSend => ProcessP2PDataTransfer(sender, e.SocketId, e.Data, e.DataOffset, e.DataLength),
+                _ => ProcessP2PDataTransfer(sender, e.SocketId, e.Data, e.DataOffset, e.DataLength)
             };
             if (status)
             {
@@ -123,7 +124,33 @@ namespace VRemoteServer.RelayServer.Services
 
             }
         }
-
+        private void LoginManagerEventHandler(object sender, LoginEventArgs e)
+        {
+            if(sender is SocketConnection connection)
+            {
+                bool result = e.Type switch
+                {
+                    ServerEventType.ConnectionDisconnected => ProcessSocketConnectionDisconnected(connection),
+                    _ => false
+                };
+                if (result)
+                {
+                    //Success
+                }
+                else
+                {
+                    //Failed
+                }
+            }
+            else
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error($"Object type {sender.GetType()} does not matches with {typeof(SocketConnection)}");
+            }
+        }
+        private bool ProcessSocketConnectionDisconnected(SocketConnection connection)
+        {
+            return _loginManager.RemoveLogin(connection);
+        }
         private bool ProcessP2PDataTransfer(object sender, string remoteConnectionId, byte[] data, int offset, int length)
         {
             if (sender is SocketConnection socketSender)
