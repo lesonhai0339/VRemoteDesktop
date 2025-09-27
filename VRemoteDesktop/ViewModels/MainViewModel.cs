@@ -74,8 +74,8 @@ namespace VRemoteDesktop.ViewModels
         #region Methods
         public void Connect(VClient client = null)
         {
-            string ip = AppSettingHelper.GetValue("RemoteServerIP");// ?? "27.0.12.78";
-            string port = AppSettingHelper.GetValue("RemoteServerPort");// ?? "2399";
+            string ip = AppSettingHelper.GetValue("ServerIP");// ?? "27.0.12.78";
+            string port = AppSettingHelper.GetValue("LoginPort");// ?? "2399";
 
             if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
             {
@@ -134,6 +134,7 @@ namespace VRemoteDesktop.ViewModels
                         break;
                     case SocketDataType.P2PRequestConnect:
                     case SocketDataType.P2PAcceptConnect:
+                    case SocketDataType.P2PConnectFailed:
                         PartnerAcceptP2PConnect(sender, e);
                         break;
                     case SocketDataType.Error:

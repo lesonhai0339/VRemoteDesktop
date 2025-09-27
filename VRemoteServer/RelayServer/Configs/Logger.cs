@@ -6,10 +6,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-
-namespace VRemoteServer.Utils
+namespace VRemoteServer.RelayServer.Configs
 {
-    public static class Logger
+    internal static class Logger
     {
         public static void Config()
         {

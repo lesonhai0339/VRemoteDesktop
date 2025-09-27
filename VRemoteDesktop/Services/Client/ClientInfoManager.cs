@@ -18,7 +18,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
     {
         ClientInfo GetMyInfo();
         string GetLocalIPAddress();
-        void UpdateMyInfo(byte[] publicIp);
+        void UpdateMyInfo(byte[] data);
         void UpdateMyInfo(ClientInfo info);
         bool IsAuthenticated(byte[] bytes, out ClientInfo clientInfo, out string connectionId);
     }
@@ -70,8 +70,8 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 MajorVersion = os.Version.Major.ToString(),
                 MinorVersion = os.Version.Minor.ToString(),
                 Ip = GetLocalIPAddress(),
-                Port = AppSettingHelper.GetValue("RemoteServerPort"),
-                PublicIP = ""
+                Port = AppSettingHelper.GetValue("LoginPort"),
+                PublicIP = null
             };
             return info;
         }
@@ -87,12 +87,13 @@ namespace VRemoteDesktop.Services.ConnectionManager
             }
             return "";
         }
-        public void UpdateMyInfo(byte[] publicIp)
+        public void UpdateMyInfo(byte[] data)
         {
-            string myPublicIP= Helpers.ByteArrayHelper.ConvertByteArrayToString(publicIp, Enums.EncodingType.ASCII).GetResult();
+            string rawInfo = ByteArrayHelper.ConvertByteArrayToString(data, Enums.EncodingType.ASCII).GetResult();
+            string[] info = StringHelper.StringToStringArrayWithSeparator(rawInfo,  DefaultValue.DEFAULT_SEPARATOR);
             lock (_lock)
             {
-                _me.PublicIP = myPublicIP;
+                _me.TryParseData(info);
             }
         }
         public void UpdateMyInfo(ClientInfo info)

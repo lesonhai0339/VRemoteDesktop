@@ -67,9 +67,9 @@ namespace VRemoteDesktop.Services.FileService
                     ? ((DateTime)prop.GetValue(this, null)).ToString(DEFAULT_DATETIME_FORMAT)
                     : prop.GetValue(this, null).ToString() 
                     ?? string.Empty)
-                .Append(DEFAULT_SEPRATOR);
+                .Append(DEFAULT_SEPARATOR);
             }
-            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPRATOR));
+            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPARATOR));
         }
     }
     [DataContract]
@@ -121,9 +121,9 @@ namespace VRemoteDesktop.Services.FileService
                     ? ((DateTime)prop.GetValue(this, null)).ToString(DEFAULT_DATETIME_FORMAT)
                     : prop.GetValue(this, null).ToString()
                     ?? string.Empty)
-                .Append(DEFAULT_SEPRATOR);
+                .Append(DEFAULT_SEPARATOR);
             }
-            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPRATOR));
+            return sb.ToString().TrimEnd(char.Parse(DEFAULT_SEPARATOR));
         }
     }
     public class ChatMessage
@@ -314,7 +314,7 @@ namespace VRemoteDesktop.Services.FileService
         {
             chatText = null;
 
-            string[] data = rawString.Split(char.Parse(DEFAULT_SEPRATOR));
+            string[] data = rawString.Split(char.Parse(DEFAULT_SEPARATOR));
             if (data.Length != typeof(ChatText).GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
                 return false;
 
@@ -340,7 +340,7 @@ namespace VRemoteDesktop.Services.FileService
         {
             chatFile = null;
 
-            string[] data = rawString.Split(char.Parse(DEFAULT_SEPRATOR));
+            string[] data = rawString.Split(char.Parse(DEFAULT_SEPARATOR));
             if (data.Length != typeof(ChatFile).GetProperties(BindingFlags.Public | BindingFlags.Instance).Length)
                 return false;
             if (!Enum.TryParse(data[1], out ChatContentTypeEnum type))

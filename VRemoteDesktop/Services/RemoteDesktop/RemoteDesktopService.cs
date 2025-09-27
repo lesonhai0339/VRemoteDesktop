@@ -18,8 +18,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
     public class RemoteDesktopService : IDisposable
     {
        
-        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("RemoteServerIP");
-        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemoteServerPort");
+        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
+        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
 
         private readonly IClientInfoManager _clientInfo;
@@ -76,9 +76,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
             _reset.WaitOne(5000);
-            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPRATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, partnerId, true);
+            newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, newConnection.SocketId, true);
         }
         public void UpdateMyInfo(byte[] data)
         {
@@ -209,7 +209,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     ClientInfo partnerInfo = null;
 
                     string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPRATOR);
+                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
                     if(stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
                     {
                         if (StringHelper.StringValidate(stringArray))
@@ -409,6 +409,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     ProcessP2PConnectAccepted(sender, e);
                     DataReceivedEvent?.Invoke(sender, e);
                     break;
+                case SocketDataType.P2PConnectFailed:
+                    DataReceivedEvent?.Invoke(sender, e);
+                    break;
                 case SocketDataType.Mouse:
                     MouseReceivedEventHandler(sender, e);
                     break;
@@ -417,6 +420,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
                 case SocketDataType.P2PDisconnect:
                     ProcessP2PDisconnect(sender, e);
+                    break;
+                case SocketDataType.Error:
                     break;
                 default:
                     DataReceivedEvent?.Invoke(sender, e);

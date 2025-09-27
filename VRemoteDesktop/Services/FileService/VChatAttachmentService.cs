@@ -64,7 +64,7 @@ namespace VRemoteDesktop.Services.FileService
             if (rawData == null || rawData.Length == 0)
                 throw new ArgumentNullException(nameof(rawData));
 
-            string[] fileInfo = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(rawData), DEFAULT_SEPRATOR);
+            string[] fileInfo = Helpers.StringHelper.StringToStringArrayWithSeparator(Encoding.UTF8.GetString(rawData), DEFAULT_SEPARATOR);
 
             //At least for value (id, filename, fileExtension, file size)
             if (fileInfo.Length < DefaultFileInfo.FILE_INFO_MIN_FIELDS)

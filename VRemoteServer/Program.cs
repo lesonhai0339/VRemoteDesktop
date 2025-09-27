@@ -4,9 +4,10 @@ using Serilog;
 using System;
 using System.Net;
 using System.Threading.Tasks;
-using VRemoteServer.Services;
+using VRemoteServer.RelayServer.Domains;
+using VRemoteServer.RelayServer.Networking;
+using VRemoteServer.RelayServer.Services;
 using VRemoteServer.Utils;
-using static VRemoteServer.Services.RemoteDesktopConnectionServer;
 
 namespace VRemoteServer
 {
@@ -23,20 +24,40 @@ namespace VRemoteServer
             var host = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
-                    services.AddSingleton<RemoteDesktopServer>();
-                    services.AddSingleton<SocketListener>();
-                    services.AddSingleton<Server>();
+                    //services.AddScoped<RemoteDesktopServer>();
+                    //services.AddScoped<SocketListener>();
+                    //services.AddScoped<IServer, Server>();
+                    services.AddScoped<ILoginServer>(sp =>new LoginServer(10, 1024 * 32));
+                    services.AddScoped<IRemoteControlServer>(sp => new RemoteControlServer(10, 1024 * 32));
+                    services.AddScoped<IRemoteConnectionManager, RemoteControlManager>();
+                    services.AddScoped<ISocketConnectionManager, LoginManager>();
+                    services.AddScoped<ILoginManager, LoginManagerService>();
+                    services.AddScoped<IRemoteControlManager, RemoteControlManagerService>();
+                    services.AddSingleton<IRelayServerManager, RelayServerManagerService>();
                 })
                 .Build();
 
             //var listener = host.Services.GetRequiredService<SocketListener>();
             //await listener.Listen();
 
+            var server = host.Services.GetRequiredService<IRelayServerManager>();
+            IPEndPoint loginEP = new IPEndPoint(IPAddress.Any, 2399);
+            IPEndPoint remoteControlEP = new IPEndPoint(IPAddress.Any, 2400);
+            try
+            {
+                server.InitLoginServer();
+                server.InitRemoteControlServer();
 
-            var listener2 = host.Services.GetRequiredService<Server>();
-            IPEndPoint ep = new IPEndPoint(IPAddress.Any, 2399);
-            listener2.Init();
-            listener2.Start(ep);
+                var loginTask = server.StartLoginServer(loginEP);
+                var remoteTask = server.StartRemoteControlServer(remoteControlEP);
+
+                await Task.WhenAll(loginTask, remoteTask);
+            }
+            finally
+            {
+                server.CancelLoginServer();
+                server.CancelRemoteControlServer(); 
+            }
         }
     }
 }

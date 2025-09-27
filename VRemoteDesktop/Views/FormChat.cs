@@ -18,8 +18,6 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.ViewModels;
-using static System.Net.Mime.MediaTypeNames;
-using static System.Net.WebRequestMethods;
 using static VRemoteDesktop.Utils.Logger;
 using static VRemoteDesktop.Utils.DefaultForm;
 

@@ -1,29 +1,31 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-using System.Net;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using System.Threading.Tasks;
-using VRemoteDesktop.Utils;
+using VRemoteServer.RelayServer.Helpers;
+using VRemoteServer.RelayServer.Networking;
 
-namespace VRemoteServer.Models
+namespace VRemoteServer.RelayServer.DTOs
 {
     [DataContract]
-    public class ClientInfo
+    public class ConnectionInfo
     {
-        public ClientInfo() { }
-        public ClientInfo(string id,
-            string password,
-            string computerName,
-            int width,
-            int height,
-            string majorVersion,
-            string minorVersion,
-            string ip,
-            string publicIP,
-            string port)
+        public ConnectionInfo() { }
+        public ConnectionInfo(string id, 
+            string password, 
+            string computerName, 
+            int width, 
+            int height, 
+            string majorVersion, 
+            string minorVersion, 
+            string ip, 
+            string publicIP, 
+            string port,
+            SocketConnection socketConnection)
         {
             Id = id;
             Password = password;
@@ -35,6 +37,7 @@ namespace VRemoteServer.Models
             Ip = ip;
             PublicIP = publicIP;
             Port = port;
+            SocketConnection = socketConnection;
         }
         [DataMember(Order = 0)]
         public string Id { get; set; }
@@ -56,13 +59,16 @@ namespace VRemoteServer.Models
         public string Port { get; set; }
         [DataMember(Order = 9)]
         public string PublicIP { get; set; }
+
+        [NotMapped]
+        public SocketConnection SocketConnection { get; set; }
         public string ToNetworkString()
         {
             StringBuilder sb = new StringBuilder();
             var props = this.GetType()
                             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                            .Where(p => Attribute.GetCustomAttribute(p, typeof(DataMemberAttribute)) != null)
-                            .Select(p => new { prop = p, attr = (DataMemberAttribute)Attribute.GetCustomAttribute(p, typeof(DataMemberAttribute))})
+                            .Where(p => !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
+                            .Select(p => new { prop = p, attr = p.GetCustomAttribute<DataMemberAttribute>() })
                             .Where(p => p.attr != null)
                             .OrderBy(p => p.attr.Order)
                             .Select(p => p.prop)
@@ -70,17 +76,20 @@ namespace VRemoteServer.Models
 
             foreach (var prop in props)
             {
-                var value = prop.GetValue(this, null);
-                sb.Append(value ?? "-1").Append(DefaultValue.DEFAULT_SEPARATOR);
+                if (Attribute.IsDefined(prop, typeof(NotMappedAttribute)))
+                    continue;
+
+                var value = prop.GetValue(this);
+                sb.Append(value ?? string.Empty).Append(DefaultValue.Common.SEPARATOR);
             }
-            return sb.ToString().TrimEnd(DefaultValue.DEFAULT_SEPARATOR.ToCharArray());
+            return sb.ToString().TrimEnd(DefaultValue.Common.SEPARATOR);
         }
         public bool TryParseData(string[] data)
         {
             var props = this.GetType()
                             .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                            .Where(p => Attribute.GetCustomAttribute(p, typeof(DataMemberAttribute)) != null)
-                            .Select(p => new { prop = p, attr = (DataMemberAttribute)Attribute.GetCustomAttribute(p, typeof(DataMemberAttribute)) })
+                            .Where(p => !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
+                            .Select(p => new { prop = p, attr = p.GetCustomAttribute<DataMemberAttribute>() })
                             .Where(p => p.attr != null)
                             .OrderBy(p => p.attr.Order)
                             .Select(p => p.prop)
@@ -89,23 +98,23 @@ namespace VRemoteServer.Models
             if (data.Length != props.Length)
                 return false;
 
-            for (int i = 0; i < props.Length; i++)
+            for(int i = 0; i< props.Length; i++)
             {
                 var prop = props[i];
-                var type = Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
+                var type =  Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
 
                 try
                 {
                     object value;
                     if (string.IsNullOrEmpty(data[i]))
                     {
-                        value = type.IsValueType ? Activator.CreateInstance(type) : null;
+                        value = type.IsValueType ? Activator.CreateInstance(type) : null;   
                     }
                     else
                     {
                         value = Convert.ChangeType(data[i], type, System.Globalization.CultureInfo.InvariantCulture);
                     }
-                    prop.SetValue(this, value, null);
+                    prop.SetValue(this, value);
                 }
                 catch
                 {
@@ -115,36 +124,4 @@ namespace VRemoteServer.Models
             return true;
         }
     }
-    //public class ClientInfo
-    //{
-    //    public ClientInfo() { }
-    //    public ClientInfo(string id, string password, string computerName, int width, int height, string majorVersion, string minorVersion, string ip, string publicIP, string port)
-    //    {
-    //        Id = id;
-    //        Password = password;
-    //        ComputerName = computerName;
-    //        Width = width;
-    //        Height = height;
-    //        MajorVersion = majorVersion;
-    //        MinorVersion = minorVersion;
-    //        Ip = ip;
-    //        PublicIP = publicIP;
-    //        Port = port;
-    //    }
-
-    //    public string Id { get; set; }
-    //    public string Password { get; set; }
-    //    public string ComputerName { get; set; }
-    //    public int Width { get; set; }
-    //    public int Height { get; set; }
-    //    public string MajorVersion { get; set; }
-    //    public string MinorVersion { get; set; }
-    //    public string Ip { get; set; }
-    //    public string Port { get; set; }
-    //    public string PublicIP { get; set; }
-    //    public string ToNetworkString()
-    //    {
-    //        return string.Format("{0}|{1}|{2}|{3}|{4}|{5}|{6}|{7}|{8}|{9}", Id, Password, ComputerName, Width, Height, MajorVersion, MinorVersion, Ip, Port, PublicIP);
-    //    }
-    //}
 }
