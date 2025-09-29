@@ -293,7 +293,7 @@ namespace VRemoteServer.RelayServer.Domains
                     //CloseClientSocket(domain);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 ServerErrorEvent?.Invoke(domain, InitException(ex, "ProcessSend error"));
             }
