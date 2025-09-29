@@ -15,7 +15,7 @@ using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefa
 
 namespace VRemoteServer.RelayServer.Services
 {
-    public interface ILoginManager
+    public interface ILoginManagerService
     {
         bool RemoveLogin(SocketConnection connection);
         bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo);
@@ -26,15 +26,15 @@ namespace VRemoteServer.RelayServer.Services
         event EventHandler<LoginEventArgs> LoginManagerEvent;
         void Dispose();
     }
-    public class LoginManagerService : ILoginManager, IDisposable
+    public class LoginManagerService : ILoginManagerService, IDisposable
     {
         private bool _disposed;
         private readonly ILoginServer _loginServer;
-        private readonly ISocketConnectionManager _loginConnectionManager;
+        private readonly ILoginManager _loginConnectionManager;
         private readonly Dictionary<SocketDataType, Action<SocketConnection, byte[]>> _loginMethods;
 
         public event EventHandler<LoginEventArgs> LoginManagerEvent;
-        public LoginManagerService(ILoginServer loginServer, ISocketConnectionManager loginConnectionManager)
+        public LoginManagerService(ILoginServer loginServer, ILoginManager loginConnectionManager)
         {
             _disposed = false;
             _loginServer = loginServer;
@@ -43,6 +43,7 @@ namespace VRemoteServer.RelayServer.Services
             _loginMethods = new Dictionary<SocketDataType, Action<SocketConnection, byte[]>>
             {
                 {SocketDataType.Login, ProcessLogin},
+                {SocketDataType.Disconnect,  ProcessDisconnected}
             };
 
             //Register event
@@ -179,6 +180,10 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
         }
+        private void ProcessDisconnected(SocketConnection connection, byte[] data)
+        {
+            LoginManagerEvent?.Invoke(connection, new LoginEventArgs(ServerEventType.ConnectionDisconnected));
+        }
         private void Send(SocketConnection connection, byte[] data)
         {
             try
@@ -188,19 +193,6 @@ namespace VRemoteServer.RelayServer.Services
             catch (Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
-            }
-        }
-        private void Close(SocketConnection connection)
-        {
-            if(connection == null)
-                throw new ArgumentException(nameof(connection));    
-            try
-            {
-                _loginServer.Close(connection);
-            }
-            catch(Exception ex)
-            {
-                throw;
             }
         }
         #endregion

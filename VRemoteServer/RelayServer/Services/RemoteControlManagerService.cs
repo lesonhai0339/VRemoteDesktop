@@ -16,15 +16,18 @@ using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefa
 
 namespace VRemoteServer.RelayServer.Services
 {
-    public interface IRemoteControlManager
+    public interface IRemoteControlManagerService
     {
+        void SendDisconnect(SocketConnection connection);
         SocketConnection GetPartner(SocketConnection me);
         bool GetPartner(SocketConnection me, out SocketConnection partner);
         bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
+        IEnumerable<SocketConnection> GetPartners(SocketConnection me);
+        IEnumerable<RemoteConnection> GetRemoteConnectionsBySocketConnection(SocketConnection connection);
         bool RemoveRemoteConnection(string id);
         bool InitRemoteConnection(string id, SocketConnection controller);
         bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
-        void CloseConnection(SocketConnection connection);
+        void P2PConnectFailed(SocketConnection connection, string connectionId);
         void InitServer();
         Task StartServer(IPEndPoint ep);
         void CancelServer();
@@ -33,13 +36,13 @@ namespace VRemoteServer.RelayServer.Services
         event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
         void Dispose();
     }
-    public class RemoteControlManagerService : IRemoteControlManager, IDisposable
+    public class RemoteControlManagerService : IRemoteControlManagerService, IDisposable
     {
         private bool _disposed;
         private readonly IRemoteControlServer _remoteControlServer;
-        private readonly IRemoteConnectionManager _remoteConnectionManager;
+        private readonly IRemoteControlManager _remoteConnectionManager;
         public event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
-        public RemoteControlManagerService(IRemoteControlServer remoteControlServer, IRemoteConnectionManager remoteConnectionManager)
+        public RemoteControlManagerService(IRemoteControlServer remoteControlServer, IRemoteControlManager remoteConnectionManager)
         {
             _disposed = false;
             _remoteControlServer = remoteControlServer;
@@ -63,10 +66,16 @@ namespace VRemoteServer.RelayServer.Services
             => _remoteConnectionManager.GetPartner(me, out partner);
         public bool GetPartner(string id, SocketConnection me, out SocketConnection partner)
             => _remoteConnectionManager.GetPartner(id, me, out partner);
+        public IEnumerable<SocketConnection> GetPartners(SocketConnection me)
+            => _remoteConnectionManager.GetPartners(me);
+        public IEnumerable<RemoteConnection> GetRemoteConnectionsBySocketConnection(SocketConnection connection)
+            => _remoteConnectionManager.GetRemoteConnectionBySocketConnection(connection);
         public bool RemoveRemoteConnection(string id)
             => _remoteConnectionManager.Remove(id);
-        public void CloseConnection(SocketConnection connection)
-            => _remoteControlServer.Close(connection);
+        public void SendDisconnect(SocketConnection connection)
+        {
+
+        }
         private void ParseRequestToConnectHeader(SocketConnection connection, int dataOffset, int dataLength)
         {
             try
@@ -101,6 +110,11 @@ namespace VRemoteServer.RelayServer.Services
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, $"RemoteControlRequestToConnect error");
             }
+        }
+        public void P2PConnectFailed(SocketConnection connection, string connectionId)
+        {
+            byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, connectionId);
+            Send(connection, packet);
         }
         public void InitServer()
         {
@@ -145,6 +159,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             if(sender is SocketConnection connection)
             {
+                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PDisconnect));
                 //RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs());
             }
             else

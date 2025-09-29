@@ -7,16 +7,17 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Domains;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
 
 namespace VRemoteServer.RelayServer.Networking
 {
-    public class SocketConnection : IDisposable
+    public class SocketConnection : IDisposable, ITrackableDisposable
     {
         private string _ip;
-        private bool _disposed;
+        private int _disposed;
         private Socket _socket;
         private SocketAsyncEventArgs _readSocketAsyncEventArgs;
         private SocketAsyncEventArgs _sendSocketAsyncEventArgs;
@@ -51,7 +52,7 @@ namespace VRemoteServer.RelayServer.Networking
         public event EventHandler<SocketConnectionEventArg> SocketConnectionEvent;
         public SocketConnection(SocketAsyncEventArgs readSocketAsyncEventArgs, SocketAsyncEventArgs sendSocketAsyncEventArgs, Socket socket)
         {
-            _disposed = false;
+            _disposed = 0;
             _lastSendTime = DateTimeOffset.UtcNow; //init before check timeout
             _socket = socket;
             _readSocketAsyncEventArgs = readSocketAsyncEventArgs;
@@ -141,8 +142,17 @@ namespace VRemoteServer.RelayServer.Networking
                 }
             }
         }
+
+        public bool IsDisposed => _disposed == 1;
         #endregion
         #region Methods
+        public void UpdateTime()
+        {
+            lock (_lockProperty)
+            {
+                _lastSendTime = DateTimeOffset.UtcNow;
+            }
+        }
         private bool CheckAlive()
         {
             try
@@ -612,19 +622,13 @@ namespace VRemoteServer.RelayServer.Networking
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposing || _disposed) return;
+            Console.WriteLine(DateTime.Now.ToString("hh:mm:ss:fff"));
+            if (!disposing || Interlocked.Exchange(ref _disposed, 1) == 1) return;
 
-            try
-            {
-                _timer?.Dispose(); 
-                _socket?.Dispose();
-                _currentHeader = null;
-                _remainingData = null;
-            }
-            finally
-            {
-                _disposed = true;
-            }
+            _timer?.Dispose();
+            _socket?.Dispose();
+            _currentHeader = null;
+            _remainingData = null;
         }
     }
 }

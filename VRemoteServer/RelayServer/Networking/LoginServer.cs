@@ -61,5 +61,10 @@ namespace VRemoteServer.RelayServer.Networking
         {
             return new LoginErrorEventArgs(ex, note);
         }
+
+        public override void SetTime(SocketConnection domain)
+        {
+            domain.UpdateTime();
+        }
     }
 }
