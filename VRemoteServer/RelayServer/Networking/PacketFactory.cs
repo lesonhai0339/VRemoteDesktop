@@ -29,10 +29,6 @@ namespace VRemoteServer.RelayServer.Networking
                 //Packet size
                 int length = BitConverter.ToInt32(buffer, offset);
                 offset += PACKET_SIZE_LENGTH;
-                if (length != packetLength)
-                {
-                    throw new ArgumentOutOfRangeException(nameof(length));  
-                }
 
                 //Packet type
                 SocketDataType type = (SocketDataType)buffer[offset];

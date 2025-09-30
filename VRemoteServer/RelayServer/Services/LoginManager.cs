@@ -3,265 +3,77 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
+using System.Runtime.CompilerServices;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using VRemoteServer.RelayServer.DTOs;
+using VRemoteServer.RelayServer.Domains;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
 using VRemoteServer.RelayServer.Networking;
 using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
+using ConnectionInfo = VRemoteServer.RelayServer.DTOs.ConnectionInfo;
+
 
 namespace VRemoteServer.RelayServer.Services
 {
-    public interface ILoginManager
+    /// <summary>
+    /// Manager socket client connect to server
+    /// </summary>
+    public interface ILoginManager : IBaseManagement<ConnectionInfo>
     {
-        bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo);
-        void InitServer();
-        Task StartServer(IPEndPoint ep);
-        void CancelServer();
-        event EventHandler<LoginEventArgs> LoginManagerEvent;
-        void Dispose();
+        bool RemoveLoginInfoBySocketConnection(SocketConnection connection);
+        bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo);
+        bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo);
     }
-    public class LoginManager : ILoginManager, IDisposable
+    public class LoginManager: BaseManagement<ConnectionInfo>, ILoginManager, IDisposable 
     {
-        private bool _disposed;
-        private readonly ILoginServer _loginServer;
-        private readonly ISocketConnectionManager _loginConnectionManager;
-        private readonly Dictionary<SocketDataType, Action<SocketConnection, byte[]>> _loginMethods;
-
-        public event EventHandler<LoginEventArgs> LoginManagerEvent;
-        public LoginManager(ILoginServer loginServer, ISocketConnectionManager loginConnectionManager)
-        {
-            _disposed = false;
-            _loginServer = loginServer;
-            _loginConnectionManager = loginConnectionManager;
-
-            _loginMethods = new Dictionary<SocketDataType, Action<SocketConnection, byte[]>>
-            {
-                {SocketDataType.Login, ProcessLogin},
-            };
-
-            //Register event
-            _loginServer.ServerEvent += LoginEventHandler;
-            _loginConnectionManager.SocketConnectionManagerEvent += LoginConnectionDataCallbackEventHandler;
-        }
-        #region Properties
-        #endregion
-        #region Methods
-        public bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo)
-            => _loginConnectionManager.Get(id, out connectionInfo);
-        public void InitServer()
-        {
-            _loginServer.Init();
-        }
-        public async Task StartServer(IPEndPoint ep)
-        {
-
-            if (ep == null)
-                throw new ArgumentNullException(nameof(ep));
-
-            await _loginServer.Start(ep);
-        }
-        public void CancelServer()
-        {
-            _loginServer.Cancel();
-        }
-
-        private void ProcessLoginDataReceived(SocketConnection connection, int dataOffset, int dataLength)
+        public bool RemoveLoginInfoBySocketConnection(SocketConnection connection)
         {
             try
             {
-                if (dataOffset < 0)
+                var loginsInfo = GetAll(v => ReferenceEquals(v.SocketConnection, connection)).ToList();
+                bool removed = false;
+                foreach (var loginInfo in loginsInfo)
                 {
-                    Log.ForContext("FileName", this.GetType().Name).Error(new ArgumentNullException(nameof(dataOffset)), "ProcessSocketData error");
-                    return;
+                    if (base.Remove(loginInfo))
+                        removed = true;
                 }
-                if (dataLength < 0)
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error(new ArgumentNullException(nameof(dataLength)), "ProcessSocketData error");
-                    return;
-                }
-                if (connection.Reader == null || connection.Reader.Buffer == null)
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error(new ArgumentNullException(nameof(connection.Reader)), "ProcessSocketData error");
-                    return;
-                }
-
-                var buffer = connection.Reader.Buffer;
-                int offset = dataOffset + PACKET_SIZE_INDEX;
-                int payloadLength = dataLength - PACKET_HEADER_LENGTH;
-
-                byte[] data = new byte[payloadLength];
-
-                //Packet size
-                int packetSize = BitConverter.ToInt32(buffer, offset);
-                offset += PACKET_SIZE_LENGTH;
-                if (packetSize != dataLength)
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error(new ArgumentException(nameof(dataLength)), "Missing some data");
-                    return;
-                }
-
-                //Packet type
-                SocketDataType type = (SocketDataType)buffer[offset];
-                offset += PACKET_TYPE_LENGTH;
-
-                //Id
-                string id = Encoding.ASCII.ByteArrayToString(buffer, offset, PACKET_ID_LENGTH);
-                offset += PACKET_ID_LENGTH;
-
-                //Payload
-                Buffer.BlockCopy(buffer, offset, data, 0, payloadLength);
-
-                if(_loginMethods.TryGetValue(type, out var method))
-                {
-                    method(connection, data);
-                }
-                else
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error("Packet type does not match any method, ignore");
-                }
+                return removed;
             }
-            catch (Exception ex)
+            catch 
             {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessSocketData error on IP: {connection.IP}");
+                return false;
             }
         }
-        private void ProcessLogin(SocketConnection connection, byte[] data)
+        public bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo)
         {
-            try
+            connectionsInfo = base.GetAll().Where(x => ReferenceEquals(x.SocketConnection, connection)).ToList();
+            if(connectionsInfo.Count > 0)
             {
-                if (_loginConnectionManager.NewConnectionInfo(data, connection, out var connectionInfo))
-                {
-                    ProcessLoginSucceeded(connection, connectionInfo);
-                    Log.ForContext("FileName", this.GetType().Name).Information($"Login success on IP: {connection.IP}");
-                }
-                else
-                {
-                    ProcessLoginFailed(connection);
-                }
+                return true;
             }
-            catch(Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Login error");
-            }
+            return false;
         }
-        private void ProcessLoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo)
+        public bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo)
         {
-            try
-            {
-                byte[] data = Encoding.ASCII.StringToByteArray(connectionInfo.ToNetworkString());
-                byte[] packet = PacketFactory.CreatePacket(SocketDataType.Login, connectionInfo.Id, data);
-                Send(connection, packet);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
-            }
-        }
-        private void ProcessLoginFailed(SocketConnection connection)
-        {
-            try
-            {
-                byte[] packet = PacketFactory.CreatePacket(SocketDataType.LoginFailed, EMPTY_ID);
-                Send(connection, packet);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
-            }
-        }
-        private void Send(SocketConnection connection, byte[] data)
-        {
-            try
-            {
-                _loginServer.Send(connection, data);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
-            }
-        }
-        private void Receive(SocketConnection connection)
-        {
-            try
-            {
-                _loginServer.Receive(connection);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
-            }
-        }
-        private void Close(SocketConnection connection)
-        {
-            if(connection == null)
-                throw new ArgumentException(nameof(connection));    
-            try
-            {
-                _loginServer.Close(connection);
-            }
-            catch(Exception ex)
-            {
-                throw;
-            }
-        }
-        #endregion
-        #region Events
-        private void LoginEventHandler(object sender, LoginEventArgs e)
-        {
-            if(sender is SocketConnection connection)
-            {
-                ProcessLoginDataReceived(connection, e.Offset, e.Length);
-            }
-            else
-            {
-                //TODO: invalid object
-                Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
-            }
-        }
-        private void LoginConnectionDataCallbackEventHandler(object sender, SocketConnectionManagerEventArg e)
-        {
-            if (sender is SocketConnection connection)
-            {
+            connectionInfo = null;
 
-            }
-            else
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error("LoginConnectionDataCallbackEventHandler invalid object");
-            }
-        }
-        #endregion
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);  
-        }
-        public virtual void Dispose(bool disposing)
-        {
-            if (!disposing || _disposed) return;
-            try
-            {
-                try
-                {
-                    if (_loginServer != null)
-                        _loginServer.ServerEvent -= LoginEventHandler;
+            if (data == null || data.Length == 0)
+                return false;
 
-                    if (_loginConnectionManager != null)
-                        _loginConnectionManager.SocketConnectionManagerEvent -= LoginConnectionDataCallbackEventHandler;
+            if (socketConnection == null)
+                return false;
 
-                    _loginServer?.Dispose();
-                    _loginConnectionManager?.Dispose();
-                    _loginMethods?.Clear();
-                }
-                catch { }
-            }
-            finally
+            string[] rawInfo = Encoding.ASCII.ByteArrayToStringWithSeparator(data, DefaultValue.Common.SEPARATOR);        
+            connectionInfo = new ConnectionInfo();
+            bool parseRespond = connectionInfo.TryParseData(rawInfo);
+            if (!parseRespond)
             {
-                _disposed = true;
+                return false;
             }
+            connectionInfo.PublicIP = socketConnection.IP;
+            connectionInfo.SocketConnection = socketConnection;
+            return Add(connectionInfo.Id, connectionInfo);
         }
     }
 }

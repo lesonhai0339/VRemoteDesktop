@@ -411,6 +411,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
                 case SocketDataType.P2PConnectFailed:
                     DataReceivedEvent?.Invoke(sender, e);
+                    ProcessP2PDisconnect(sender, e);
                     break;
                 case SocketDataType.Mouse:
                     MouseReceivedEventHandler(sender, e);

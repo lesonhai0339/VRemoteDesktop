@@ -10,23 +10,23 @@ using VRemoteServer.RelayServer.Events;
 
 namespace VRemoteServer.RelayServer.Networking
 {
-    public interface ILoginServer: IBaseServer<SocketConnection, LoginEventArgs>
+    public interface ILoginServer: IBaseServer<SocketConnection, SocketConnectionEventArg, LoginErrorEventArgs>
     {
 
     }
-    public class LoginServer : BaseServer<SocketConnection, LoginEventArgs>, ILoginServer, IDisposable
+    public class LoginServer : BaseServer<SocketConnection, SocketConnectionEventArg, LoginErrorEventArgs>, ILoginServer, IDisposable
     {
         public LoginServer(int numberOfConnections, int receiveBufferSize)
             : base(numberOfConnections, receiveBufferSize) { }
-        public override SocketConnection CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket)
+        public override void SendToDomain(SocketConnection domain, int offset, int length)
+        {
+            domain.CalCuLateData(offset, length);
+        }
+        public override SocketConnection CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket, EventHandler<SocketConnectionEventArg> dataCallbackEvent)
         {
             SocketConnection connection = new SocketConnection(read, send, socket);
+            connection.SocketConnectionEvent += dataCallbackEvent;
             return connection;  
-        }
-
-        public override LoginEventArgs CreateEventFromData(ServerEventType type, int offset, int length)
-        {
-            return new LoginEventArgs(type, offset, length);
         }
         public override (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(SocketConnection domain)
         {
@@ -45,6 +45,26 @@ namespace VRemoteServer.RelayServer.Networking
         public override Socket GetSocketFromDomain(SocketConnection domain)
         {
             return domain.Socket;
+        }
+
+        public override SocketConnectionEventType GetEventTypeFromDomainEvent(SocketConnectionEventArg domainEvent)
+        {
+            return domainEvent.EventType;
+        }
+
+        public override void UnRegisterEvent(SocketConnection domain, EventHandler<SocketConnectionEventArg> domainEvent)
+        {
+            domain.SocketConnectionEvent -= domainEvent;
+        }
+
+        public override LoginErrorEventArgs InitException(Exception ex, string note)
+        {
+            return new LoginErrorEventArgs(ex, note);
+        }
+
+        public override void SetTime(SocketConnection domain)
+        {
+            domain.UpdateTime();
         }
     }
 }
