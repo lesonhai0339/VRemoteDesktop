@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
+using static VRemoteDesktop.Utils.DefaultSocketPacket;
 
 namespace VRemoteDesktop.Models
 {
@@ -11,13 +12,13 @@ namespace VRemoteDesktop.Models
         public StateObject()
         {
             WorkSocket = null;
-            Buffer = new byte[1024];
+            Buffer = new byte[DEFAULT_BUFFER_SIZE];
             ByteArrayBuilder = new ByteArrayBuilder();
             ColPendingContinousPacket = new Dictionary<byte, ByteArrayBuilder>();
             SckId = "";
         }
         public Socket WorkSocket;
-        public int BufferSize = 1024;
+        public int BufferSize = DEFAULT_BUFFER_SIZE;
         public byte[] Buffer;
         public ByteArrayBuilder ByteArrayBuilder;
         public Dictionary<byte, ByteArrayBuilder> ColPendingContinousPacket;

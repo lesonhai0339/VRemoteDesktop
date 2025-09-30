@@ -7,43 +7,77 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Events;
+using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.RemoteDesktop;
+using VRemoteDesktop.Services.SystemService;
+using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.ViewModels;
 using VRemoteDesktop.Views;
+using VRemoteServer.Models;
 
 namespace VRemoteDesktop
 {
     public partial class FormMain : Form
     {
-        private readonly object _object = new object();
+        private readonly object _lock = new object();
         private MainViewModel _viewModel;
-        private ManualResetEvent _resetEvent;
-        public FormMain()
+        private FormChat chatForm;
+        private bool isShow;
+
+        private readonly RemoteDesktopService _remoteDesktopService;
+        public FormMain(RemoteDesktopService remoteDesktopService)
         {
             InitializeComponent();
-            ViewModel = new MainViewModel();
+            _remoteDesktopService = remoteDesktopService;
+            ViewModel = new MainViewModel(_remoteDesktopService);
             SetupBinding();
+            RegisterChatForm();
+            isShow = false;
+            this.FormBorderStyle = FormBorderStyle.Fixed3D;
 
         }
         #region Properties
         public MainViewModel ViewModel
         {
-            get => _viewModel;
+            get
+            {
+                lock (_lock)
+                {
+                    return _viewModel;
+                }
+            }
             set
             {
-                _viewModel = value;
+                lock (_lock)
+                {
+                    if(_viewModel != null)
+                    {
+                        _viewModel.ClientAcceptRequestRemote -= ClientAcceptRequestRemoteEventHandler;
+                    }
+                    _viewModel = value;
+                    if(_viewModel != null)
+                    {
+                        _viewModel.ClientAcceptRequestRemote += ClientAcceptRequestRemoteEventHandler;
+                    }
+                }
             }
         }
+
+
         #endregion
+        private void RegisterChatForm()
+        {
+            chatForm = new FormChat();
+            chatForm.FormClosed += ChatForm_ClosedEventHandler;
+        }
         private void SetupBinding()
         {
             txtOwnerId.DataBindings.Add("Text", ViewModel, "MyId",
                 false, DataSourceUpdateMode.OnPropertyChanged);
             txtOwnerPassword.DataBindings.Add("Text", ViewModel, "MyPassword",
                false, DataSourceUpdateMode.OnPropertyChanged);
-            txtPartnerId.DataBindings.Add("Text", ViewModel, "PartnerId",
-                false, DataSourceUpdateMode.OnPropertyChanged);
-            txtPartnerPassword.DataBindings.Add("Text", ViewModel, "PartnerPassword",
-               false, DataSourceUpdateMode.OnPropertyChanged);
+
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
 
@@ -74,14 +108,28 @@ namespace VRemoteDesktop
         {
            Connect();
         }
+        private void ChatForm_ClosedEventHandler(object sender, FormClosedEventArgs e)
+        {
+            chatForm.FormClosed -= ChatForm_ClosedEventHandler;
+            chatForm = null;
+            isShow = false;
+        }
+        private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (!chatForm.IsDisposed)
+                chatForm.Close();
 
+            if(_viewModel != null)
+                _viewModel.ClientAcceptRequestRemote -= ClientAcceptRequestRemoteEventHandler;
+            _viewModel.Dispose();
+        }
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            string partnetId = txtPartnerId.Text.Replace(" ", "");
-            string partnetPassword = txtPartnerPassword.Text.Replace(" ","");
-            if(!string.IsNullOrWhiteSpace(partnetId) && !string.IsNullOrWhiteSpace(partnetPassword))
+            string partnerId = txtPartnerId.Text.Replace(" ", "");
+            string partnerPassword = txtPartnerPassword.Text.Replace(" ","");
+            if(!string.IsNullOrWhiteSpace(partnerId) && !string.IsNullOrWhiteSpace(partnerPassword))
             {
-                P2PConnec(partnetId, partnetPassword);
+                P2PConnect(partnerId, partnerPassword);
             }
             else
             {
@@ -92,9 +140,9 @@ namespace VRemoteDesktop
         {
             ViewModel.Connect();
         }
-        private void P2PConnec(string id, string password)
+        private void P2PConnect(string id, string password)
         {
-            ViewModel.P2PConnect(id, password);
+            ViewModel.RequestP2PConnect(id, password);
         }
         private void UpdateConnectionStatus()
         {
@@ -111,6 +159,56 @@ namespace VRemoteDesktop
             {
                 action();
             }
+        }
+        private void ClientAcceptRequestRemoteEventHandler(object sender ,P2PClientDataReceived e)
+        {
+            if(sender is VClient vClient)
+            {
+                if(e.Type == Models.SocketDataType.P2PAcceptConnect)
+                {
+                    OpenRemoteForm(vClient);
+                }
+                else if(e.Type == Models.SocketDataType.P2PRequestConnect)
+                {
+                    AddChat(vClient);
+                }
+                else if(e.Type == Models.SocketDataType.P2PConnectFailed)
+                {
+                    MessageBox.Show("Kết nối đến máy khách thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+        private void OpenRemoteForm(VClient client)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<VClient>(OpenRemoteForm), client);
+                return;
+            }
+            FormRemote remoteForm = new FormRemote(client, _remoteDesktopService);
+            remoteForm.Show();
+            AddChat(client);
+        }
+        private void AddChat(VClient client)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<VClient>(AddChat), client);
+                return;
+            }
+            if (client == null) return;
+
+            if (!isShow)
+            {
+                if(chatForm == null)
+                {
+                    RegisterChatForm();
+                }
+                //need to cal event from ChatForm to this to set isShow = false when Chat form disposed
+                chatForm.Show();
+                isShow = true;
+            }
+            chatForm.AddConnection(client.SocketId, client);
         }
     }
 }

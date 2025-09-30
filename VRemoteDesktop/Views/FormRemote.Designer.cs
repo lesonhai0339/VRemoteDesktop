@@ -1,4 +1,7 @@
-﻿namespace VRemoteDesktop.Views
+﻿using System;
+using System.Windows.Forms;
+
+namespace VRemoteDesktop.Views
 {
     partial class FormRemote
     {
@@ -49,10 +52,13 @@
             this.Name = "FormRemote";
             this.Text = "FormRemote";
             this.Load += new System.EventHandler(this.FormRemote_Load);
+            this.Shown += new System.EventHandler(this.FormRemote_Shown);
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormRemote_FormClosing);
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox)).EndInit();
             this.ResumeLayout(false);
 
         }
+
 
         #endregion
 

@@ -11,6 +11,10 @@ namespace VRemoteDesktop.Models
         {
             Tasks = tasks;
         }
+        public TaskGroup(TaskObject[] tasks)
+        {
+            Tasks = tasks.ToList();
+        }
 
         public List<TaskObject> Tasks { get; set; }
     }

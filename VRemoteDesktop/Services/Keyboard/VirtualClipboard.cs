@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using VRemoteDesktop.Enums;
+using VRemoteDesktop.Utils;
 using static VRemoteDesktop.Interop.Win32Apis;
 using static VRemoteDesktop.Utils.Logger;
 
@@ -19,7 +20,7 @@ namespace VRemoteDesktop.Services.Keyboard
                 Buffer.BlockCopy(data, offset, clipboardData, 0, length);
                 string dataString = Encoding.UTF8.GetString(clipboardData);
 
-                //default setclipboard use CF_UNICODETEXT(UTF-16), need to convert data to utf-16
+                //default set clipboard use CF_UNICODETEXT(UTF-16), need to convert data to utf-16
                 byte[] clipboardReformatted = Encoding.Unicode.GetBytes(dataString + '\0');
 
                 return clipboardReformatted;
@@ -41,7 +42,7 @@ namespace VRemoteDesktop.Services.Keyboard
                 if (ClipboardApis.IsClipboardFormatAvailable((uint)WindowsClipboardFormat.CF_UNICODETEXT))
                 {
                     string data = ExtractUnicodeText();
-                    if (data.Length > 1000000)
+                    if (data.Length > DefaultClipboard.MAX_CLIPBOARD_LENGTH)
                     {
                         Log.ForContext("FileName", "VirtualClipboard").Warning($"Clipboard too large: {data.Length} characters");
                         return string.Empty;
@@ -54,7 +55,7 @@ namespace VRemoteDesktop.Services.Keyboard
                 if (ClipboardApis.IsClipboardFormatAvailable((uint)WindowsClipboardFormat.CF_TEXT))
                 {
                     string data = ExtractAnsiText();
-                    if (data.Length > 1000000)
+                    if (data.Length > DefaultClipboard.MAX_CLIPBOARD_LENGTH)
                     {
                         Log.ForContext("FileName", "VirtualClipboard").Warning($"Clipboard too large: {data.Length} characters");
                         return string.Empty;

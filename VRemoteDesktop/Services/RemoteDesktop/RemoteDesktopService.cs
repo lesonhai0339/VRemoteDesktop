@@ -1,720 +1,434 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Diagnostics;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using System.Threading;
-using System.Windows.Forms;
-using VRemoteDesktop.Services.Keyboard;
-using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Enums;
-using VRemoteDesktop.Models;
-using static VRemoteDesktop.Utils.Logger;
-using System.Configuration;
-using System.Drawing;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Helpers;
+using VRemoteDesktop.Models;
+using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.SystemService;
+using VRemoteDesktop.Services.VTCPClient;
+using VRemoteDesktop.Utils;
+using VRemoteServer.Models;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public class RemoteDesktopService : IDisposable
     {
-        private readonly string SSID = "0000000000000000";
-        private readonly object _lockProperties = new object();
-        private bool _isDisposed = false;
-        private volatile bool _isSocketConnectSuccess;
+       
+        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
+        private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
+        private volatile bool _disposed;
 
-        private Thread _screenThread;
-        private ManualResetEvent _resetEvent;
+        private readonly IClientInfoManager _clientInfo;
+        private readonly GlobalHookService _globalHook;
+        private readonly VClientManager _vClientManager;
+        private ManualResetEvent _reset;
 
-        private KeyboardHook _globakKeyboardHook;
-        private IScreenCaptureServiceListener _globakScreenHook;
-        private TCPClient.TCPClient _remoteClient;
-
-        private ConcurrentQueue<object> _screenTasks;
-        private ConcurrentQueue<object> _commandTasks;
-        private BackgroundWorker _backgroundWorker;
-        private CancellationTokenSource _cancellationToken;
-
-
-        public event Action<bool> ConnectServerEvent;
-        public event Action<bool> LoginEvent;
-        public event Action<object, KeyEventArgs> KeyboardEvent;
-        public event Action<byte[]> ScreenEvent;
-        public event Action<byte[]> ChunksEvent;
-        public event Action<bool> P2PDisconnect;
-        public event Action<byte[]> ChatMessageEvent;
-        public event Action<SendFileType, string, byte[]> SendFileEvent;
-        public RemoteDesktopService()
+        public event EventHandler<KeyboardEventArgs> KeyboardEvent;
+        public event EventHandler<P2PClientDataReceived> DataReceivedEvent;
+        public RemoteDesktopService(GlobalHookService globalHook, VClientManager vClientManager, IClientInfoManager clientInfo)
         {
-            ScreenTasks = new ConcurrentQueue<object>();
-            CommandTasks = new ConcurrentQueue<object>();
+            _disposed = false;
+            _clientInfo = clientInfo;
+            _reset = new ManualResetEvent(false);
 
-            _resetEvent = new ManualResetEvent(false);
-            _cancellationToken = new CancellationTokenSource();
+            _globalHook = globalHook;
+            _vClientManager = vClientManager;
 
-            Worker = new BackgroundWorker();
-            Worker.WorkerSupportsCancellation = true;
+            _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
+            _globalHook.KeyboardReceived += KeyboardEventHandler;
+            _vClientManager.ClientDataReceived += ClientDataReceivedEventHandler;
+            StartKeyboardListener();
 
-            InitializeCompoment();
-        }
-        public void InitializeCompoment()
-        {
         }
         #region Properties
-        public bool IsSocketConnected
-        {
-            get => _isSocketConnectSuccess;
-            private set => _isSocketConnectSuccess = value;
-        }
-        public TCPClient.TCPClient RemoteClient
-        {
-            get
-            {
-                lock (_lockProperties)
-                {
-                    return _remoteClient;
-                }
-            }
-            set
-            {
-                lock (_lockProperties)
-                {
-                    if (_remoteClient != null)
-                    {
-
-                    }
-                    _remoteClient = value;
-                    if (_remoteClient != null)
-                    {
-
-
-                    }
-                }
-            }
-        }
-
-        public BackgroundWorker Worker
-        {
-            get => _backgroundWorker;
-            set
-            {
-                if (_backgroundWorker != null)
-                {
-                    _backgroundWorker.DoWork -= DoWork;
-                }
-
-                _backgroundWorker = value;
-
-                if (_backgroundWorker != null)
-                {
-                    _backgroundWorker.DoWork += DoWork;
-                }
-            }
-        }
-        public ConcurrentQueue<object> ScreenTasks
-        {
-            get => _screenTasks;
-            private set
-            {
-                _screenTasks = value;
-            }
-        }
-        public ConcurrentQueue<object> CommandTasks
-        {
-            get => _commandTasks;
-            private set
-            {
-                _commandTasks = value;
-            }
-        }
+        public bool Disposed => _disposed;
         #endregion
         #region Methods
-        public void Cancel()
+        public ClientInfo GetMe()
         {
-            _cancellationToken.Cancel();
+            return _clientInfo.GetMyInfo();
         }
-        private void DoWork(object sender, DoWorkEventArgs e)
+        public void Login(string id)
         {
-            //int count = 0;
-            //while (!_cancellationToken.IsCancellationRequested)
-            //{
-            //    if (count % 10 == 0)
-            //    {
-            //        if (ScreenHook != null)
-            //        {
-            //            if (ScreenHook.IsCapturing && _connectionManager.NumberOfConnections == 0)
-            //            {
-            //                StopScreenHook();
-            //            }
-            //        }
-            //        count = 0;
-            //    }
+            if (string.IsNullOrWhiteSpace(id)) return;
 
-            //    var taskQueue = DequeueTask();
-            //    if (taskQueue != null)
-            //    {
-            //        try
-            //        {
-            //            if (taskQueue is TaskObject task)
-            //            {
-            //                ProcessTask(task);
-            //            }
-            //            else if (taskQueue is TaskGroup taskGroup)
-            //            {
-            //                foreach (var t in taskGroup.Tasks)
-            //                {
-            //                    if (CommandTasks.TryPeek(out _))
-            //                    {
-            //                        break;
-            //                    }
-            //                    ProcessTask(t);
-            //                }
-            //            }
-            //        }
-            //        catch (Exception ex)
-            //        {
-            //            Log.ForContext("FileName", "RemoteClient").Error(ex, "Dowork error");
-            //        }
-            //    }
-            //    count++;
-            //    Thread.Sleep(5);
-            //}
+            var client = _vClientManager.GetByKey(id);
+            if(client != null)
+            {
+                byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
+                client.Send(SocketDataType.Login, encoder, null);
+            }
         }
-        private void ProcessTask(TaskObject task)
+        public void P2PConnect(string partnerId, string partnerPassword)
         {
-            byte[] data = TaskObjectToBytes(task);
-            RemoteClient.Send(data);
+            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
+
+            _reset.Reset();
+            string connectionId = StringHelper.RandomStringNumber(8);
+            var newConnection = NewClient(connectionId, VClientType.Sender);
+            if (newConnection == null)
+            {
+                return;
+            }
+            newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+            _reset.WaitOne(5000);
+            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
+            newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, newConnection.SocketId, true);
         }
-        private object DequeueTask()
+        public void UpdateMyInfo(byte[] data)
+        {
+            if (data == null || data.Length == 0) return;
+
+            _clientInfo.UpdateMyInfo(data);
+        }
+        public void StartKeyboardListener()
+        {
+            _globalHook.StartKeyboardListener();
+        }
+        public void StopKeyboardListener()
+        {
+            _globalHook.StopKeyboardListener();
+        }
+        public void AddKeyboardListenerOnFormByHandle(IntPtr handle)
+        {
+            if (handle == IntPtr.Zero) return;
+            _globalHook.AddKeyboardHook(handle);
+        }
+        public void RemoveKeyboardListenerOnFormByHandle(IntPtr handle)
+        {
+            if (handle == IntPtr.Zero) return;
+            _globalHook.RemoveKeyboardHook(handle);
+        }
+        public string GetClipboardString()
+        {
+            return _globalHook.GetClipboard(); ;
+        }
+        public bool SetClipboard(byte[] data)
+        {
+            if (data == null || data.Length == 0) return false;
+            return _globalHook.SetClipboard(data); ;
+        }
+        public bool SetClipboard(byte[] data, int index, int length)
+        {
+            if (data == null || data.Length == 0)
+                return false;
+            if (index < 0)
+                return false;
+            if (length < 0)
+                return false;
+
+            return _globalHook.SetClipboard(data, index, length); ;
+        }
+        public void StartScreenCapture()
+        {
+            _globalHook.StartScreenCapture();
+        }
+        public void StopScreenCapture()
+        {
+            _globalHook.StopScreenCapture();
+        }
+        public void RemoveClientById(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return;
+
+            _vClientManager.Remove(id);
+            if (_vClientManager.Connections.Count == 0)
+            {
+                StopScreenCapture();
+            }
+            else
+            {
+                if (!_vClientManager.HasClientOfType(VClientType.Receiver))
+                    StopScreenCapture();
+            }
+        }
+        public VClient GetClientById(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return null;
+
+            var client = _vClientManager.GetByKey(id);
+            return client;
+        }
+        public VClient NewClient(string id, VClientType type)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return null;
+
+            var newClient = _vClientManager.New(id, type);
+            if (_vClientManager.Connections.Count > 0)
+            {
+                if (_vClientManager.HasClientOfType(VClientType.Receiver))
+                    StartScreenCapture();
+            }
+            return newClient;
+        }
+        public ConcurrentDictionary<string, VClient> GetClients()
+        {
+            return _vClientManager.Connections;
+        }
+        private void P2PRequestConnectHandler(object sender, P2PClientDataReceived e)
+        {
+            if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
+            {
+                var newClient = _vClientManager.New(connectionId, VClientType.Receiver);
+                newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+                newClient.UpdatePartnerInfo(partnerInfo);
+                byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
+
+                newClient.Send(SocketDataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
+                DataReceivedEvent?.Invoke(newClient, e);
+
+                var screen = _globalHook.GetFirstScreen();
+                int length = screen.Sum(x=> x.Length);
+                SendScreen(newClient, SocketDataType.Screen, screen, length);
+
+                if (_vClientManager.HasClientOfType(VClientType.Receiver))
+                    StartScreenCapture();
+            }
+            else
+            {
+                if(sender is VClient client)
+                {
+                    string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII).GetResult();
+                    byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
+ 
+                    client.Send(SocketDataType.P2PRejectConnect, dataBytes, client.SocketId, true);
+                }
+            }
+        }
+        private void ProcessP2PConnectAccepted(object sender, P2PClientDataReceived e)
         {
             try
             {
-                if (CommandTasks.Count > 0)
+                if(sender is VClient client)
                 {
-                    return CommandTasks.TryDequeue(out var tasks) ? tasks : null;
-                }
-                else
-                {
-                    return ScreenTasks.TryDequeue(out var tasks) ? tasks : null;
+                    ClientInfo partnerInfo = null;
+
+                    string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
+                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
+                    if(stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
+                    {
+                        if (StringHelper.StringValidate(stringArray))
+                        {
+                            partnerInfo = new ClientInfo
+                            {
+                                Id = stringArray[DefaultClientInfo.CLIENT_INFO_ID_INDEX],
+                                Password = stringArray[DefaultClientInfo.CLIENT_INFO_PASSWORD_INDEX],
+                                ComputerName = stringArray[DefaultClientInfo.CLIENT_INFO_COMPUTER_NAME_INDEX],
+                                Width = int.Parse(stringArray[DefaultClientInfo.CLIENT_INFO_WIDTH_INDEX]),
+                                Height = int.Parse(stringArray[DefaultClientInfo.CLIENT_INFO_HEIGHT_INDEX]),
+                                MajorVersion = stringArray[DefaultClientInfo.CLIENT_INFO_MAJOR_VERSION_INDEX],
+                                MinorVersion = stringArray[DefaultClientInfo.CLIENT_INFO_MINOR_VERSION_INDEX],
+                                Ip = stringArray[DefaultClientInfo.CLIENT_INFO_IP_INDEX],
+                                Port = stringArray[DefaultClientInfo.CLIENT_INFO_PORT_INDEX],
+                                PublicIP = stringArray[DefaultClientInfo.CLIENT_INFO_PUBLIC_IP_INDEX],
+                            };
+                            client.UpdatePartnerInfo(partnerInfo);
+                            return;
+                        }
+                    }
+                    client.UpdatePartnerInfo(partnerInfo);
                 }
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "DequeueTask error");
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
+            }
+        }
+        private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)
+        {
+            var connections = _vClientManager.Connections;
+            TaskObject[] tasks = GetScreenSnapshotData(e.Type, e.Data, e.TotalSize);
+
+            foreach(var connection in connections)
+            {
+                if (connection.Value.ClientType == VClientType.Receiver)
+                {
+                    var header = connection.Value.HeaderGenerate(type: e.Type, socketId: connection.Value.SocketId, dataSize: e.TotalSize);
+
+                    var payload = new TaskObject
+                    {
+                        TaskType = e.Type,
+                        Data = header,
+                        SessionId = connection.Value.SocketId,
+                        IsSendHeader = false
+                    };
+                    var newTasks = new TaskObject[tasks.Length + 1];
+                    newTasks[0] = payload;
+                    Array.Copy(tasks, 0, newTasks, 1, tasks.Length);
+
+                    connection.Value.AddWorkGroup(newTasks, QueuePriority.Medium);
+                }
+            }
+        }
+        private TaskObject[] GetScreenSnapshotData(SocketDataType type, List<byte[]> data, int totalSize)
+        {
+            try
+            {
+                if (data.Count == 0 || totalSize == 0)
+                {
+                    Logger.Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    return null;
+                }
+                TaskObject[] tasks = new TaskObject[data.Count];
+                //data
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var task = new TaskObject
+                    {
+                        TaskType = type,
+                        Data = data[i],
+                        IsSendHeader = false,
+                    };
+
+                    tasks[i] = task;
+                }
+                return tasks;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
                 return null;
             }
         }
-        public void AddWork(TaskObject task, DataType type = DataType.None)
+        private void SendScreen(VClient  client, SocketDataType type, List<byte[]> data, int totalSize)
         {
-            if (type == DataType.Screen)
+            try
             {
-                if (ScreenTasks.Count >= 2)
+                if (data.Count == 0 || totalSize == 0)
                 {
-                    // keep last frame and remove all previous frames
-                    object lastItem = null;
-                    while (ScreenTasks.TryDequeue(out var item))
-                    {
-                        lastItem = item;
-                    }
-                    if (lastItem != null)
-                    {
-                        ScreenTasks.Enqueue(lastItem);
-                    }
-                }
-                ScreenTasks.Enqueue(task);
-            }
-            else
-            {
-                CommandTasks.Enqueue(task);
-            }
-        }
-        public void AddWorkGroup(List<TaskObject> tasks, DataType type= DataType.None)
-        {
-            if (type == DataType.Screen)
-            {
-                ScreenTasks.Enqueue(new TaskGroup(tasks));
-            }
-            else
-            {
-                CommandTasks.Enqueue(new TaskGroup(tasks));
-            }
-        }
-        /// <summary>
-        /// Start listening keyboard event(low-level keyboard hook). Listen on current process by process Id
-        /// </summary>
-        public void StartKeyboardHook()
-        {
-            try
-            {
-                //KeyboardHook.Start((uint)Process.GetCurrentProcess().Id);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Start keyboard hook failed");
-            }
-        }
-        /// <summary>
-        ///  Stop listening keyboard event(low-level keyboard hook)
-        /// </summary>
-        public void StopKeyboardHook()
-        {
-            try
-            {
-               //KeyboardHook.Stop();
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Stop keyboard hook failed");
-            }
-        }
-        /// <summary>
-        /// Start listen keyboard event on specific Form by Form windows handle
-        /// </summary>
-        /// <param name="handle"></param>
-        public void AddKeyboardHookByHandle(IntPtr handle)
-        {
-            try
-            {
-                //KeyboardHook.AddHook(handle);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Add keyboard hook failed");
-            }
-        }
-        /// <summary>
-        /// Stop listen keyboard event on specific Form by Form windows handle
-        /// </summary>
-        /// <param name="handle"></param>
-        public void RemoveKeyboardHookByHandle(IntPtr handle)
-        {
-            try
-            {
-                //KeyboardHook.RemoveHook(handle);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Remove keyboard hook failed");
-            }
-        }
-        /// <summary>
-        /// Start capturing the Windows screen on this window. This method will capture the screen and push data to the
-        /// <see cref="ScreenHookEventHandler"/> event, with <see cref="CustomScreenEventArgs"/> as the event args.
-        /// </summary>
-        public void StartScreenHook()
-        {
-            try
-            {
-                //ScreenHook.StartCapture();
-                //ScreenHook.IsCapturing = true;
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Start screen hook failed");
-            }
-        }
-        /// <summary>
-        /// Stop capture windows screen on this windows(not completely closed). Can restart capture by call 
-        /// <see cref="StartScreenHook"/> method
-        /// </summary>
-        public void StopScreenHook()
-        {
-            try
-            {
-                //ScreenHook.StopCapture();
-                //ScreenHook.IsCapturing = false;
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteDesktopService").Error(ex, "Stop screen hook failed");
-            }
-        }
-        public void ConnectToServer()
-        {
-            _resetEvent.Reset();
-            try
-            {
-                string serverIp = ConfigurationManager.AppSettings["RemoteServerIP"];
-                string serverPort = ConfigurationManager.AppSettings["RemoteServerPort"];
-
-                if (string.IsNullOrEmpty(serverIp) || !int.TryParse(serverPort, out var port))
-                {
-                    Log.ForContext("Filename", GetType().Name).Error("Error when connect to server");
-                    ConnectServerEvent?.Invoke(false);
+                    Logger.Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
                     return;
                 }
-
-                //RemoteClient.Connect(serverIp, port);
-                bool flag = _resetEvent.WaitOne(5000);
-                if (!flag)
-                {
-                    ConnectServerEvent?.Invoke(flag);
-                    //TODO: invoke event form main from notify that login failed
-                    Log.ForContext("Filename", GetType().Name).Error("Socket connect failed");
-                    return;
-                }
-                Login();
-                StartKeyboardHook();
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error("ConnectToServer error");
-            }
-        }
-        public void InitP2PConnection(string partnerId, string partnerPassword)
-        {
-            //try
-            //{
-            //    string id = partnerId.Replace(" ", "");
-            //    string password = partnerPassword.Replace(" ", "");
-
-            //    string dataString = Helpers.StringHelper.DataStringBuilder(
-            //        new string[] {
-            //            Services.ConnectionManager.ConnectionManager.Me.Id,
-            //            id,
-            //            password
-            //        }
-            //    );
-            //    byte[] data = Encoding.ASCII.GetBytes(dataString);
-
-            //    AddWork(new TaskObject
-            //    {
-            //        TaskType = DataType.P2PConnect,
-            //        Data = data
-            //    });
-            //}
-            //catch (Exception ex)
-            //{
-            //    Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connection error");
-            //}
-        }
-        public string FormatKeyboardInput(IntPtr command, Keys modifier, Keys code, KeyState type)
-        {
-            //return KeyboardHook.KeyboardEventTostring(command, modifier, code, type);
-            return "";
-        }
-        public string GetClipboard()
-        {
-            try
-            {
-                return VirtualClipboard.GetClipboardString();
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "GetClipboard error");
-                return string.Empty;
-            }
-        }
-        public byte[] GetClipboardByteArray()
-        {
-            try
-            {
-                string clipboard = VirtualClipboard.GetClipboardString();
-                return Helpers.ByteArrayHelper.ConvertStringToByteArray(clipboard, EncodingType.ASCII).GetResult();
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "GetClipboard error");
-                return new byte[0];
-            }
-        }
-        /// <summary>
-        /// Default using CF_UNICODETEXT format then need to convert string data to UTF-16
-        /// (like this: <c>byte[] formatted = Encoding.Unicode.GetBytes(<paramref name="data"/> + '\0');</c>)
-        /// </summary>
-        /// <param name="data">The input string that will be encoded as UTF-16.</param>
-        /// <returns>Formatted byte array.</returns>
-        public bool SetClipboard(byte[] data)
-        {
-            try
-            {
-                return VirtualClipboard.SetClipboard(data, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "SetClipboard error");
-                return false;
-            }
-        }
-        private void Login()
-        {
-            //try
-            //{
-            //    string data = Helpers.StringHelper.DataStringBuilder(new string[] { Services.ConnectionManager.ConnectionManager.Me.ToNetworkString() });
-            //    byte[] dataBytes = Encoding.ASCII.GetBytes(data);
-            //    AddWork(new TaskObject
-            //    {
-            //        TaskType = DataType.Login,
-            //        Data = dataBytes,
-            //        IsSendHeader = true
-            //    });
-            //}
-            //catch (Exception ex)
-            //{
-            //    Log.ForContext("Filename", GetType().Name).Error(ex, "Login error");
-            //}
-        }
-        private byte[] TaskObjectToBytes(TaskObject task)
-        {
-            if (task.IsSendHeader)
-            {
-                byte[] resultBytes = new byte[task.Data.Length + 21];
-
-                //sessionId
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.SessionId), 0, resultBytes, 0, 16);
-
-                //length
-                Buffer.BlockCopy(BitConverter.GetBytes(resultBytes.Length), 0, resultBytes, 16, 4);
-
-                //type
-                resultBytes[20] = (byte)task.TaskType; //set command type
-                Buffer.BlockCopy(task.Data, 0, resultBytes, 21, task.Length);
-
-                return resultBytes;
-            }
-            else
-            {
-                return task.Data;
-            }
-        }
-        #endregion
-        #region Callback
-        public void AcceptOrRejectFileSent(bool isAccept, string sessionID)
-        {
-            AddWork(new TaskObject
-            {
-                TaskType = DataType.AcceptSendFile,
-                Data = new byte[0],
-                SessionId = sessionID,
-                IsSendHeader = true,
-            });
-        }
-        #endregion
-        #region Events
-        private void ConnectEventHandler()
-        {
-            IsSocketConnected = true;
-            _resetEvent.Set();
-        }
-        /// <summary>
-        /// Callback when login successed
-        /// </summary>
-        /// <param name="flag"></param>
-        /// <exception cref="NotImplementedException"></exception>
-        private void LoginEventHandler(bool flag)
-        {
-            LoginEvent?.Invoke(flag);
-        }
-        /// <summary>
-        /// Partner connect callback
-        /// </summary>
-        /// <param name="flag"></param>
-        /// <param name="info"></param>
-        /// <exception cref="NotImplementedException"></exception>
-        private void P2PConnectEventHandler(bool flag, byte[] data)
-        {
-            //if (!flag)
-            //{
-            //    P2PConnectEvent?.Invoke(ClientType.NONE, false, null);
-            //    return;
-            //}
-            //try
-            //{
-            //    ConnectionInfo connectionInfo = _connectionManager.ConvertFromBytes(data, 1, data.Length - 1);
-            //    if (connectionInfo != null)
-            //    {
-            //        _connectionManager.AddConnection(connectionInfo.SessionId, connectionInfo);
-            //        connectionInfo.Me = _clientInfo;
-            //        if (!connectionInfo.IsSender)
-            //        {
-            //            P2PConnectEvent?.Invoke(ClientType.RECEIVER, true, connectionInfo);
-            //            if (!ScreenHook.IsCapturing)
-            //            {
-            //                StartScreenHook();
-            //            }
-            //        }
-            //        else
-            //        {
-            //            P2PConnectEvent?.Invoke(ClientType.SENDER, true, connectionInfo);
-            //        }
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing P2P connection data");
-            //}
-        }
-        private void P2PScreenEventHandler(byte[] data)
-        {
-            byte[] screen = new byte[data.Length - 1];
-            Buffer.BlockCopy(data, 1, screen, 0, data.Length - 1);
-            ScreenEvent?.Invoke(screen);
-        }
-        private void P2PChunksEventHandler(byte[] data)
-        {
-            byte[] chunks = new byte[data.Length - 1];
-            Buffer.BlockCopy(data, 1, chunks, 0, data.Length - 1);
-            ChunksEvent?.Invoke(chunks);
-        }
-        private void MouseReceivedEventHandler(byte[] obj)
-        {
-            //try
-            //{
-            //    byte[] mouse = new byte[obj.Length - 1];
-            //    Buffer.BlockCopy(obj, 1, mouse, 0, obj.Length - 1);
-
-            //    var mouseEvent = VirtualMouse.BytesToCustomMouseEvent(mouse, _clientInfo.Width, _clientInfo.Height);
-
-            //    bool flag = VirtualMouse.MouseEvent(mouseEvent);
-            //    if (!flag)
-            //    {
-            //        Log.ForContext("FileName", "RemoteClient").Error("Mouse event failed");
-            //    }
-            //}
-            //catch (Exception ex)
-            //{
-            //    Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing mouse data");
-            //}
-        }
-        private void KeyboardReceivedEventHandler(byte[] obj)
-        {
-            try
-            {
-                int length = obj.Length - 1;
-                byte[] keyboard = new byte[length];
-                Buffer.BlockCopy(obj, 1, keyboard, 0, length);
-
-                var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(keyboard);
-                VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
-
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", "RemoteClient").Error(ex, "Error processing keyboard data");
-            }
-        }
-        private void P2PDisconnectedEventhandler(bool flag, string sessionId)
-        {
-            //try
-            //{
-            //    if (_connectionManager.NumberOfConnections > 0)
-            //    {
-            //        bool f = _connectionManager.RemoveConnection(sessionId);
-            //        if (!f)
-            //            Log.ForContext("Filename", GetType().Name).Error("Cannot remove connection with sessionId " + sessionId);
-            //    }
-            //    P2PDisconnect?.Invoke(flag);
-
-            //}
-            //finally
-            //{
-            //    if (_connectionManager.NumberOfConnections == 0)
-            //    {
-            //        StopScreenHook();
-            //    }
-            //}
-        }
-        private void KeyboardPressedEvent(object sender, KeyEvent e)
-        {
-            ////'Receive' will send clipboard data to all connections when copy pressed globally (not from app forms)
-            //if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
-            //{
-            //    string clipboard = GetClipboard();
-
-            //    if (string.IsNullOrEmpty(clipboard)) return;
-
-            //    foreach (var connection in _connectionManager.GetCurrentConnections())
-            //    {
-            //        AddWork(new TaskObject
-            //        {
-            //            TaskType = SocketDataType.Clipboard,
-            //            SessionId = connection.SessionId,
-            //            Data = Encoding.UTF8.GetBytes(clipboard),
-            //        });
-            //    }
-            //}
-
-            ////'Sender' will send clipboard to receiver
-            //KeyboardEvent?.Invoke(sender, e);
-        }
-        private void ScreenHookEventHandler(object sender, ScreenEvent e)
-        {
-            try
-            {
-                if (e.Data.Count == 0 || e.TotalSize == 0)
-                {
-                    Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
-                    return;
-                }
-
-                //byte[] screenHeader = new byte[5];
-
-                //Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 5), 0, screenHeader, 0, 4);
-                //screenHeader[4] = (byte)e.Type;
-
-                //header, 16 byte for sessionID(this using defaultSessionId: "0000000000000000"), 4 bytes for data length, 1 byte for type
-                byte[] screenHeader = new byte[21];
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes(SSID), 0, screenHeader, 0, 16);
-                Buffer.BlockCopy(BitConverter.GetBytes(e.TotalSize + 21), 0, screenHeader, 16, 4);
-                screenHeader[20] = (byte)e.Type;
+                var header = client.HeaderGenerate(type: type, socketId: client.SocketId, dataSize: totalSize);
 
                 List<TaskObject> tasks = new List<TaskObject>();
                 tasks.Add(new TaskObject
                 {
-                    TaskType = e.Type,
-                    Data = screenHeader,
-                    IsSendHeader = false
+                    TaskType = type,
+                    Data = header,
+                    IsSendHeader = false,
+                    SessionId = client.SocketId
                 });
 
                 //data
-                for (int i = 0; i < e.Data.Count; i++)
+                for (int i = 0; i < data.Count; i++)
                 {
                     var task = new TaskObject
                     {
-                        TaskType = e.Type,
-                        Data = e.Data[i],
+                        TaskType = type,
+                        Data = data[i],
                         IsSendHeader = false
                     };
 
                     tasks.Add(task);
                 }
-                AddWorkGroup(tasks);
+                client.AddWorkGroup(tasks, QueuePriority.Medium);
             }
             catch (Exception ex)
             {
-                Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
         }
-        private void ClipboardReceivedEventHandler(byte[] clipboardData)
+        private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
-            var data = VirtualClipboard.DecodeClipboard(clipboardData, 1, clipboardData.Length - 1);
-            SetClipboard(data);
+            try
+            {
+                _globalHook.MouseReceivedEventHandler(GetMe().Width, GetMe().Height, e.Data);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing mouse data");
+            }
         }
-        private void ChunksSuccessEventHandler(bool flag)
+        private void KeyboardReceivedEventHandler(object sender, P2PClientDataReceived e)
         {
+            try
+            {
+                _globalHook.KeyboardReceivedEventHandler(e.Data);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", nameof(KeyboardReceivedEventHandler)).Error(ex, "Error processing keyboard data");
+            }
         }
-        private void ScreenSuccessEventHandler(bool flag)
+        private void ProcessP2PDisconnect(object sender, P2PClientDataReceived e)
         {
-
+            if (sender is VClient client)
+            {
+                RemoveClientById(client.SocketId);
+            }
         }
-        private void ChatMessageEventHandler(byte[] obj)
+        #endregion
+        #region Events
+        private void ScreenCaptureEventHandler(object sender, ScreenCaptureEventArgs e)
         {
-            byte[] bytes = new byte[obj.Length - 1];
-            Buffer.BlockCopy(obj, 1, bytes, 0, obj.Length - 1);
-
-            ChatMessageEvent?.Invoke(bytes);
+            SendScreenChangedToClient(sender, e);
         }
-        private void SendFileEventHandler(SendFileType type, string sessionId, byte[] arg2)
+        private void KeyboardEventHandler(object sender, KeyboardEventArgs e)
         {
-            byte[] bytes = new byte[arg2.Length - 1];
-            Buffer.BlockCopy(arg2, 1, bytes, 0, arg2.Length - 1);
-
-            SendFileEvent?.Invoke(type, sessionId, bytes);
+            if (_globalHook.CheckClipboard(e, out var data, out var type))
+            {
+                foreach (var connection in _vClientManager.Connections)
+                {
+                    if (connection.Value.ClientType == VClientType.Receiver)
+                        connection.Value.AddWork(new TaskObject
+                        {
+                            TaskType = type,
+                            Data = data,
+                            SessionId = connection.Value.SocketId,
+                            IsSendHeader = true,
+                            ChunkFileInfo = null
+                        }, QueuePriority.High);
+                }
+            }
+            else
+            {
+                KeyboardEvent?.Invoke(sender, e);
+            }
         }
-
+        private void ClientDataReceivedEventHandler(object sender, P2PClientDataReceived e)
+        {
+            switch (e.Type)
+            {
+                case SocketDataType.Connect:
+                    _reset.Set();
+                    DataReceivedEvent?.Invoke(sender, e);
+                    break;
+                case SocketDataType.Clipboard:
+                    SetClipboard(e.Data);
+                    break;
+                case SocketDataType.P2PRequestConnect:
+                    P2PRequestConnectHandler(sender, e);
+                    break;
+                case SocketDataType.P2PAcceptConnect:
+                    ProcessP2PConnectAccepted(sender, e);
+                    DataReceivedEvent?.Invoke(sender, e);
+                    break;
+                case SocketDataType.P2PConnectFailed:
+                    DataReceivedEvent?.Invoke(sender, e);
+                    break;
+                case SocketDataType.Mouse:
+                    MouseReceivedEventHandler(sender, e);
+                    break;
+                case SocketDataType.Keyboard:
+                    KeyboardReceivedEventHandler(sender, e);
+                    break;
+                case SocketDataType.P2PDisconnect:
+                    ProcessP2PDisconnect(sender, e);
+                    break;
+                case SocketDataType.Error:
+                    break;
+                default:
+                    DataReceivedEvent?.Invoke(sender, e);
+                    break;
+            }
+        }
+        #endregion
         public void Dispose()
         {
             Dispose(true);
@@ -722,86 +436,25 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (!_isDisposed)
+            if (disposing)
             {
-                if (disposing)
+
+                if (_disposed) return;
+
+                StopKeyboardListener();
+                if (_globalHook != null)
                 {
-                    try
-                    {
-                        Cancel();
-                        if (_commandTasks != null)
-                        {
-                            while (_commandTasks.TryDequeue(out var item))
-                            {
-                                if (item is IDisposable disposableItem)
-                                {
-                                    disposableItem.Dispose();
-                                }
-                            }
-                        }
-                        if (_screenTasks != null)
-                        {
-                            while (_screenTasks.TryDequeue(out var item))
-                            {
-                                if (item is IDisposable disposableItem)
-                                {
-                                    disposableItem.Dispose();
-                                }
-                            }
-                        }
-
-
-                        //TODO: dispose here
-                        if (_globakKeyboardHook != null)
-                        {
-                            _globakKeyboardHook.Stop();
-                            _globakKeyboardHook.KeyPressed -= KeyboardPressedEvent;
-                            _globakKeyboardHook.Dispose();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _globakKeyboardHook");
-                    }
-                    if (_globakScreenHook != null)
-                    {
-                        try
-                        {
-                            _globakScreenHook.StopCapture();
-                            _globakScreenHook.ScreenEvent -= ScreenHookEventHandler;
-                            _globakScreenHook.Dispose();
-                        }
-                        catch (Exception ex)
-                        {
-                            Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _globakScreenHook");
-                        }
-                    }
-
-                    try
-                    {
-                        if (_remoteClient != null)
-                        {
-                          
-
-
-                            _remoteClient.Dispose();
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("FileName", GetType().Name).Error(ex, "Dispose error _remoteClient");
-                    }
-
+                    _globalHook.ScreenCaptureChanged -= ScreenCaptureEventHandler;
+                    _globalHook.KeyboardReceived -= KeyboardEventHandler;
                 }
-            }
-            _commandTasks = null;
-            _screenTasks = null;
-            _globakKeyboardHook = null;
-            _globakScreenHook = null;
-            _remoteClient = null;
-            _isDisposed = true;
-        }
-        #endregion
-    }
+                if (_vClientManager != null)
+                    _vClientManager.ClientDataReceived -= ClientDataReceivedEventHandler;
 
+                _globalHook?.Dispose();
+                _vClientManager?.Dispose();
+                _reset?.Dispose();
+                _disposed = true;
+            }
+        }
+    }
 }

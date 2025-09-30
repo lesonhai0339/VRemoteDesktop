@@ -9,6 +9,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Models;
 using static VRemoteDesktop.Interop.Win32Apis;
 using static VRemoteDesktop.Utils.Logger;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Services.Keyboard
 {
@@ -36,22 +37,31 @@ namespace VRemoteDesktop.Services.Keyboard
         }
         public static KeyboardReceived BytesToCustomKeyboardEvent(byte[] data)
         {
+            if (data == null || data.Length == 0)
+                return null;
+
             string[] keyboards = Encoding.ASCII.GetString(data).Trim().Split('|');
-            if (keyboards.Length != 4)
-            {
-                Log.ForContext("FileName", "VirtualKeyboard").Error("Number of elements not exaclly");
-            }
-            IntPtr ptr = (IntPtr)int.Parse(keyboards[0]);
-            Keys keyModifier = (Keys)int.Parse(keyboards[1]);
-            Keys keyCode = (Keys)int.Parse(keyboards[2]);
-            KeyState keyType = (KeyState)int.Parse(keyboards[3]);
+
+            if (keyboards.Length != DefaultKeyboard.KEYBOARD_MIN_FIELDS)
+                return null;
+            if (!int.TryParse(keyboards[DefaultKeyboard.KEYBOARD_COMMAND_INDEX], out int command))
+                return null;
+            if (!int.TryParse(keyboards[DefaultKeyboard.KEYBOARD_MODIFIER_INDEX], out int modifier)
+                    || !Enum.IsDefined(typeof(Keys), modifier))
+                return null;
+            if (!int.TryParse(keyboards[DefaultKeyboard.KEYBOARD_KEY_INDEX], out int key)
+                    || !Enum.IsDefined(typeof(Keys), key))
+                return null;
+            if (!int.TryParse(keyboards[DefaultKeyboard.KEYBOARD_TYPE_INDEX], out int type)
+                   || !Enum.IsDefined(typeof(KeyState), type))
+                return null;
 
             return new KeyboardReceived
             {
-                Command = ptr,
-                Modifier = keyModifier,
-                Key = keyCode,
-                Type = keyType,
+                Command = (IntPtr)command,
+                Modifier = (Keys)modifier,
+                Key = (Keys)key,
+                Type = (KeyState)type,
             };
         }
         private static void OnProcessExit(object sender, EventArgs e) => Dispose();

@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
+using System.Runtime.InteropServices;
 
 namespace VRemoteDesktop.Helpers
 {
@@ -21,6 +23,40 @@ namespace VRemoteDesktop.Helpers
                 "Executable files (*.exe)|*.exe|" +
                 "ZIP archives (*.zip)|*.zip|" +
                 "All files (*.*)|*.*";
+        [DllImport("Shell32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SHGetFileInfo(string pszPath, uint dwFileAttributes, ref SHFILEINFO psfi, uint cbFileInfo, uint uFlags);
+
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Auto)]
+        private struct SHFILEINFO 
+        {
+            public IntPtr hIcon;
+            public int iIcon;
+            public uint dwAttributes;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 260)]
+            public string szDisplayName;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 80)]
+            public string szTypeName;
+        }
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern bool DestroyIcon(IntPtr handle);
+        private const uint SHGFI_ICON = 0x100;
+        private const uint SHGFI_USEFILEATTRIBUTES = 0x10;
+        private const uint FILE_ATTRIBUTE_NORMAL = 0x80;
+        public static Icon GetFileIconFromFileExtension(string fileExtension)
+        {
+            SHFILEINFO shInfo = new SHFILEINFO();
+            SHGetFileInfo(
+                fileExtension,
+                FILE_ATTRIBUTE_NORMAL,
+                ref shInfo,
+                (uint)Marshal.SizeOf(typeof(SHFILEINFO)),
+                SHGFI_ICON | SHGFI_USEFILEATTRIBUTES);
+            if(shInfo.hIcon == IntPtr.Zero)
+            {
+                return null;
+            }
+            return Icon.FromHandle(shInfo.hIcon);
+        }
         public static string CreateFileChecksum(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
@@ -34,15 +70,14 @@ namespace VRemoteDesktop.Helpers
                 byte[] hash = md5.ComputeHash(stream);
                 return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
-        }
-
-        public static byte[] GetFileDataByOffset(string filePath, int offset, int size = 8192)
+        }     
+        public static byte[] GetChunkFileDataByOffset(string filePath, long offset, int size = 8192)
         {
             if (!File.Exists(filePath))
                 throw new ArgumentException(string.Format("Does not existed {0}", filePath));
 
             if (offset < 0)
-                throw new ArgumentException("Offset cannot be neigative");
+                throw new ArgumentException("Offset cannot be negative");
 
             byte[] data = new byte[size];
             using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
@@ -55,6 +90,48 @@ namespace VRemoteDesktop.Helpers
                 }
             }
             return data.ToArray();
+        }
+        public static int GetChunkFileDataByOffset(string filePath, long fileOffset, ref byte[] buffer, int size = 8192)
+        {
+            if (!File.Exists(filePath))
+                throw new ArgumentException(string.Format("Does not existed {0}", filePath));
+
+            if (fileOffset < 0)
+                throw new ArgumentException("Offset cannot be negative");
+
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                fs.Seek(fileOffset, SeekOrigin.Begin);
+                int bytesRead = fs.Read(buffer, 0, size);
+                return bytesRead;
+            }
+        }
+        //Can improve by using something like private ConcurrentDictionary<string, FileStream> _curStreams; at VChatAttachmentService
+        //To keep fileStream open util copy full or timeout
+        public static int GetChunkFileDataByOffset(string filePath, long fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
+        {
+            if (!File.Exists(filePath))
+                throw new ArgumentException(string.Format("Does not existed {0}", filePath));
+
+            if (fileOffset < 0)
+                throw new ArgumentException("Offset cannot be negative");
+
+            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                fs.Seek(fileOffset, SeekOrigin.Begin);
+                int totalBytesRead = 0;
+                int remainingBytes = size;
+                while(totalBytesRead < size && remainingBytes > 0)
+                {
+                    int bytesRead = fs.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
+                    if (bytesRead == 0)
+                        break;
+
+                    totalBytesRead += bytesRead;
+                    remainingBytes -= bytesRead;
+                }
+                return totalBytesRead;
+            }
         }
         public static long CalculateChunkNumber(long dataSize, int chunkSize = 8192)
         {
@@ -75,6 +152,41 @@ namespace VRemoteDesktop.Helpers
                 throw new FileNotFoundException($"File not found: {filePath}", filePath);
 
             return new FileInfo(filePath);
+        }
+        public static void InitializeFileTransfer(FileStream stream, string savePath)
+        {
+            lock (_lock)
+            {
+                stream?.Dispose();
+                stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+            }
+        }
+        public static FileStream CreateFileStream(string savePath)
+        {
+            return new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+        }
+        public static void WriteToFile(FileStream fs, int offset, byte[] data, bool flush = true)
+        {
+            if (fs == null)
+                throw new ArgumentException("FileStream cannot be null.", nameof(fs));
+            if (data == null)
+                throw new ArgumentException("data cannot be null.", nameof(data));
+
+            lock (fs)
+            {
+                try
+                {
+                    fs.Seek(offset, SeekOrigin.Begin);
+                    fs.Write(data, 0, data.Length);
+                    
+                    if(flush)
+                        fs.Flush();
+                }
+                catch (IOException ex)
+                {
+                    throw new InvalidOperationException($"Failed to write to file at offset {offset}", ex);
+                }
+            }
         }
         public static void WriteToFile(string path, string content)
         {
@@ -113,7 +225,7 @@ namespace VRemoteDesktop.Helpers
             {
                 try
                 {
-                    using (FileStream fs = new FileStream(path, FileMode.Open, FileAccess.Write))
+                    using (FileStream fs = new FileStream(path, FileMode.OpenOrCreate, FileAccess.Write))
                     {
                         fs.Seek(offset, SeekOrigin.Begin);
                         fs.Write(data, 0, data.Length);
@@ -182,6 +294,21 @@ namespace VRemoteDesktop.Helpers
                 {
                     return null;
                 }
+            }
+        }
+        public static bool RemoveFileByFilePath(string filePath)
+        {
+            if (!File.Exists(filePath)) return false;
+            try
+            {
+                using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite, FileShare.None)) { }
+                File.Delete(filePath);
+                return true;
+            }
+            catch
+            {
+                //File opened on another process
+                return false;
             }
         }
     }

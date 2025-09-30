@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Helpers
 {
@@ -19,8 +21,11 @@ namespace VRemoteDesktop.Helpers
 
             return input.Split(new[] { separator }, StringSplitOptions.RemoveEmptyEntries);
         }
-        public static string StringBuilderWithSeparator(string separator = "|", params string[] array)
+        public static string StringBuilderWithSeparator(string separator, params object[] array)
         {
+            if (string.IsNullOrWhiteSpace(separator))
+                separator = DefaultValue.DEFAULT_SEPARATOR;
+
             if (array == null || array.Length == 0)
                 return string.Empty;
 
@@ -33,6 +38,18 @@ namespace VRemoteDesktop.Helpers
                 stringBuilder.Append(array[i]);
             }
             return stringBuilder.ToString();
+        }
+        public static bool StringValidate(string[] inputs)
+        {
+            return inputs.All(x => StringValidate(x));
+        }
+        public static bool StringValidate(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+            {
+                return false;
+            }
+            return true;
         }
         public static string GenerateStringShortcut(string input, int maxLength = 20)
         {
@@ -70,6 +87,23 @@ namespace VRemoteDesktop.Helpers
                 return stringBuilder.ToString();
             }
         }
+        public static string SHAHash(string filePath)
+        {
+            if (!File.Exists(filePath))
+                return string.Empty;
+
+            using (var sha = SHA1.Create())
+            using (FileStream stream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                var hash = sha.ComputeHash(stream);
+                var stringBuilder = new StringBuilder(hash.Length * 2);
+                foreach (var item in hash)
+                {
+                    stringBuilder.Append(item.ToString("X2"));
+                }
+                return stringBuilder.ToString();
+            }
+        }
         public static string DataStringBuilder(params object[] data)
         {
             StringBuilder stringBuilder = new StringBuilder();
@@ -78,7 +112,7 @@ namespace VRemoteDesktop.Helpers
                 stringBuilder.Append(data[i]);
                 if (i != data.Length - 1)
                 {
-                    stringBuilder.Append("|");
+                    stringBuilder.Append(DefaultValue.DEFAULT_SEPARATOR);
                 }
             }
             return stringBuilder.ToString();

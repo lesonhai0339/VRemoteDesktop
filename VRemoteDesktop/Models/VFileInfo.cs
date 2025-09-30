@@ -1,0 +1,66 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using static VRemoteDesktop.Utils.RandomLength;
+
+namespace VRemoteDesktop.Models
+{
+    public class VFileInfo
+    {
+        public VFileInfo() { }
+        public VFileInfo(string id,string filePath, string filename, string fileExtension, long fileSize, bool isSender, string checksum)
+        {
+            Id = id ?? Guid.NewGuid().ToString("N").Substring(0, FILE_ID_LENGTH);
+            FilePath = filePath ?? string.Empty;
+            FileExtension = fileExtension;
+            Filename = filename;
+            FileSize = fileSize;
+            IsSender = isSender;
+            Checksum = checksum;
+        }
+        public string Id { get; set; }
+
+        public string FileExtension { get; set; }
+        public string Filename { get; set; }
+        public long FileSize { get; set; }
+        public string FilePath { get; set; }
+        public string SavePath { get; set; } = string.Empty;
+        public long ReceivedSize { get; set; } = 0; 
+        public DateTime LastWriteTime { get;set; } = DateTime.Now;
+        public bool IsSender { get; set; }
+        public string Checksum { get; set; }
+        public bool UpdateWriteTime(DateTime newTime)
+        {
+            if (newTime == null)
+                return false;
+            LastWriteTime = newTime;
+            return true;
+        }
+        public DateTime GetLastWriteTime()
+        {
+            return LastWriteTime;
+        }
+        public bool UpdateReceivedSize(long size)
+        {
+            if (size <= 0)
+                return false;
+            ReceivedSize += size;
+            return true;
+        }
+        public long GetCurrentReceivedSize()
+        {
+            return ReceivedSize;
+        }   
+        public void UpdateSavePath(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                throw new ArgumentNullException("Path cannot be null or empty");
+            SavePath = path;
+        }
+        public string GetSavePath()
+        {
+            return SavePath;
+        }
+    }
+}

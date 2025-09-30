@@ -1,0 +1,35 @@
+name: .NET Framework 4.0 Desktop
+
+on:
+  push:
+    branches: [ "dev" ]
+  pull_request:
+    branches: [ "dev" ]
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        configuration: [Debug]
+    
+    runs-on: windows-latest
+    
+    env:
+      Solution_Name: VRemoteDesktop.sln
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Setup NuGet
+      uses: NuGet/setup-nuget@v2
+    
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v2
+    
+    - name: Restore NuGet packages
+      run: nuget restore $env:Solution_Name
+      
+      shell: powershell

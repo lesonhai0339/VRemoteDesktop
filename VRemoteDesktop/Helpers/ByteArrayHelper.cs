@@ -89,22 +89,47 @@ namespace VRemoteDesktop.Helpers
                    ex: new ArgumentException("Unexpected encoding type")
             );
         }
+        public static BaseResponse<byte[]> ConvertStringToByteArray(string data,int offset, int length, EncodingType encoding)
+        {
+            if (string.IsNullOrWhiteSpace(data))
+                return BaseResponse<byte[]>.Error(
+                  message: nameof(ConvertStringToByteArray),
+                  ex: new ArgumentException("Data cannot be null or empty")
+                );
+
+            Encoding encoder = (encoding == EncodingType.ASCII) ? Encoding.ASCII :
+                (encoding == EncodingType.UTF8) ? Encoding.UTF8 :
+                null;
+
+            if (encoder != null)
+            {
+                return BaseResponse<byte[]>.Success(
+                    data: encoder.GetBytes(data.ToCharArray(), offset, length),
+                    message: nameof(ConvertStringToByteArray)
+                );
+            }
+
+            return BaseResponse<byte[]>.Error(
+                   message: nameof(ConvertStringToByteArray),
+                   ex: new ArgumentException("Unexpected encoding type")
+            );
+        }
         public static BaseResponse<byte[]> BitmapToByteArray(Bitmap bitmap)
         {
-            BitmapData bmpdata = null;
+            BitmapData bmpData = null;
 
             try
             {
-                bmpdata = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
-                int stride = bmpdata.Stride;
-                int numbytes = bmpdata.Stride * bitmap.Height;
-                byte[] bytedata = new byte[numbytes];
-                IntPtr ptr = bmpdata.Scan0;
+                bmpData = bitmap.LockBits(new Rectangle(0, 0, bitmap.Width, bitmap.Height), ImageLockMode.ReadOnly, bitmap.PixelFormat);
+                int stride = bmpData.Stride;
+                int numBytes = bmpData.Stride * bitmap.Height;
+                byte[] byteData = new byte[numBytes];
+                IntPtr ptr = bmpData.Scan0;
 
-                Marshal.Copy(ptr, bytedata, 0, numbytes);
+                Marshal.Copy(ptr, byteData, 0, numBytes);
 
                 return BaseResponse<byte[]>.Success(
-                       data: bytedata,
+                       data: byteData,
                        message: nameof(BitmapToByteArray)
                    );
             }
@@ -117,8 +142,8 @@ namespace VRemoteDesktop.Helpers
             }
             finally
             {
-                if (bmpdata != null)
-                    bitmap.UnlockBits(bmpdata);
+                if (bmpData != null)
+                    bitmap.UnlockBits(bmpData);
             }
         }
         public static BaseResponse<byte[]> RemoveFirstInSource(byte[] data, int cutLength)
@@ -236,7 +261,59 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
-        public static BaseResponse<byte[]> CompressGzip(byte[] data)
+        public static BaseResponse<byte[]> CompressDeflate(byte[] data)
+        {
+            if (data == null || data.Length == 0)
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(Combine),
+                    ex: new ArgumentException("Data cannot be null or empty")
+                ); ;
+            try
+            {
+                using (MemoryStream stream = new MemoryStream())
+                {
+                    using (var compressionStream = new DeflateStream(stream, CompressionMode.Compress))
+                    {
+                        compressionStream.Write(data, 0, data.Length);
+                    }
+                    return BaseResponse<byte[]>.Success(
+                        data: stream.ToArray(),
+                        message: nameof(CompressDeflate)
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(CompressDeflate),
+                    ex: ex
+                );
+            }
+        }
+        public static BaseResponse<byte[]> DeCompressDeflate(byte[] data)
+        {
+            try
+            {
+                using (MemoryStream input = new MemoryStream(data))
+                using (MemoryStream output = new MemoryStream())
+                using (var compressionStream = new DeflateStream(input, CompressionMode.Decompress))
+                {
+                    compressionStream.CopyTo(output);
+                    return BaseResponse<byte[]>.Success(
+                        data: output.ToArray(),
+                        message: nameof(DeCompressDeflate)
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                return BaseResponse<byte[]>.Error(
+                    message: nameof(DeCompressDeflate),
+                    ex: ex
+                );
+            }
+        }
+        public static BaseResponse<byte[]> CompressGZip(byte[] data)
         {
             if (data == null || data.Length == 0)
                 return BaseResponse<byte[]>.Error(
@@ -250,18 +327,17 @@ namespace VRemoteDesktop.Helpers
                     using (var compressionStream = new GZipStream(stream, CompressionMode.Compress))
                     {
                         compressionStream.Write(data, 0, data.Length);
-                        compressionStream.Flush();
                     }
                     return BaseResponse<byte[]>.Success(
                         data: stream.ToArray(),
-                        message: nameof(CompressGzip)
+                        message: nameof(CompressGZip)
                     );
                 }
             }
             catch (Exception ex)
             {
                 return BaseResponse<byte[]>.Error(
-                    message: nameof(CompressGzip),
+                    message: nameof(CompressGZip),
                     ex: ex
                 );
             }
@@ -272,9 +348,9 @@ namespace VRemoteDesktop.Helpers
             {
                 MemoryStream input = new MemoryStream(data);
                 MemoryStream output = new MemoryStream();
-                using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress, true))
+                using (DeflateStream dsStream = new DeflateStream(input, CompressionMode.Decompress, true))
                 {
-                    dstream.CopyTo(output);
+                    dsStream.CopyTo(output);
                 }
                 return BaseResponse<byte[]>.Success(
                         data: output.ToArray(),
@@ -289,7 +365,7 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
-        public static BaseResponse<byte[]> DecompressGzip(byte[] data)
+        public static BaseResponse<byte[]> DecompressGZip(byte[] data)
         {
 
             try
@@ -301,14 +377,14 @@ namespace VRemoteDesktop.Helpers
                     compressionStream.CopyTo(output);
                     return BaseResponse<byte[]>.Success(
                         data: output.ToArray(),
-                        message: nameof(DecompressGzip)
+                        message: nameof(DecompressGZip)
                     );
                 }
             }
             catch (Exception ex)
             {
                 return BaseResponse<byte[]>.Error(
-                    message: nameof(DecompressGzip),
+                    message: nameof(DecompressGZip),
                     ex: ex
                 );
             }

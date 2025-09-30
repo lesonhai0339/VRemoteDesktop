@@ -16,7 +16,7 @@ namespace VRemoteDesktop.Helpers
                 ConfigurationManager.AppSettings[key] = value;
             }
         }
-        public static string Getvalue(string key)
+        public static string GetValue(string key)
         {
             return ConfigurationManager.AppSettings[key];
         }
