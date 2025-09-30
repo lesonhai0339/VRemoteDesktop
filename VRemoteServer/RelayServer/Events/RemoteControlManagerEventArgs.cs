@@ -9,7 +9,7 @@ namespace VRemoteServer.RelayServer.Events
 {
     public class RemoteControlManagerEventArgs : EventArgs
     {
-        public RemoteControlManagerEventArgs(SocketDataType type, string socketId, string partnerId = null, int dataOffset = 0, int dataLength = 0, byte[] data = null)
+        public RemoteControlManagerEventArgs(SocketDataType type, string socketId = null, string partnerId = null, int dataOffset = 0, int dataLength = 0, byte[] data = null)
         {
             Type = type;
             SocketId = socketId;

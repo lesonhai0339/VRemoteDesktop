@@ -60,5 +60,9 @@ namespace VRemoteServer.RelayServer.Networking
         {
             return new RemoteControlErrorEventArgs(ex, note);
         }
+        public override void SetTime(SocketConnection domain)
+        {
+            domain.UpdateTime();
+        }
     }
 }

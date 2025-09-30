@@ -19,13 +19,13 @@ namespace VRemoteServer.RelayServer.Services
     /// <summary>
     /// Manager socket client connect to server
     /// </summary>
-    public interface ISocketConnectionManager : IBaseManagement<ConnectionInfo>
+    public interface ILoginManager : IBaseManagement<ConnectionInfo>
     {
         bool RemoveLoginInfoBySocketConnection(SocketConnection connection);
         bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo);
         bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo);
     }
-    public class LoginManager: BaseManagement<ConnectionInfo>, ISocketConnectionManager, IDisposable 
+    public class LoginManager: BaseManagement<ConnectionInfo>, ILoginManager, IDisposable 
     {
         public bool RemoveLoginInfoBySocketConnection(SocketConnection connection)
         {
