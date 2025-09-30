@@ -159,7 +159,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             if(sender is SocketConnection connection)
             {
-                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PDisconnect));
+               RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PDisconnect));
                 //RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs());
             }
             else
@@ -169,6 +169,7 @@ namespace VRemoteServer.RelayServer.Services
         }
         private void RemoteControlEventHandler(object sender, SocketConnectionEventArg e)
         {
+            Console.WriteLine($"P2P: {e.Type}");
             if (sender is SocketConnection connection)
             {
                 if(e.Type == SocketDataType.P2PRequestConnect)
