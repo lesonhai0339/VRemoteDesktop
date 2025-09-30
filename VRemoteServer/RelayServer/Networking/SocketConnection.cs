@@ -375,7 +375,7 @@ namespace VRemoteServer.RelayServer.Networking
         {
             try
             {
-                if(Enum.IsDefined(typeof(SocketDataType), type))
+                if(!Enum.IsDefined(typeof(SocketDataType), type))
                 {
                     //Reset
                     previousData = Array.Empty<byte>();
