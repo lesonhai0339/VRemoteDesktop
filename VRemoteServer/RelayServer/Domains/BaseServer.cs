@@ -136,19 +136,19 @@ namespace VRemoteServer.RelayServer.Domains
         }   
         public virtual void Send(TDomain domain, byte[] data)
         {
-            var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
-            Socket socket = GetSocketFromDomain(domain);
-            if (socket == null || read.Buffer == null)
-            {
-                //CloseClientSocket(domain);
-                return;
-            }
             try
             {
+                var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+                Socket socket = GetSocketFromDomain(domain);
+                if (socket == null || read.Buffer == null)
+                {
+                    //CloseClientSocket(domain);
+                    return;
+                }
                 var sendState = _sendTasks.GetOrAdd(domain, _ => new QueueSendState());
                 lock (sendState.LockSend)
                 {
-                    sendState.Queue.Enqueue(data);
+                    sendState.Queue.Enqueue((data, data.Length, false));
                     if (!sendState.IsSending)
                     {
                         sendState.IsSending = true;
@@ -162,27 +162,28 @@ namespace VRemoteServer.RelayServer.Domains
             }
         }
         public virtual void Send(TDomain domain, int offset, int length)
-        {
-            var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
-            Socket socket = GetSocketFromDomain(domain);
-            if (socket == null || read.Buffer == null)
-            {
-                //CloseClientSocket(domain);
-                return;
-            }
+        {      
             try
             {
-                byte[] data = new byte[length];
+                var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+                Socket socket = GetSocketFromDomain(domain);
+                if (socket == null || read.Buffer == null)
+                {
+                    //CloseClientSocket(domain);
+                    return;
+                }
+
+                byte[] data = ArrayPool<byte>.Shared.Rent(length);
                 Buffer.BlockCopy(read.Buffer, offset, data, 0, length);
 
                 var sendState = _sendTasks.GetOrAdd(domain, _ => new QueueSendState());
                 lock (sendState.LockSend)
                 {
-                    sendState.Queue.Enqueue(data);
+                    sendState.Queue.Enqueue((data, length , true));
                     if (!sendState.IsSending)
                     {
                         sendState.IsSending = true;
-                        StartSend(domain, sendState, true);
+                        StartSend(domain, sendState);
                     }
                 }
             }
@@ -192,52 +193,79 @@ namespace VRemoteServer.RelayServer.Domains
             }
         }
 
-        private void StartSend(TDomain domain, QueueSendState sendState, bool isRent = false)
+        private void StartSend(TDomain domain, QueueSendState sendState)
         {
-            byte[] dataSend = null;
-            lock (sendState.LockSend)
+            try
             {
-                if (sendState.Queue.Count == 0)
+                byte[] dataSend = null;
+                int length;
+                bool isPooled;
+                lock (sendState.LockSend)
                 {
-                    Console.WriteLine("Complete task");
-                    sendState.IsSending = false;
+                    if (sendState.Queue.Count == 0)
+                    {
+                        Console.WriteLine("Complete task");
+                        sendState.IsSending = false;
+                        return;
+                    }
+                    (dataSend, length, isPooled) = sendState.Queue.Dequeue();
+                }
+                var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+                Socket socket = GetSocketFromDomain(domain);
+
+                if (socket == null)
+                {
+                    if (isPooled)
+                    {
+                        ArrayPool<byte>.Shared.Return(dataSend, clearArray: false);
+                    }
+                    lock (sendState.LockSend)
+                    {
+                        sendState.IsSending = false;
+                    }
                     return;
                 }
-                dataSend = sendState.Queue.Dequeue();
-            }
-            var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
-            Socket socket = GetSocketFromDomain(domain);
 
-            if (socket == null)
-            {
-                lock (sendState.LockSend)
+                try
                 {
-                    sendState.IsSending = false;
-                }
-            }
+                    send.SetBuffer(dataSend, 0, length);
 
-            try
-            {
-                send.SetBuffer(dataSend, 0, dataSend.Length);
-                bool willRaiseEvent = socket.SendAsync(send);
-                if (!willRaiseEvent)
+                    send.UserToken = isPooled ? (domain, dataSend) : (domain, null);
+                    bool willRaiseEvent = socket.SendAsync(send);
+                    if (!willRaiseEvent)
+                    {
+                        ProcessSend(send);
+                    }
+                }
+                catch
                 {
-                    ProcessSend1(send);
+                    if (isPooled)
+                    {
+                        ArrayPool<byte>.Shared.Return(dataSend, clearArray: false);
+                    }
+                    lock (sendState.LockSend)
+                    {
+                        sendState.IsSending = false;
+                    }
                 }
             }
-            catch (Exception ex)
+            catch(Exception ex)
             {
-                lock (sendState.LockSend)
-                {
-                    sendState.IsSending = false;
-                }
+                //Read and Send possible null
             }
         }
-        private void ProcessSend1(SocketAsyncEventArgs e)
+        private void ProcessSend(SocketAsyncEventArgs e)
         {
-            TDomain domain = (TDomain)e.UserToken;
+            var (domain, dataSend) = ((TDomain, byte[]))e.UserToken;
+
+            e.UserToken = domain;
+            //TDomain domain = (TDomain)e.UserToken;
             try
             {
+                if(dataSend != null)
+                {
+                    ArrayPool<byte>.Shared.Return(dataSend, clearArray: false);
+                }
                 if (e.SocketError == SocketError.Success)
                 {
                     if (_sendTasks.TryGetValue(domain, out var sendState))
@@ -247,15 +275,24 @@ namespace VRemoteServer.RelayServer.Domains
                 }
                 else
                 {
-                    Console.WriteLine("Send error");
-                    //CloseClientSocket(domain);
+                    if (_sendTasks.TryGetValue(domain, out var sendState))
+                    {
+                        lock (sendState.LockSend)
+                        {
+                            sendState.IsSending = false;
+                        }
+                    }       
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                Console.WriteLine(ex);
-
-                ServerErrorEvent?.Invoke(domain, InitException(ex, "ProcessSend error"));
+                if (_sendTasks.TryGetValue(domain, out var sendState))
+                {
+                    lock (sendState.LockSend)
+                    {
+                        sendState.IsSending = false;
+                    }
+                }
             }
         }
         private void StartAccept(SocketAsyncEventArgs acceptEventArg)
@@ -338,13 +375,15 @@ namespace VRemoteServer.RelayServer.Domains
             {
                 if(e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
+                    Console.WriteLine("Received data");
                     //Interlocked.Add(ref totalBytesRead, e.BytesTransferred);
 
                     Socket socket = GetSocketFromDomain(domain);
                     SendToDomain(domain, e.Offset, e.BytesTransferred);
 
 
-                    Console.WriteLine("Continue receive");
+                    Console.WriteLine("Finished Task, continue receive\n" +
+                        "--------------------------------------------------------\n\n");
                     e.SetBuffer(e.Offset, receiveBufferSize);
                     bool willRaiseEvent = socket.ReceiveAsync(e);
                     if (!willRaiseEvent)
@@ -362,28 +401,6 @@ namespace VRemoteServer.RelayServer.Domains
                 Console.WriteLine(ex);
 
                 ServerErrorEvent?.Invoke(domain, InitException(ex, "ProcessReceive error"));
-            }
-        }
-        private void ProcessSend(SocketAsyncEventArgs e)
-        {
-            TDomain domain = (TDomain)e.UserToken;
-            try
-            {
-                if (e.SocketError == SocketError.Success)
-                {
-                    //Receive(domain);
-                }
-                else
-                {
-                    Console.WriteLine("Send error");
-                    //CloseClientSocket(domain);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-
-                ServerErrorEvent?.Invoke(domain, InitException(ex, "ProcessSend error"));
             }
         }
         private void TDomainEventHandler(object sender, TDomainEvent e)
