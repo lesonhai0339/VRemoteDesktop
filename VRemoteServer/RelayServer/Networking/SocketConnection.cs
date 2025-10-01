@@ -375,6 +375,14 @@ namespace VRemoteServer.RelayServer.Networking
         {
             try
             {
+                if(!Enum.IsDefined(typeof(SocketDataType), type))
+                {
+                    //Reset
+                    previousData = Array.Empty<byte>();
+                    length = 0;
+                    type = default;
+                    id = default;
+                }
                 if (comingOffset + comingDataLength > _readSocketAsyncEventArgs.Buffer.Length)
                 {
                     Console.WriteLine($"ERROR: Invalid bounds - offset:{comingOffset}, length:{comingDataLength}, bufferSize:{_readSocketAsyncEventArgs.Buffer.Length}");
@@ -451,9 +459,14 @@ namespace VRemoteServer.RelayServer.Networking
                         else
                         {
                             ProcessData(type, id, comingOffset, length);
-                            remainingData = comingDataLength - length;
+                            remainingData = 0;
                             comingOffset += length;
                             comingDataLength -= length;
+
+
+                            length = 0;
+                            type = default;
+                            id = default;
                         }
                     }
                 }

@@ -6,7 +6,7 @@
     <ProductVersion>8.0.30703</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{521DB7AA-B8EC-4C48-8FC1-F288C1EA216D}</ProjectGuid>
-    <OutputType>Exe</OutputType>
+    <OutputType>WinExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>VRemoteDesktop</RootNamespace>
     <AssemblyName>VRemoteDesktop</AssemblyName>

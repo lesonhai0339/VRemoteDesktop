@@ -10,6 +10,10 @@ using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Networking;
+using System.Collections.Concurrent;
+using VRemoteServer.RelayServer.DTOs;
+using System.Buffers;
+using System.Data;
 
 namespace VRemoteServer.RelayServer.Domains
 {
@@ -51,6 +55,8 @@ namespace VRemoteServer.RelayServer.Domains
         int numberConnectedSockets;
         Semaphore maxNumberAcceptedClients;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
+        private ConcurrentDictionary<TDomain, QueueSendState> _sendTasks = new ConcurrentDictionary<TDomain, QueueSendState>();
+
 
         public virtual event EventHandler<TDomainEvent> ServerEvent;
         public virtual event EventHandler<TException> ServerErrorEvent;
@@ -127,29 +133,32 @@ namespace VRemoteServer.RelayServer.Domains
             {
                 listenSocket.Close();
             }
-        }
+        }   
         public virtual void Send(TDomain domain, byte[] data)
         {
+            var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+            Socket socket = GetSocketFromDomain(domain);
+            if (socket == null || read.Buffer == null)
+            {
+                //CloseClientSocket(domain);
+                return;
+            }
             try
             {
-                var send = GetSendSocketAsyncEventArgsFromDomain(domain);
-                Socket socket = GetSocketFromDomain(domain);
-                if (socket == null)
+                var sendState = _sendTasks.GetOrAdd(domain, _ => new QueueSendState());
+                lock (sendState.LockSend)
                 {
-                    //CloseClientSocket(domain);
-                    return;
-                }
-                send.SetBuffer(data, 0, data.Length);
-                bool willRaiseEvent = socket.SendAsync(send);
-                if (!willRaiseEvent)
-                {
-                    ProcessSend(send);
+                    sendState.Queue.Enqueue(data);
+                    if (!sendState.IsSending)
+                    {
+                        sendState.IsSending = true;
+                        StartSend(domain, sendState);
+                    }
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
-                //ServerErrorEvent?.Invoke(domain, InitException(ex, "Send error"));
             }
         }
         public virtual void Send(TDomain domain, int offset, int length)
@@ -163,24 +172,90 @@ namespace VRemoteServer.RelayServer.Domains
             }
             try
             {
-                //Both send and read place on the same buffer manager then no need copy, must ensure read.Buffer do not modify util send finished 
-                //send.SetBuffer(send.Buffer, offset, length);
-
                 byte[] data = new byte[length];
                 Buffer.BlockCopy(read.Buffer, offset, data, 0, length);
-                send.SetBuffer(data, 0, length);
 
+                var sendState = _sendTasks.GetOrAdd(domain, _ => new QueueSendState());
+                lock (sendState.LockSend)
+                {
+                    sendState.Queue.Enqueue(data);
+                    if (!sendState.IsSending)
+                    {
+                        sendState.IsSending = true;
+                        StartSend(domain, sendState, true);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex);
+            }
+        }
+
+        private void StartSend(TDomain domain, QueueSendState sendState, bool isRent = false)
+        {
+            byte[] dataSend = null;
+            lock (sendState.LockSend)
+            {
+                if (sendState.Queue.Count == 0)
+                {
+                    Console.WriteLine("Complete task");
+                    sendState.IsSending = false;
+                    return;
+                }
+                dataSend = sendState.Queue.Dequeue();
+            }
+            var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+            Socket socket = GetSocketFromDomain(domain);
+
+            if (socket == null)
+            {
+                lock (sendState.LockSend)
+                {
+                    sendState.IsSending = false;
+                }
+            }
+
+            try
+            {
+                send.SetBuffer(dataSend, 0, dataSend.Length);
                 bool willRaiseEvent = socket.SendAsync(send);
                 if (!willRaiseEvent)
                 {
-                    ProcessSend(send);
+                    ProcessSend1(send);
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
+            {
+                lock (sendState.LockSend)
+                {
+                    sendState.IsSending = false;
+                }
+            }
+        }
+        private void ProcessSend1(SocketAsyncEventArgs e)
+        {
+            TDomain domain = (TDomain)e.UserToken;
+            try
+            {
+                if (e.SocketError == SocketError.Success)
+                {
+                    if (_sendTasks.TryGetValue(domain, out var sendState))
+                    {
+                        StartSend(domain, sendState);
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Send error");
+                    //CloseClientSocket(domain);
+                }
+            }
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
 
-                //ServerErrorEvent?.Invoke(domain, InitException(ex, "Send error"));
+                ServerErrorEvent?.Invoke(domain, InitException(ex, "ProcessSend error"));
             }
         }
         private void StartAccept(SocketAsyncEventArgs acceptEventArg)
@@ -263,11 +338,13 @@ namespace VRemoteServer.RelayServer.Domains
             {
                 if(e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
-                    Interlocked.Add(ref totalBytesRead, e.BytesTransferred);
+                    //Interlocked.Add(ref totalBytesRead, e.BytesTransferred);
 
                     Socket socket = GetSocketFromDomain(domain);
                     SendToDomain(domain, e.Offset, e.BytesTransferred);
 
+
+                    Console.WriteLine("Continue receive");
                     e.SetBuffer(e.Offset, receiveBufferSize);
                     bool willRaiseEvent = socket.ReceiveAsync(e);
                     if (!willRaiseEvent)
@@ -346,23 +423,17 @@ namespace VRemoteServer.RelayServer.Domains
                 Socket socket = GetSocketFromDomain(domain);
                 var hashCode = socket.GetHashCode();
                 Console.WriteLine($"CloseClientSocket on - {hashCode}");
-                try
+                
+                if(socket != null && socket.Connected)
                 {
-                    socket.Shutdown(SocketShutdown.Both);
+                    try
+                    {
+                        socket.Shutdown(SocketShutdown.Both);
+                    }
+                    catch (SocketException socketEx) {}
+                    catch (Exception ex){}
+                    socket.Close();
                 }
-                catch (SocketException socketEx)
-                {
-                    Console.WriteLine(socketEx);
-
-                    ServerErrorEvent?.Invoke(domain, InitException(socketEx, "CloseClientSocket error"));
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex);
-
-                    ServerErrorEvent?.Invoke(domain, InitException(ex, "CloseClientSocket error"));
-                }
-                socket.Close();
 
                 // decrement the counter keeping track of the total number of clients connected to the server
                 Interlocked.Decrement(ref numberConnectedSockets);
