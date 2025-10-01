@@ -191,10 +191,12 @@ namespace VRemoteServer.RelayServer.Networking
         }
         private void ProcessData(SocketDataType type, string id, byte[] buffer)
         {
+            _lastSendTime = DateTimeOffset.UtcNow;
             SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, buffer));
         }
         private void ProcessData(SocketDataType type, string id, int offset, int length)
         {
+            _lastSendTime = DateTimeOffset.UtcNow;
             SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, offset, length));
         }
         private (int length, SocketDataType type, string id) GetHeader(byte[] buffer, int offset)
@@ -202,175 +204,7 @@ namespace VRemoteServer.RelayServer.Networking
             byte[] header = new byte[PACKET_HEADER_LENGTH];
             Buffer.BlockCopy(buffer, offset, header, 0, PACKET_HEADER_LENGTH);
             return PacketFactory.GetHeaderDataFromPacket(header, 0, PACKET_HEADER_LENGTH);
-        }
-        
-        //public void CalCuLateData(int comingOffset, int comingDataLength)
-        //{
-        //    try
-        //    {
-        //        while (comingDataLength > 0)
-        //        {
-        //            if (remainingData != 0)
-        //            {
-        //                if (comingDataLength > remainingData)
-        //                {
-        //                    // gửi phần còn thiếu
-        //                    ProcessData(type, id, comingOffset, remainingData);
-
-        //                    comingOffset += remainingData;
-        //                    comingDataLength -= remainingData;
-        //                    remainingData = 0;
-        //                }
-        //                else
-        //                {
-        //                    ProcessData(type, id, comingOffset, comingDataLength);
-        //                    remainingData -= comingDataLength;
-        //                    return;
-        //                }
-        //            }
-        //            else
-        //            {
-        //                if (comingDataLength < PACKET_HEADER_LENGTH)
-        //                {
-        //                    // lưu lại vào previousData
-        //                    SaveToPrevious(comingOffset, comingDataLength);
-        //                    return;
-        //                }
-
-        //                // đọc header
-        //                (int length, int type, int id) = GetHeader(_readSocketAsyncEventArgs.Buffer, comingOffset);
-
-        //                if (comingDataLength < length)
-        //                {
-        //                    ProcessData(type, id, comingOffset, comingDataLength);
-        //                    remainingData = length - comingDataLength;
-        //                    return;
-        //                }
-        //                else
-        //                {
-        //                    ProcessData(type, id, comingOffset, length);
-        //                    comingOffset += length;
-        //                    comingDataLength -= length;
-        //                }
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine("CalCuLateData error: " + ex);
-        //    }
-        //}
-
-        //public void CalCuLateData(int comingOffset, int comingDataLength)
-        //{
-        //    try
-        //    {
-        //        if (_readSocketAsyncEventArgs.Buffer == null)
-        //            return;
-        //        if (_remainingData == null)
-        //            _remainingData = new byte[0];
-
-        //        _remainingData ??= Array.Empty<byte>();
-
-        //        //Previous packet still lack data, using previous header to send data
-        //        if (remainingData != 0)
-        //        {
-        //            //Current packet data bigger than data remainingData expect. Calculate data needed and send, finally calculate remaining data
-        //            //and call this method again
-        //            if (comingDataLength > remainingData)
-        //            {
-        //                offsetDataWillBeSend = comingOffset;
-        //                lengthDataWillBeSend = remainingData;
-
-        //                offsetDataRemaining = comingOffset + remainingData;
-        //                lengthDataRemaining = comingDataLength - remainingData;
-
-        //                remainingData = 0;
-        //                ProcessData(type, id, offsetDataWillBeSend, lengthDataWillBeSend);
-        //                CalCuLateData(offsetDataRemaining, lengthDataRemaining);
-        //            }
-        //            //Current packet smaller or equal remainingData, send full current data packet and subtract remainingData
-        //            else
-        //            {
-        //                remainingData -= comingDataLength;
-        //                ProcessData(type, id, comingOffset, comingDataLength);
-        //            }
-        //        }
-        //        //Do not have remainingData, normal handle
-        //        else
-        //        {
-        //            //Current packet data had length less than require length, store packet data and waiting next packet to combine
-        //            //with current packet
-        //            if (comingDataLength < PACKET_HEADER_LENGTH)
-        //            {
-        //                //Still not optimize this, create every time
-        //                if (previousData == null || previousData.Length < previousDataOffset + comingDataLength)
-        //                {
-        //                    previousData = new byte[previousDataLength + comingDataLength];
-        //                }
-        //                //Combine with remaining data from previous packet
-        //                Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, comingOffset, previousData, previousDataOffset, comingDataLength);
-        //                previousDataOffset += comingDataLength;
-        //                previousDataLength += comingDataLength;
-        //                if (previousDataLength < PACKET_HEADER_LENGTH)
-        //                {
-        //                    //Return and waiting next packet to combine
-        //                    return;
-        //                }
-        //                else
-        //                {
-        //                    //Had reach the required length, handle data
-
-        //                    //Get header
-        //                    (length, type, id) = GetHeader(previousData, 0);
-
-        //                    //Calculate remaining data
-        //                    remainingData = Math.Abs(length - previousDataLength);
-        //                    //Send direct buffer
-        //                    ProcessData(type, id, previousData);
-
-        //                    //finally reset  previousData, previousDataOffset and previousDataLength
-        //                    previousData = Array.Empty<byte>();
-        //                    previousDataOffset = 0;
-        //                    previousDataLength = 0;
-        //                    //break
-        //                    return;
-        //                }
-        //            }
-        //            //Current packet size bigger than require length
-
-        //            //Get header
-        //            (length, type, id) = GetHeader(_readSocketAsyncEventArgs.Buffer, comingOffset);
-        //            if (comingDataLength < length)
-        //            {
-        //                //If comingDataLength < length calculate remaining data
-        //                remainingData = checked(length - comingDataLength); //data remain
-        //                                                                    //Send offset and length off data needed in bufferManager
-        //                ProcessData(type, id, comingOffset, comingDataLength);
-        //            }
-        //            else
-        //            {
-        //                //If comingDataLength >= length, calculate offset,length data need to send, offset and length data remained
-        //                //And recall this method to continue handle. Set remainingData = 0
-        //                offsetDataWillBeSend = comingOffset;
-        //                lengthDataWillBeSend = length;
-
-        //                offsetDataRemaining = comingOffset + length;
-        //                lengthDataRemaining = comingDataLength - length;
-
-        //                remainingData = 0;
-        //                //Send offset and length off data needed in bufferManager
-        //                ProcessData(type, id, offsetDataWillBeSend, lengthDataWillBeSend);
-        //                CalCuLateData(offsetDataRemaining, lengthDataRemaining);
-        //            }
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine("CalCuLateData error: ", ex);
-        //        Log.ForContext("FileName", this.GetType().Name).Error(ex, "CalCuLateData");
-        //    }
-        //}
+        } 
         public void CalCuLateData(int comingOffset, int comingDataLength)
         {
             try
@@ -471,10 +305,11 @@ namespace VRemoteServer.RelayServer.Networking
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine("CalCuLateData error: ", ex);
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "CalCuLateData");
+            catch{
+                previousData = Array.Empty<byte>();
+                length = 0;
+                type = default;
+                id = default;
             }
         }
         //Simple, less performance
@@ -574,7 +409,6 @@ namespace VRemoteServer.RelayServer.Networking
         }
         protected virtual void Dispose(bool disposing)
         {
-            Console.WriteLine(DateTime.Now.ToString("hh:mm:ss:fff"));
             if (!disposing || Interlocked.Exchange(ref _disposed, 1) == 1) return;
 
             _timer?.Dispose();

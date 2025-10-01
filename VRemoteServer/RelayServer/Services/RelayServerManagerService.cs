@@ -122,10 +122,6 @@ namespace VRemoteServer.RelayServer.Services
                     }
                 }
             }
-            else
-            {
-
-            }
             return true;
         }
 
@@ -142,10 +138,6 @@ namespace VRemoteServer.RelayServer.Services
                         break;
                 }
             }
-            else
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error($"Object type {sender.GetType()} does not matches with {typeof(SocketConnection)}");
-            }
         }
         private void ProcessSocketConnectionDisconnected(SocketConnection connection)
         {
@@ -153,10 +145,7 @@ namespace VRemoteServer.RelayServer.Services
             {
                 _loginManager.RemoveLogin(connection);
             }
-            catch(Exception ex)
-            {
-                //TODO
-            }
+            catch{ }
         }
         private bool ProcessP2PDataTransfer(object sender, string remoteConnectionId, byte[] data, int offset, int length)
         {

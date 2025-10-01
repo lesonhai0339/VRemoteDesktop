@@ -111,7 +111,6 @@ namespace VRemoteServer.RelayServer.Domains
         }
         public virtual async Task Start(IPEndPoint endpoint)
         {
-            Log.ForContext("FileName", this.GetType().Name).Information($"Start listening on IP: {endpoint.Address} - Port: {endpoint.Port}");
             listenSocket = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             listenSocket.Bind(endpoint);
 
@@ -156,10 +155,7 @@ namespace VRemoteServer.RelayServer.Domains
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
+            catch{}
         }
         public virtual void Send(TDomain domain, int offset, int length)
         {      
@@ -187,10 +183,7 @@ namespace VRemoteServer.RelayServer.Domains
                     }
                 }
             }
-            catch (Exception ex)
-            {
-                Console.WriteLine(ex);
-            }
+            catch{}
         }
 
         private void StartSend(TDomain domain, QueueSendState sendState)
@@ -249,10 +242,7 @@ namespace VRemoteServer.RelayServer.Domains
                     }
                 }
             }
-            catch(Exception ex)
-            {
-                //Read and Send possible null
-            }
+            catch{}
         }
         private void ProcessSend(SocketAsyncEventArgs e)
         {
@@ -361,9 +351,6 @@ namespace VRemoteServer.RelayServer.Domains
             }
             catch(Exception ex)
             {
-                Console.WriteLine(ex);
-
-                Console.WriteLine("ProcessAccept error: "+ ex.Message);
                 readWritePool.Push(readEventArg); 
                 sendWritePool.Push(sendEventArg);
             }
@@ -375,15 +362,11 @@ namespace VRemoteServer.RelayServer.Domains
             {
                 if(e.BytesTransferred > 0 && e.SocketError == SocketError.Success)
                 {
-                    Console.WriteLine("Received data");
                     //Interlocked.Add(ref totalBytesRead, e.BytesTransferred);
 
                     Socket socket = GetSocketFromDomain(domain);
                     SendToDomain(domain, e.Offset, e.BytesTransferred);
 
-
-                    Console.WriteLine("Finished Task, continue receive\n" +
-                        "--------------------------------------------------------\n\n");
                     e.SetBuffer(e.Offset, receiveBufferSize);
                     bool willRaiseEvent = socket.ReceiveAsync(e);
                     if (!willRaiseEvent)
@@ -398,8 +381,6 @@ namespace VRemoteServer.RelayServer.Domains
             }
             catch( Exception ex)
             {
-                Console.WriteLine(ex);
-
                 ServerErrorEvent?.Invoke(domain, InitException(ex, "ProcessReceive error"));
             }
         }
@@ -422,10 +403,6 @@ namespace VRemoteServer.RelayServer.Domains
                     CloseClientSocket(domain);
                 }
             }
-            else
-            {
-                Log.ForContext("FileName", this.GetType().Name).Information($"Invalid object type {sender.GetType()}");
-            }
         }
         private void CloseClientSocket(TDomain domain)
         {
@@ -439,7 +416,6 @@ namespace VRemoteServer.RelayServer.Domains
                 var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
                 Socket socket = GetSocketFromDomain(domain);
                 var hashCode = socket.GetHashCode();
-                Console.WriteLine($"CloseClientSocket on - {hashCode}");
                 
                 if(socket != null && socket.Connected)
                 {
@@ -464,11 +440,7 @@ namespace VRemoteServer.RelayServer.Domains
                 Log.ForContext("FileName", this.GetType().Name).Information("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
 
             }
-            catch(Exception ex)
-            {
-                Console.WriteLine(ex);
-
-            }
+            catch(Exception ex){}
         }
         public virtual  void Dispose()
         {
