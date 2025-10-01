@@ -309,10 +309,10 @@ namespace VRemoteServer.RelayServer.Domains
                 }
             }
         }
+          
         private void IOCompleted(object sender, SocketAsyncEventArgs e)
         {
-            TDomain domain = (TDomain)e.UserToken;
-            SetTime(domain);
+            //Called when sent or received data to socket, e.UserToken of send is tuple (TDomain, byte[]) but received is TDomain
             switch (e.LastOperation)
             {
                 case SocketAsyncOperation.Receive:
