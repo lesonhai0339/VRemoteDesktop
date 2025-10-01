@@ -116,7 +116,7 @@ namespace VRemoteDesktop
         }
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (!chatForm.IsDisposed)
+            if (chatForm != null && !chatForm.IsDisposed)
                 chatForm.Close();
 
             if(_viewModel != null)

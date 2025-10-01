@@ -199,7 +199,9 @@ namespace VRemoteServer.RelayServer.Services
         #region Events
         private void LoginEventHandler(object sender, SocketConnectionEventArg e)
         {
-            if(sender is SocketConnection connection)
+            Console.WriteLine($"Login: {e.Type}");
+
+            if (sender is SocketConnection connection)
             {
                 ProcessLoginDataReceived(connection, e.Offset, e.Length);
             }

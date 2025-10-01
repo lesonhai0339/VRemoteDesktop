@@ -28,7 +28,7 @@ namespace VRemoteServer
                     //services.AddScoped<SocketListener>();
                     //services.AddScoped<IServer, Server>();
                     services.AddScoped<ILoginServer>(sp =>new LoginServer(10, 1024 * 32));
-                    services.AddScoped<IRemoteControlServer>(sp => new RemoteControlServer(10, 1024 * 32));
+                    services.AddScoped<IRemoteControlServer>(sp => new RemoteControlServer(10, 1024 * 64));
                     services.AddScoped<ILoginManager, LoginManager>();
                     services.AddScoped<ILoginManagerService, LoginManagerService>();
                     services.AddScoped<IRemoteControlManager, RemoteControlManager>();

@@ -188,7 +188,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         {
                             using (Bitmap chunkBitmap = new Bitmap(ms))
                             {
-                                g.DrawImage(chunkBitmap, regions[i].Rectangle);
+                                try
+                                {
+                                    g.DrawImage(chunkBitmap, regions[i].Rectangle);
+                                }
+                                catch { continue; }
 
                                 // merge dirty region
                                 dirtyRegion = Rectangle.Union(dirtyRegion, regions[i].Rectangle);
