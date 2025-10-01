@@ -389,7 +389,6 @@ namespace VRemoteServer.RelayServer.Networking
                     return;
                 }
 
-
                 if (_readSocketAsyncEventArgs.Buffer == null)
                     return;
 

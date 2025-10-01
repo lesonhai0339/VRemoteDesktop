@@ -10,6 +10,8 @@ using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Networking;
+using System.Collections.Concurrent;
+using VRemoteServer.RelayServer.DTOs;
 
 namespace VRemoteServer.RelayServer.Domains
 {
@@ -38,7 +40,6 @@ namespace VRemoteServer.RelayServer.Domains
         where TException : EventArgs
         where TDomainEvent : EventArgs
     {
-        private int _freePool;
         private bool _disposed;
         private int numberOfConnections;
         private int receiveBufferSize;
@@ -51,12 +52,13 @@ namespace VRemoteServer.RelayServer.Domains
         int numberConnectedSockets;
         Semaphore maxNumberAcceptedClients;
         private CancellationTokenSource _cancel = new CancellationTokenSource();
+        private ConcurrentDictionary<TDomain, DomainSendState> _sendStates;
 
         public virtual event EventHandler<TDomainEvent> ServerEvent;
         public virtual event EventHandler<TException> ServerErrorEvent;
         public  BaseServer(int numberOfConnections = 1000, int receiveBufferSize = 1024 * 8)
         {
-            _freePool = numberOfConnections;
+            _sendStates = new();
             _disposed = false;
             this.totalBytesRead = 0;
             this.numberConnectedSockets = 0;
@@ -107,6 +109,8 @@ namespace VRemoteServer.RelayServer.Domains
         {
             Log.ForContext("FileName", this.GetType().Name).Information($"Start listening on IP: {endpoint.Address} - Port: {endpoint.Port}");
             listenSocket = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
+            //listenSocket.ReceiveBufferSize = receiveBufferSize;
+            //listenSocket.SendBufferSize = receiveBufferSize;
             listenSocket.Bind(endpoint);
 
             listenSocket.Listen(100);
@@ -163,17 +167,19 @@ namespace VRemoteServer.RelayServer.Domains
             }
             try
             {
-                //Both send and read place on the same buffer manager then no need copy, must ensure read.Buffer do not modify util send finished 
-                //send.SetBuffer(send.Buffer, offset, length);
-
                 byte[] data = new byte[length];
                 Buffer.BlockCopy(read.Buffer, offset, data, 0, length);
-                send.SetBuffer(data, 0, length);
 
-                bool willRaiseEvent = socket.SendAsync(send);
-                if (!willRaiseEvent)
+                var sendState = _sendStates.GetOrAdd(domain, _ => new DomainSendState());
+                lock (sendState.SendLock)
                 {
-                    ProcessSend(send);
+                    sendState.Queue.Enqueue(data);
+
+                    if (!sendState.IsSending)
+                    {
+                        sendState.IsSending = true;
+                        StartSendQueue(domain, sendState);
+                    }
                 }
             }
             catch(Exception ex)
@@ -183,6 +189,51 @@ namespace VRemoteServer.RelayServer.Domains
                 //ServerErrorEvent?.Invoke(domain, InitException(ex, "Send error"));
             }
         }
+
+        private void StartSendQueue(TDomain domain, DomainSendState sendState)
+        {
+            byte[] dataSend;
+
+            lock (sendState.SendLock)
+            {
+                if(sendState.Queue.Count == 0)
+                {
+                    sendState.IsSending = false;
+                    return;
+                }
+                dataSend = sendState.Queue.Dequeue();
+            }
+
+            var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+            Socket socket = GetSocketFromDomain(domain);
+
+            if (socket == null)
+            {
+                lock (sendState.SendLock)
+                {
+                    sendState.IsSending = false;
+                }
+                return;
+            }
+            try
+            {
+                send.SetBuffer(dataSend, 0 , dataSend.Length);
+                bool willRaiseEvent = socket.SendAsync(send);
+                if (!willRaiseEvent)
+                {
+                    ProcessSend(send);
+                }
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+                lock (sendState.SendLock)
+                {
+                    sendState.IsSending = false;
+                }
+            }
+        }
+
         private void StartAccept(SocketAsyncEventArgs acceptEventArg)
         {
             bool willRaiseEvent = false;
@@ -294,7 +345,10 @@ namespace VRemoteServer.RelayServer.Domains
             {
                 if (e.SocketError == SocketError.Success)
                 {
-                    //Receive(domain);
+                    if (_sendStates.TryGetValue(domain, out var sendState))
+                    {
+                        StartSendQueue(domain, sendState);
+                    }
                 }
                 else
                 {
@@ -374,9 +428,9 @@ namespace VRemoteServer.RelayServer.Domains
 
                 maxNumberAcceptedClients.Release();
                 Log.ForContext("FileName", this.GetType().Name).Information("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
-
+                _sendStates.TryRemove(domain, out _);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Console.WriteLine(ex);
 
