@@ -9,15 +9,13 @@ namespace VRemoteDesktop.Events
 
     public class UserChatControlEventArgs: EventArgs
     {
-        public UserChatControlEventArgs(UserChatControlEventType type, string id, byte[] data)
+        public UserChatControlEventArgs(UserChatControlEventType type, string id)
         {
             Type = type;
             Id = id;
-            Data = data;
         }
 
         public UserChatControlEventType Type { get; set; }
         public string Id { get; set; }
-        public byte[] Data { get; set; }
     }
 }

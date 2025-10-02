@@ -1,17 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
-using VRemoteDesktop.ViewModels;
-using VRemoteDesktop.Services.FileService;
-using static System.Net.WebRequestMethods;
-using VRemoteDesktop.Helpers;
-using System.Drawing;
 
 namespace VRemoteDesktop.Layouts
 {
@@ -56,33 +48,22 @@ namespace VRemoteDesktop.Layouts
             }
             this._messagePanel.Controls.Add(attachment);
             this._messagePanel.ScrollControlIntoView(attachment);
-            Console.WriteLine(_messagePanel.Controls.Count);
-
         }
         private void ProcessAttachmentRespondFromPartner(object sender , P2PFileReceivedEventArgs e)
         {
             if (sender is Button btn && btn.Parent is FileAttachmentLayout parent)
             {
-                //Accept file
                 if (string.Compare(btn.Name, "btnSave") == 0)
                 {
-                    FileAttachment.UpdateFileSavePath(parent.Id, e.FilePath);
-                    byte[] data = ByteArrayHelper.ConvertStringToByteArray(parent.Id, EncodingType.ASCII).GetResult();
-                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentAccepted, parent.Id, data));
+                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentAccepted, parent.Id));
                 }
-                //Reject file
                 else if (string.Compare(btn.Name, "btnCancel") == 0)
                 {
-                    FileAttachment.RemoveFileInfo(parent.Id);
-                    byte[] data = ByteArrayHelper.ConvertStringToByteArray(parent.Id, EncodingType.ASCII).GetResult();
-                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentRefused, parent.Id, data));
+                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentRefused, parent.Id));
                 }
-                //Stop receiving
                 else if (string.Compare(btn.Name, "btnStop") == 0)
                 {
-                    FileAttachment.CleanUpFileInfo(parent.Id);
-                    byte[] data = ByteArrayHelper.ConvertStringToByteArray(parent.Id, EncodingType.ASCII).GetResult();
-                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentStopped, parent.Id, data));
+                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentStopped, parent.Id));
                 }
             }
         }
@@ -92,6 +73,7 @@ namespace VRemoteDesktop.Layouts
             {
                 attachment.Value.AcceptSaveFile -= ProcessAttachmentRespondFromPartner;
             }
+            _attachments.Clear();
             base.Dispose(disposing);
         }
     }
