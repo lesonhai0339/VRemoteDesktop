@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Net.Mail;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
@@ -55,15 +56,28 @@ namespace VRemoteDesktop.Layouts
             {
                 if (string.Compare(btn.Name, "btnSave") == 0)
                 {
-                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentAccepted, parent.Id));
+                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentAccepted, parent, e.FilePath));
                 }
                 else if (string.Compare(btn.Name, "btnCancel") == 0)
                 {
-                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentRefused, parent.Id));
+                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentRefused, parent, null));
+
+                    parent.AcceptSaveFile -= ProcessAttachmentRespondFromPartner;
+
+                    _messagePanel.Controls.Remove(parent);
+                    parent?.Dispose();
                 }
                 else if (string.Compare(btn.Name, "btnStop") == 0)
                 {
-                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentStopped, parent.Id));
+                    UserChatEvent?.Invoke(this, new UserChatControlEventArgs(UserChatControlEventType.AttachmentStopped, parent, null));
+
+
+                    parent.DisableControl(btn);
+                    parent.RemoveProgressBar();
+                    parent.AcceptSaveFile -= ProcessAttachmentRespondFromPartner;
+
+                    _messagePanel.Controls.Remove(parent);
+                    parent?.Dispose();
                 }
             }
         }

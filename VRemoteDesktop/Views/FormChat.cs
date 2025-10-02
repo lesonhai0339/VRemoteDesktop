@@ -9,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Remoting.Messaging;
+using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
@@ -18,9 +19,9 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.ViewModels;
-using static VRemoteDesktop.Utils.Logger;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 using static VRemoteDesktop.Utils.DefaultForm;
-using System.Security.Cryptography;
+using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Views
 {
@@ -614,7 +615,35 @@ namespace VRemoteDesktop.Views
         }
         private void UserChatEventHandler(object sender, UserChatControlEventArgs e)
         {
-            Console.WriteLine(string.Format("{0} - {1}", e.Type, e.Id));
+            if (e.Type == UserChatControlEventType.AttachmentAccepted)
+            {
+                var updatePathRespond = _chatViewModel.UpdateFileSavePath(e.Attachment.Id, e.Path);
+                RespondHandler(updatePathRespond);
+                if (updatePathRespond.IsSuccess)
+                {
+                    var saveFileRespond = _chatViewModel.SaveChatToFile(e.Attachment.SocketId, e.Attachment.FileInfo.SavePath, e.Attachment.FileInfo.Filename, e.Attachment.FileInfo.FileSize);
+                    RespondHandler(saveFileRespond);
+                    if (saveFileRespond.IsSuccess)
+                    {
+                        var respond = _chatViewModel.AcceptedFile(e.Attachment.Id);
+                        RespondHandler(respond);
+                        if (respond.IsSuccess)
+                            e.Attachment.AcceptSendFile();
+                    }
+                }
+            }
+            //Reject file
+            else if (e.Type == UserChatControlEventType.AttachmentRefused)
+            {
+                var respond = _chatViewModel.DeclinedFile(e.Attachment.Id);
+                RespondHandler(respond);
+                if (respond.IsSuccess)
+                    e.Attachment.RejectSendFile();
+            }
+            else if (e.Type == UserChatControlEventType.AttachmentStopped)
+            {
+               _chatViewModel.StopReceivedFileDataByFileId(e.Attachment.Id);
+            }
         }
         private void ChangeChatContentByConnectionId(string connectionId)
         {
