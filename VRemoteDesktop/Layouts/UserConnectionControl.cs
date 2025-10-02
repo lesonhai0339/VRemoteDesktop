@@ -61,7 +61,9 @@ namespace VRemoteDesktop.Layouts
 
             this.Controls.Add(_connectionName, 0, 0);
             this.Controls.Add(_unreadMessage, 1, 0);
-            RegisterEvent(this);
+            RegisterEvent(_connectionName);
+            RegisterEvent(_unreadMessage);
+            RegisterEvent(_numberUnreadMessages);
         }
 
         private void UpdatePanel(object sender, PaintEventArgs e)
@@ -97,7 +99,7 @@ namespace VRemoteDesktop.Layouts
         }
         private void RegisterEvent(Control control)
         {
-            control.Click += (s, e) => base.OnClick(e);
+            control.Click += (s, e) => this.OnClick(e);
 
             foreach (Control child in control.Controls)
             {
