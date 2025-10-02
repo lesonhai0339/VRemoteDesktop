@@ -59,6 +59,7 @@
     <Compile Include="Enums\ChatControlType.cs" />
     <Compile Include="Enums\ChatDataType.cs" />
     <Compile Include="Enums\QueuePriority.cs" />
+    <Compile Include="Enums\UserChatControlEventType.cs" />
     <Compile Include="Enums\VClientType.cs" />
     <Compile Include="Enums\VMouseButtons.cs" />
     <Compile Include="Enums\MouseEventType.cs" />
@@ -90,6 +91,7 @@
     <Compile Include="Events\P2PScreenEventArgs.cs" />
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
     <Compile Include="Events\SocketDisposeEventArgs.cs" />
+    <Compile Include="Events\UserChatControlEventArgs.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
     <Compile Include="Helpers\ChatRespondHelper.cs" />
@@ -109,6 +111,12 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Layouts\FileAttachmentLayout.cs">
+      <SubType>Component</SubType>
+    </Compile>
+    <Compile Include="Layouts\UserChatControl.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Layouts\UserConnectionControl.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Layouts\VProgressBar.cs">
@@ -137,6 +145,7 @@
     <Compile Include="Services\Client\ClientInfoManager.cs" />
     <Compile Include="Services\FileService\SaveChat.cs" />
     <Compile Include="Services\FileService\VAttachmentManager.cs" />
+    <Compile Include="Services\FileService\FileAttachment.cs" />
     <Compile Include="Services\FileService\VChatAttachmentService.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
     <Compile Include="Services\Keyboard\VirtualClipboard.cs" />
@@ -186,6 +195,9 @@
     </EmbeddedResource>
     <EmbeddedResource Include="Layouts\CustomUserControl.resx">
       <DependentUpon>CustomUserControl.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Layouts\UserConnectionControl.resx">
+      <DependentUpon>UserConnectionControl.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>

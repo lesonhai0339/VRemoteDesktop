@@ -121,7 +121,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             {
                 int start = Environment.TickCount;
                 var screens = _capture.GetScreen();
-                if (screens.Count > 0)
+                if (screens != null && screens.Count > 0)
                 {
                     //Impossible screen capture can exceed Int.MaxValue(~2GB)
                     int totalSize = 0;

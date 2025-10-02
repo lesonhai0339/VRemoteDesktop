@@ -135,16 +135,22 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
         private List<ScreenRegion> FullScreenRegion(Bitmap fullScreen)
         {
-            using (var stream = new MemoryStream())
+            try
             {
-                fullScreen.Save(stream, encoder, encoderParams);
-                ScreenRegion region = new ScreenRegion
+                using (var stream = new MemoryStream())
                 {
-                    IsFullScreen = true,
-                    Rectangle = new Rectangle(0, 0, fullScreen.Width, fullScreen.Height),
-                    Bytes = stream.ToArray()
-                };
-                return new List<ScreenRegion> { region };
+                    fullScreen.Save(stream, encoder, encoderParams);
+                    ScreenRegion region = new ScreenRegion
+                    {
+                        IsFullScreen = true,
+                        Rectangle = new Rectangle(0, 0, fullScreen.Width, fullScreen.Height),
+                        Bytes = stream.ToArray()
+                    };
+                    return new List<ScreenRegion> { region };
+                }
+            }
+            catch {
+                return default(List<ScreenRegion>);
             }
         }  
         private List<ScreenRegion> MakeScreenRegions(Bitmap currentScreen, List<Rectangle> dirtyRegions)

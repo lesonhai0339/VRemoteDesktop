@@ -20,6 +20,7 @@ using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.ViewModels;
 using static VRemoteDesktop.Utils.Logger;
 using static VRemoteDesktop.Utils.DefaultForm;
+using System.Security.Cryptography;
 
 namespace VRemoteDesktop.Views
 {
@@ -28,12 +29,14 @@ namespace VRemoteDesktop.Views
         private static readonly Color SelectedColor = Color.LightSkyBlue;
         private static readonly Color DefaultColor = Color.White;
         private ChatViewModel _chatViewModel;
+        private Dictionary<string, UserChatControl> _userChatControls;
         private ConcurrentDictionary<string, FileAttachmentLayout> _attachments;
 
         public FormChat()
         {
             InitializeComponent();
             SetupComponent();
+            _userChatControls = new Dictionary<string, UserChatControl>();
         }
         #region Form Events
         protected override void SetVisibleCore(bool value)
@@ -54,7 +57,7 @@ namespace VRemoteDesktop.Views
             if (_chatViewModel != null)
             {
                 _chatViewModel.ProgressBarUpdateEvent -= ProgressBarUpdateEventHandler;
-                _chatViewModel.AddedEvent -= AddeddEventHandler;
+                _chatViewModel.AddedEvent -= AddedEventHandler;
                 _chatViewModel.RemovedEvent -= RemovedEventHandler;
                 _chatViewModel.UpdateEvent -= UpdateEventHandler;
                 _chatViewModel.UpdateChatHistoryEvent -= UpdateChatHistoryEventHandler;
@@ -99,7 +102,7 @@ namespace VRemoteDesktop.Views
         {
             _chatViewModel = new ChatViewModel();
             _chatViewModel.ProgressBarUpdateEvent += ProgressBarUpdateEventHandler;
-            _chatViewModel.AddedEvent += AddeddEventHandler;
+            _chatViewModel.AddedEvent += AddedEventHandler;
             _chatViewModel.RemovedEvent += RemovedEventHandler;
             _chatViewModel.UpdateEvent += UpdateEventHandler;
             _chatViewModel.UpdateChatHistoryEvent += UpdateChatHistoryEventHandler;
@@ -217,7 +220,7 @@ namespace VRemoteDesktop.Views
         {
             InvokeAction(() =>
             {
-                if (sender is Label lb && lb.Parent is FlowLayoutPanel flow)
+                if (sender is UserConnectionControl lb && lb.Parent is FlowLayoutPanel flow)
                 {
                     var respond = _chatViewModel.GetCurrentConnectionActivate();
                     if (respond.IsSuccess)
@@ -235,18 +238,20 @@ namespace VRemoteDesktop.Views
                     RespondHandler(isValidConnection);
                     if (isValidConnection.IsSuccess)
                     {
-                        foreach (var connection in flow.Controls.OfType<Label>())
+                        foreach (var connection in flow.Controls.OfType<UserConnectionControl>())
                         {
                             connection.BackColor = DefaultColor;
                         }
-                        var sp =  _chatViewModel.SetCurrentConnectionActivate(lb.Name);
+                        var sp = _chatViewModel.SetCurrentConnectionActivate(lb.Name);
                         RespondHandler(sp);
-                        if(sp.IsSuccess)
+                        if (sp.IsSuccess)
                         {
                             lb.BackColor = SelectedColor;
+                            lb.ClearCount();
                             //Load chat history on current connection
                             //_chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
                         }
+                        ChangeChatContentByConnectionId(lb.Name);
                     }
                     else
                     {
@@ -277,7 +282,7 @@ namespace VRemoteDesktop.Views
                         CreateMessageControl(respond.Data, chatMessage);
                 }
             }
-            RefeshUI(fpnChat);
+            RefreshUI(fpnChat);
         }
         private void CreateMessageControl(string name, ChatText chatMessage)
         {
@@ -287,7 +292,10 @@ namespace VRemoteDesktop.Views
                 AutoSize = true,
                 TextAlign = ContentAlignment.TopLeft,
             };
-            InvokeAction(()=> InsertFirst(fpnChat, lb));
+            var currentConnectionId = _chatViewModel.GetCurrentConnectionActivate().Data;
+            if (string.IsNullOrEmpty(currentConnectionId))
+                return;
+            InvokeAction(() => AddMessageToChatByConnectionId(currentConnectionId, lb));
         }
         private void ProcessUpdateChatHistory(ChatUpdateChatHistoryEventType type, List<Control> controls)
         {
@@ -300,7 +308,7 @@ namespace VRemoteDesktop.Views
                         ProcessMessageRemoved(fpnChat.Controls[i]);
                     }
                     InsertFirst(fpnChat, controls);
-                    RefeshUI(fpnChat);
+                    RefreshUI(fpnChat);
                 }
             });
         }
@@ -329,49 +337,46 @@ namespace VRemoteDesktop.Views
             f.UpdateProgressBar(num);
                      
         }
-        private void AddeddEventHandler(object sender, ChatControlAddedEventArgs e)
+        private void AddedEventHandler(object sender, ChatControlAddedEventArgs e)
         {
             InvokeAction(() =>
             {
                 if (e.Type == ChatControlType.Connection)
                 {
                     ProcessConnectionAdded(e.ConnectionId, e.Content);
-                    RefeshUI(fpnNumberChatConnection);
+                    RefreshUI(fpnNumberChatConnection);
                 }
                 else if (e.Type == ChatControlType.Message)
                 {
                     ProcessMessageAdded(e.ConnectionId, e.Content, e.ConnectionName);
-                    RefeshUI(fpnChat);
+                    RefreshUI(fpnChat);
                 }
                 else if (e.Type == ChatControlType.RequestAttachment || e.Type == ChatControlType.ReceivedAttachment)
                 {
                     ProcessAttachmentAdded(e.Type, e.ConnectionId, e.FileInfo);
-                    RefeshUI(fpnChat);
+                    RefreshUI(fpnChat);
                 }
                 else
                 {
-                    MessageBox.Show("Unexpected event type " + this.GetType().Name + " - " + nameof(AddeddEventHandler), "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    MessageBox.Show("Unexpected event type " + this.GetType().Name + " - " + nameof(AddedEventHandler), "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             });
         }
         private void ProcessAttachmentAdded(ChatControlType type, string connectionId, VFileInfo fileInfo)
         {
-            FileAttachmentLayout fileAttachmentLayout = new FileAttachmentLayout(fileInfo.Id, connectionId);
-            if(type == ChatControlType.RequestAttachment)
-            {
-                fileAttachmentLayout.Add(fileInfo, true);
-                _attachments.TryAdd(fileInfo.Id, fileAttachmentLayout);
-            }
-            if (type == ChatControlType.ReceivedAttachment)
-            {
-                fileAttachmentLayout.Add(fileInfo, false);
-                _attachments[fileInfo.Id] = fileAttachmentLayout;
-                fileAttachmentLayout.AcceptSaveFile += FileEventHandler;
-            }
-            fpnChat.Controls.Add(fileAttachmentLayout);
-            fpnChat.ScrollControlIntoView(fileAttachmentLayout);
-        }
+            var userChatControl = GetUserChatControl(connectionId);
+            if (userChatControl == null)
+                return;
 
+            userChatControl.AddAttachment(type, connectionId, fileInfo);
+            var chats = FindUserConnectionControlsById(connectionId);
+            string curId = _chatViewModel.GetCurrentConnectionActivate().Data;
+            foreach (var item in chats)
+            {
+                if(item.Name != curId)
+                    item.UpdateUnreadCount(1);
+            }
+        }
         private void FileEventHandler(object sender, P2PFileReceivedEventArgs e)
         {
             InvokeAction(() =>
@@ -385,9 +390,9 @@ namespace VRemoteDesktop.Views
                         RespondHandler(updatePathRespond);
                         if (updatePathRespond.IsSuccess)
                         {
-                            var savefileRepond =  _chatViewModel.SaveChatToFile(parent.SocketId, parent.FileInfo.SavePath, parent.FileInfo.Filename, parent.FileInfo.FileSize);
-                            RespondHandler(savefileRepond);
-                            if(savefileRepond.IsSuccess)
+                            var saveFileRespond =  _chatViewModel.SaveChatToFile(parent.SocketId, parent.FileInfo.SavePath, parent.FileInfo.Filename, parent.FileInfo.FileSize);
+                            RespondHandler(saveFileRespond);
+                            if(saveFileRespond.IsSuccess)
                             {
                                 var respond = _chatViewModel.AcceptedFile(parent.Id);
                                 RespondHandler(respond);
@@ -462,25 +467,25 @@ namespace VRemoteDesktop.Views
         }
         private void ProcessConnectionAdded(string connectionId, string text)
         {
-            Label lbChat = new Label
-            {
-                Text = text,
-                Name = connectionId,
-                BackColor = Color.LightSkyBlue,
-                BorderStyle = BorderStyle.FixedSingle,
-                AutoSize = false,
-                Height = 20,
-                Margin = Padding.Empty
-            };
-            lbChat.Click += ChangeConnectionActivateEventHandler;
-            lbChat.Width = fpnNumberChatConnection.Width - 2;
-            fpnNumberChatConnection.Controls.Add(lbChat);
-            if (lbChat is Label lb)
-            {
-                ChangeConnectionActivateEventHandler(lb, EventArgs.Empty);
-            }
-            RefeshUI(fpnNumberChatConnection);
-            fpnNumberChatConnection.ScrollControlIntoView(lbChat);
+            UserConnectionControl lb = new UserConnectionControl(connectionId, text, fpnNumberChatConnection.Width - 2 , 25);
+            lb.Click += ChangeConnectionActivateEventHandler;
+
+            //Label lbChat = new Label
+            //{
+            //    Text = text,
+            //    Name = connectionId,
+            //    BackColor = Color.LightSkyBlue,
+            //    BorderStyle = BorderStyle.FixedSingle,
+            //    AutoSize = false,
+            //    Height = 20,
+            //    Margin = Padding.Empty
+            //};
+            //lbChat.Click += ChangeConnectionActivateEventHandler;
+            //lbChat.Width = fpnNumberChatConnection.Width - 2;
+            fpnNumberChatConnection.Controls.Add(lb);
+            ChangeConnectionActivateEventHandler(lb, EventArgs.Empty);
+            RefreshUI(fpnNumberChatConnection);
+            fpnNumberChatConnection.ScrollControlIntoView(lb);
         }
         private void ProcessMessageAdded(string connectionId, string message, string connectionName)
         {
@@ -492,9 +497,8 @@ namespace VRemoteDesktop.Views
             };
 
             lb.MaximumSize = new Size(fpnChat.Width - SystemInformation.VerticalScrollBarWidth - 10, 0);
-            fpnChat.Controls.Add(lb);
-            RefeshUI(fpnChat);
-            fpnChat.ScrollControlIntoView(lb);
+
+            AddMessageToChatByConnectionId(connectionId, lb);
         }
         private void ProcessConnectionRemoved(string key)
         {
@@ -505,7 +509,7 @@ namespace VRemoteDesktop.Views
                 ctl.Click -= ChangeConnectionActivateEventHandler;
                 ctl.Dispose();
             }
-            RefeshUI(fpnNumberChatConnection);
+            RefreshUI(fpnNumberChatConnection);
         }
         private void ProcessMessageRemoved(Control control)
         {
@@ -522,7 +526,7 @@ namespace VRemoteDesktop.Views
                     fpnChat.Controls.Remove(lb);
                     lb.Dispose();
                 }
-                RefeshUI(fpnChat);
+                RefreshUI(fpnChat);
             }
         }
         private void ProcessMessageRemoved(string key)
@@ -545,7 +549,7 @@ namespace VRemoteDesktop.Views
                     lb.Dispose();
                 }
             }
-            RefeshUI(fpnChat);
+            RefreshUI(fpnChat);
         }
         private void InvokeAction(Action action)
         {
@@ -554,11 +558,76 @@ namespace VRemoteDesktop.Views
             else
                 action();
         }
-        private void RefeshUI(Control control)
+        private List<UserConnectionControl> FindUserConnectionControlsById(string id)
+        {
+            var matches = fpnNumberChatConnection.Controls.Find(id, true);
+            return matches.OfType<UserConnectionControl>().ToList();
+        }
+        private void RefreshUI(Control control)
         {
             control.PerformLayout();
             control.Refresh();
             control.Invalidate();
+        }
+        private void AddMessageToChatByConnectionId(string connectionId, Control control)
+        {
+            var userChatControl = GetUserChatControl(connectionId);
+            if (userChatControl == null)
+                return;
+
+            userChatControl.AddControl(control);
+            var chats = FindUserConnectionControlsById(connectionId);
+            string curId = _chatViewModel.GetCurrentConnectionActivate().Data;
+            foreach (var item in chats)
+            {
+                if (item.Name != curId)
+                    item.UpdateUnreadCount(1);
+            }
+        }
+        private UserChatControl GetUserChatControl(string connectionId)
+        {
+            void ResizeToParent(Control parent, Control child)
+            {
+                child.Margin = new Padding(0);
+                child.Width = parent.ClientSize.Width;
+                child.Height = parent.ClientSize.Height - parent.Padding.Vertical;
+            }
+
+            if(_userChatControls.TryGetValue(connectionId, out var userChatControl))
+            {
+                if (!fpnChat.Controls.Contains(userChatControl))
+                {
+                    ResizeToParent(fpnChat, userChatControl);
+                }
+                return userChatControl;
+            }
+            else
+            {
+                _userChatControls[connectionId] = new UserChatControl(connectionId);
+                _userChatControls[connectionId].UserChatEvent += UserChatEventHandler;
+                if (!fpnChat.Controls.Contains(_userChatControls[connectionId]))
+                {
+                    ResizeToParent(fpnChat, _userChatControls[connectionId]);
+                }
+                return _userChatControls[connectionId];
+            }
+        }
+        private void UserChatEventHandler(object sender, UserChatControlEventArgs e)
+        {
+            Console.WriteLine(string.Format("{0} - {1}", e.Type, e.Id));
+        }
+        private void ChangeChatContentByConnectionId(string connectionId)
+        {
+           if(_userChatControls.TryGetValue(connectionId, out var userChatControls))
+           {
+                foreach(Control item in fpnChat.Controls)
+                {
+                    ProcessMessageRemoved(item);
+                }
+                fpnChat.Controls.Clear();
+                fpnChat.Controls.Add(userChatControls);
+                RefreshUI(fpnChat);
+           }
         }
         #endregion
     }
