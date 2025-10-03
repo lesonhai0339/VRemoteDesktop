@@ -7,14 +7,14 @@ using System.Windows.Forms;
 
 namespace VRemoteDesktop.Layouts
 {
-    public class UserConnectionControl: TableLayoutPanel
+    public class ConnectionChatPanel: TableLayoutPanel
     {
         private string _connectionId;
         private Label _connectionName;
         private int _unreadNum  = 0;
         private Panel _unreadMessage;
         private Label _numberUnreadMessages;
-        public UserConnectionControl(string connectionId, string name, int width, int height)
+        public ConnectionChatPanel(string connectionId, string name, int width, int height)
         {
             _connectionId = connectionId;
             this.Name = _connectionId;
@@ -22,6 +22,7 @@ namespace VRemoteDesktop.Layouts
             this.Height = height;
             Init(name);
         }
+        public string Id => _connectionId;
         private void Init(string name)
         {
             this.Padding = new Padding(0);
@@ -82,11 +83,6 @@ namespace VRemoteDesktop.Layouts
         }
         public void UpdateUnreadCount(int num)
         {
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action<int>(UpdateUnreadCount), num);
-                return;
-            }
             _unreadNum += num;
 
             _numberUnreadMessages.Text = (_unreadNum > 0) ? _unreadNum.ToString() : "";
@@ -96,6 +92,7 @@ namespace VRemoteDesktop.Layouts
         public void ClearCount()
         {
             _unreadNum = 0;
+            _numberUnreadMessages.Text = "";    
         }
         private void RegisterEvent(Control control)
         {

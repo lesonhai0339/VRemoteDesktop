@@ -30,6 +30,7 @@ namespace VRemoteDesktop.ViewModels
         public Action<Bitmap> screenEvent;
         public Action<List<ScreenRegion>> screenRegionsChangedEvent;
         public event EventHandler<KeyboardEventArgs> keyboardEvent;
+        public event EventHandler<EventArgs> DisconnectedEvent; 
         public RemoteViewModel(VClient vClient, IScreenCaptureExtensions screenCaptureExtensions, IMouseExtensions mouseExtension, RemoteDesktopService remoteDesktopService)
         {
             _disposed = false;
@@ -39,7 +40,13 @@ namespace VRemoteDesktop.ViewModels
             _remoteDesktopService = remoteDesktopService;
 
             _vClient.P2PScreenReceived += P2PScreenReceivedEventHandler;
+            _vClient.SocketDisposing += SocketDisposingEventHandler;
             _remoteDesktopService.KeyboardEvent += KeyboardReceivedEventHandler;
+        }
+
+        private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
+        {
+            DisconnectedEvent?.Invoke(this, e);
         }
         #region Properties
         #endregion

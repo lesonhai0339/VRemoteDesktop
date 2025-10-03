@@ -116,7 +116,7 @@ namespace VRemoteDesktop.ViewModels
             //possible empty
             string id = _chatConnections.GetLastConnectionId();
             SetCurrentConnectionActivate(id);
-            RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(ChatControlType.Connection, connectionId));
+            RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(connectionId, ChatControlType.Connection, connectionId));
 
             return ChatRespondHelper.Success<bool>(
                     message: string.Format("Xóa chat connection thành công"),
@@ -573,7 +573,7 @@ namespace VRemoteDesktop.ViewModels
             var result = RemoveConnection(e.SocketId);
             if (result.IsSuccess)
             {
-                RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(ChatControlType.Connection, e.SocketId));
+                RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(e.SocketId ,ChatControlType.Connection, e.SocketId));
             }
         }
         //Event event handler from FileService, this event is used to update progress bar UI when received file data, finally remove file out attachments when finished
@@ -584,7 +584,7 @@ namespace VRemoteDesktop.ViewModels
                 _chatAttachmentService.CleanUpFileInfo(e.FileId);
                 return;
             }
-            ProgressBarUpdateEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(e.FileId, e.Size, e.Status));
+            ProgressBarUpdateEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(e.ConnectionId ,e.FileId, e.Size, e.Status));
         }
         //Chat data received from partner from VClient
         private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
@@ -652,7 +652,7 @@ namespace VRemoteDesktop.ViewModels
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
                     return;
                 }
-                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.AcceptAttachment, fileId));
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(client.SocketId ,ChatControlType.AcceptAttachment, fileId));
 
                 //Calculate number of chunks need to send, offset and size each chunk
                 List<ChunkFileInfo> chunks =  _chatAttachmentService.CalculateNumberOfChunksFromFileByFileId(fileId);
@@ -687,7 +687,7 @@ namespace VRemoteDesktop.ViewModels
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
                     return;
                 }
-                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.RefuseAttachment, fileId));
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(client.SocketId, ChatControlType.RefuseAttachment, fileId));
             }
             catch (Exception ex)
             {
@@ -699,7 +699,7 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                _chatAttachmentService.ProcessFileDataReceived(data);
+                _chatAttachmentService.ProcessFileDataReceived(client.SocketId, data);
             }
             catch (Exception ex)
             {
@@ -711,7 +711,7 @@ namespace VRemoteDesktop.ViewModels
             try
             {
                 string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(arg2, 0, RandomLength.FILE_ID_LENGTH, EncodingType.ASCII).GetResult();
-                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(ChatControlType.StopSendingAttachment, fileId));
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(client.SocketId, ChatControlType.StopSendingAttachment, fileId));
 
                 //Need to find which VClient sending this file but now using for to send stop send file with specific file id to all Vclient
                 var connections = _chatConnections.GetAllConnection();

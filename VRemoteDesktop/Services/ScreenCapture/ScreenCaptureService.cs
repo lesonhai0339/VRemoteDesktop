@@ -12,9 +12,6 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Utils;
 using static VRemoteDesktop.Utils.Logger;
-using System.Windows.Forms;
-using System.Threading.Tasks;
-using System.Collections.Concurrent;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -194,17 +191,14 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if (screen == null || totalChunksSize < 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets Arguments are null or empty");
                 return;
             }
             if (screen.Bytes == null || screen.Bytes.Length == 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: data is null or empty");
                 return;
             }
             if (screen.Rectangle == null)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: rectangle is null or empty");
                 return;
             }
 
@@ -247,12 +241,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if (regions == null || totalChunksSize < 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets Arguments are null or empty");
                 return;
             }
             if (regions.Count == 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets error: regions is null or empty");
                 return;
             }
             try
@@ -261,12 +253,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 if (mergedChangedRegions.Length == 0)
                     return;
 
-                Console.WriteLine("Regions data before compress: " + mergedChangedRegions.Length);
                 var result = ByteArrayHelper.CompressDeflate(mergedChangedRegions);
                 if (!result.IsSuccess)
                     return;
 
-                Console.WriteLine("Regions data after compressed: "+ result.Data.Length);
                 byte[] changedRegionsCompressed = result.Data;
 
                 int dataSendLength = checked(changedRegionsCompressed.Length);
@@ -337,17 +327,14 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if(screen == null || totalChunksSize < 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets Arguments are null or empty");
                 return;
             }
             if (screen.Bytes == null || screen.Bytes.Length == 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: data is null or empty");
                 return;
             }
             if (screen.Rectangle == null)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: rectangle is null or empty");
                 return;
             }
 
@@ -391,12 +378,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if (regions == null || totalChunksSize < 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets Arguments are null or empty");
                 return;
             }
             if (regions.Count == 0 )
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets error: regions is null or empty");
                 return;
             }
             try

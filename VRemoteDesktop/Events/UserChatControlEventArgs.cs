@@ -11,7 +11,7 @@ namespace VRemoteDesktop.Events
 
     public class UserChatControlEventArgs: EventArgs
     {
-        public UserChatControlEventArgs(UserChatControlEventType type, FileAttachmentLayout attachment, string path)
+        public UserChatControlEventArgs(UserChatControlEventType type, FileAttachmentPanel attachment, string path)
         {
             Type = type;
             Attachment = attachment;
@@ -19,7 +19,7 @@ namespace VRemoteDesktop.Events
         }
 
         public UserChatControlEventType Type { get; set; }
-        public FileAttachmentLayout Attachment { get; set; }
+        public FileAttachmentPanel Attachment { get; set; }
         public string Path { get; set; }    
     }
 }

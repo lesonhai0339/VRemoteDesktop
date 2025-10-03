@@ -336,7 +336,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
                 regions.Clear();
                 regions = null;
-                encoder = null;
                 encoderParams?.Dispose();
                 _isDisposed = true;
             }

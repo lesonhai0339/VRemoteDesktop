@@ -98,28 +98,16 @@
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\ListByteArray.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
-    <Compile Include="Layouts\CustomPanel.cs">
+    <Compile Include="Layouts\FileAttachmentPanel.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Layouts\CustomTableLayout.cs">
+    <Compile Include="Layouts\ConnectionChatDataPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Layouts\CustomUserControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Layouts\FileMessage.cs">
+    <Compile Include="Layouts\ConnectionChatPanel.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Layouts\FileAttachmentLayout.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Layouts\UserChatControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Layouts\UserConnectionControl.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="Layouts\VProgressBar.cs">
+    <Compile Include="Layouts\ChatProgressBar.cs">
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Models\ChatManager.cs" />
@@ -145,7 +133,6 @@
     <Compile Include="Services\Client\ClientInfoManager.cs" />
     <Compile Include="Services\FileService\SaveChat.cs" />
     <Compile Include="Services\FileService\VAttachmentManager.cs" />
-    <Compile Include="Services\FileService\FileAttachment.cs" />
     <Compile Include="Services\FileService\VChatAttachmentService.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
     <Compile Include="Services\Keyboard\VirtualClipboard.cs" />
@@ -190,14 +177,8 @@
     <Compile Include="Views\FormRemote.Designer.cs">
       <DependentUpon>FormRemote.cs</DependentUpon>
     </Compile>
-    <EmbeddedResource Include="Layouts\CustomTableLayout.resx">
-      <DependentUpon>CustomTableLayout.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Layouts\CustomUserControl.resx">
-      <DependentUpon>CustomUserControl.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Layouts\UserConnectionControl.resx">
-      <DependentUpon>UserConnectionControl.cs</DependentUpon>
+    <EmbeddedResource Include="Layouts\ConnectionChatPanel.resx">
+      <DependentUpon>ConnectionChatPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
