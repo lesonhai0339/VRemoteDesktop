@@ -199,16 +199,9 @@ namespace VRemoteServer.RelayServer.Services
         #region Events
         private void LoginEventHandler(object sender, SocketConnectionEventArg e)
         {
-            Console.WriteLine($"Login: {e.Type}");
-
             if (sender is SocketConnection connection)
             {
                 ProcessLoginDataReceived(connection, e.Offset, e.Length);
-            }
-            else
-            {
-                //TODO: invalid object
-                Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
             }
         }
         private void ServerErrorEventHandler(object sender, LoginErrorEventArgs e)
@@ -224,11 +217,6 @@ namespace VRemoteServer.RelayServer.Services
                     Console.WriteLine("Remove login info failed");
                 }
             }
-            else
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
-            }
-            // LoginManagerEvent?.Invoke(sender, new LoginEventArgs(ServerEventType.ConnectionDisconnected));
         }
         #endregion
         public void Dispose()

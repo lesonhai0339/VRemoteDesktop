@@ -57,6 +57,7 @@ namespace VRemoteDesktop.Views
             _remoteViewModel.screenEvent += ScreenEventHandler;
             _remoteViewModel.screenRegionsChangedEvent += ScreenRegionsChangedEventHandler;
             _remoteViewModel.keyboardEvent += KeyboardReceivedEventHandler;
+            _remoteViewModel.DisconnectedEvent += DisconnectedEventHandler;
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
@@ -81,6 +82,39 @@ namespace VRemoteDesktop.Views
             _clickTimer.Interval = interval;
             _clickTimer.Tick += ClickTimer_Tick;
         }
+
+        private void DisconnectedEventHandler(object sender, EventArgs e)
+        {
+            UpdateDisconnectUI();
+        }
+        private void UpdateDisconnectUI()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(UpdateDisconnectUI));
+                return;
+            }
+            Bitmap bmp = new Bitmap(_curScreen.Width, _curScreen.Height);
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.Black);
+            }
+            if (vPictureBox.Image != null)
+            {
+                vPictureBox.Image.Dispose();
+            }
+            vPictureBox.Image = bmp;
+            var result = MessageBox.Show(
+                "Mất kết nối đến đối tác",
+                "Thông báo",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.OK)
+            {
+                this.Close();
+            }
+        }
         #region Properties
         #endregion
         private void FormRemote_Load(object sender, EventArgs e)
@@ -101,6 +135,7 @@ namespace VRemoteDesktop.Views
                 _remoteViewModel.screenEvent -= ScreenEventHandler;
                 _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
                 _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;
+                _remoteViewModel.DisconnectedEvent -= DisconnectedEventHandler;
             }
             //Form
             _curScreen?.Dispose();

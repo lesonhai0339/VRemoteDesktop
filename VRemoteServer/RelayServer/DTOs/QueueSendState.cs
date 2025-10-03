@@ -8,7 +8,7 @@ namespace VRemoteServer.RelayServer.DTOs
 {
     public class QueueSendState
     {
-        public Queue<byte[]> Queue = new Queue<byte[]>();
+        public Queue<(byte[] data, int length, bool isPooled)> Queue = new Queue<(byte[] data, int length, bool isPooled)>();
         public bool IsSending = false;
         public object LockSend = new object();
     }

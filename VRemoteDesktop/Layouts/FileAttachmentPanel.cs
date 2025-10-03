@@ -11,7 +11,7 @@ using VRemoteDesktop.Models;
 using static VRemoteDesktop.Utils.DefaultForm;
 namespace VRemoteDesktop.Layouts
 {
-    public class FileAttachmentLayout: TableLayoutPanel
+    public class FileAttachmentPanel: TableLayoutPanel
     {
         private readonly Font _defaultFont = new Font("Segoe UI", 9F, FontStyle.Bold);// | FontStyle.Italic);
         private string _socketId;
@@ -24,10 +24,10 @@ namespace VRemoteDesktop.Layouts
         private Button _stop;
         private Label _waitingPartnerAccept;
         private VFileInfo _fileInfo;
-        private VProgressBar _progressBar;
+        private ChatProgressBar _progressBar;
 
         public event EventHandler<P2PFileReceivedEventArgs> AcceptSaveFile;
-        public FileAttachmentLayout(string id, string socketId)
+        public FileAttachmentPanel(string id, string socketId)
         {
             _id = id;
             _socketId = socketId;
@@ -138,7 +138,7 @@ namespace VRemoteDesktop.Layouts
                 this.Controls.Remove(this._save);
                 this.Controls.Remove(this._fileSize);
 
-                _progressBar = new VProgressBar(_fileInfo);
+                _progressBar = new ChatProgressBar(_fileInfo);
                 _progressBar.ProgressBarEvent += ProgressCompletedEventHandler;
                 this.Controls.Add(_stop, 2, 0);
                 this.Controls.Add(_progressBar, 1, 1);
