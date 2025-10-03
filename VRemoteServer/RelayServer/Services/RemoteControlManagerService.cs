@@ -18,7 +18,6 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface IRemoteControlManagerService
     {
-        void SendDisconnect(SocketConnection connection);
         SocketConnection GetPartner(SocketConnection me);
         bool GetPartner(SocketConnection me, out SocketConnection partner);
         bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
@@ -72,10 +71,6 @@ namespace VRemoteServer.RelayServer.Services
             => _remoteConnectionManager.GetRemoteConnectionBySocketConnection(connection);
         public bool RemoveRemoteConnection(string id)
             => _remoteConnectionManager.Remove(id);
-        public void SendDisconnect(SocketConnection connection)
-        {
-
-        }
         private void ParseRequestToConnectHeader(SocketConnection connection, int dataOffset, int dataLength)
         {
             try
@@ -150,13 +145,13 @@ namespace VRemoteServer.RelayServer.Services
             if(sender is SocketConnection connection)
             {
                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PDisconnect));
-                //RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs());
             }
         }
         private void RemoteControlEventHandler(object sender, SocketConnectionEventArg e)
         {
             if (sender is SocketConnection connection)
             {
+                connection.UpdateTime();
                 if(e.Type == SocketDataType.P2PRequestConnect)
                 {
                     ParseRequestToConnectHeader(connection, e.Offset, e.Length);

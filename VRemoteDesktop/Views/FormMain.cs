@@ -7,6 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.RemoteDesktop;
@@ -83,9 +84,9 @@ namespace VRemoteDesktop
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if(e.PropertyName == "IsConnected")
+            if(e.PropertyName == "ConnectStatus")
             {
-               UpdateConnectionStatus();    
+                UpdateConnectionStatus(_viewModel.ConnectStatus);
             }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
@@ -93,7 +94,7 @@ namespace VRemoteDesktop
             Graphics g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            Color circleColor = ViewModel.IsConnected ? Color.Green : Color.Red;
+            Color circleColor = (ViewModel.ConnectStatus == ConnectionStatus.Connected) ? Color.Green : Color.Red;
             using (SolidBrush brush = new SolidBrush(circleColor))
             {
                 g.FillEllipse(brush, 1, 1, pnStatus.Width - 2, pnStatus.Height - 2);
@@ -125,6 +126,12 @@ namespace VRemoteDesktop
         }
         private void btnConnect_Click(object sender, EventArgs e)
         {
+            if(_viewModel.ConnectStatus != ConnectionStatus.Connected)
+            {
+                MessageBox.Show("Mất kết nối đến máy chủ", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             string partnerId = txtPartnerId.Text.Replace(" ", "");
             string partnerPassword = txtPartnerPassword.Text.Replace(" ","");
             if(!string.IsNullOrWhiteSpace(partnerId) && !string.IsNullOrWhiteSpace(partnerPassword))
@@ -144,11 +151,14 @@ namespace VRemoteDesktop
         {
             ViewModel.RequestP2PConnect(id, password);
         }
-        private void UpdateConnectionStatus()
+        private void UpdateConnectionStatus(ConnectionStatus status)
         {
             Action action = () =>
             {
-                lbStatus.Text = "Sẵn sàng";
+                lbStatus.Text = (status == ConnectionStatus.Connected) ? "Sẵn sàng" : 
+                                (status == ConnectionStatus.Disconnected) ? "Mất kết nối" :
+                                "Chưa sẵn sàng";
+
                 pnStatus.Invalidate();
             };
             if (this.InvokeRequired)

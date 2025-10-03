@@ -77,14 +77,14 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             throw new InvalidOperationException(string.Format("Connection with Id:{0} does not exists", id));
         }
-        public VClient New(string id, VClientType type)
+        public VClient New(string id, VClientType type, bool host)
         {
             if(_connections.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            VClient client = new VClient(id, type);
+            VClient client = new VClient(id, type, host);
             Add(id, client);
             return client;
         }

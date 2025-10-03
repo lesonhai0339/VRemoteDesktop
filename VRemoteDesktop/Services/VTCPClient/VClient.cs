@@ -20,6 +20,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 {
     public class VClient : IDisposable
     {
+        private bool isHost;
         private bool _isSocketConnected;
         private bool _isP2PConnected;
         private volatile bool _isDisposed;
@@ -49,7 +50,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
         private System.Threading.Timer _timer;
         private int bytesPerSecond;
-        public VClient(string socketId, VClientType clientType)
+        public VClient(string socketId, VClientType clientType, bool isHost)
         {
             Partner = null;
             _isDisposed = false;
@@ -77,18 +78,29 @@ namespace VRemoteDesktop.Services.VTCPClient
                 SenderWorker.RunWorkerAsync();
             }
             bytesPerSecond = 0;
-            _timer = new System.Threading.Timer(BandWidth, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+            _timer = new System.Threading.Timer(Ping, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            this.isHost = isHost;
         }
 
-        private void BandWidth(object state)
+        private void Ping(object state)
         {
-            lock (_lockObject)
+            if (isHost)
             {
-                double bandWidth = (bytesPerSecond * 8) * 1.0 / 1000000; 
-                if(bandWidth > 0)
-                    Logger.Log.ForContext("", this.GetType().Name + "_BandWidth").Info(string.Format("{0} - {1} Mbps",this.SocketId, bandWidth));
-                bytesPerSecond = 0;
+                AddWork(
+                    new TaskObject { TaskType = SocketDataType.Ping,
+                        IsSendHeader = true,
+                        SessionId = SocketId,
+                        ChunkFileInfo = null,
+                        Data = new byte[0],
+                    }, QueuePriority.High);
             }
+            //lock (_lockObject)
+            //{
+            //    double bandWidth = (bytesPerSecond * 8) * 1.0 / 1000000; 
+            //    if(bandWidth > 0)
+            //        Logger.Log.ForContext("", this.GetType().Name + "_BandWidth").Info(string.Format("{0} - {1} Mbps",this.SocketId, bandWidth));
+            //    bytesPerSecond = 0;
+            //}
         }
         #region Properties
         public ClientInfo Partner
@@ -809,6 +821,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 catch (Exception)
                 {
                 }
+                _timer?.Dispose();
                 // Set flags
                 _isSocketConnected = false;
                 _isP2PConnected = false;

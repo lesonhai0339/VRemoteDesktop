@@ -23,7 +23,7 @@ namespace VRemoteServer.RelayServer.Networking
         private SocketAsyncEventArgs _readSocketAsyncEventArgs;
         private SocketAsyncEventArgs _sendSocketAsyncEventArgs;
         private DateTimeOffset _lastSendTime { get; set; }
-        private readonly TimeSpan _timeout = TimeSpan.FromSeconds(TIMEOUT);
+        private TimeSpan _timeout = TimeSpan.FromSeconds(TIMEOUT);
         private Timer _timer;
         private object _lockProperty = new object();
         private object _lockMethod = new object();
@@ -140,8 +140,19 @@ namespace VRemoteServer.RelayServer.Networking
         public bool IsDisposed => _disposed == 1;
         #endregion
         #region Methods
+        public void SetTimeout(int seconds)
+        {
+            lock (_lockProperty)
+            {
+                if (seconds > 0)
+                {
+                    _timeout = TimeSpan.FromSeconds(seconds);
+                }
+            }
+        }
         public void UpdateTime()
         {
+            Console.WriteLine($"Socket with IP: {IP} ping");
             lock (_lockProperty)
             {
                 _lastSendTime = DateTimeOffset.UtcNow;
@@ -412,7 +423,6 @@ namespace VRemoteServer.RelayServer.Networking
             if (!disposing || Interlocked.Exchange(ref _disposed, 1) == 1) return;
 
             _timer?.Dispose();
-            _socket?.Dispose();
             _currentHeader = null;
             _remainingData = null;
         }

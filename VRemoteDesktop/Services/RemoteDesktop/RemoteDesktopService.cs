@@ -69,7 +69,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             _reset.Reset();
             string connectionId = StringHelper.RandomStringNumber(8);
-            var newConnection = NewClient(connectionId, VClientType.Sender);
+            var newConnection = NewClient(connectionId, VClientType.Sender, false);
             if (newConnection == null)
             {
                 return;
@@ -154,11 +154,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var client = _vClientManager.GetByKey(id);
             return client;
         }
-        public VClient NewClient(string id, VClientType type)
+        public VClient NewClient(string id, VClientType type, bool isHost)
         {
             if (string.IsNullOrWhiteSpace(id)) return null;
 
-            var newClient = _vClientManager.New(id, type);
+            var newClient = _vClientManager.New(id, type, isHost);
             if (_vClientManager.Connections.Count > 0)
             {
                 if (_vClientManager.HasClientOfType(VClientType.Receiver))
@@ -174,7 +174,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
             {
-                var newClient = _vClientManager.New(connectionId, VClientType.Receiver);
+                var newClient = _vClientManager.New(connectionId, VClientType.Receiver, false);
                 newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
                 newClient.UpdatePartnerInfo(partnerInfo);
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
@@ -421,6 +421,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
                 case SocketDataType.P2PDisconnect:
                     ProcessP2PDisconnect(sender, e);
+                    break;
+                case SocketDataType.Disconnect:
+                    DataReceivedEvent?.Invoke(sender, e);
                     break;
                 case SocketDataType.Error:
                     break;
