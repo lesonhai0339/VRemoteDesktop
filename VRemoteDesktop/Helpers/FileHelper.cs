@@ -158,12 +158,12 @@ namespace VRemoteDesktop.Helpers
             lock (_lock)
             {
                 stream?.Dispose();
-                stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+                stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
             }
         }
         public static FileStream CreateFileStream(string savePath)
         {
-            return new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+            return new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
         }
         public static void WriteToFile(FileStream fs, int offset, byte[] data, bool flush = true)
         {
