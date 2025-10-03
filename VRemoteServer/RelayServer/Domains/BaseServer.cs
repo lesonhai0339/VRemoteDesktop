@@ -197,7 +197,6 @@ namespace VRemoteServer.RelayServer.Domains
                 {
                     if (sendState.Queue.Count == 0)
                     {
-                        Console.WriteLine("Complete task");
                         sendState.IsSending = false;
                         return;
                     }
@@ -246,24 +245,37 @@ namespace VRemoteServer.RelayServer.Domains
         }
         private void ProcessSend(SocketAsyncEventArgs e)
         {
-            var (domain, dataSend) = ((TDomain, byte[]))e.UserToken;
-
-            e.UserToken = domain;
-            //TDomain domain = (TDomain)e.UserToken;
             try
             {
-                if(dataSend != null)
+                var (domain, dataSend) = ((TDomain, byte[]))e.UserToken;
+
+                e.UserToken = domain;
+                //TDomain domain = (TDomain)e.UserToken;
+                try
                 {
-                    ArrayPool<byte>.Shared.Return(dataSend, clearArray: false);
-                }
-                if (e.SocketError == SocketError.Success)
-                {
-                    if (_sendTasks.TryGetValue(domain, out var sendState))
+                    if (dataSend != null)
                     {
-                        StartSend(domain, sendState);
+                        ArrayPool<byte>.Shared.Return(dataSend, clearArray: false);
+                    }
+                    if (e.SocketError == SocketError.Success)
+                    {
+                        if (_sendTasks.TryGetValue(domain, out var sendState))
+                        {
+                            StartSend(domain, sendState);
+                        }
+                    }
+                    else
+                    {
+                        if (_sendTasks.TryGetValue(domain, out var sendState))
+                        {
+                            lock (sendState.LockSend)
+                            {
+                                sendState.IsSending = false;
+                            }
+                        }
                     }
                 }
-                else
+                catch
                 {
                     if (_sendTasks.TryGetValue(domain, out var sendState))
                     {
@@ -271,19 +283,10 @@ namespace VRemoteServer.RelayServer.Domains
                         {
                             sendState.IsSending = false;
                         }
-                    }       
-                }
-            }
-            catch
-            {
-                if (_sendTasks.TryGetValue(domain, out var sendState))
-                {
-                    lock (sendState.LockSend)
-                    {
-                        sendState.IsSending = false;
                     }
                 }
             }
+            catch { }
         }
         private void StartAccept(SocketAsyncEventArgs acceptEventArg)
         {
@@ -391,7 +394,7 @@ namespace VRemoteServer.RelayServer.Domains
                 var type = GetEventTypeFromDomainEvent(e);
                 if(type == SocketConnectionEventType.Disconnected)
                 {
-                    //CloseClientSocket(domain);
+                    CloseClientSocket(domain);
                 }
                 else if (type == SocketConnectionEventType.Data)
                 {
@@ -399,7 +402,6 @@ namespace VRemoteServer.RelayServer.Domains
                 }
                 else
                 {
-                    Log.ForContext("FileName", this.GetType().Name).Information($"Invalid TDomainType {type.GetType()}");
                     CloseClientSocket(domain);
                 }
             }
@@ -411,8 +413,8 @@ namespace VRemoteServer.RelayServer.Domains
                 if (domain.IsDisposed) return;
                 UnRegisterEvent(domain, TDomainEventHandler);
                 domain.Dispose();
-                ServerErrorEvent?.Invoke(domain, InitException(new ObjectDisposedException(nameof(TDomain)), "Object disconnected"));
 
+                ServerErrorEvent?.Invoke(domain, InitException(new ObjectDisposedException(nameof(TDomain)), "Object disconnected"));
                 var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
                 Socket socket = GetSocketFromDomain(domain);
                 var hashCode = socket.GetHashCode();
@@ -426,6 +428,7 @@ namespace VRemoteServer.RelayServer.Domains
                     catch (SocketException socketEx) {}
                     catch (Exception ex){}
                     socket.Close();
+                    socket?.Dispose();
                 }
 
                 // decrement the counter keeping track of the total number of clients connected to the server

@@ -20,14 +20,15 @@ namespace VRemoteDesktop.ViewModels
         private string _id;
         private string _myId;
         private string _myPassword;
-        private bool _isConnected;
+        private ConnectionStatus _connectStatus;
         private ManualResetEvent _resetEvent;
 
         private readonly RemoteDesktopService _remoteDesktopService;
         public event EventHandler<P2PClientDataReceived> ClientAcceptRequestRemote;
+        public event EventHandler<EventArgs> SocketDisconnectEvent;
         public MainViewModel(RemoteDesktopService remoteDesktopService)
         {
-            IsConnected = false;
+            ConnectStatus = ConnectionStatus.None;
             _resetEvent = new ManualResetEvent(false);
 
             _remoteDesktopService = remoteDesktopService;
@@ -40,7 +41,7 @@ namespace VRemoteDesktop.ViewModels
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
-            _remoteDesktopService.NewClient(_id, VClientType.None);
+            _remoteDesktopService.NewClient(_id, VClientType.None, true);
         }
         #region Properties
         public string MyId
@@ -61,13 +62,13 @@ namespace VRemoteDesktop.ViewModels
                 OnPropertyChanged(nameof(MyPassword));
             }
         }
-        public bool IsConnected
+        public ConnectionStatus ConnectStatus
         {
-            get { return _isConnected; }
+            get { return _connectStatus; }
             set
             {
-                _isConnected = value;
-                OnPropertyChanged(nameof(IsConnected));
+                _connectStatus = value;
+                OnPropertyChanged(nameof(ConnectStatus));
             }
         }
         #endregion
@@ -112,7 +113,7 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Events
-        private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
+        private void PartnerRespond(object sender, P2PClientDataReceived e)
         {
             _resetEvent.Set();
             ClientAcceptRequestRemote?.Invoke(sender, e);
@@ -130,12 +131,16 @@ namespace VRemoteDesktop.ViewModels
                         LoginEventHandler(e.Flag, e.Data);
                         break;
                     case SocketDataType.LoginFailed:
-                        Console.WriteLine("LoginFailed");
+                        ConnectStatus = ConnectionStatus.Disconnected;
                         break;
                     case SocketDataType.P2PRequestConnect:
                     case SocketDataType.P2PAcceptConnect:
                     case SocketDataType.P2PConnectFailed:
-                        PartnerAcceptP2PConnect(sender, e);
+                    case SocketDataType.P2PRejectConnect:
+                        PartnerRespond(sender, e);
+                        break;
+                    case SocketDataType.Disconnect:
+                        ConnectStatus = ConnectionStatus.Disconnected;
                         break;
                     case SocketDataType.Error:
                         _resetEvent.Set();
@@ -164,7 +169,7 @@ namespace VRemoteDesktop.ViewModels
         {
             if (flag)
             {
-                IsConnected = true;
+                ConnectStatus = ConnectionStatus.Connected;
                 _remoteDesktopService.UpdateMyInfo(data);
             }
         }
