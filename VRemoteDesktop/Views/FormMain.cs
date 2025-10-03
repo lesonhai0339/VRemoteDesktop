@@ -182,6 +182,10 @@ namespace VRemoteDesktop
                 {
                     AddChat(vClient);
                 }
+                else if(e.Type == Models.SocketDataType.P2PRejectConnect)
+                {
+                    MessageBox.Show("Đối tác từ chối kết nối", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
                 else if(e.Type == Models.SocketDataType.P2PConnectFailed)
                 {
                     MessageBox.Show("Kết nối đến máy khách thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);

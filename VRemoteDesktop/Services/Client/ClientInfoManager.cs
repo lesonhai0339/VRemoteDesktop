@@ -26,9 +26,11 @@ namespace VRemoteDesktop.Services.ConnectionManager
     {
         private readonly object _lock = new object();
         private ClientInfo _me;
+        private Dictionary<string, ClientInfo> _partners;
         public ClientInfoManager()
         {
             Me = InitMyInfo();
+            _partners = new Dictionary<string, ClientInfo>();
         }
         #region Properties
         public ClientInfo Me
@@ -131,6 +133,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 return false;
 
             connectionId = data[0];
+
             //Note: data at index[0,1,2] are ConnectionId, MyId and MyPassword then partner info start at DefaultClientInfo.field + 3 instead DefaultClientInfo.field
             clientInfo = new ClientInfo
             {
@@ -144,19 +147,17 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 Ip = data[DefaultClientInfo.CLIENT_INFO_IP_INDEX + indexAddedIncludesPartnerInfo],
                 Port = data[DefaultClientInfo.CLIENT_INFO_PORT_INDEX + indexAddedIncludesPartnerInfo],
                 PublicIP = data[DefaultClientInfo.CLIENT_INFO_PUBLIC_IP_INDEX + indexAddedIncludesPartnerInfo],
-                //Id = data[3],
-                //Password = data[4],
-                //ComputerName = data[5],
-                //Width = int.TryParse(data[6], out int width) ? width : 0,
-                //Height = int.TryParse(data[7], out int height) ? height : 0,
-                //MajorVersion = data[8],
-                //MinorVersion = data[9],
-                //Ip = data[10],
-                //Port = data[11],
-                //PublicIP = data[12],
             };
 
-            return true;
+            if (_partners.ContainsKey(clientInfo.Id))
+            {
+                return false;
+            }
+            else
+            {
+                _partners.Add(clientInfo.Id, clientInfo);
+                return true;
+            }
         }
         #endregion
     }

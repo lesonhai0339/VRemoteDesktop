@@ -152,7 +152,6 @@ namespace VRemoteServer.RelayServer.Networking
         }
         public void UpdateTime()
         {
-            Console.WriteLine($"Socket with IP: {IP} ping");
             lock (_lockProperty)
             {
                 _lastSendTime = DateTimeOffset.UtcNow;
@@ -230,7 +229,6 @@ namespace VRemoteServer.RelayServer.Networking
                 }
                 if (comingOffset + comingDataLength > _readSocketAsyncEventArgs.Buffer.Length)
                 {
-                    Console.WriteLine($"ERROR: Invalid bounds - offset:{comingOffset}, length:{comingDataLength}, bufferSize:{_readSocketAsyncEventArgs.Buffer.Length}");
                     return;
                 }
 

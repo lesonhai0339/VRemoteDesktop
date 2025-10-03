@@ -226,7 +226,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                             switch (task.Type)
                             {
                                 case SocketDataType.P2PAcceptConnect:
-                                    Console.WriteLine("Partner accepted");
                                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
                                     break;
                                 case SocketDataType.P2PRejectConnect:
