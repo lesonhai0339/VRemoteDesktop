@@ -33,7 +33,6 @@ namespace VRemoteDesktop.Layouts
         {
             this._messagePanel.Controls.Add(control);
             this._messagePanel.ScrollControlIntoView(control);
-            Console.WriteLine(_messagePanel.Controls.Count);
         }
         public void RemoveControlByKey(string key)
         {

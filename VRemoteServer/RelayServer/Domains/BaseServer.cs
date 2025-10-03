@@ -197,7 +197,6 @@ namespace VRemoteServer.RelayServer.Domains
                 {
                     if (sendState.Queue.Count == 0)
                     {
-                        Console.WriteLine("Complete task");
                         sendState.IsSending = false;
                         return;
                     }

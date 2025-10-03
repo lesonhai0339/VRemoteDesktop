@@ -113,7 +113,7 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Events
-        private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
+        private void PartnerRespond(object sender, P2PClientDataReceived e)
         {
             _resetEvent.Set();
             ClientAcceptRequestRemote?.Invoke(sender, e);
@@ -131,15 +131,15 @@ namespace VRemoteDesktop.ViewModels
                         LoginEventHandler(e.Flag, e.Data);
                         break;
                     case SocketDataType.LoginFailed:
-                        Console.WriteLine("LoginFailed");
+                        ConnectStatus = ConnectionStatus.Disconnected;
                         break;
                     case SocketDataType.P2PRequestConnect:
                     case SocketDataType.P2PAcceptConnect:
                     case SocketDataType.P2PConnectFailed:
-                        PartnerAcceptP2PConnect(sender, e);
+                    case SocketDataType.P2PRejectConnect:
+                        PartnerRespond(sender, e);
                         break;
                     case SocketDataType.Disconnect:
-                        //TODO: Handle disconnect
                         ConnectStatus = ConnectionStatus.Disconnected;
                         break;
                     case SocketDataType.Error:
