@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -612,6 +613,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 try
                 {
+                    FileStream fs = Helpers.FileHelper.ReadFileStream(task.ChunkFileInfo.FilePath);
                     int headerSize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
 
                     byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
@@ -636,7 +638,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     offset += RandomLength.FILE_ID_LENGTH;
 
                     //File data
-                    int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
+                    //int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
+                    int chunkRead = FileHelper.GetChunkFileDataByOffset(fs, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
 
                     if (chunkRead != chunkFileData.Length - headerSize)
                     {
@@ -645,6 +648,12 @@ namespace VRemoteDesktop.Services.VTCPClient
                         return;
                     }
                     Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
+
+                    if((task.ChunkFileInfo.Offset + task.ChunkFileInfo.ChunkSize) >= task.ChunkFileInfo.FileLength)
+                    {
+                        fs.Close();
+                        fs?.Dispose();
+                    }
                 }
                 catch(Exception ex)
                 {

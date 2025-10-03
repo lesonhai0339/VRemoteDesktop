@@ -6,8 +6,8 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
 
 namespace VRemoteDesktop.Helpers
 {
@@ -106,6 +106,25 @@ namespace VRemoteDesktop.Helpers
                 return bytesRead;
             }
         }
+        public static int GetChunkFileDataByOffset(FileStream fs, long fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
+        {
+            if (fileOffset < 0)
+                throw new ArgumentException("Offset cannot be negative");
+
+            fs.Seek(fileOffset, SeekOrigin.Begin);
+            int totalBytesRead = 0;
+            int remainingBytes = size;
+
+            while (totalBytesRead < size && remainingBytes > 0)
+            {
+                int bytesRead = fs.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
+                if (bytesRead == 0)
+                    break;
+                totalBytesRead += bytesRead;
+                remainingBytes -= bytesRead;
+            }
+            return totalBytesRead;
+        }
         //Can improve by using something like private ConcurrentDictionary<string, FileStream> _curStreams; at VChatAttachmentService
         //To keep fileStream open util copy full or timeout
         public static int GetChunkFileDataByOffset(string filePath, long fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
@@ -160,6 +179,10 @@ namespace VRemoteDesktop.Helpers
                 stream?.Dispose();
                 stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
             }
+        }
+        public static FileStream ReadFileStream(string savePath)
+        {
+            return new FileStream(savePath, FileMode.Open, FileAccess.Read, FileShare.Read);
         }
         public static FileStream CreateFileStream(string savePath)
         {
