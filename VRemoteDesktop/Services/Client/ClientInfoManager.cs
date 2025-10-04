@@ -125,6 +125,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 return false;
 
             string[] data = StringHelper.StringToStringArrayWithSeparator(dataString);
+
             if (data.Length != DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + indexAddedIncludesPartnerInfo)
                 return false;
 

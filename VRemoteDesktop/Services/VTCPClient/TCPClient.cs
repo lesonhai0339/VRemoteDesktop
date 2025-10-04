@@ -208,13 +208,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                     try
                     {
 
-                        if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
+                        if (task.Type == SocketDataType.RemoteControlScreenSend || task.Type == SocketDataType.RemoteControlScreenRegionsChangedSend)
                         {
                             var lastTask = task;
 
                             while (Tasks.TryTake(out var t, 0)
                                 && t != null
-                                && (t.Type == SocketDataType.Screen || t.Type == SocketDataType.Chunks))
+                                && (t.Type == SocketDataType.RemoteControlScreenSend || t.Type == SocketDataType.RemoteControlScreenRegionsChangedSend))
                             {
                                 lastTask = t;
                             }
@@ -225,10 +225,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             switch (task.Type)
                             {
-                                case SocketDataType.P2PAcceptConnect:
+                                case SocketDataType.RemoteControlAcceptedRequestToConnect:
                                     TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
                                     break;
-                                case SocketDataType.P2PRejectConnect:
+                                case SocketDataType.RemoteControlRefusedRequestToConnect:
                                     Console.WriteLine("Client Reject request to p2p connection");
                                     break;
                                 default:
@@ -336,7 +336,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWorkGroup(List<TaskObject> tasks, SocketDataType type = SocketDataType.None)
         {
-            if (type == SocketDataType.Screen || type == SocketDataType.Chunks)
+            if (type == SocketDataType.RemoteControlScreenSend || type == SocketDataType.RemoteControlScreenRegionsChangedSend)
             {
                 ScreenTasks.Enqueue(new TaskGroup(tasks));
             }

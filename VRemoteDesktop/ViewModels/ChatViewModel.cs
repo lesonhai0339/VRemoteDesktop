@@ -265,7 +265,7 @@ namespace VRemoteDesktop.ViewModels
                 }   
 
                 byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
-                Send(connection, SocketDataType.Chat, ChatDataType.AcceptedSendFile, data);
+                Send(connection, SocketDataType.RemoteControlChatSend, ChatDataType.AcceptedSendFile, data);
                 return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("Accept send file on connection with id {0} success", _currentConnectionActivate),
                     data: true);
@@ -297,7 +297,7 @@ namespace VRemoteDesktop.ViewModels
                      systemMessage: string.Format("Cannot find connection on current id {0}", _currentConnectionActivate));
                 }
                 byte[] data = ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
-                Send(connection, SocketDataType.Chat, ChatDataType.DeclinedSendFile, data);  
+                Send(connection, SocketDataType.RemoteControlChatSend, ChatDataType.DeclinedSendFile, data);  
                 _chatAttachmentService.RemoveFileInfo(fileId);
                 return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("DeclinedFile send file on connection with id {0} success", _currentConnectionActivate),
@@ -329,7 +329,7 @@ namespace VRemoteDesktop.ViewModels
                      systemMessage: string.Format("Cannot find connection on current id {0}", _currentConnectionActivate));
                 }
                 byte[] data = ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
-                Send(connection, SocketDataType.Chat, ChatDataType.StopReceivedFileData, data);
+                Send(connection, SocketDataType.RemoteControlChatSend, ChatDataType.StopReceivedFileData, data);
                 _chatAttachmentService.CleanUpFileInfo(fileId);
                 return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("DeclinedFile send file on connection with id {0} success", _currentConnectionActivate),
@@ -366,7 +366,7 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                Send(null, SocketDataType.Chat, ChatDataType.Message, Helpers.ByteArrayHelper.ConvertStringToByteArray(chatData, EncodingType.UTF8).GetResult());
+                Send(null, SocketDataType.RemoteControlChatSend, ChatDataType.Message, Helpers.ByteArrayHelper.ConvertStringToByteArray(chatData, EncodingType.UTF8).GetResult());
                 bool flag =  SaveChat(_currentConnectionActivate, ChatContentTypeEnum.Message, ChatOwnerEnum.Me, chatData);
                 if (flag)
                 {
@@ -402,7 +402,7 @@ namespace VRemoteDesktop.ViewModels
                 }
                 string data = Helpers.StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, fileInfo.Id, fileInfo.Filename, fileInfo.FileExtension, fileInfo.FileSize, fileInfo.Checksum);
                 byte[] byteArray = Helpers.ByteArrayHelper.ConvertStringToByteArray(data, Enums.EncodingType.UTF8).GetResult();
-                Send(null, SocketDataType.Chat, ChatDataType.RequestSendFile, byteArray);
+                Send(null, SocketDataType.RemoteControlChatSend, ChatDataType.RequestSendFile, byteArray);
 
                 //Write to chat file
                 SaveChat(_currentConnectionActivate, ChatContentTypeEnum.File, ChatOwnerEnum.Me, null, fileInfo.FilePath, fileInfo.Filename, fileInfo.FileSize);
@@ -663,7 +663,7 @@ namespace VRemoteDesktop.ViewModels
                 }
                 for (int i = 0; i< chunks.Count; i++)
                 {
-                    Send(client, SocketDataType.Chat, ChatDataType.FileData, null, chunks[i]);
+                    Send(client, SocketDataType.RemoteControlChatSend, ChatDataType.FileData, null, chunks[i]);
 
                 }
 
@@ -717,7 +717,7 @@ namespace VRemoteDesktop.ViewModels
                 var connections = _chatConnections.GetAllConnection();
                 foreach (var connection in connections)
                 {
-                    connection.RemoveTaskByType(SocketDataType.Chat, ChatDataType.StopReceivedFileData, fileId);
+                    connection.RemoveTaskByType(SocketDataType.RemoteControlChatSend, ChatDataType.StopReceivedFileData, fileId);
                 }
             }
             catch (Exception ex)

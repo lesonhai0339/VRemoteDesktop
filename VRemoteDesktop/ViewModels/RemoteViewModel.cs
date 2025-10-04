@@ -102,7 +102,7 @@ namespace VRemoteDesktop.ViewModels
 
             _vClient.AddWork(new TaskObject
             {
-                TaskType = SocketDataType.Clipboard,
+                TaskType = SocketDataType.RemoteControlClipboardSend,
                 Data = Encoding.UTF8.GetBytes(clipboard),
                 IsSendHeader = true,
                 SessionId = _vClient.SocketId
@@ -117,7 +117,7 @@ namespace VRemoteDesktop.ViewModels
 
             _vClient.AddWork(new TaskObject
             {
-                TaskType = SocketDataType.Keyboard,
+                TaskType = SocketDataType.RemoteControlKeyboardSend,
                 Data = Encoding.ASCII.GetBytes(keyboard),
                 IsSendHeader = true,
                 SessionId = _vClient.SocketId
@@ -146,7 +146,7 @@ namespace VRemoteDesktop.ViewModels
 
                 _vClient.AddWork(new TaskObject
                 {
-                    TaskType = SocketDataType.Mouse,
+                    TaskType = SocketDataType.RemoteControlMouseSend,
                     Data = Encoding.ASCII.GetBytes(mouseEventString),
                     IsSendHeader = true,
                     SessionId = _vClient.SocketId
@@ -167,11 +167,11 @@ namespace VRemoteDesktop.ViewModels
         }
         public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
-            if (e.Type == SocketDataType.Screen)
+            if (e.Type == SocketDataType.RemoteControlScreenSend)
             {
                 ProcessScreenReceived(e.Data);
             }
-            if (e.Type == SocketDataType.Chunks)
+            if (e.Type == SocketDataType.RemoteControlScreenRegionsChangedSend)
             {
                 ProcessScreenRegionsChangedReceived(e.Data);
             }

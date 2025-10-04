@@ -90,6 +90,7 @@
     <Compile Include="Events\P2PClientDataReceived.cs" />
     <Compile Include="Events\P2PFileReceivedEventArgs.cs" />
     <Compile Include="Events\P2PScreenEventArgs.cs" />
+    <Compile Include="Events\RemoteDesktopErrorEventArgs.cs" />
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
     <Compile Include="Events\SocketDisposeEventArgs.cs" />
     <Compile Include="Events\UserChatControlEventArgs.cs" />

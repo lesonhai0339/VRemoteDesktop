@@ -154,13 +154,13 @@ namespace VRemoteServer.RelayServer.Services
             {
                 switch (e.Type)
                 {
-                    case SocketDataType.P2PRequestConnect:
+                    case SocketDataType.RemoteControlRequestToConnect:
                         RequestToRemoteDesktopControl(sender, e.SocketId, e.PartnerId, e.Data);
                         break;
-                    case SocketDataType.P2PAcceptConnect:
+                    case SocketDataType.RemoteControlAcceptedRequestToConnect:
                         AcceptedRequestToRemoteDesktopControl(sender, e.SocketId, e.DataOffset, e.DataLength);
                         break;
-                    case SocketDataType.P2PDisconnect:
+                    case SocketDataType.RemoteControlDisconnect:
                         RemoteDesktopControlDisconnected(sender);
                         break;
                     default:
@@ -212,7 +212,7 @@ namespace VRemoteServer.RelayServer.Services
                     {
                         _remoteControlManager.RemoveRemoteConnection(remoteConnectionId);
                     }
-                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, remoteConnectionId);
+                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlConnectFailed, remoteConnectionId);
                     _remoteControlManager.Send(controlled, packet);
                     return false;
                 }
@@ -236,7 +236,7 @@ namespace VRemoteServer.RelayServer.Services
                         try
                         {
                             var partner = ReferenceEquals(remoteConnection.Controller, connection) ? remoteConnection.Controlled : remoteConnection.Controller;
-                            byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PDisconnect, remoteConnection.ConnectionId);
+                            byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlDisconnect, remoteConnection.ConnectionId);
                             _remoteControlManager.Send(partner, packet);
                         }
                         finally
@@ -270,7 +270,7 @@ namespace VRemoteServer.RelayServer.Services
                     }
                     else
                     {
-                        byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PDataSendError, remoteConnectionId);
+                        byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlDataSendFailed, remoteConnectionId);
                         _remoteControlManager.Send(socketSender, packet);
                     }
                     return false;
