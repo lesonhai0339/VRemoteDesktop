@@ -30,10 +30,11 @@ namespace VRemoteServer.RelayServer.Enums
 
         RemoteControlRequestToConnect = 0x02,
         RemoteControlDataSend = 0x14, //P2PDataSend
-        RemoteControlDataSendFailed = 0x15, //P2PDataSend
+        RemoteControlDataSendFailed = 0x15, //P2PDataSendError
         RemoteControlDisconnect = 0x91, //P2PDisconnect
         RemoteControlConnectFailed = 0x92, //P2PConnectFailed
         RemoteControlAcceptedRequestToConnect = 0x93, //P2PAcceptConnect
-        RemoteControlRefusedRequestToConnect = 0x94 //P2PRejectConnect
+        RemoteControlRefusedRequestToConnect = 0x94, //P2PRejectConnect
+        RemoteControlReady = 0x95,
     }
 }
