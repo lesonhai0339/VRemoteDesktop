@@ -214,9 +214,9 @@ namespace VRemoteDesktop.Layouts
                 _progressBar.Dispose();
                 _progressBar = null;
             }
-            ProgressBarCompletedTask(ProgressbarEnum.Stop);
+            ProgressBarCompletedTask(ProgressBarEnum.Stop);
         }
-        private void ProgressBarCompletedTask(ProgressbarEnum type)
+        private void ProgressBarCompletedTask(ProgressBarEnum type)
         {
             var oldControl = this.GetControlFromPosition(1, 1);
             if(oldControl != null)
@@ -226,10 +226,10 @@ namespace VRemoteDesktop.Layouts
             }
             Label btn = new Label
             {
-                Text = type == ProgressbarEnum.Finished ? FORM_COMPLETED
-                : type == ProgressbarEnum.Error ? FORM_ERROR
-                : type == ProgressbarEnum.Timeout ? FORM_TIMEOUT_TITLE
-                : type == ProgressbarEnum.Stop ? FORM_STOP                                                                                                                                                              
+                Text = type == ProgressBarEnum.Finished ? FORM_COMPLETED
+                : type == ProgressBarEnum.Error ? FORM_ERROR
+                : type == ProgressBarEnum.Timeout ? FORM_TIMEOUT_TITLE
+                : type == ProgressBarEnum.Stop ? FORM_STOP                                                                                                                                                              
                 : FORM_ERROR,
 
                 AutoSize = false,

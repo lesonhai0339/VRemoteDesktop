@@ -87,7 +87,7 @@
     <Compile Include="Events\FileEventArgs.cs" />
     <Compile Include="Events\KeyboardEventArgs.cs" />
     <Compile Include="Events\P2PChatEventArgs.cs" />
-    <Compile Include="Events\P2PClientDataReceived.cs" />
+    <Compile Include="Events\RemoteDesktopEventArgs.cs" />
     <Compile Include="Events\P2PFileReceivedEventArgs.cs" />
     <Compile Include="Events\P2PScreenEventArgs.cs" />
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />

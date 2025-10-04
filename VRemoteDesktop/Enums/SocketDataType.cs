@@ -7,28 +7,33 @@ namespace VRemoteDesktop.Models
 {
     public enum SocketDataType : byte
     {
+        //Login
         None = 0x00,
         Login = 0x01,
-        P2PRequestConnect = 0x02,
+        Connect = 0x13,
+        LoginFailed = 0x90,
         Disconnect = 0x03,
         Ping = 0x04,
         Pong = 0x05,
         Error = 0x06,
-        Screen = 0x07,
-        Chunks = 0x08,
-        Keyboard = 0x09,
-        Mouse = 0x0A,
-        ScreenOk = 0x0C,
-        ChunksOk = 0x0D,
-        Clipboard = 0x0E,
-        Chat = 0x0F,
-        Connect = 0x13,
-        P2PDataSend = 0x14,
 
-        LoginFailed = 0x90,
-        P2PDisconnect = 0x91,
-        P2PConnectFailed = 0x92,
-        P2PAcceptConnect = 0x93,
-        P2PRejectConnect = 0x94
+        //Remote control
+        RemoteControlScreenSend = 0x07, //Screen
+        RemoteControlScreenRegionsChangedSend = 0x08, //Chunks
+        RemoteControlKeyboardSend = 0x09, //Keyboard
+        RemoteControlMouseSend = 0x0A, //Mouse
+        RemoteControlClipboardSend = 0x0E, //Clipboard
+        RemoteControlChatSend = 0x0F, //Chat
+        RemoteControlRespondScreenSend = 0x0C, //ScreenOk
+        RemoteControlRespondScreenRegionsChangedSend = 0x0D, //ChunksOk
+
+        RemoteControlRequestToConnect = 0x02,
+        RemoteControlDataSend = 0x14, //P2PDataSend
+        RemoteControlDataSendFailed = 0x15, //P2PDataSendError
+        RemoteControlDisconnect = 0x91, //P2PDisconnect
+        RemoteControlConnectFailed = 0x92, //P2PConnectFailed
+        RemoteControlAcceptedRequestToConnect = 0x93, //P2PAcceptConnect
+        RemoteControlRefusedRequestToConnect = 0x94, //P2PRejectConnect
+        RemoteControlReady  = 0x95,
     }
 }

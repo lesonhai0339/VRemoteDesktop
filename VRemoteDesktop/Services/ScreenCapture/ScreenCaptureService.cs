@@ -223,7 +223,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     offset += screenCaptureCompressed.Length;
 
                     ScreenCaptureEventArgs screenArgs = new ScreenCaptureEventArgs(
-                        type: SocketDataType.Screen,
+                        type: SocketDataType.RemoteControlScreenSend,
                         totalSize: dataLength
                     );
 
@@ -273,7 +273,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     offset += changedRegionsCompressed.Length;
 
                     ScreenCaptureEventArgs chunksArgs = new ScreenCaptureEventArgs(
-                       type: SocketDataType.Chunks,
+                       type: SocketDataType.RemoteControlScreenRegionsChangedSend,
                        totalSize: dataSendLength
                     );
                     var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataSendLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
@@ -359,7 +359,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     offset += screenCaptureCompressed.Length;
 
                     ScreenCaptureEventArgs screenArgs = new ScreenCaptureEventArgs(
-                        type: SocketDataType.Screen,
+                        type: SocketDataType.RemoteControlScreenSend,
                         totalSize: dataLength
                     );
 
@@ -411,7 +411,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     offset += changedRegionsCompressed.Length;
 
                     ScreenCaptureEventArgs chunksArgs = new ScreenCaptureEventArgs(
-                       type: SocketDataType.Chunks,
+                       type: SocketDataType.RemoteControlScreenRegionsChangedSend,
                        totalSize: dataSendLength
                     );
                     var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataSendLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();

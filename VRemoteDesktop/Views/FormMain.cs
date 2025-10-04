@@ -88,6 +88,10 @@ namespace VRemoteDesktop
             {
                 UpdateConnectionStatus(_viewModel.ConnectStatus);
             }
+            else if(e.PropertyName == "ErrorMessage")
+            {
+                MessageBox.Show(_viewModel.ErrorMessage, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
         {
@@ -170,23 +174,23 @@ namespace VRemoteDesktop
                 action();
             }
         }
-        private void ClientAcceptRequestRemoteEventHandler(object sender ,P2PClientDataReceived e)
+        private void ClientAcceptRequestRemoteEventHandler(object sender ,RemoteDesktopEventArgs e)
         {
             if(sender is VClient vClient)
             {
-                if(e.Type == Models.SocketDataType.P2PAcceptConnect)
+                if(e.Type == Models.SocketDataType.RemoteControlAcceptedRequestToConnect)
                 {
                     OpenRemoteForm(vClient);
                 }
-                else if(e.Type == Models.SocketDataType.P2PRequestConnect)
+                else if(e.Type == Models.SocketDataType.RemoteControlRequestToConnect)
                 {
                     AddChat(vClient);
                 }
-                else if(e.Type == Models.SocketDataType.P2PRejectConnect)
+                else if(e.Type == Models.SocketDataType.RemoteControlRefusedRequestToConnect)
                 {
                     MessageBox.Show("Đối tác từ chối kết nối", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-                else if(e.Type == Models.SocketDataType.P2PConnectFailed)
+                else if(e.Type == Models.SocketDataType.RemoteControlConnectFailed)
                 {
                     MessageBox.Show("Kết nối đến máy khách thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }

@@ -18,7 +18,7 @@ namespace ScreenCaptureTest
         {
             string sckId = Guid.NewGuid().ToString().Substring(0, 8);
             VClientType clientType = VClientType.Sender;
-            _vclient = new VClient(sckId, clientType);
+            _vclient = new VClient(sckId, clientType, false);
         }
         [TestCase("27.0.12.78", 2399)]
         public void Connect_Test(string ip, int port)

@@ -20,11 +20,12 @@ namespace VRemoteDesktop.ViewModels
         private string _id;
         private string _myId;
         private string _myPassword;
+        private string _errorMessage;
         private ConnectionStatus _connectStatus;
         private ManualResetEvent _resetEvent;
 
         private readonly RemoteDesktopService _remoteDesktopService;
-        public event EventHandler<P2PClientDataReceived> ClientAcceptRequestRemote;
+        public event EventHandler<RemoteDesktopEventArgs> ClientAcceptRequestRemote;
         public event EventHandler<EventArgs> SocketDisconnectEvent;
         public MainViewModel(RemoteDesktopService remoteDesktopService)
         {
@@ -32,12 +33,13 @@ namespace VRemoteDesktop.ViewModels
             _resetEvent = new ManualResetEvent(false);
 
             _remoteDesktopService = remoteDesktopService;
-            _remoteDesktopService.DataReceivedEvent += TCPClientManagerEventHandler;
+            _remoteDesktopService.RespondEvent += TCPClientManagerEventHandler;
 
             MyId = _remoteDesktopService.GetMe().Id;
             MyPassword = _remoteDesktopService.GetMe().Password;
             Init();
         }
+
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
@@ -69,6 +71,15 @@ namespace VRemoteDesktop.ViewModels
             {
                 _connectStatus = value;
                 OnPropertyChanged(nameof(ConnectStatus));
+            }
+        }
+        public string ErrorMessage
+        {
+            get { return _errorMessage; }
+            set
+            {
+                _errorMessage = value;
+                OnPropertyChanged(nameof(ErrorMessage));
             }
         }
         #endregion
@@ -104,6 +115,11 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
+                if(string.Equals(id, MyId, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    ErrorMessage = "Không thể kết nối với chính mình";
+                    return;
+                }
                 _remoteDesktopService.P2PConnect(id, password);
             }
             catch(Exception ex)
@@ -113,12 +129,12 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Events
-        private void PartnerRespond(object sender, P2PClientDataReceived e)
+        private void PartnerRespond(object sender, RemoteDesktopEventArgs e)
         {
             _resetEvent.Set();
             ClientAcceptRequestRemote?.Invoke(sender, e);
-        }   
-        private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
+        }
+        private void TCPClientManagerEventHandler(object sender, RemoteDesktopEventArgs e)
         {
             if(sender  is VClient client)
             {
@@ -133,17 +149,17 @@ namespace VRemoteDesktop.ViewModels
                     case SocketDataType.LoginFailed:
                         ConnectStatus = ConnectionStatus.Disconnected;
                         break;
-                    case SocketDataType.P2PRequestConnect:
-                    case SocketDataType.P2PAcceptConnect:
-                    case SocketDataType.P2PConnectFailed:
-                    case SocketDataType.P2PRejectConnect:
-                        PartnerRespond(sender, e);
-                        break;
                     case SocketDataType.Disconnect:
                         ConnectStatus = ConnectionStatus.Disconnected;
                         break;
                     case SocketDataType.Error:
                         _resetEvent.Set();
+                        break;
+                    case SocketDataType.RemoteControlRequestToConnect:
+                    case SocketDataType.RemoteControlConnectFailed:
+                    case SocketDataType.RemoteControlAcceptedRequestToConnect:
+                    case SocketDataType.RemoteControlRefusedRequestToConnect:
+                        PartnerRespond(sender, e);
                         break;
                     default:
                         break;
@@ -191,8 +207,9 @@ namespace VRemoteDesktop.ViewModels
                 if (_disposed) return;
 
                 if(_remoteDesktopService != null)
-                    _remoteDesktopService.DataReceivedEvent -= TCPClientManagerEventHandler;
-
+                {
+                    _remoteDesktopService.RespondEvent -= TCPClientManagerEventHandler;
+                }
                 _resetEvent.Dispose();
             }
         }
