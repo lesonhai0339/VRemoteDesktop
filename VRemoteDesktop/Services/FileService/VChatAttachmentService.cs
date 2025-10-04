@@ -356,7 +356,7 @@ namespace VRemoteDesktop.Services.FileService
                 long offset = handledSize;
                 int size = (int)Math.Min(DefaultFileInfo.DEFAULT_CHUNK_FILE_SIZE, fileSize - handledSize);
 
-                chunks.Add(new ChunkFileInfo(fileId: info.Id, filePath: fileInfo.FullName, offset: offset, chunkSize: size));
+                chunks.Add(new ChunkFileInfo(fileId: info.Id, filePath: fileInfo.FullName, fileInfo.Length, offset: offset, chunkSize: size));
 
                 handledSize += size;
             }

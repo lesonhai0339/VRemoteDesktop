@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using VRemoteDesktop.Enums;
-using VRemoteDesktop.Models;
+using static VRemoteDesktop.Utils.DefaultSocketPacket;
 
 namespace VRemoteDesktop.Utils
 {
@@ -25,6 +25,8 @@ namespace VRemoteDesktop.Utils
         private readonly object _highLock = new object();
         private readonly object _mediumLock = new object();
         private readonly object _lowLock = new object();
+        private DateTimeOffset _lastFileSend;
+        private int _limitPacketSendPerSecond;
         private ConcurrentQueue<T> _highTasks;
         private ConcurrentQueue<T> _mediumTasks;
         private ConcurrentQueue<T> _lowTasks;
@@ -32,6 +34,8 @@ namespace VRemoteDesktop.Utils
         private Dictionary<QueuePriority, object> _locks;
         public CusQueue()
         {
+            _lastFileSend = DateTimeOffset.UtcNow;
+            _limitPacketSendPerSecond = 1000 / (LIMIT_BANDWIDTH_PER_SECOND / DEFAULT_CHUNK_SIZE);
             _highTasks = new ConcurrentQueue<T>();
             _mediumTasks = new ConcurrentQueue<T>();
             _lowTasks = new ConcurrentQueue<T>();
@@ -84,9 +88,17 @@ namespace VRemoteDesktop.Utils
             }
             lock (_lowLock)
             {
-                if (_lowTasks.TryDequeue(out task)) return true;
+                if (_lowTasks.Count > 0)
+                {
+                    DateTimeOffset now = DateTimeOffset.UtcNow;
+                    var elapsed = (now - _lastFileSend).TotalMilliseconds;
+                    if (elapsed >= _limitPacketSendPerSecond)
+                    {
+                        _lastFileSend = now;
+                        if (_lowTasks.TryDequeue(out task)) return true;
+                    }
+                }
             }
-
             return false;
         }
         public int RemoveAll(QueuePriority priority, Func<T, bool> match)

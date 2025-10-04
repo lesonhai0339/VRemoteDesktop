@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -612,6 +613,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 try
                 {
+                    FileHelper.OpenStream(task.ChunkFileInfo.FilePath);
                     int headerSize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
 
                     byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
@@ -636,8 +638,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     offset += RandomLength.FILE_ID_LENGTH;
 
                     //File data
-                    int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
-
+                    int chunkRead = FileHelper.CopyFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
                     if (chunkRead != chunkFileData.Length - headerSize)
                     {
                         Logger.Log.ForContext("FileName", this.GetType().Name).Error("Error when ProcessFileTransfer send file data error, remove remain send file task");
@@ -645,6 +646,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                         return;
                     }
                     Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
+
+                    if ((task.ChunkFileInfo.Offset + task.ChunkFileInfo.ChunkSize) >= task.ChunkFileInfo.FileLength)
+                    {
+                        bool result = FileHelper.CloseStream(task.ChunkFileInfo.FilePath);
+                        if(!result)
+                            Logger.Log.ForContext("FileName", this.GetType().Name).Error("Close stream failed");
+                    }
                 }
                 catch(Exception ex)
                 {
@@ -804,7 +812,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     try
                     {
-                        Send(SocketDataType.Disconnect, new byte[0], null, true);
+                        SocketDataType type = isHost ? SocketDataType.Disconnect : SocketDataType.P2PDisconnect;
+                        Send(type, new byte[0], null, true);
                         Thread.Sleep(50);
                     }
                     catch (Exception ex)
