@@ -9,7 +9,7 @@ namespace VRemoteDesktop.Services.VTCPClient
     {
         private bool _disposed = false;
         private readonly ConcurrentDictionary<string, VClient> _connections;
-        public EventHandler<P2PClientDataReceived> ClientDataReceived;
+        public EventHandler<RemoteDesktopEventArgs> ClientDataReceived;
         public VClientManager()
         {
             _connections = new ConcurrentDictionary<string, VClient>();
@@ -88,7 +88,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             Add(id, client);
             return client;
         }
-        private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
+        private void TCPClientResponseEventHandler(object sender, RemoteDesktopEventArgs e)
         {
             ClientDataReceived?.Invoke(sender, e);
         }

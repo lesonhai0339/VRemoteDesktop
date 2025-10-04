@@ -61,18 +61,30 @@ namespace VRemoteDesktop.ViewModels
         }
         private Bitmap ParseScreenByteArrayToBitmapImage(byte[] bytes)
         {
-            //var screenData = _screenCaptureExtension.RawScreenToScreenData(bytes);
+            try
+            {
+                //var screenData = _screenCaptureExtension.RawScreenToScreenData(bytes);
 
-            var screenData = _screenCaptureExtension.RawScreenToScreenDataWithoutChecksum(bytes);
+                var screenData = _screenCaptureExtension.RawScreenToScreenDataWithoutChecksum(bytes);
 
-            Bitmap image = _screenCaptureExtension.WriteToBitmap(screenData);
+                Bitmap image = _screenCaptureExtension.WriteToBitmap(screenData);
 
-            return image;
+                return image;
+            }
+            catch
+            {
+                return null;
+            }
         }
         private void ProcessScreenReceived(byte[] screen)
         {
             Bitmap image = ParseScreenByteArrayToBitmapImage(screen);
-            screenEvent?.Invoke(image);
+            if(image != null)
+            {
+                _vClient.AddWork(
+                    new TaskObject(type: SocketDataType.RemoteControlScreenSend, _vClient.SocketId, isSendHeader: true, data: null), QueuePriority.High);
+                screenEvent?.Invoke(image);
+            }
         }
         private List<ScreenRegion> ParseScreenRegionsChangedByteArrayToList(byte[] bytes)
         {
@@ -82,7 +94,6 @@ namespace VRemoteDesktop.ViewModels
 
             if (regions == null || regions.Count == 0)
                 return null;
-
             return regions;
         }
         private void ProcessScreenRegionsChangedReceived(byte[] screenRegionsChanged)

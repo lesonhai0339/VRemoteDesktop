@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteDesktop.Events
 {
-    public enum ProgressbarEnum
+    public enum ProgressBarEnum
     {
         Finished,
         Timeout,
@@ -14,17 +14,17 @@ namespace VRemoteDesktop.Events
     }
     public class ChatProgressBarEventArgs: EventArgs
     {
-        public ChatProgressBarEventArgs(ProgressbarEnum type)
+        public ChatProgressBarEventArgs(ProgressBarEnum type)
         {
             Type = type;
             Data = null;
         }
-        public ChatProgressBarEventArgs(ProgressbarEnum type, object data)
+        public ChatProgressBarEventArgs(ProgressBarEnum type, object data)
         {
             Type = type;
             Data = data;
         }
-        public ProgressbarEnum Type { get; set; }
+        public ProgressBarEnum Type { get; set; }
         public object Data { get; set; }
     }
 }

@@ -6,9 +6,9 @@ using VRemoteDesktop.Models;
 
 namespace VRemoteDesktop.Events
 {
-    public class P2PClientDataReceived:  EventArgs
+    public class RemoteDesktopEventArgs:  EventArgs
     {
-        public P2PClientDataReceived(SocketDataType type, bool flag, byte[] data)
+        public RemoteDesktopEventArgs(SocketDataType type, bool flag, byte[] data)
         {
             Type = type;
             Flag = flag;
