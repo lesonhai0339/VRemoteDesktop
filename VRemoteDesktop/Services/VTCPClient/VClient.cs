@@ -22,6 +22,7 @@ namespace VRemoteDesktop.Services.VTCPClient
     public class VClient : IDisposable
     {
         private bool isHost;
+        private bool _screenSucceeded;
         private bool _isSocketConnected;
         private bool _isP2PConnected;
         private volatile bool _isDisposed;
@@ -45,7 +46,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         // private readonly VPriorityQueue<object, int> _senderTasks;
 
         public event EventHandler<SocketDisposeEventArgs> SocketDisposing;
-        public event EventHandler<P2PClientDataReceived> TCPClientReceived;
+        public event EventHandler<RemoteDesktopEventArgs> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
 
@@ -54,6 +55,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         public VClient(string socketId, VClientType clientType, bool isHost)
         {
             Partner = null;
+            _screenSucceeded = false;
             _isDisposed = false;
             _isP2PConnected = false;
             _isSocketConnected = false;
@@ -104,6 +106,23 @@ namespace VRemoteDesktop.Services.VTCPClient
             //}
         }
         #region Properties
+        public bool ScreenSucceeded
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _screenSucceeded;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _screenSucceeded = value;
+                }
+            }
+        }
         public ClientInfo Partner
         {
             get
@@ -233,7 +252,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                                     P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                     break;
                                 default:                                  
-                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
                                     break;
                             }
                         }        
@@ -416,7 +435,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 if (!Socket.Connected)
                 {
                     //Connected?.Invoke(this, new ConnectEventArgs(false));
-                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, false, new byte[0]));
+                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, false, new byte[0]));
                     Logger.Log.ForContext("FileName", this.GetType().Name).Error("Cannot connect to server");
                     return;
                 }
@@ -427,7 +446,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     ReceivedWorker.RunWorkerAsync();
                 }
                 //Connected?.Invoke(this, new ConnectEventArgs(true));
-                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, true, new byte[0]));
+                TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, true, new byte[0]));
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
                 stateObject.SckId = _socketId;

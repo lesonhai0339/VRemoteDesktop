@@ -174,7 +174,7 @@ namespace VRemoteDesktop
                 action();
             }
         }
-        private void ClientAcceptRequestRemoteEventHandler(object sender ,P2PClientDataReceived e)
+        private void ClientAcceptRequestRemoteEventHandler(object sender ,RemoteDesktopEventArgs e)
         {
             if(sender is VClient vClient)
             {

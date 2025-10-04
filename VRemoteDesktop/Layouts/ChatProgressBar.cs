@@ -50,7 +50,7 @@ namespace VRemoteDesktop.Layouts
             if (elapsed > DefaultValue.DEFAULT_TIMEOUT_MINUTES)
             {
                 _timeout?.Dispose();
-                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Timeout));
+                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressBarEnum.Timeout));
             }
         }
         public void SetStep(int length)
@@ -72,7 +72,7 @@ namespace VRemoteDesktop.Layouts
                 this.PerformStep();
             }
             if (this.Value == this.Maximum)
-                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Finished));
+                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressBarEnum.Finished));
         }
     }
 }
