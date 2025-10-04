@@ -221,7 +221,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     int start = Environment.TickCount;
                     try
                     {
-                        if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
+                        if (task.Type == SocketDataType.RemoteControlScreenSend || task.Type == SocketDataType.RemoteControlScreenRegionsChangedSend)
                         {
                             P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                         }
@@ -229,7 +229,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             switch (task.Type)
                             {
-                                case SocketDataType.Chat:
+                                case SocketDataType.RemoteControlChatSend:
                                     P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                                     break;
                                 default:                                  
@@ -291,7 +291,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void ProcessTask(TaskObject task)
         {
-            if (task.TaskType == SocketDataType.Chat)
+            if (task.TaskType == SocketDataType.RemoteControlChatSend)
             {
                 ProcessFileTransfer(task);
                 return;
@@ -315,7 +315,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error("data is null, pass");
                 return;
             }
-            if (socketType == SocketDataType.Chat)
+            if (socketType == SocketDataType.RemoteControlChatSend)
             {
                 if(dataType is ChatDataType chat && chat == ChatDataType.StopReceivedFileData)
                 {
@@ -325,7 +325,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             if (item is TaskObject task)
                             {
-                                if (task.TaskType == SocketDataType.Chat)
+                                if (task.TaskType == SocketDataType.RemoteControlChatSend)
                                 {
                                     ChatDataType chatType = (ChatDataType)task.Data[0];
                                     if(chatType == ChatDataType.FileData)
@@ -812,7 +812,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     try
                     {
-                        SocketDataType type = isHost ? SocketDataType.Disconnect : SocketDataType.P2PDisconnect;
+                        SocketDataType type = isHost ? SocketDataType.Disconnect : SocketDataType.RemoteControlDisconnect;
                         Send(type, new byte[0], null, true);
                         Thread.Sleep(50);
                     }

@@ -95,7 +95,7 @@ namespace VRemoteServer.RelayServer.Services
                 Buffer.BlockCopy(connection.Reader.Buffer, dataOffset, data, 0, dataLength);
                 string[] info = Encoding.ASCII.ByteArrayToStringWithSeparator(data, PACKET_HEADER_LENGTH, data.Length - PACKET_HEADER_LENGTH, DefaultValue.Common.SEPARATOR);
 
-                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PRequestConnect, socketId: socketId, partnerId: info[1], data: data));
+                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.RemoteControlRequestToConnect, socketId: socketId, partnerId: info[1], data: data));
             }
             catch (Exception ex)
             {
@@ -104,7 +104,7 @@ namespace VRemoteServer.RelayServer.Services
         }
         public void P2PConnectFailed(SocketConnection connection, string connectionId)
         {
-            byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PConnectFailed, connectionId);
+            byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlConnectFailed, connectionId);
             Send(connection, packet);
         }
         public void InitServer()
@@ -144,7 +144,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             if(sender is SocketConnection connection)
             {
-               RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.P2PDisconnect));
+               RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.RemoteControlDisconnect));
             }
         }
         private void RemoteControlEventHandler(object sender, SocketConnectionEventArg e)
@@ -152,7 +152,7 @@ namespace VRemoteServer.RelayServer.Services
             if (sender is SocketConnection connection)
             {
                 connection.UpdateTime();
-                if(e.Type == SocketDataType.P2PRequestConnect)
+                if(e.Type == SocketDataType.RemoteControlRequestToConnect)
                 {
                     ParseRequestToConnectHeader(connection, e.Offset, e.Length);
                 }

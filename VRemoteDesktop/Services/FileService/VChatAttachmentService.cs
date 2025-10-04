@@ -313,7 +313,7 @@ namespace VRemoteDesktop.Services.FileService
                     client.AddWork(
                         new TaskObject
                         {
-                            TaskType = SocketDataType.Chat,
+                            TaskType = SocketDataType.RemoteControlChatSend,
                             Data = dataSend,
                             SessionId = client.SocketId,
                             IsSendHeader = true

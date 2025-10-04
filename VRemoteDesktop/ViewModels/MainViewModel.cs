@@ -20,8 +20,10 @@ namespace VRemoteDesktop.ViewModels
         private string _id;
         private string _myId;
         private string _myPassword;
+        private string _errorMessage;
         private ConnectionStatus _connectStatus;
         private ManualResetEvent _resetEvent;
+        private ManualResetEvent _remoteControlResetEvent;
 
         private readonly RemoteDesktopService _remoteDesktopService;
         public event EventHandler<P2PClientDataReceived> ClientAcceptRequestRemote;
@@ -30,14 +32,17 @@ namespace VRemoteDesktop.ViewModels
         {
             ConnectStatus = ConnectionStatus.None;
             _resetEvent = new ManualResetEvent(false);
+            _remoteControlResetEvent = new ManualResetEvent(false);
 
             _remoteDesktopService = remoteDesktopService;
             _remoteDesktopService.DataReceivedEvent += TCPClientManagerEventHandler;
+            _remoteDesktopService.errorEvent += RemoteDesktopErrorEventHandler;
 
             MyId = _remoteDesktopService.GetMe().Id;
             MyPassword = _remoteDesktopService.GetMe().Password;
             Init();
         }
+
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
@@ -69,6 +74,15 @@ namespace VRemoteDesktop.ViewModels
             {
                 _connectStatus = value;
                 OnPropertyChanged(nameof(ConnectStatus));
+            }
+        }
+        public string ErrorMessage
+        {
+            get { return _errorMessage; }
+            set
+            {
+                _errorMessage = value;
+                OnPropertyChanged(nameof(ErrorMessage));
             }
         }
         #endregion
@@ -104,7 +118,13 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
+                _remoteControlResetEvent.Reset();
                 _remoteDesktopService.P2PConnect(id, password);
+                bool flag = _remoteControlResetEvent.WaitOne(5000);
+                if (!flag)
+                {
+                    ErrorMessage = "Kết nối đến đối tác thất bại";
+                }
             }
             catch(Exception ex)
             {
@@ -117,7 +137,11 @@ namespace VRemoteDesktop.ViewModels
         {
             _resetEvent.Set();
             ClientAcceptRequestRemote?.Invoke(sender, e);
-        }   
+        }
+        private void RemoteDesktopErrorEventHandler(object sender, RemoteDesktopErrorEventArgs e)
+        {
+            ErrorMessage = e.Message;
+        }
         private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
         {
             if(sender  is VClient client)
@@ -133,10 +157,13 @@ namespace VRemoteDesktop.ViewModels
                     case SocketDataType.LoginFailed:
                         ConnectStatus = ConnectionStatus.Disconnected;
                         break;
-                    case SocketDataType.P2PRequestConnect:
-                    case SocketDataType.P2PAcceptConnect:
-                    case SocketDataType.P2PConnectFailed:
-                    case SocketDataType.P2PRejectConnect:
+                    case SocketDataType.RemoteControlRequestToConnect:
+                    case SocketDataType.RemoteControlConnectFailed:
+                    case SocketDataType.RemoteControlRefusedRequestToConnect:
+                        PartnerRespond(sender, e);
+                        break;
+                    case SocketDataType.RemoteControlAcceptedRequestToConnect:
+                        _remoteControlResetEvent.Set();
                         PartnerRespond(sender, e);
                         break;
                     case SocketDataType.Disconnect:
@@ -191,7 +218,11 @@ namespace VRemoteDesktop.ViewModels
                 if (_disposed) return;
 
                 if(_remoteDesktopService != null)
+                {
                     _remoteDesktopService.DataReceivedEvent -= TCPClientManagerEventHandler;
+                    _remoteDesktopService.errorEvent -= RemoteDesktopErrorEventHandler;
+                }
+
 
                 _resetEvent.Dispose();
             }
