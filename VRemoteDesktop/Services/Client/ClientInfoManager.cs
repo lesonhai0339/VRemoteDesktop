@@ -16,6 +16,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
 {
     public interface IClientInfoManager
     {
+        bool RemovePartner(string id);
         ClientInfo GetMyInfo();
         string GetLocalIPAddress();
         void UpdateMyInfo(byte[] data);
@@ -52,6 +53,10 @@ namespace VRemoteDesktop.Services.ConnectionManager
         }
         #endregion
         #region Methods
+        public bool RemovePartner(string id)
+        {
+            return _partners.Remove(id);
+        }
         public ClientInfo GetMyInfo()
         {
             return Me;  

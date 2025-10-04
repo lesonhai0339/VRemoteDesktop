@@ -367,7 +367,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             if (sender is VClient client)
             {
-                RemoveClientById(client.SocketId);
+                try
+                {
+                    RemoveClientById(client.SocketId);
+                    if (client.Partner != null)
+                    {
+                        _clientInfo.RemovePartner(client.Partner.Id);
+                    }
+                }
+                catch { }
             }
         }
         #endregion
