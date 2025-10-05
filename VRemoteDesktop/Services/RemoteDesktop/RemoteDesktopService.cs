@@ -283,7 +283,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                     tasks.Add(task);
                 }
-                client.AddWorkGroup(tasks, QueuePriority.Medium);
+                client.AddWorkGroup(tasks, QueuePriority.High);
             }
             catch (Exception ex)
             {
