@@ -44,7 +44,7 @@ namespace VRemoteServer.RelayServer.Networking
                 throw;
             }
         }
-        public static byte[] CreatePacket(SocketDataType type, string id, byte[] data = null)
+        public static byte[] CreatePacket(SocketDataType type, string id = "00000000", byte[] data = null)
         {
             if (type == SocketDataType.None)
                 return Array.Empty<byte>();

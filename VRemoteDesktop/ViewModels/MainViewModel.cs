@@ -23,6 +23,7 @@ namespace VRemoteDesktop.ViewModels
         private string _errorMessage;
         private ConnectionStatus _connectStatus;
         private ManualResetEvent _resetEvent;
+        private VClient _host;
 
         private readonly RemoteDesktopService _remoteDesktopService;
         public event EventHandler<RemoteDesktopEventArgs> ClientAcceptRequestRemote;
@@ -43,7 +44,7 @@ namespace VRemoteDesktop.ViewModels
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
-            _remoteDesktopService.NewClient(_id, VClientType.None, true);
+            _host =  _remoteDesktopService.NewClient(_id, VClientType.None, true);
         }
         #region Properties
         public string MyId
@@ -120,7 +121,8 @@ namespace VRemoteDesktop.ViewModels
                     ErrorMessage = "Không thể kết nối với chính mình";
                     return;
                 }
-                _remoteDesktopService.P2PConnect(id, password);
+                //_remoteDesktopService.P2PConnect(id, password);
+                _remoteDesktopService.P2PConnect(_host, id, password);
             }
             catch(Exception ex)
             {
@@ -210,6 +212,7 @@ namespace VRemoteDesktop.ViewModels
                 {
                     _remoteDesktopService.RespondEvent -= TCPClientManagerEventHandler;
                 }
+                _host?.Dispose();
                 _resetEvent.Dispose();
             }
         }

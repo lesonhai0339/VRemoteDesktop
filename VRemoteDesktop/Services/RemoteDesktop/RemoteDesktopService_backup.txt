@@ -1,8 +1,7 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
@@ -52,6 +51,34 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public ClientInfo GetMe()
         {
             return _clientInfo.GetMyInfo();
+        }
+        public void Login(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return;
+
+            var client = _vClientManager.GetByKey(id);
+            if(client != null)
+            {
+                byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
+                client.Send(SocketDataType.Login, encoder, null);
+            }
+        }
+        public void P2PConnect(string partnerId, string partnerPassword)
+        {
+            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
+
+            _reset.Reset();
+            string connectionId = StringHelper.RandomStringNumber(8);
+            var newConnection = NewClient(connectionId, VClientType.Sender, false);
+            if (newConnection == null)
+            {
+                return;
+            }
+            newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+            _reset.WaitOne(5000);
+            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
+            newConnection.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, newConnection.SocketId, true);
         }
         public void UpdateMyInfo(byte[] data)
         {
@@ -143,145 +170,84 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             return _vClientManager.Connections;
         }
-        public void Login(string id)
-        {
-            if (string.IsNullOrWhiteSpace(id)) return;
-
-            var client = _vClientManager.GetByKey(id);
-            if (client != null)
-            {
-                byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
-                client.Send(SocketDataType.Login, encoder, null);
-            }
-        }
-        public void P2PConnect(string partnerId, string partnerPassword)
-        {
-            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
-
-            _reset.Reset();
-            string connectionId = StringHelper.RandomStringNumber(8);
-            var newConnection = NewClient(connectionId, VClientType.Sender, false);
-            if (newConnection == null)
-            {
-                return;
-            }
-            newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
-            _reset.WaitOne(5000);
-            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
-            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            newConnection.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, newConnection.SocketId, true);
-        }
-
-        //Ham moi chua chay test
-        public void P2PConnect(VClient client, string partnerId, string partnerPassword)
-        {
-            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
-
-            _reset.Reset();
-            string id = Helpers.StringHelper.RandomString(8);
-            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, id, partnerPassword);
-            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            client.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, client.SocketId, true);
-        }
         private void P2PRequestConnectHandler(object sender, RemoteDesktopEventArgs e)
         {
-            try
+            if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
             {
-                string id = Encoding.ASCII.GetString(e.Data);
-                var remoteClient = _vClientManager.New(id, VClientType.Receiver, false);
+                //var remoteControlClient = _vClientManager.New(connectionId, VClientType.Receiver, false);
+                //remoteControlClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+                //remoteControlClient.UpdatePartnerInfo(partnerInfo);
+                //byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
 
-                bool flag = remoteClient.Listen();
-                if (!flag)
-                {
-                    //P2P connect Failed, use TURN server
-                }
+                //remoteControlClient.Send(SocketDataType.RemoteControlAcceptedRequestToConnect, dataBytes, remoteControlClient.SocketId, true);
+                //RespondEvent?.Invoke(remoteControlClient, e);
+
+
+
+                //Test
+                P2PConnection p2pConnection = new P2PConnection();
+                p2pConnection.Listen(); 
+                //End test
+
+                //Not use
+                ////Split this
+                //var screen = _globalHook.GetFirstScreen();
+                //int length = screen.Sum(x=> x.Length);
+                //SendScreen(remoteControlClient, SocketDataType.RemoteControlScreenSend, screen, length);
+
+                //if (_vClientManager.HasClientOfType(VClientType.Receiver))
+                //    StartScreenCapture();
             }
-            catch (Exception ex)
+            else
             {
-
+                if (sender is VClient client)
+                {
+                    string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII).GetResult();
+                    byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
+ 
+                    client.Send(SocketDataType.RemoteControlRefusedRequestToConnect, dataBytes, client.SocketId, true);
+                }
             }
         }
         private void ProcessP2PConnectAccepted(object sender, RemoteDesktopEventArgs e)
         {
             try
             {
-                string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                //three variable: id, public ip, public port
-                string[] dataArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
+                if(sender is VClient client)
+                {
+                    //Test
+                    string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
+                    string[] dataArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
+                    var remoteControlClient = _vClientManager.New("12345678", VClientType.Sender, false);
+                    remoteControlClient.Connect(dataArray[0], int.Parse(dataArray[1]));
+                    //End test
 
-                var remoteControlClient = _vClientManager.New(dataArray[0], VClientType.Sender, false);
-                remoteControlClient.Connect(dataArray[1], int.Parse(dataArray[1]));
+
+
+                    //ClientInfo partnerInfo = null;
+
+                    //string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
+                    //string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
+                    //if(stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
+                    //{
+                    //    partnerInfo = new ClientInfo();
+                    //    if (partnerInfo.TryParseData(stringArray))
+                    //    {
+                    //        client.UpdatePartnerInfo(partnerInfo);
+
+                    //        client.Send(SocketDataType.RemoteControlReady, new byte[0], client.SocketId, true);
+                    //        return;
+                    //    }
+                    //}
+                    ////When partnerInfo is null this method will call dispose method
+                    //client.UpdatePartnerInfo(partnerInfo);
+                }
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
             }
         }
-
-
-        //Ham chinh
-        //private void P2PRequestConnectHandler(object sender, RemoteDesktopEventArgs e)
-        //{
-        //    if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
-        //    {
-        //        var remoteControlClient = _vClientManager.New(connectionId, VClientType.Receiver, false);
-        //        remoteControlClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
-        //        remoteControlClient.UpdatePartnerInfo(partnerInfo);
-        //        byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
-
-        //        remoteControlClient.Send(SocketDataType.RemoteControlAcceptedRequestToConnect, dataBytes, remoteControlClient.SocketId, true);
-        //        RespondEvent?.Invoke(remoteControlClient, e);
-
-        //        //Not use
-        //        ////Split this
-        //        //var screen = _globalHook.GetFirstScreen();
-        //        //int length = screen.Sum(x=> x.Length);
-        //        //SendScreen(remoteControlClient, SocketDataType.RemoteControlScreenSend, screen, length);
-
-        //        //if (_vClientManager.HasClientOfType(VClientType.Receiver))
-        //        //    StartScreenCapture();
-        //    }
-        //    else
-        //    {
-        //        if (sender is VClient client)
-        //        {
-        //            string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII).GetResult();
-        //            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
-
-        //            client.Send(SocketDataType.RemoteControlRefusedRequestToConnect, dataBytes, client.SocketId, true);
-        //        }
-        //    }
-        //}
-        //private void ProcessP2PConnectAccepted(object sender, RemoteDesktopEventArgs e)
-        //{
-        //    try
-        //    {
-        //        if(sender is VClient client)
-        //        {
-        //            ClientInfo partnerInfo = null;
-
-        //            string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-        //            string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
-        //            if (stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
-        //            {
-        //                partnerInfo = new ClientInfo();
-        //                if (partnerInfo.TryParseData(stringArray))
-        //                {
-        //                    client.UpdatePartnerInfo(partnerInfo);
-
-        //                    client.Send(SocketDataType.RemoteControlReady, new byte[0], client.SocketId, true);
-        //                    return;
-        //                }
-        //            }
-        //            //When partnerInfo is null this method will call dispose method
-        //            client.UpdatePartnerInfo(partnerInfo);
-        //        }
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
-        //    }
-        //}
         private void FirstSendScreen(object sender)
         {
             if (sender is VClient client)

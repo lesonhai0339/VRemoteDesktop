@@ -17,6 +17,7 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
+        bool GetFirst(string id, string password, out ConnectionInfo connectionInfo);
         void Ping(SocketConnection connection);
         bool Add(SocketConnection connection, byte[] data, out ConnectionInfo connectionInfo);
         void LoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo);
@@ -51,6 +52,13 @@ namespace VRemoteServer.RelayServer.Services
         public void Ping(SocketConnection connection)
         {
             connection.UpdateTime();
+        }
+        public bool GetFirst(string id, string password, out ConnectionInfo connectionInfo)
+        {
+            connectionInfo = null;
+            Func<ConnectionInfo, bool> predicate = (c) => c.Id == id && c.Password == password;
+            connectionInfo = _loginConnectionManager.GetFirst(predicate); 
+            return connectionInfo != null;
         }
         public bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo)
             => _loginConnectionManager.Get(id, out connectionInfo);
