@@ -1,119 +1,51 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Configuration;
-using System.Linq;
-using System.Text;
+using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
-using VRemoteDesktop.Services.Authentication;
-using VRemoteDesktop.Services.ConnectionManager;
-using VRemoteDesktop.Services.TCPClient;
-using VRemoteDesktop.Utils;
-using VRemoteServer.Models;
+using VRemoteDesktop.Services.RemoteDesktop;
+using VRemoteDesktop.Services.VTCPClient;
 using static VRemoteDesktop.Utils.Logger;
+using static VRemoteDesktop.Utils.RandomLength;
 
 namespace VRemoteDesktop.ViewModels
 {
-    public class MainViewModel : INotifyPropertyChanged
+    public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
-        private readonly object _lock = new object();
-        private string _partnerId;
-        private string _partnerPassword;
+        private bool _disposed = false;
+        private bool _isLogged = false;
+        private string _id;
         private string _myId;
         private string _myPassword;
-        private bool _isConnected;
-        private ClientInfo _myInfo;
-        private TCPClient _tcpClient;
-        private Authentication _authentication;
-        private ConnectionManager _connectionManager;
-        public MainViewModel()
+        private string _errorMessage;
+        private ConnectionStatus _connectStatus;
+        private ManualResetEvent _resetEvent;
+
+        private readonly RemoteDesktopService _remoteDesktopService;
+        public event EventHandler<RemoteDesktopEventArgs> ClientAcceptRequestRemote;
+        public event EventHandler<EventArgs> SocketDisconnectEvent;
+        public MainViewModel(RemoteDesktopService remoteDesktopService)
         {
-            TCPClient = new TCPClient();
-            Authentication = new Authentication(TCPClient);
-            ConnectionManager = new ConnectionManager();
-            _myInfo = ConnectionManager.Me;
-            MyId = _myInfo.Id;
-            MyPassword = _myInfo.Password;
-            IsConnected = false;
+            ConnectStatus = ConnectionStatus.None;
+            _resetEvent = new ManualResetEvent(false);
+
+            _remoteDesktopService = remoteDesktopService;
+            _remoteDesktopService.RespondEvent += TCPClientManagerEventHandler;
+
+            MyId = _remoteDesktopService.GetMe().Id;
+            MyPassword = _remoteDesktopService.GetMe().Password;
+            Init();
         }
 
+        private void Init()
+        {
+            _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
+            _remoteDesktopService.NewClient(_id, VClientType.None, true);
+        }
         #region Properties
-        public TCPClient TCPClient
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _tcpClient;
-                }
-            }
-            set
-            {
-                lock (_lock)
-                {
-                    if (_tcpClient != null)
-                    {
-                        _tcpClient.ConnectEvent -= ConnectEventHandler;
-                        _tcpClient.LoginEvent -= LoginEventHandler;
-                        _tcpClient.P2PConnectEvent -= P2PConnectEventHandler;
-                    }
-                    _tcpClient = value;
-                    if (_tcpClient != null)
-                    {
-                        _tcpClient.ConnectEvent += ConnectEventHandler;
-                        _tcpClient.LoginEvent += LoginEventHandler;
-                        _tcpClient.P2PConnectEvent += P2PConnectEventHandler;
-
-                    }
-                }
-            }
-        }
-
-
-        public Authentication Authentication
-        {
-            get => _authentication;
-            set => _authentication = value;
-        }
-        public ConnectionManager ConnectionManager
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _connectionManager;
-                }
-            }
-            set
-            {
-                lock (_lock)
-                {
-                    _connectionManager = value;
-                }
-            }
-        }
-
-        public string PartnerId
-        {
-            get { return _partnerId; }
-            set
-            {
-                _partnerId = value;
-                OnPropertyChanged(nameof(PartnerId));
-            }
-        }
-        public string PartnerPassword
-        {
-            get { return _partnerPassword; }
-            set
-            {
-                _partnerPassword = value;
-                OnPropertyChanged(nameof(PartnerPassword));
-            }
-        }
         public string MyId
         {
             get { return _myId; }
@@ -132,72 +64,154 @@ namespace VRemoteDesktop.ViewModels
                 OnPropertyChanged(nameof(MyPassword));
             }
         }
-        public bool IsConnected
+        public ConnectionStatus ConnectStatus
         {
-            get { return _isConnected; }
+            get { return _connectStatus; }
             set
             {
-                _isConnected = value;
-                OnPropertyChanged(nameof(IsConnected));
+                _connectStatus = value;
+                OnPropertyChanged(nameof(ConnectStatus));
+            }
+        }
+        public string ErrorMessage
+        {
+            get { return _errorMessage; }
+            set
+            {
+                _errorMessage = value;
+                OnPropertyChanged(nameof(ErrorMessage));
             }
         }
         #endregion
         #region Methods
-        public void Connect()
+        public void Connect(VClient client = null)
         {
-            string ip = AppSettingHelper.Getvalue("RemoteServerIP");
-            string port = AppSettingHelper.Getvalue("RemoteServerPort");
+            string ip = AppSettingHelper.GetValue("ServerIP");// ?? "27.0.12.78";
+            string port = AppSettingHelper.GetValue("LoginPort");// ?? "2399";
 
             if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
             {
-                Log.ForContext("FileName", nameof(P2PConnect)).Error("Error at Connect");
+                Log.ForContext("FileName", nameof(Connect)).Error("Error at Connect");
                 return;
             }
             if(int.TryParse(port, out int validPort))
             {
-                Authentication.Connect(ip, validPort);
+                if(client == null)
+                {
+                    var client1 = _remoteDesktopService.GetClientById(_id);
+                    client1.Connect(ip, validPort);
+                }
+                else
+                {
+                    client.Connect(ip, validPort);
+                }
             }
         }
         public void Login()
         {
-            Authentication.Login(_myInfo.ToNetworkString());
+            _remoteDesktopService.Login(_id);
         }
-        public void P2PConnect(string ip, string password)
+        public void RequestP2PConnect(string id, string password)
         {
             try
             {
-                Authentication.P2PConnect(ip, password, _myInfo);
+                if(string.Equals(id, MyId, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    ErrorMessage = "Không thể kết nối với chính mình";
+                    return;
+                }
+                _remoteDesktopService.P2PConnect(id, password);
             }
             catch(Exception ex)
             {
-                Log.ForContext("FileName", nameof(P2PConnect)).Error(ex, "Error at P2PConnect");
+                Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
             }
         }
         #endregion
         #region Events
-        private void ConnectEventHandler(object sender, ConnectEventArgs e)
+        private void PartnerRespond(object sender, RemoteDesktopEventArgs e)
         {
-            if (e.IsConnected)
+            _resetEvent.Set();
+            ClientAcceptRequestRemote?.Invoke(sender, e);
+        }
+        private void TCPClientManagerEventHandler(object sender, RemoteDesktopEventArgs e)
+        {
+            if(sender  is VClient client)
             {
-                Login();
+                switch (e.Type)
+                {
+                    case SocketDataType.Connect:
+                        ConnectEventHandler(e.Flag);
+                        break;
+                    case SocketDataType.Login:
+                        LoginEventHandler(e.Flag, e.Data);
+                        break;
+                    case SocketDataType.LoginFailed:
+                        ConnectStatus = ConnectionStatus.Disconnected;
+                        break;
+                    case SocketDataType.Disconnect:
+                        ConnectStatus = ConnectionStatus.Disconnected;
+                        break;
+                    case SocketDataType.Error:
+                        _resetEvent.Set();
+                        break;
+                    case SocketDataType.RemoteControlRequestToConnect:
+                    case SocketDataType.RemoteControlConnectFailed:
+                    case SocketDataType.RemoteControlAcceptedRequestToConnect:
+                    case SocketDataType.RemoteControlRefusedRequestToConnect:
+                        PartnerRespond(sender, e);
+                        break;
+                    default:
+                        break;
+                }
             }
         }
-        private void LoginEventHandler(object sender, LoginEventArgs e)
+        private void ConnectEventHandler(bool flag)
         {
-            IsConnected = e.IsSuccess;
-            ConnectionManager.UpdateMyInfo(e.Data);
+            if (flag)
+            {
+                if (!_isLogged)
+                {
+                    _isLogged = true;
+                    Login();
+                }
+                else
+                {
+                    _resetEvent.Set();
+                }
+            }
         }
-        private void P2PConnectEventHandler(object sender, P2PConnectEventArgs e)
+        private void LoginEventHandler(bool flag, byte[] data)
         {
-            string data = Helpers.ByteArrayHelper.ConvertByteArrayToString(e.Data, Enums.EncodingType.ASCII).GetResult();
+            if (flag)
+            {
+                ConnectStatus = ConnectionStatus.Connected;
+                _remoteDesktopService.UpdateMyInfo(data);
+            }
         }
-
-
         public event PropertyChangedEventHandler PropertyChanged;
         protected virtual void OnPropertyChanged(string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
         #endregion
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_disposed) return;
+
+                if(_remoteDesktopService != null)
+                {
+                    _remoteDesktopService.RespondEvent -= TCPClientManagerEventHandler;
+                }
+                _resetEvent.Dispose();
+            }
+        }
     }
 }
