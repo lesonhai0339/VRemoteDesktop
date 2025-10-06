@@ -425,6 +425,14 @@ namespace VRemoteDesktop.Services.VTCPClient
         public bool Listen()
         {
             EndPoint endpoint = new IPEndPoint(IPAddress.Any, 2399);
+
+            if (Socket == null || !Socket.Connected)
+            {
+                Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                Socket.NoDelay = true;
+            }
+            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+
             _socket.Bind(endpoint);
             _socket.Listen(1);
             _socket.BeginAccept(ListenCallback, _socket);

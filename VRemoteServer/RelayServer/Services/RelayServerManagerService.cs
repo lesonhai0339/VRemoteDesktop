@@ -120,14 +120,17 @@ namespace VRemoteServer.RelayServer.Services
                     string[] partnerIdAndPassword = Encoding.ASCII.ByteArrayToStringWithSeparator(data, '|'); //three
                     if (_loginManager.GetFirst(partnerIdAndPassword[1], partnerIdAndPassword[2], out var validInfo))
                     {
-                        byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Port);
+                        //Send request to partner
+                        var byteArray1 = PacketFactory.CreatePacket(SocketDataType.RemoteControlRequestToConnect, data: Encoding.ASCII.StringToByteArray(partnerIdAndPassword[0]));
+                        _remoteControlManager.Send(validInfo.SocketConnection, byteArray1);
+
+
 
                         //Send back to me
+                        byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Port);
                         var byteArray = PacketFactory.CreatePacket(SocketDataType.RemoteControlAcceptedRequestToConnect,data: dataSend);
                         _remoteControlManager.Send(me, byteArray);
 
-                        var byteArray1 = PacketFactory.CreatePacket(SocketDataType.RemoteControlRequestToConnect,data: Encoding.ASCII.StringToByteArray(partnerIdAndPassword[0]));
-                        _remoteControlManager.Send(validInfo.SocketConnection, byteArray1);
                     }
                     //_remoteControlManager.P2PConnectFailed(controller, connectionId);
                     //return false;

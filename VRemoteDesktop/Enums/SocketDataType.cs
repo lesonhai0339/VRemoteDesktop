@@ -16,6 +16,10 @@ namespace VRemoteDesktop.Models
         Ping = 0x04,
         Pong = 0x05,
         Error = 0x06,
+        P2PRequestToConnect = 0x10, //RequestToConnectP2P
+        P2PRespondRequestToConnect = 0x11, //RespondRequestToConnectP2P
+        P2PAcceptConnect = 0x12, //AcceptConnectP2P 
+        P2PDataTransfer = 0x16, //DataTransferP2P   
 
         //Remote control
         RemoteControlScreenSend = 0x07, //Screen
