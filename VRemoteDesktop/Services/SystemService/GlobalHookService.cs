@@ -212,7 +212,7 @@ namespace VRemoteDesktop.Services.SystemService
         }
         public List<byte[]> GetFirstScreen()
         {
-            return _screenCaptureService.GetScreenPacketsWithoutChecksum();
+            return _screenCaptureService.GetScreenPackets();
         }
         #endregion
         #region Events

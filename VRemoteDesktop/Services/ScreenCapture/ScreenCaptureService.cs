@@ -295,7 +295,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 {
                     return null;
                 }
-                byte[] screenCaptureCompressed = ByteArrayHelper.CompressGZip(screens[0].Bytes).GetResult();
+                byte[] screenCaptureCompressed = ByteArrayHelper.CompressDeflate(screens[0].Bytes).GetResult();
                 byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
                 int dataSendLength = checked(screenCaptureCompressed.Length + checksum.Length);
                 if (_dataSend.Length < dataSendLength)
