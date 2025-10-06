@@ -444,17 +444,24 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
-                _sckConnect.Set();
                 var sck = ar.AsyncState as Socket;
                 var client = sck.EndAccept(ar);
 
                 //end listen
                 sck.Close();
+                sck.Dispose();
+
+                if (!ReceivedWorker.IsBusy)
+                {
+                    ReceivedWorker.RunWorkerAsync();
+                }
+
+                _socket = client;
 
                 StateObject stateObject = new StateObject();
-                stateObject.WorkSocket = client;
+                stateObject.WorkSocket = _socket;
 
-                client.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
+                _socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
             }
             catch (SocketException ex)
             {
@@ -463,6 +470,10 @@ namespace VRemoteDesktop.Services.VTCPClient
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when connecting to remote server");
+            }
+            finally
+            {
+                _sckConnect.Set();
             }
         }
         /// <summary>

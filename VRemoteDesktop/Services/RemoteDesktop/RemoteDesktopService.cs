@@ -201,6 +201,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     //Success, Send login Info
                     remoteClient.Send(SocketDataType.P2PAcceptConnect, new byte[0], id, true);
+                    RespondEvent?.Invoke(remoteClient, e);  
                 }
                 else
                 {
@@ -214,18 +215,28 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void P2PRespondRequestConnect(object sender, RemoteDesktopEventArgs e)
         {
-            try
+            if(sender is VClient client)
             {
-                string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                //three variable: id, public ip, public port
-                string[] dataArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
+                try
+                {
+                    _reset.Reset();
+                    string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
+                    //three variable: id, public ip, public port
+                    string[] dataArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
 
-                var remoteControlClient = _vClientManager.New(dataArray[0], VClientType.Sender, false);
-                remoteControlClient.Connect(dataArray[1], int.Parse(dataArray[2]));
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
+                    var remoteControlClient = _vClientManager.New(dataArray[0], VClientType.Sender, false);
+                    remoteControlClient.Connect(dataArray[1], int.Parse(dataArray[2]));
+                    bool flag = _reset.WaitOne(5000);
+                    if (!flag)
+                    {
+                        //Failed, use TURN server
+                        RespondEvent?.Invoke(client, new RemoteDesktopEventArgs(SocketDataType.P2PLoginFailed, flag, new byte[0]));
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
+                }
             }
         }
         private void P2PAcceptedToConnect(object sender, RemoteDesktopEventArgs e)
@@ -236,7 +247,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, client.SocketId, GetMe().ToNetworkString());
                     byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-                    client.Send(SocketDataType.P2PDataTransfer, dataBytes, client.SocketId, true);
+                    client.Send(SocketDataType.P2PLogin, dataBytes, client.SocketId, true);
+                    _reset.Set();   
                 }
                 catch (Exception ex)
                 {
@@ -246,7 +258,59 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void P2PDataTransfer(object sender, RemoteDesktopEventArgs e)
         {
-            Console.WriteLine("P2P data transfer callback");
+            if(sender is VClient client)
+            {
+                try
+                {
+                    string rawData = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();  
+                    string[] dataArray = StringHelper.StringToStringArrayWithSeparator(rawData, DefaultValue.DEFAULT_SEPARATOR);
+                    if(dataArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + 1)
+                    {
+                        ClientInfo partnerInfo = new ClientInfo();
+                        if (partnerInfo.TryParseData(dataArray.Skip(1).ToArray()))
+                        {
+                            client.UpdatePartnerInfo(partnerInfo);
+
+
+                            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, GetMe().ToNetworkString());
+                            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
+                            client.Send(SocketDataType.P2PLoginSucceed, dataBytes, client.SocketId, true);
+                            return;
+                        }
+                    }
+                    client.Send(SocketDataType.P2PLoginFailed, new byte[0], client.SocketId, true);
+                    client.UpdatePartnerInfo(null); 
+                }
+                catch (Exception ex)
+                {
+
+                }
+            }
+        }
+        private void P2PLoginRespond(object sender, RemoteDesktopEventArgs e)
+        {
+            if (sender is VClient client)
+            {
+                if(e.Type == SocketDataType.P2PLoginSucceed)
+                {
+                    string rawData = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
+                    string[] dataArray = StringHelper.StringToStringArrayWithSeparator(rawData, DefaultValue.DEFAULT_SEPARATOR);
+                    if (dataArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
+                    {
+                        ClientInfo partnerInfo = new ClientInfo();
+                        if (partnerInfo.TryParseData(dataArray))
+                        {
+                            client.UpdatePartnerInfo(partnerInfo);
+
+                            client.Send(SocketDataType.RemoteControlReady, new byte[0], client.SocketId, true);
+
+                            RespondEvent?.Invoke(client, e);
+                            return;
+                        }
+                    }
+                }
+                RespondEvent?.Invoke(client, e);
+            }
         }
         private void TURNRequestConnectHandler(object sender, RemoteDesktopEventArgs e)
         {
@@ -517,8 +581,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 case SocketDataType.P2PAcceptConnect:
                     P2PAcceptedToConnect(sender, e);
                     break;
-                case SocketDataType.P2PDataTransfer:
+                case SocketDataType.P2PLogin:
                     P2PDataTransfer(sender, e);
+                    break;
+                case SocketDataType.P2PLoginSucceed:
+                    P2PLoginRespond(sender, e);
                     break;
 
 

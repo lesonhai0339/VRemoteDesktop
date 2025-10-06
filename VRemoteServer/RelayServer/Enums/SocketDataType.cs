@@ -20,7 +20,9 @@ namespace VRemoteServer.RelayServer.Enums
         P2PRequestToConnect = 0x10, //RequestToConnectP2P
         P2PRespondRequestToConnect = 0x11, //RespondRequestToConnectP2P
         P2PAcceptConnect = 0x12, //AcceptConnectP2P 
-        P2PDataTransfer = 0x16, //DataTransferP2P   
+        P2PLogin = 0x16, //DataTransferP2P
+        P2PLoginSucceed = 0x17, //DataTransferP2PSucceed
+        P2PLoginFailed = 0x18, //DataTransferP2PFailed
 
         //Remote control
         RemoteControlScreenSend = 0x07, //Screen

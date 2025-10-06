@@ -9,6 +9,7 @@ using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.SystemService;
@@ -151,9 +152,9 @@ namespace VRemoteDesktop
         {
             ViewModel.Connect();
         }
-        private void P2PConnect(string id, string password)
+        private void P2PConnect(string id, string password, bool useTurnServer = false)
         {
-            ViewModel.RequestP2PConnect(id, password);
+            ViewModel.RequestP2PConnect(id, password, useTurnServer);
         }
         private void UpdateConnectionStatus(ConnectionStatus status)
         {
@@ -178,19 +179,26 @@ namespace VRemoteDesktop
         {
             if(sender is VClient vClient)
             {
-                if(e.Type == Models.SocketDataType.RemoteControlAcceptedRequestToConnect)
+                if(e.Type == SocketDataType.RemoteControlAcceptedRequestToConnect || e.Type == SocketDataType.P2PLoginSucceed)
                 {
                     OpenRemoteForm(vClient);
                 }
-                else if(e.Type == Models.SocketDataType.RemoteControlRequestToConnect)
+                else if (e.Type == SocketDataType.P2PLoginFailed)
+                {
+                    //try use TURN SERVER
+                    string partnerId = txtPartnerId.Text.Replace(" ", "");
+                    string partnerPassword = txtPartnerPassword.Text.Replace(" ", "");
+                    _viewModel.RequestP2PConnect(partnerId, partnerPassword, true);
+                }
+                else if (e.Type == SocketDataType.RemoteControlRequestToConnect || e.Type == SocketDataType.P2PRequestToConnect)
                 {
                     AddChat(vClient);
                 }
-                else if(e.Type == Models.SocketDataType.RemoteControlRefusedRequestToConnect)
+                else if (e.Type == SocketDataType.RemoteControlRefusedRequestToConnect)
                 {
                     MessageBox.Show("Đối tác từ chối kết nối", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
-                else if(e.Type == Models.SocketDataType.RemoteControlConnectFailed)
+                else if (e.Type == SocketDataType.RemoteControlConnectFailed)
                 {
                     MessageBox.Show("Kết nối đến máy khách thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
