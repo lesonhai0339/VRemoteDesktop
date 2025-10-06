@@ -290,7 +290,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             try
             {
-                var screens = _capture.GetScreen();
+                var screens = _capture.GetCurrentScreen();
                 if (screens[0].Bytes == null || screens[0].Bytes.Length == 0)
                 {
                     return null;
