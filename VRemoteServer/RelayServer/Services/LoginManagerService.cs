@@ -17,6 +17,8 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
+        void Send(SocketConnection connection, byte[] data);
+        bool SendWithRespond(SocketConnection connection, byte[] data);
         bool GetFirst(string id, string password, out ConnectionInfo connectionInfo);
         void Ping(SocketConnection connection);
         bool Add(SocketConnection connection, byte[] data, out ConnectionInfo connectionInfo);
@@ -183,7 +185,7 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
         }
-        private void Send(SocketConnection connection, byte[] data)
+        public void Send(SocketConnection connection, byte[] data)
         {
             try
             {
@@ -192,6 +194,17 @@ namespace VRemoteServer.RelayServer.Services
             catch (Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
+            }
+        }
+        public bool SendWithRespond(SocketConnection connection, byte[] data)
+        {
+            try
+            {
+                 return _loginServer.SendWithRespond(connection, data);
+            }
+            catch (Exception ex)
+            {
+                return false;
             }
         }
         #endregion
