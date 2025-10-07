@@ -127,7 +127,7 @@ namespace VRemoteServer.RelayServer.Services
                         if (respond)
                         {
                             //Send back to me
-                            byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Port);
+                            byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Ip, validInfo.Port);
                             var byteArray = PacketFactory.CreatePacket(SocketDataType.P2PRespondRequestToConnect, data: dataSend);
                             _loginManager.SendWithRespond(me, byteArray);
                         }

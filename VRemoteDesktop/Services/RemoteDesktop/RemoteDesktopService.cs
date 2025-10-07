@@ -2,6 +2,7 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading;
 using VRemoteDesktop.Enums;
@@ -219,13 +220,24 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 try
                 {
-                    _reset.Reset();
                     string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
                     //three variable: id, public ip, public port
                     string[] dataArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
 
+                    string ipToConnect = string.Empty;
+                    //Check if current client and partner in the same network   
+                    if (_clientInfo.IsTheSameNetWork(dataArray[1]))
+                    {
+                        //In the same network, use private ip   
+                        ipToConnect = dataArray[2];
+                    }
+                    else
+                    {
+                        //Different network, use public ip
+                        ipToConnect = dataArray[1];
+                    }
                     var remoteControlClient = _vClientManager.New(dataArray[0], VClientType.Sender, false);
-                    remoteControlClient.Connect(dataArray[1], int.Parse(dataArray[2]));
+                    remoteControlClient.Connect(ipToConnect, int.Parse(dataArray[2]));
                     bool flag = _reset.WaitOne(5000);
                     if (!flag)
                     {
@@ -236,6 +248,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 catch (Exception ex)
                 {
                     Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
+                }
+                finally
+                {
+                    _reset.Reset();
                 }
             }
         }

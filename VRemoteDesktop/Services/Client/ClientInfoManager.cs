@@ -16,6 +16,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
 {
     public interface IClientInfoManager
     {
+        bool IsTheSameNetWork(string partnerPublicIp);
         bool RemovePartner(string id);
         ClientInfo GetMyInfo();
         string GetLocalIPAddress();
@@ -53,6 +54,10 @@ namespace VRemoteDesktop.Services.ConnectionManager
         }
         #endregion
         #region Methods
+        public bool IsTheSameNetWork(string partnerPublicIp)
+        {
+            return string.Compare(Me.PublicIP, partnerPublicIp) == 0;
+        }
         public bool RemovePartner(string id)
         {
             return _partners.Remove(id);
