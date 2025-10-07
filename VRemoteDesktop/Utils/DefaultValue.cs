@@ -108,7 +108,7 @@ namespace VRemoteDesktop.Utils
         public static string DEFAULT_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
         public static string DEFAULT_SEPARATOR = "|";
         public static int DEFAULT_TIMEOUT_SECONDS = 30;
-        public static int DEFAULT_TIMEOUT_MINUTES = 30;
+        public static int DEFAULT_TIMEOUT_MINUTES = 60;
         public static int SHA_CHECKSUM_LENGTH = 40;
     }
 }

@@ -146,7 +146,6 @@
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
-    <Compile Include="Services\VTCPClient\P2PConnection.cs" />
     <Compile Include="Services\VTCPClient\TCPClient.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClient\VClientManager.cs" />

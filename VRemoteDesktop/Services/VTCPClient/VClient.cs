@@ -97,6 +97,12 @@ namespace VRemoteDesktop.Services.VTCPClient
                         Data = new byte[0],
                     }, QueuePriority.High);
             }
+            else
+            {
+                bool connected = IsSocketConnected(this.Socket);
+                if (!connected)
+                    Dispose();
+            }
             //lock (_lockObject)
             //{
             //    double bandWidth = (bytesPerSecond * 8) * 1.0 / 1000000; 
@@ -104,6 +110,18 @@ namespace VRemoteDesktop.Services.VTCPClient
             //        Logger.Log.ForContext("", this.GetType().Name + "_BandWidth").Info(string.Format("{0} - {1} Mbps",this.SocketId, bandWidth));
             //    bytesPerSecond = 0;
             //}
+        }
+        private bool IsSocketConnected(Socket socket)
+        {
+            try
+            {
+                return !(socket.Poll(1, SelectMode.SelectRead) && socket.Available == 0)
+                       && socket.Connected;
+            }
+            catch (SocketException)
+            {
+                return false;
+            }
         }
         #region Properties
         public bool ScreenSucceeded

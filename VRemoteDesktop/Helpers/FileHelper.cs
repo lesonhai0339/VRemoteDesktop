@@ -317,8 +317,6 @@ namespace VRemoteDesktop.Helpers
         {
             if (string.IsNullOrWhiteSpace(savePath))
                 throw new ArgumentNullException(savePath + " is null", nameof(savePath));
-            if (!File.Exists(savePath))
-                throw new ArgumentNullException("File does not existed", nameof(savePath));
 
             try
             {

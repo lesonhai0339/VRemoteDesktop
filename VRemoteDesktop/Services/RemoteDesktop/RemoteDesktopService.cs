@@ -173,13 +173,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             newConnection.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, newConnection.SocketId, true);
         }
 
-
-
-
-
-
-
-        //Ham moi chua chay test
+        #region Peer-To-Peer
         public void P2PConnect(VClient client, string partnerId, string partnerPassword)
         {
             if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
@@ -206,6 +200,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 else
                 {
                     //Failed, use TURN server
+                    remoteClient.Dispose();
                 }
             }
             catch (Exception ex)
@@ -327,6 +322,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 RespondEvent?.Invoke(client, e);
             }
         }
+        #endregion
         private void TURNRequestConnectHandler(object sender, RemoteDesktopEventArgs e)
         {
             if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
