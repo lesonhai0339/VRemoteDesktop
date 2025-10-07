@@ -294,8 +294,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         ipToConnect = dataArray[1];
                     }
                     var remoteControlClient = _vClientManager.New(dataArray[0], VClientType.Sender, false);
-                    remoteControlClient.Connect("192.168.1.99", int.Parse(dataArray[3]));
-                    //remoteControlClient.Connect(ipToConnect, int.Parse(dataArray[3]));
+                    remoteControlClient.Connect(ipToConnect, int.Parse(dataArray[3]));
                     bool flag = _reset.WaitOne(3000);
                     if (!flag)
                     {
