@@ -15,6 +15,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "VRemoteDesktop", "VRemoteDe
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScreenCaptureTest", "ScreenCaptureServiceTest\ScreenCaptureTest.csproj", "{10910382-94D6-4788-B61A-16C8994EE221}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Server_test", "Server_test\Server_test.csproj", "{DB34A135-348A-433C-BC1C-7397FFC33DAE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -57,6 +59,18 @@ Global
 		{10910382-94D6-4788-B61A-16C8994EE221}.Release|Mixed Platforms.Build.0 = Release|Any CPU
 		{10910382-94D6-4788-B61A-16C8994EE221}.Release|x86.ActiveCfg = Release|Any CPU
 		{10910382-94D6-4788-B61A-16C8994EE221}.Release|x86.Build.0 = Release|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Debug|Mixed Platforms.ActiveCfg = Debug|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Debug|Mixed Platforms.Build.0 = Debug|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Debug|x86.Build.0 = Debug|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Release|Mixed Platforms.ActiveCfg = Release|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Release|Mixed Platforms.Build.0 = Release|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Release|x86.ActiveCfg = Release|Any CPU
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -65,6 +79,7 @@ Global
 		{02EA681E-C7D8-13C7-8484-4AC65E1B71E8} = {ACFD9BB2-3919-4AB3-B4C3-CA1E5BC40C5F}
 		{284DAFF4-EEC0-4C0C-877E-BE95AC8C126D} = {ACFD9BB2-3919-4AB3-B4C3-CA1E5BC40C5F}
 		{10910382-94D6-4788-B61A-16C8994EE221} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
+		{DB34A135-348A-433C-BC1C-7397FFC33DAE} = {284DAFF4-EEC0-4C0C-877E-BE95AC8C126D}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {036C5C1B-7DE3-4147-8C2C-A350ACB5D6FF}

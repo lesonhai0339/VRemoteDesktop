@@ -17,6 +17,9 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
+        void Send(SocketConnection connection, byte[] data);
+        bool SendWithRespond(SocketConnection connection, byte[] data);
+        bool GetFirst(string id, string password, out ConnectionInfo connectionInfo);
         void Ping(SocketConnection connection);
         bool Add(SocketConnection connection, byte[] data, out ConnectionInfo connectionInfo);
         void LoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo);
@@ -51,6 +54,13 @@ namespace VRemoteServer.RelayServer.Services
         public void Ping(SocketConnection connection)
         {
             connection.UpdateTime();
+        }
+        public bool GetFirst(string id, string password, out ConnectionInfo connectionInfo)
+        {
+            connectionInfo = null;
+            Func<ConnectionInfo, bool> predicate = (c) => c.Id == id && c.Password == password;
+            connectionInfo = _loginConnectionManager.GetFirst(predicate); 
+            return connectionInfo != null;
         }
         public bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo)
             => _loginConnectionManager.Get(id, out connectionInfo);
@@ -175,7 +185,7 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
         }
-        private void Send(SocketConnection connection, byte[] data)
+        public void Send(SocketConnection connection, byte[] data)
         {
             try
             {
@@ -184,6 +194,17 @@ namespace VRemoteServer.RelayServer.Services
             catch (Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
+            }
+        }
+        public bool SendWithRespond(SocketConnection connection, byte[] data)
+        {
+            try
+            {
+                 return _loginServer.SendWithRespond(connection, data);
+            }
+            catch (Exception ex)
+            {
+                return false;
             }
         }
         #endregion

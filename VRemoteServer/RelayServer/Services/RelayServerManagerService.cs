@@ -32,7 +32,9 @@ namespace VRemoteServer.RelayServer.Services
     }
     public class RelayServerManagerService : IRelayServerManager, IDisposable
     {
-        private bool _disposed; 
+        private bool _disposed;
+        private ILoginManagerService login;
+        private IRemoteControlManagerService remote;
         private readonly ILoginManagerService _loginManager;
         private readonly IRemoteControlManagerService _remoteControlManager;
         public RelayServerManagerService(ILoginManagerService loginManagerService, IRemoteControlManagerService remoteControlManagerService)
@@ -101,10 +103,44 @@ namespace VRemoteServer.RelayServer.Services
                     case SocketDataType.Disconnect:
                         LoginUserDisconnected(connection);
                         break;
+                    case SocketDataType.P2PRequestToConnect:
+                        P2PLogin(sender, e.Data);
+                        break;
                     default:
                         break;
                 }
             }
+        }
+        private bool P2PLogin(object sender,byte[] data)
+        {
+            if (sender is SocketConnection me)
+            {
+                try
+                {
+                    string[] partnerIdAndPassword = Encoding.ASCII.ByteArrayToStringWithSeparator(data, '|'); //three
+                    if (_loginManager.GetFirst(partnerIdAndPassword[1], partnerIdAndPassword[2], out var validInfo))
+                    {
+                        //Send request to partner
+                        var byteArray1 = PacketFactory.CreatePacket(SocketDataType.P2PRequestToConnect, data: Encoding.ASCII.StringToByteArray(partnerIdAndPassword[0]));
+                        bool respond = _loginManager.SendWithRespond(validInfo.SocketConnection, byteArray1);
+
+                        if (respond)
+                        {
+                            //Send back to me
+                            byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Port);
+                            var byteArray = PacketFactory.CreatePacket(SocketDataType.P2PRespondRequestToConnect, data: dataSend);
+                            _loginManager.SendWithRespond(me, byteArray);
+                        }
+                    }
+                    //_remoteControlManager.P2PConnectFailed(controller, connectionId);
+                    //return false;
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+                }
+            }
+            return false;
         }
         private void Ping(SocketConnection connection)
         {

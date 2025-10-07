@@ -422,6 +422,60 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Logger.Log.ForContext("FileName", nameof(Connect)).Error(ex, "Unexpected error when connect to relay server");
             }
         }
+        public bool Listen()
+        {
+            EndPoint endpoint = new IPEndPoint(IPAddress.Any, 2399);
+
+            if (Socket == null || !Socket.Connected)
+            {
+                Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                Socket.NoDelay = true;
+            }
+            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+
+            _socket.Bind(endpoint);
+            _socket.Listen(1);
+            _socket.BeginAccept(ListenCallback, _socket);
+            bool flag = _sckConnect.WaitOne(3000);
+            return flag;
+        }
+
+        private void ListenCallback(IAsyncResult ar)
+        {
+            try
+            {
+                var sck = ar.AsyncState as Socket;
+                var client = sck.EndAccept(ar);
+
+                //end listen
+                sck.Close();
+                sck.Dispose();
+
+                if (!ReceivedWorker.IsBusy)
+                {
+                    ReceivedWorker.RunWorkerAsync();
+                }
+
+                _socket = client;
+
+                StateObject stateObject = new StateObject();
+                stateObject.WorkSocket = _socket;
+
+                _socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
+            }
+            catch (SocketException ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SocketException when connecting to remote server");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when connecting to remote server");
+            }
+            finally
+            {
+                _sckConnect.Set();
+            }
+        }
         /// <summary>
         /// Callback method when the socket is connected to the remote server
         /// </summary>

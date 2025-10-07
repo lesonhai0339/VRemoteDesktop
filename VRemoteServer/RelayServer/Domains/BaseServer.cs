@@ -33,6 +33,7 @@ namespace VRemoteServer.RelayServer.Domains
         void Cancel();
         void Send(TDomain domain, byte[] data);
         void Send(TDomain domain, int offset, int length);
+        bool SendWithRespond(TDomain domain, byte[] data);
         event EventHandler<TDomainEvent> ServerEvent;
         event EventHandler<TException> ServerErrorEvent;
         void Dispose();
@@ -156,6 +157,31 @@ namespace VRemoteServer.RelayServer.Domains
                 }
             }
             catch{}
+        }
+        public virtual bool SendWithRespond(TDomain domain, byte[] data)
+        {
+            try
+            {
+                var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+                Socket socket = GetSocketFromDomain(domain);
+                if (socket == null || read.Buffer == null)
+                {
+                    //CloseClientSocket(domain);
+                    return false ;
+                }
+                var sendState = _sendTasks.GetOrAdd(domain, _ => new QueueSendState());
+                lock (sendState.LockSend)
+                {
+                    sendState.Queue.Enqueue((data, data.Length, false));
+                    if (!sendState.IsSending)
+                    {
+                        sendState.IsSending = true;
+                        StartSend(domain, sendState);
+                    }
+                }
+                return true;
+            }
+            catch { return false; }
         }
         public virtual void Send(TDomain domain, int offset, int length)
         {      

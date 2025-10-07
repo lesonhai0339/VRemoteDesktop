@@ -63,9 +63,9 @@ namespace VRemoteDesktop.ViewModels
         {
             try
             {
-                //var screenData = _screenCaptureExtension.RawScreenToScreenData(bytes);
+                var screenData = _screenCaptureExtension.RawScreenToScreenData(bytes);
 
-                var screenData = _screenCaptureExtension.RawScreenToScreenDataWithoutChecksum(bytes);
+                //var screenData = _screenCaptureExtension.RawScreenToScreenDataWithoutChecksum(bytes);
 
                 Bitmap image = _screenCaptureExtension.WriteToBitmap(screenData);
 
@@ -82,7 +82,7 @@ namespace VRemoteDesktop.ViewModels
             if(image != null)
             {
                 _vClient.AddWork(
-                    new TaskObject(type: SocketDataType.RemoteControlScreenSend, _vClient.SocketId, isSendHeader: true, data: null), QueuePriority.High);
+                    new TaskObject(type: SocketDataType.RemoteControlRespondScreenSend, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
                 screenEvent?.Invoke(image);
             }
         }

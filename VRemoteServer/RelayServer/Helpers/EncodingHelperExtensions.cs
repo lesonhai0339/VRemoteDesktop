@@ -14,6 +14,16 @@ namespace VRemoteServer.RelayServer.Helpers
                 return Array.Empty<byte>();
             return encoding.GetBytes(input);
         }
+        public static byte[] StringArrayToByteArrayWithSeparator(this Encoding encoding, char separator, params string[] inputs)
+        {
+            StringBuilder stringBuilder = new StringBuilder();
+            for(int i = 0; i < inputs.Length; i++)
+            {
+               stringBuilder.Append(inputs[i]).Append(separator);
+            }
+
+            return encoding.StringToByteArray(stringBuilder.ToString().TrimEnd(separator));
+        }
         public static byte[] StringToByteArray(this Encoding encoding, string input, int index, int length)
         {
             if (string.IsNullOrWhiteSpace(input))
