@@ -190,7 +190,7 @@ namespace VRemoteDesktop
                     string partnerPassword = txtPartnerPassword.Text.Replace(" ", "");
                     _viewModel.RequestP2PConnect(partnerId, partnerPassword, true);
                 }
-                else if (e.Type == SocketDataType.RemoteControlRequestToConnect || e.Type == SocketDataType.P2PRequestToConnect)
+                else if (e.Type == SocketDataType.RemoteControlReady)
                 {
                     AddChat(vClient);
                 }

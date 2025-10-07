@@ -172,6 +172,7 @@ namespace VRemoteDesktop.ViewModels
                     case SocketDataType.P2PLoginSucceed:
                     case SocketDataType.P2PLoginFailed:
                     case SocketDataType.P2PRequestToConnect:
+                    case SocketDataType.RemoteControlReady:
                         PartnerRespond(sender, e);
                         break;
                     default:

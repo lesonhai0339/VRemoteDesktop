@@ -202,7 +202,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     //Success, Send login Info
                     remoteClient.Send(SocketDataType.P2PAcceptConnect, new byte[0], id, true);
-                    RespondEvent?.Invoke(remoteClient, e);  
                 }
                 else
                 {
@@ -237,7 +236,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         ipToConnect = dataArray[1];
                     }
                     var remoteControlClient = _vClientManager.New(dataArray[0], VClientType.Sender, false);
-                    remoteControlClient.Connect(ipToConnect, int.Parse(dataArray[2]));
+                    remoteControlClient.Connect(ipToConnect, int.Parse(dataArray[3]));
                     bool flag = _reset.WaitOne(5000);
                     if (!flag)
                     {
@@ -406,13 +405,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
         }
         #region Screen
-        private void FirstSendScreen(object sender)
+        private void FirstSendScreen(object sender, RemoteDesktopEventArgs e)
         {
             if (sender is VClient client)
             {
                 var screen = _globalHook.GetFirstScreen();
                 int length = screen.Sum(x => x.Length);
                 SendScreen(client, SocketDataType.RemoteControlScreenSend, screen, length);
+
+                RespondEvent?.Invoke(client, e);
             }
         }
         private void FirstScreenSendSucceeded(object sender)
@@ -631,7 +632,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     ProcessP2PDisconnect(sender, e);
                     break;
                 case SocketDataType.RemoteControlReady:
-                    FirstSendScreen(sender);
+                    FirstSendScreen(sender, e);
                     break;
                 case SocketDataType.RemoteControlRespondScreenSend:
                     FirstScreenSendSucceeded(sender);
