@@ -187,6 +187,7 @@ namespace VRemoteDesktop.Layouts
                 btn.Text = "";
                 btn.FlatAppearance.BorderSize = 0;
                 btn.BackColor = this.BackColor;
+                btn.Visible = false;
             }
         }
         private void ProgressCompletedEventHandler(object sender, ChatProgressBarEventArgs e)

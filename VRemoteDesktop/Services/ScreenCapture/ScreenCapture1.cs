@@ -137,6 +137,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             try
             {
+                if (fullScreen == null || encoder == null || encoderParams == null)
+                    return default;
+
                 using (var stream = new MemoryStream())
                 {
                     fullScreen.Save(stream, encoder, encoderParams);
