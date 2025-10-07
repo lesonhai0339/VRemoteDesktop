@@ -75,6 +75,8 @@ namespace VRemoteDesktop.Utils
     {
         public static int DEFAULT_BUFFER_SIZE = 1024;
         public static int DEFAULT_CHUNK_SIZE = 1024 * 32;
+        public static int LIMIT_BANDWIDTH_PER_SECOND = 1280 * 1024 ; //unit: KB/s
+
     }
     public static class DefaultScreen
     {
@@ -106,7 +108,7 @@ namespace VRemoteDesktop.Utils
         public static string DEFAULT_DATETIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
         public static string DEFAULT_SEPARATOR = "|";
         public static int DEFAULT_TIMEOUT_SECONDS = 30;
-        public static int DEFAULT_TIMEOUT_MINUTES = 30;
+        public static int DEFAULT_TIMEOUT_MINUTES = 60;
         public static int SHA_CHECKSUM_LENGTH = 40;
     }
 }

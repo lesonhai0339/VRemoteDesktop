@@ -17,6 +17,7 @@ namespace VRemoteServer.RelayServer.Domains
         T Get(string id);
         T Get(string id, T obj);
         T Get(Predicate<T> predicate);
+        T GetFirst(Func<T, bool> predicate);
         IEnumerable<T> GetAll();
         bool Get(string id, out T obj);
         IEnumerable<T> GetAll(Predicate<T> predicate);
@@ -56,6 +57,10 @@ namespace VRemoteServer.RelayServer.Domains
                     return v;
             }
             return null;
+        }
+        public virtual T GetFirst(Func<T, bool> predicate)
+        {
+            return _keyValuePairs.Values.FirstOrDefault(x => predicate(x));
         }
         public virtual IEnumerable<T> GetAll(Predicate<T> predicate)
         {

@@ -7,7 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.SystemService;
@@ -83,9 +85,13 @@ namespace VRemoteDesktop
 
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if(e.PropertyName == "IsConnected")
+            if(e.PropertyName == "ConnectStatus")
             {
-               UpdateConnectionStatus();    
+                UpdateConnectionStatus(_viewModel.ConnectStatus);
+            }
+            else if(e.PropertyName == "ErrorMessage")
+            {
+                MessageBox.Show(_viewModel.ErrorMessage, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
@@ -93,7 +99,7 @@ namespace VRemoteDesktop
             Graphics g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            Color circleColor = ViewModel.IsConnected ? Color.Green : Color.Red;
+            Color circleColor = (ViewModel.ConnectStatus == ConnectionStatus.Connected) ? Color.Green : Color.Red;
             using (SolidBrush brush = new SolidBrush(circleColor))
             {
                 g.FillEllipse(brush, 1, 1, pnStatus.Width - 2, pnStatus.Height - 2);
@@ -116,7 +122,7 @@ namespace VRemoteDesktop
         }
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (!chatForm.IsDisposed)
+            if (chatForm != null && !chatForm.IsDisposed)
                 chatForm.Close();
 
             if(_viewModel != null)
@@ -125,6 +131,12 @@ namespace VRemoteDesktop
         }
         private void btnConnect_Click(object sender, EventArgs e)
         {
+            if(_viewModel.ConnectStatus != ConnectionStatus.Connected)
+            {
+                MessageBox.Show("Mất kết nối đến máy chủ", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             string partnerId = txtPartnerId.Text.Replace(" ", "");
             string partnerPassword = txtPartnerPassword.Text.Replace(" ","");
             if(!string.IsNullOrWhiteSpace(partnerId) && !string.IsNullOrWhiteSpace(partnerPassword))
@@ -140,15 +152,18 @@ namespace VRemoteDesktop
         {
             ViewModel.Connect();
         }
-        private void P2PConnect(string id, string password)
+        private void P2PConnect(string id, string password, bool useTurnServer = false)
         {
-            ViewModel.RequestP2PConnect(id, password);
+            ViewModel.RequestP2PConnect(id, password, useTurnServer);
         }
-        private void UpdateConnectionStatus()
+        private void UpdateConnectionStatus(ConnectionStatus status)
         {
             Action action = () =>
             {
-                lbStatus.Text = "Sẵn sàng";
+                lbStatus.Text = (status == ConnectionStatus.Connected) ? "Sẵn sàng" : 
+                                (status == ConnectionStatus.Disconnected) ? "Mất kết nối" :
+                                "Chưa sẵn sàng";
+
                 pnStatus.Invalidate();
             };
             if (this.InvokeRequired)
@@ -160,19 +175,30 @@ namespace VRemoteDesktop
                 action();
             }
         }
-        private void ClientAcceptRequestRemoteEventHandler(object sender ,P2PClientDataReceived e)
+        private void ClientAcceptRequestRemoteEventHandler(object sender ,RemoteDesktopEventArgs e)
         {
             if(sender is VClient vClient)
             {
-                if(e.Type == Models.SocketDataType.P2PAcceptConnect)
+                if(e.Type == SocketDataType.RemoteControlAcceptedRequestToConnect || e.Type == SocketDataType.P2PLoginSucceed)
                 {
                     OpenRemoteForm(vClient);
                 }
-                else if(e.Type == Models.SocketDataType.P2PRequestConnect)
+                else if (e.Type == SocketDataType.P2PLoginFailed)
+                {
+                    //try use TURN SERVER
+                    string partnerId = txtPartnerId.Text.Replace(" ", "");
+                    string partnerPassword = txtPartnerPassword.Text.Replace(" ", "");
+                    _viewModel.RequestP2PConnect(partnerId, partnerPassword, true);
+                }
+                else if (e.Type == SocketDataType.RemoteControlReady)
                 {
                     AddChat(vClient);
                 }
-                else if(e.Type == Models.SocketDataType.P2PConnectFailed)
+                else if (e.Type == SocketDataType.RemoteControlRefusedRequestToConnect)
+                {
+                    MessageBox.Show("Đối tác từ chối kết nối", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else if (e.Type == SocketDataType.RemoteControlConnectFailed)
                 {
                     MessageBox.Show("Kết nối đến máy khách thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }

@@ -38,7 +38,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         private ConcurrentQueue<object> _screenTasks;
         private ConcurrentQueue<object> _commandTasks;
 
-        public event EventHandler<P2PClientDataReceived> TCPClientReceived;
+        public event EventHandler<RemoteDesktopEventArgs> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public TCPClient(string socketId, VClientType clientType)
         {
@@ -208,13 +208,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                     try
                     {
 
-                        if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
+                        if (task.Type == SocketDataType.RemoteControlScreenSend || task.Type == SocketDataType.RemoteControlScreenRegionsChangedSend)
                         {
                             var lastTask = task;
 
                             while (Tasks.TryTake(out var t, 0)
                                 && t != null
-                                && (t.Type == SocketDataType.Screen || t.Type == SocketDataType.Chunks))
+                                && (t.Type == SocketDataType.RemoteControlScreenSend || t.Type == SocketDataType.RemoteControlScreenRegionsChangedSend))
                             {
                                 lastTask = t;
                             }
@@ -225,15 +225,14 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             switch (task.Type)
                             {
-                                case SocketDataType.P2PAcceptConnect:
-                                    Console.WriteLine("Partner accepted");
-                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, new byte[0]));
+                                case SocketDataType.RemoteControlAcceptedRequestToConnect:
+                                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, new byte[0]));
                                     break;
-                                case SocketDataType.P2PRejectConnect:
+                                case SocketDataType.RemoteControlRefusedRequestToConnect:
                                     Console.WriteLine("Client Reject request to p2p connection");
                                     break;
                                 default:
-                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
+                                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
                                     break;
                             }
                         }
@@ -337,7 +336,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWorkGroup(List<TaskObject> tasks, SocketDataType type = SocketDataType.None)
         {
-            if (type == SocketDataType.Screen || type == SocketDataType.Chunks)
+            if (type == SocketDataType.RemoteControlScreenSend || type == SocketDataType.RemoteControlScreenRegionsChangedSend)
             {
                 ScreenTasks.Enqueue(new TaskGroup(tasks));
             }
@@ -412,7 +411,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 if (!Socket.Connected)
                 {
                     //Connected?.Invoke(this, new ConnectEventArgs(false));
-                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, false, new byte[0]));
+                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, false, new byte[0]));
                     Log.ForContext("FileName", "RemoteClient").Error("Cannot connect to server");
                     return;
                 }
@@ -423,7 +422,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     ReceivedWorker.RunWorkerAsync();
                 }
                 //Connected?.Invoke(this, new ConnectEventArgs(true));
-                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, true, new byte[0]));
+                TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, true, new byte[0]));
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
                 stateObject.SckId = _socketId;

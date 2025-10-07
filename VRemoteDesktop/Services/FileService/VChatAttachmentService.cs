@@ -22,7 +22,7 @@ namespace VRemoteDesktop.Services.FileService
         bool BuildSenderFileInfo(FileInfo fileInfo, bool isSender, out VFileInfo info);
         VFileInfo GetFileSendInfo();
         void UpdateFileSavePath(string id, string savePath);
-        void ProcessFileDataReceived(byte[] rawData);
+        void ProcessFileDataReceived(string connectionId, byte[] rawData);
         List<ChunkFileInfo> CalculateNumberOfChunksFromFileByFileId(string id);
         void Dispose();
     }
@@ -162,7 +162,7 @@ namespace VRemoteDesktop.Services.FileService
             FileStream stream =  Helpers.FileHelper.CreateFileStream(savePath);
             _curStreams.TryAdd(fileId, stream);
         }
-        public void ProcessFileDataReceived(byte[] rawData)
+        public void ProcessFileDataReceived(string connectionId, byte[] rawData)
         {
             int headerSize = DefaultFileInfo.OFFSET_INT32_LENGTH + DefaultFileInfo.FILE_ID_LENGTH; //offset length + file id
 
@@ -211,18 +211,18 @@ namespace VRemoteDesktop.Services.FileService
                     if (!checksumOk)
                     {
                         //Checksum not the same
-                        FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.CheckSumFailed, fileId, data.Length, fileInfo.SavePath));
+                        FileDataReceivedEvent?.Invoke(this, new FileEventArgs(connectionId, FileStatus.CheckSumFailed, fileId, data.Length, fileInfo.SavePath));
                         _attachmentManager.Remove(fileId);
                         return;
                     }
                 }
-                FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.Finished, fileId, data.Length, fileInfo.SavePath));
+                FileDataReceivedEvent?.Invoke(this, new FileEventArgs(connectionId, FileStatus.Finished, fileId, data.Length, fileInfo.SavePath));
                 _attachmentManager.Remove(fileId);
             }
             else
             {
                 //Still not received enough data
-                FileDataReceivedEvent?.Invoke(this, new FileEventArgs(FileStatus.NewReceived, fileId, data.Length, fileInfo.SavePath));
+                FileDataReceivedEvent?.Invoke(this, new FileEventArgs(connectionId, FileStatus.NewReceived, fileId, data.Length, fileInfo.SavePath));
             }
         }
         private bool CloseFileStream(string id)
@@ -313,7 +313,7 @@ namespace VRemoteDesktop.Services.FileService
                     client.AddWork(
                         new TaskObject
                         {
-                            TaskType = SocketDataType.Chat,
+                            TaskType = SocketDataType.RemoteControlChatSend,
                             Data = dataSend,
                             SessionId = client.SocketId,
                             IsSendHeader = true
@@ -356,7 +356,7 @@ namespace VRemoteDesktop.Services.FileService
                 long offset = handledSize;
                 int size = (int)Math.Min(DefaultFileInfo.DEFAULT_CHUNK_FILE_SIZE, fileSize - handledSize);
 
-                chunks.Add(new ChunkFileInfo(fileId: info.Id, filePath: fileInfo.FullName, offset: offset, chunkSize: size));
+                chunks.Add(new ChunkFileInfo(fileId: info.Id, filePath: fileInfo.FullName, fileInfo.Length, offset: offset, chunkSize: size));
 
                 handledSize += size;
             }

@@ -8,11 +8,13 @@ namespace VRemoteDesktop.Events
 {
     public class ChatControlUpdateEventArgs: EventArgs
     {
-        public ChatControlUpdateEventArgs(ChatControlType type, string fileId)
+        public ChatControlUpdateEventArgs(string connectionId, ChatControlType type, string fileId)
         {
+            ConnectionId = connectionId;    
             Type = type;
             FileId = fileId;
         }
+        public string ConnectionId { get; set; }    
         public ChatControlType Type { get; set; }
         public string FileId { get; set; }
     }

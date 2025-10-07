@@ -17,7 +17,14 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
-        bool RemoveLogin(SocketConnection connection);
+        void Send(SocketConnection connection, byte[] data);
+        bool SendWithRespond(SocketConnection connection, byte[] data);
+        bool GetFirst(string id, string password, out ConnectionInfo connectionInfo);
+        void Ping(SocketConnection connection);
+        bool Add(SocketConnection connection, byte[] data, out ConnectionInfo connectionInfo);
+        void LoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo);
+        void LoginFailed(SocketConnection connection);
+        void RemoveLogin(SocketConnection connection);
         bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo);
         bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo);
         void InitServer();
@@ -31,7 +38,6 @@ namespace VRemoteServer.RelayServer.Services
         private bool _disposed;
         private readonly ILoginServer _loginServer;
         private readonly ILoginManager _loginConnectionManager;
-        private readonly Dictionary<SocketDataType, Action<SocketConnection, byte[]>> _loginMethods;
 
         public event EventHandler<LoginEventArgs> LoginManagerEvent;
         public LoginManagerService(ILoginServer loginServer, ILoginManager loginConnectionManager)
@@ -40,25 +46,34 @@ namespace VRemoteServer.RelayServer.Services
             _loginServer = loginServer;
             _loginConnectionManager = loginConnectionManager;
 
-            _loginMethods = new Dictionary<SocketDataType, Action<SocketConnection, byte[]>>
-            {
-                {SocketDataType.Login, ProcessLogin},
-                {SocketDataType.Disconnect,  ProcessDisconnected}
-            };
-
             //Register event
             _loginServer.ServerEvent += LoginEventHandler;
             _loginServer.ServerErrorEvent += ServerErrorEventHandler;
         }
-        #region Properties
-        #endregion
         #region Methods
+        public void Ping(SocketConnection connection)
+        {
+            connection.UpdateTime();
+        }
+        public bool GetFirst(string id, string password, out ConnectionInfo connectionInfo)
+        {
+            connectionInfo = null;
+            Func<ConnectionInfo, bool> predicate = (c) => c.Id == id && c.Password == password;
+            connectionInfo = _loginConnectionManager.GetFirst(predicate); 
+            return connectionInfo != null;
+        }
         public bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo)
             => _loginConnectionManager.Get(id, out connectionInfo);
         public bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo)
             => _loginConnectionManager.GetConnectionsInfoBySocketConnection(connection, out connectionsInfo);
-        public bool RemoveLogin(SocketConnection connection)
-            => _loginConnectionManager.RemoveLoginInfoBySocketConnection(connection);
+        public void RemoveLogin(SocketConnection connection)
+        {
+            if (_loginConnectionManager.RemoveLoginInfoBySocketConnection(connection))
+            {
+                byte[] packet = PacketFactory.CreatePacket(SocketDataType.Disconnect, EMPTY_ID);
+                Send(connection, packet);
+            }
+        }
         public void InitServer()
         {
             _loginServer.Init();
@@ -75,8 +90,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             _loginServer.Cancel();
         }
-
-        private void ProcessLoginDataReceived(SocketConnection connection, int dataOffset, int dataLength)
+        public void ProcessLoginDataReceived(SocketConnection connection, int dataOffset, int dataLength)
         {
             try
             {
@@ -122,40 +136,31 @@ namespace VRemoteServer.RelayServer.Services
                 //Payload
                 Buffer.BlockCopy(buffer, offset, data, 0, payloadLength);
 
-                if(_loginMethods.TryGetValue(type, out var method))
-                {
-                    method(connection, data);
-                }
-                else
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error("Packet type does not match any method, ignore");
-                }
+                LoginManagerEvent?.Invoke(connection, new LoginEventArgs(type, data));
             }
             catch (Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessSocketData error on IP: {connection.IP}");
             }
         }
-        private void ProcessLogin(SocketConnection connection, byte[] data)
+        public bool Add(SocketConnection connection, byte[] data, out ConnectionInfo connectionInfo)
         {
+            connectionInfo = null;
             try
             {
-                if (_loginConnectionManager.NewConnectionInfo(data, connection, out var connectionInfo))
+                if (_loginConnectionManager.NewConnectionInfo(data, connection, out connectionInfo))
                 {
-                    ProcessLoginSucceeded(connection, connectionInfo);
-                    Log.ForContext("FileName", this.GetType().Name).Information($"Login success on IP: {connection.IP}");
-                }
-                else
-                {
-                    ProcessLoginFailed(connection);
+                    connection.SetTimeout(60); // set timeout for socket login is 60 seconds
+                    return true;
                 }
             }
             catch(Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "Login error");
             }
+            return false;
         }
-        private void ProcessLoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo)
+        public void LoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo)
         {
             try
             {
@@ -168,7 +173,7 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
         }
-        private void ProcessLoginFailed(SocketConnection connection)
+        public void LoginFailed(SocketConnection connection)
         {
             try
             {
@@ -180,11 +185,7 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
         }
-        private void ProcessDisconnected(SocketConnection connection, byte[] data)
-        {
-            LoginManagerEvent?.Invoke(connection, new LoginEventArgs(ServerEventType.ConnectionDisconnected));
-        }
-        private void Send(SocketConnection connection, byte[] data)
+        public void Send(SocketConnection connection, byte[] data)
         {
             try
             {
@@ -195,40 +196,32 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
             }
         }
+        public bool SendWithRespond(SocketConnection connection, byte[] data)
+        {
+            try
+            {
+                 return _loginServer.SendWithRespond(connection, data);
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
+        }
         #endregion
         #region Events
         private void LoginEventHandler(object sender, SocketConnectionEventArg e)
         {
-            Console.WriteLine($"Login: {e.Type}");
-
             if (sender is SocketConnection connection)
             {
                 ProcessLoginDataReceived(connection, e.Offset, e.Length);
-            }
-            else
-            {
-                //TODO: invalid object
-                Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
             }
         }
         private void ServerErrorEventHandler(object sender, LoginErrorEventArgs e)
         {
             if(sender is SocketConnection connection)
             {
-                if (_loginConnectionManager.RemoveLoginInfoBySocketConnection(connection))
-                {
-                    Console.WriteLine("Remove login info success");
-                }
-                else
-                {
-                    Console.WriteLine("Remove login info failed");
-                }
+                LoginManagerEvent?.Invoke(connection, new LoginEventArgs(SocketDataType.Disconnect));
             }
-            else
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error("LoginEventHandler invalid object");
-            }
-            // LoginManagerEvent?.Invoke(sender, new LoginEventArgs(ServerEventType.ConnectionDisconnected));
         }
         #endregion
         public void Dispose()
@@ -251,7 +244,6 @@ namespace VRemoteServer.RelayServer.Services
 
                     _loginServer?.Dispose();
                     _loginConnectionManager?.Dispose();
-                    _loginMethods?.Clear();
                 }
                 catch { }
             }

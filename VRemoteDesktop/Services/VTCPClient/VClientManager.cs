@@ -9,7 +9,7 @@ namespace VRemoteDesktop.Services.VTCPClient
     {
         private bool _disposed = false;
         private readonly ConcurrentDictionary<string, VClient> _connections;
-        public EventHandler<P2PClientDataReceived> ClientDataReceived;
+        public EventHandler<RemoteDesktopEventArgs> ClientDataReceived;
         public VClientManager()
         {
             _connections = new ConcurrentDictionary<string, VClient>();
@@ -77,18 +77,18 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             throw new InvalidOperationException(string.Format("Connection with Id:{0} does not exists", id));
         }
-        public VClient New(string id, VClientType type)
+        public VClient New(string id, VClientType type, bool host)
         {
             if(_connections.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            VClient client = new VClient(id, type);
+            VClient client = new VClient(id, type, host);
             Add(id, client);
             return client;
         }
-        private void TCPClientResponseEventHandler(object sender, P2PClientDataReceived e)
+        private void TCPClientResponseEventHandler(object sender, RemoteDesktopEventArgs e)
         {
             ClientDataReceived?.Invoke(sender, e);
         }
