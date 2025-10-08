@@ -244,28 +244,23 @@ namespace VRemoteDesktop.Helpers
 
             try
             {
-                if (_openingStream.TryGetValue(filePath, out var fs))
+                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
                 {
-                    lock (fs.Stream)
+                    fs.Seek(fileOffset, SeekOrigin.Begin);
+                    int totalBytesRead = 0;
+                    int remainingBytes = size;
+                    while (totalBytesRead < size && remainingBytes > 0)
                     {
-                        fs.Stream.Seek(fileOffset, SeekOrigin.Begin);
-                        int totalBytesRead = 0;
-                        int remainingBytes = size;
-                        while (totalBytesRead < size && remainingBytes > 0)
-                        {
-                            int bytesRead = fs.Stream.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
-                            if (bytesRead == 0)
-                                break;
+                        int bytesRead = fs.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
+                        if (bytesRead == 0)
+                            break;
 
-                            totalBytesRead += bytesRead;
-                            remainingBytes -= bytesRead;
-                        }
-
-                        fs.DateTimeOffset = DateTimeOffset.UtcNow;
-                        return totalBytesRead;
+                        totalBytesRead += bytesRead;
+                        remainingBytes -= bytesRead;
                     }
-                }
-                return 0;
+
+                    return totalBytesRead;
+                }  
             }
             catch
             {
@@ -276,21 +271,7 @@ namespace VRemoteDesktop.Helpers
         {
             lock (_lock)
             {
-                // Remove old stream if exists
-                if (_openingStream.TryRemove(savePath, out var oldStream))
-                {
-                    lock (oldStream.Stream)
-                    {
-                        oldStream.Stream?.Dispose();
-                    }
-                }
-
                 var stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
-                _openingStream.TryAdd(savePath, new StreamingFile
-                {
-                    Stream = stream,
-                    DateTimeOffset = DateTimeOffset.UtcNow
-                });
                 return stream;
             }
         }
@@ -348,12 +329,6 @@ namespace VRemoteDesktop.Helpers
             try
             {
                 FileStream fs = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
-
-                _openingStream.TryAdd(savePath, new StreamingFile
-                {
-                    Stream = fs,
-                    DateTimeOffset = DateTimeOffset.UtcNow
-                });
                 return fs;
             }
             catch (Exception ex)
