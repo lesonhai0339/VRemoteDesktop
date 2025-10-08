@@ -238,6 +238,7 @@ namespace VRemoteDesktop.Layouts
                 Dock = DockStyle.Fill,
             };
             this.Controls.Add(btn, 1, 1);
+            this.DisableControl(_stop);
         }
         public void UpdateRequestSendFileStatus(string text)
         {
