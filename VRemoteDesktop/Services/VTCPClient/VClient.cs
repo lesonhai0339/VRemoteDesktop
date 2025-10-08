@@ -52,7 +52,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
         private System.Threading.Timer _timer;
         private int bytesPerSecond;
-        public VClient(string socketId, VClientType clientType, bool isHost)
+        public VClient(string socketId, VClientType clientType, bool isHost = false)
         {
             Partner = null;
             _screenSucceeded = false;
