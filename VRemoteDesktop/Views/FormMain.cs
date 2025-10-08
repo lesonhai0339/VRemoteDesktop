@@ -131,7 +131,7 @@ namespace VRemoteDesktop
         }
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            if(_viewModel.ConnectStatus != ConnectionStatus.Connected)
+            if(_viewModel.ConnectStatus == ConnectionStatus.Disconnected)
             {
                 MessageBox.Show("Mất kết nối đến máy chủ", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;

@@ -375,9 +375,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         {
                             client.UpdatePartnerInfo(partnerInfo);
 
-                            client.Send(SocketDataType.RemoteControlReady, new byte[0], client.SocketId, true);
-
                             RespondEvent?.Invoke(client, e);
+
+                            client.Send(SocketDataType.RemoteControlReady, new byte[0], client.SocketId, true);
                             return;
                         }
                     }
@@ -601,7 +601,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 case SocketDataType.P2PLoginSucceed:
                     P2PLoginRespond(sender, e);
                     break;
-
+                case SocketDataType.P2PLoginFailed:
+                    RespondEvent?.Invoke(sender, e);
+                    break;
 
                 case SocketDataType.RemoteControlClipboardSend:
                     SetClipboard(e.Data);

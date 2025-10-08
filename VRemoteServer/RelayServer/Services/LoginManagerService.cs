@@ -17,6 +17,7 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
+        void P2PLoginFailed(SocketConnection connection, string connectionId);
         void Send(SocketConnection connection, byte[] data);
         bool SendWithRespond(SocketConnection connection, byte[] data);
         bool GetFirst(string id, string password, out ConnectionInfo connectionInfo);
@@ -89,6 +90,11 @@ namespace VRemoteServer.RelayServer.Services
         public void CancelServer()
         {
             _loginServer.Cancel();
+        }
+        public void P2PLoginFailed(SocketConnection connection, string connectionId)
+        {
+            byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PLoginFailed, connectionId);
+            Send(connection, packet);
         }
         public void ProcessLoginDataReceived(SocketConnection connection, int dataOffset, int dataLength)
         {

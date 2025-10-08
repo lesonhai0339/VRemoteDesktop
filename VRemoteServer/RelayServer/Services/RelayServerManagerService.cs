@@ -132,7 +132,7 @@ namespace VRemoteServer.RelayServer.Services
                             _loginManager.SendWithRespond(me, byteArray);
                         }
                     }
-                    _remoteControlManager.P2PConnectFailed(me, partnerIdAndPassword[0]);
+                    _loginManager.P2PLoginFailed(me, partnerIdAndPassword[0]);
                     return false;
                 }
                 catch (Exception ex)
