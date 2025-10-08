@@ -153,7 +153,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
             catch {
-                return default(List<ScreenRegion>);
+                return default;
             }
         }  
         private List<ScreenRegion> MakeScreenRegions(Bitmap currentScreen, List<Rectangle> dirtyRegions)

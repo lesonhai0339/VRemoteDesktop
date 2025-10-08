@@ -23,7 +23,7 @@ namespace ScreenCaptureTest
         [TestCase("27.0.12.78", 2399)]
         public void Connect_Test(string ip, int port)
         {
-            _vclient.Connect(ip, port);
+            _vclient.TryConnect(ip: ip, port: port);
             Thread.Sleep(1000);
             Assert.IsTrue(_vclient.SocketConnected);
         }
@@ -36,7 +36,7 @@ namespace ScreenCaptureTest
         [TestCase(null, 2399)]
         public void Connect_Test_Wrong_Arguments(string ip, int port)
         {
-            _vclient.Connect(ip, port);
+            _vclient.TryConnect(ip: ip, port: port);
             Thread.Sleep(1000);
             Assert.IsFalse(_vclient.SocketConnected);
         }

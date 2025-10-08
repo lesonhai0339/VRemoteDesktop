@@ -208,13 +208,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                     try
                     {
 
-                        if (task.Type == SocketDataType.RemoteControlScreenSend || task.Type == SocketDataType.RemoteControlScreenRegionsChangedSend)
+                        if (task.Type == SocketDataType.ScreenSend || task.Type == SocketDataType.ScreenRegionsChangedSend)
                         {
                             var lastTask = task;
 
                             while (Tasks.TryTake(out var t, 0)
                                 && t != null
-                                && (t.Type == SocketDataType.RemoteControlScreenSend || t.Type == SocketDataType.RemoteControlScreenRegionsChangedSend))
+                                && (t.Type == SocketDataType.ScreenSend || t.Type == SocketDataType.ScreenRegionsChangedSend))
                             {
                                 lastTask = t;
                             }
@@ -336,7 +336,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWorkGroup(List<TaskObject> tasks, SocketDataType type = SocketDataType.None)
         {
-            if (type == SocketDataType.RemoteControlScreenSend || type == SocketDataType.RemoteControlScreenRegionsChangedSend)
+            if (type == SocketDataType.ScreenSend || type == SocketDataType.ScreenRegionsChangedSend)
             {
                 ScreenTasks.Enqueue(new TaskGroup(tasks));
             }

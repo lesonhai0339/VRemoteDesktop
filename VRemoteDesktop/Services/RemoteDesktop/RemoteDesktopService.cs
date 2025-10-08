@@ -167,7 +167,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 return;
             }
-            newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+            newConnection.TryConnect(ip: DEFAULT_SERVER_IP, port: int.Parse(DEFAULT_SERVER_PORT));
             _reset.WaitOne(3000);
             string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
@@ -178,7 +178,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
             {
                 var remoteControlClient = _vClientManager.New(connectionId, VClientType.Receiver, false);
-                remoteControlClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+                remoteControlClient.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
                 remoteControlClient.UpdatePartnerInfo(partnerInfo);
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
 
@@ -222,7 +222,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         {
                             client.UpdatePartnerInfo(partnerInfo);
 
-                            client.Send(SocketDataType.RemoteControlReady, new byte[0], client.SocketId, true);
+                            client.Send(SocketDataType.Ready, new byte[0], client.SocketId, true);
                             return;
                         }
                     }
@@ -245,7 +245,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             string id = StringHelper.RandomStringNumber(8);
             string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR,id, partnerId ,partnerPassword);
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            client.Send(SocketDataType.P2PRequestToConnect, dataBytes, client.SocketId, true);
+            client.Send(SocketDataType.P2PConnect, dataBytes, client.SocketId, true);
         }
         private void P2PRequestConnectHandler(object sender, RemoteDesktopEventArgs e)
         {
@@ -294,21 +294,16 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         ipToConnect = dataArray[1];
                     }
                     var remoteControlClient = _vClientManager.New(dataArray[0], VClientType.Sender, false);
-                    remoteControlClient.Connect(ipToConnect, int.Parse(dataArray[3]));
-                    bool flag = _reset.WaitOne(3000);
-                    if (!flag)
+                    bool respond = remoteControlClient.TryConnect(ip: ipToConnect, port: int.Parse(dataArray[3]), retry: 3, waitRespondTime: 1000);
+                    if (!respond)
                     {
-                        //Failed, use TURN server
-                        RespondEvent?.Invoke(client, new RemoteDesktopEventArgs(SocketDataType.P2PLoginFailed, flag, new byte[0]));
+                        //Failed
+                        RespondEvent?.Invoke(client, new RemoteDesktopEventArgs(SocketDataType.P2PLoginFailed, respond, new byte[0]));
                     }
                 }
                 catch (Exception ex)
                 {
                     Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
-                }
-                finally
-                {
-                    _reset.Reset();
                 }
             }
         }
@@ -356,7 +351,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 }
                 catch (Exception ex)
                 {
-
+                    Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2PDataTransfer error ");
                 }
             }
         }
@@ -375,7 +370,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         {
                             client.UpdatePartnerInfo(partnerInfo);
 
-                            client.Send(SocketDataType.RemoteControlReady, new byte[0], client.SocketId, true);
+                            client.Send(SocketDataType.Ready, new byte[0], client.SocketId, true);
 
                             RespondEvent?.Invoke(client, e);
                             return;
@@ -408,7 +403,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 var screen = _globalHook.GetFirstScreen();
                 int length = screen.Sum(x => x.Length);
-                SendScreen(client, SocketDataType.RemoteControlScreenSend, screen, length);
+                SendScreen(client, SocketDataType.ScreenSend, screen, length);
 
                 RespondEvent?.Invoke(client, e);
             }
@@ -586,11 +581,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     RespondEvent?.Invoke(sender, e);
                     break;
 
-                case SocketDataType.P2PRequestToConnect:
+                case SocketDataType.P2PConnect:
                     P2PRequestConnectHandler(sender, e);
                     break;
-                case SocketDataType.P2PRespondRequestToConnect:
+                case SocketDataType.P2PDataRespond:
                     P2PRespondRequestConnect(sender, e);
+                    break;
+                case SocketDataType.P2PInvalidConnectData:
+                    RespondEvent?.Invoke(sender, e);
                     break;
                 case SocketDataType.P2PAcceptConnect:
                     P2PAcceptedToConnect(sender, e);
@@ -603,7 +601,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
 
 
-                case SocketDataType.RemoteControlClipboardSend:
+                case SocketDataType.ClipboardSend:
                     SetClipboard(e.Data);
                     break;
                 case SocketDataType.RemoteControlRequestToConnect:
@@ -619,19 +617,19 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     RespondEvent?.Invoke(sender, e);
                     ProcessP2PDisconnect(sender, e);
                     break;
-                case SocketDataType.RemoteControlMouseSend:
+                case SocketDataType.MouseSend:
                     MouseReceivedEventHandler(sender, e);
                     break;
-                case SocketDataType.RemoteControlKeyboardSend:
+                case SocketDataType.RemoteControlScreenSend:
                     KeyboardReceivedEventHandler(sender, e);
                     break;
                 case SocketDataType.RemoteControlDisconnect:
                     ProcessP2PDisconnect(sender, e);
                     break;
-                case SocketDataType.RemoteControlReady:
+                case SocketDataType.Ready:
                     FirstSendScreen(sender, e);
                     break;
-                case SocketDataType.RemoteControlRespondScreenSend:
+                case SocketDataType.ScreenOk:
                     FirstScreenSendSucceeded(sender);
                     break;
                 case SocketDataType.RemoteControlDataSendFailed:
