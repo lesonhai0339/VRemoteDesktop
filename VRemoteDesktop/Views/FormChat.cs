@@ -51,7 +51,6 @@ namespace VRemoteDesktop.Views
 
         private void FormChat_Load(object sender, EventArgs e)
         {
-
         }
         private void FormChat_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -341,7 +340,6 @@ namespace VRemoteDesktop.Views
             var userChatControl = GetConnectionChatDataPanelByConnectionId(connectionId);
             if (userChatControl == null)
                 return;
-
             userChatControl.AddAttachment(type, connectionId, fileInfo);
             var chats = FindUserConnectionControlsById(connectionId);
             string curId = _chatViewModel.GetCurrentConnectionActivate().Data;
@@ -464,15 +462,14 @@ namespace VRemoteDesktop.Views
                     item.UpdateUnreadCount(1);
             }
         }
+        void ResizeToParent(Control parent, Control child)
+        {
+            child.Margin = new Padding(0);
+            child.Width = parent.ClientSize.Width;
+            child.Height = parent.ClientSize.Height;
+        }
         private ConnectionChatDataPanel GetConnectionChatDataPanelByConnectionId(string connectionId)
         {
-            void ResizeToParent(Control parent, Control child)
-            {
-                child.Margin = new Padding(0);
-                child.Width = parent.ClientSize.Width;
-                child.Height = parent.ClientSize.Height - parent.Padding.Vertical;
-            }
-
             if(_userChatControls.TryGetValue(connectionId, out var chatDataPanel))
             {
                 if (!fpnChat.Controls.Contains(chatDataPanel))

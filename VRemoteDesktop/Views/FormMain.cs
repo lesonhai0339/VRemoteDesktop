@@ -131,7 +131,7 @@ namespace VRemoteDesktop
         }
         private void btnConnect_Click(object sender, EventArgs e)
         {
-            if(_viewModel.ConnectStatus != ConnectionStatus.Connected)
+            if(_viewModel.ConnectStatus == ConnectionStatus.Disconnected)
             {
                 MessageBox.Show("Mất kết nối đến máy chủ", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
@@ -190,7 +190,7 @@ namespace VRemoteDesktop
                     string partnerPassword = txtPartnerPassword.Text.Replace(" ", "");
                     _viewModel.RequestP2PConnect(partnerId, partnerPassword, true);
                 }
-                else if (e.Type == SocketDataType.RemoteControlRequestToConnect || e.Type == SocketDataType.P2PRequestToConnect)
+                else if (e.Type == SocketDataType.Ready)
                 {
                     AddChat(vClient);
                 }

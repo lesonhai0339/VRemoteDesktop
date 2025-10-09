@@ -100,11 +100,11 @@ namespace VRemoteDesktop.ViewModels
                 if(client == null)
                 {
                     var client1 = _remoteDesktopService.GetClientById(_id);
-                    client1.Connect(ip, validPort);
+                    client1.TryConnect(ip: ip, port: validPort);
                 }
                 else
                 {
-                    client.Connect(ip, validPort);
+                    client.TryConnect(ip: ip, port: validPort);
                 }
             }
         }
@@ -171,8 +171,12 @@ namespace VRemoteDesktop.ViewModels
                     case SocketDataType.RemoteControlRefusedRequestToConnect:
                     case SocketDataType.P2PLoginSucceed:
                     case SocketDataType.P2PLoginFailed:
-                    case SocketDataType.P2PRequestToConnect:
+                    case SocketDataType.P2PConnect:
+                    case SocketDataType.Ready:
                         PartnerRespond(sender, e);
+                        break;
+                    case SocketDataType.P2PInvalidConnectData:
+                        ErrorMessage = "Dữ liệu kết nối không hợp lệ";
                         break;
                     default:
                         break;

@@ -17,14 +17,14 @@ namespace VRemoteDesktop.Layouts
         private Dictionary<string, FileAttachmentPanel> _attachments;
         public event EventHandler<UserChatControlEventArgs> UserChatEvent;
         public ConnectionChatDataPanel(string connectionId)
-        {
+        { 
             _attachments = new Dictionary<string, FileAttachmentPanel>();
             _messagePanel = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 FlowDirection = FlowDirection.TopDown,
-                WrapContents = false
+                WrapContents = false,
             };
             this.Controls.Add(_messagePanel);
             _connectionId = connectionId;

@@ -82,7 +82,7 @@ namespace VRemoteDesktop.ViewModels
             if(image != null)
             {
                 _vClient.AddWork(
-                    new TaskObject(type: SocketDataType.RemoteControlRespondScreenSend, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
+                    new TaskObject(type: SocketDataType.ScreenOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
                 screenEvent?.Invoke(image);
             }
         }
@@ -113,7 +113,7 @@ namespace VRemoteDesktop.ViewModels
 
             _vClient.AddWork(new TaskObject
             {
-                TaskType = SocketDataType.RemoteControlClipboardSend,
+                TaskType = SocketDataType.ClipboardSend,
                 Data = Encoding.UTF8.GetBytes(clipboard),
                 IsSendHeader = true,
                 SessionId = _vClient.SocketId
@@ -128,7 +128,7 @@ namespace VRemoteDesktop.ViewModels
 
             _vClient.AddWork(new TaskObject
             {
-                TaskType = SocketDataType.RemoteControlKeyboardSend,
+                TaskType = SocketDataType.RemoteControlScreenSend,
                 Data = Encoding.ASCII.GetBytes(keyboard),
                 IsSendHeader = true,
                 SessionId = _vClient.SocketId
@@ -157,7 +157,7 @@ namespace VRemoteDesktop.ViewModels
 
                 _vClient.AddWork(new TaskObject
                 {
-                    TaskType = SocketDataType.RemoteControlMouseSend,
+                    TaskType = SocketDataType.MouseSend,
                     Data = Encoding.ASCII.GetBytes(mouseEventString),
                     IsSendHeader = true,
                     SessionId = _vClient.SocketId
@@ -178,11 +178,11 @@ namespace VRemoteDesktop.ViewModels
         }
         public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
-            if (e.Type == SocketDataType.RemoteControlScreenSend)
+            if (e.Type == SocketDataType.ScreenSend)
             {
                 ProcessScreenReceived(e.Data);
             }
-            if (e.Type == SocketDataType.RemoteControlScreenRegionsChangedSend)
+            if (e.Type == SocketDataType.ScreenRegionsChangedSend)
             {
                 ProcessScreenRegionsChangedReceived(e.Data);
             }

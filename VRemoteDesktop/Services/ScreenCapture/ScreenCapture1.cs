@@ -137,6 +137,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             try
             {
+                if (fullScreen == null || encoder == null || encoderParams == null)
+                    return default;
+
                 using (var stream = new MemoryStream())
                 {
                     fullScreen.Save(stream, encoder, encoderParams);
@@ -150,7 +153,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
             catch {
-                return default(List<ScreenRegion>);
+                return default;
             }
         }  
         private List<ScreenRegion> MakeScreenRegions(Bitmap currentScreen, List<Rectangle> dirtyRegions)

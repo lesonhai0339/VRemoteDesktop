@@ -103,7 +103,7 @@ namespace VRemoteServer.RelayServer.Services
                     case SocketDataType.Disconnect:
                         LoginUserDisconnected(connection);
                         break;
-                    case SocketDataType.P2PRequestToConnect:
+                    case SocketDataType.P2PConnect:
                         P2PLogin(sender, e.Data);
                         break;
                     default:
@@ -121,19 +121,19 @@ namespace VRemoteServer.RelayServer.Services
                     if (_loginManager.GetFirst(partnerIdAndPassword[1], partnerIdAndPassword[2], out var validInfo))
                     {
                         //Send request to partner
-                        var byteArray1 = PacketFactory.CreatePacket(SocketDataType.P2PRequestToConnect, data: Encoding.ASCII.StringToByteArray(partnerIdAndPassword[0]));
+                        var byteArray1 = PacketFactory.CreatePacket(SocketDataType.P2PConnect, data: Encoding.ASCII.StringToByteArray(partnerIdAndPassword[0]));
                         bool respond = _loginManager.SendWithRespond(validInfo.SocketConnection, byteArray1);
 
                         if (respond)
                         {
                             //Send back to me
                             byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Ip, validInfo.Port);
-                            var byteArray = PacketFactory.CreatePacket(SocketDataType.P2PRespondRequestToConnect, data: dataSend);
+                            var byteArray = PacketFactory.CreatePacket(SocketDataType.P2PDataRespond, data: dataSend);
                             _loginManager.SendWithRespond(me, byteArray);
                         }
                     }
-                    //_remoteControlManager.P2PConnectFailed(controller, connectionId);
-                    //return false;
+                    _loginManager.P2PConnectFailed(me, partnerIdAndPassword[0]);
+                    return false;
                 }
                 catch (Exception ex)
                 {
