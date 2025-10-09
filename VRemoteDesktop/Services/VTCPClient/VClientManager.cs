@@ -10,6 +10,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         private bool _disposed = false;
         private readonly ConcurrentDictionary<string, VClient> _connections;
         public EventHandler<RemoteDesktopEventArgs> ClientDataReceived;
+        public EventHandler<EventArgs> ClientClosed;
         public VClientManager()
         {
             _connections = new ConcurrentDictionary<string, VClient>();
@@ -40,10 +41,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
         private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
         {
-            if(sender is VClient client)
-            {
-                Remove(client);
-            }
+            ClientClosed?.Invoke(sender, e);
         }
         public bool Remove(string id)
         {

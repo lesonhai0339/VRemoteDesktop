@@ -139,7 +139,12 @@ namespace VRemoteDesktop
 
             string partnerId = txtPartnerId.Text.Replace(" ", "");
             string partnerPassword = txtPartnerPassword.Text.Replace(" ","");
-            if(!string.IsNullOrWhiteSpace(partnerId) && !string.IsNullOrWhiteSpace(partnerPassword))
+            if (_viewModel.IsRemoteConnected(partnerId))
+            {
+                MessageBox.Show("Đã kết nối với đối tác", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+            if (!string.IsNullOrWhiteSpace(partnerId) && !string.IsNullOrWhiteSpace(partnerPassword))
             {
                 P2PConnect(partnerId, partnerPassword);
             }
