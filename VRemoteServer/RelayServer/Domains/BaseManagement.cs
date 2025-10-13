@@ -13,6 +13,7 @@ namespace VRemoteServer.RelayServer.Domains
     /// </summary>
     public interface IBaseManagement<T>
     {
+        int Count { get; }
         bool Add(string id, T obj);
         T Get(string id);
         T Get(string id, T obj);
@@ -43,6 +44,7 @@ namespace VRemoteServer.RelayServer.Domains
         #region Properties
         #endregion
         #region Methods
+        public int Count => _keyValuePairs.Count;
         public virtual bool Add(string id, T obj)
             => _keyValuePairs.TryAdd(id, obj);
         public virtual T Get(string id)

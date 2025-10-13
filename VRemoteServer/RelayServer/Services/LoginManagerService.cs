@@ -17,6 +17,7 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
+        int NumberOfConnections { get; }
         void P2PConnectFailed(SocketConnection connection, string connectionId);
         void Send(SocketConnection connection, byte[] data);
         bool SendWithRespond(SocketConnection connection, byte[] data);
@@ -52,6 +53,7 @@ namespace VRemoteServer.RelayServer.Services
             _loginServer.ServerErrorEvent += ServerErrorEventHandler;
         }
         #region Methods
+        public int NumberOfConnections => _loginConnectionManager.Count;
         public void Ping(SocketConnection connection)
         {
             connection.UpdateTime();

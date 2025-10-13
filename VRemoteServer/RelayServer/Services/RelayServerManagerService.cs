@@ -47,6 +47,7 @@ namespace VRemoteServer.RelayServer.Services
             _loginManager.LoginManagerEvent += LoginManagerEventHandler;
             _remoteControlManager.RemoteControlManagerEvent += RemoteControlManagerEventHandler;
         }
+        public int NumberOfLoginUsers => _loginManager.NumberOfConnections;  
         public void InitLoginServer()
         {
             _loginManager.InitServer();

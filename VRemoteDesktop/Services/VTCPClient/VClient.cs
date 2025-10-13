@@ -237,11 +237,11 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 foreach (var task in _receivedQueue.GetConsumingEnumerable(_cancellationToken))
                 {
-                    int start = Environment.TickCount;
                     try
                     {
                         if (task.Type == SocketDataType.ScreenSend || task.Type == SocketDataType.ScreenRegionsChangedSend)
                         {
+                            Logger.Log.ForContext("FileName", "ScreenReceived").Info(string.Format("At: {0} - Remain item in queue: {1}", DateTime.Now.ToString("HH:mm:ss:fff"), _receivedQueue.Count));
                             P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                         }
                         else
@@ -261,8 +261,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DoWork error");
                     }
-                    int end = Environment.TickCount - start;
-                    Logger.Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Info(string.Format("Elapsed: {0} - {1}\n", end, DateTime.Now.ToString("HH:mm:ss:fff")));
                 }
             }
             catch(OperationCanceledException ex)
@@ -319,19 +317,8 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void RemoveTaskByType(SocketDataType socketType, object dataType, object data)
         {
-            if (socketType == SocketDataType.None)
+            if (socketType == SocketDataType.None || dataType == null || data == null)
             {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error("SocketDataType is none, pass");
-                return;
-            }
-            if (dataType == null)
-            {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error("dataType is null, pass");
-                return;
-            }
-            if (data == null)
-            {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error("data is null, pass");
                 return;
             }
             if (socketType == SocketDataType.ChatSend)
@@ -405,7 +392,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 _sckConnect.Reset();
                 if (string.IsNullOrWhiteSpace(ip) || port < 0)
                 {
-                    Logger.Log.ForContext("FileName", nameof(Connect)).Error("Invalidate argument at Connect method");
                     return false;
                 }
 
@@ -506,7 +492,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     //Connected?.Invoke(this, new ConnectEventArgs(false));
                     TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, false, new byte[0]));
-                    Logger.Log.ForContext("FileName", this.GetType().Name).Error("Cannot connect to server");
                     return;
                 }
 
@@ -540,7 +525,6 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             if(partnerInfo == null)
             {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error("Missing some partner value, dispose VClient with id: "+ SocketId);
                 //Info invalid, dispose this class
                 this.Dispose();
             }
@@ -606,7 +590,6 @@ namespace VRemoteDesktop.Services.VTCPClient
 
                 if (bytes.Length < headerSize)
                 {
-                    Logger.Log.ForContext("", this.GetType().Name).Error("Data received less than header size, not handler");
                     return;
                 }
                 int offset = 0;
@@ -614,7 +597,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 int dataLength = BitConverter.ToInt32(bytes, offset);
                 if(dataLength <= 0)
                 {
-                    Logger.Log.ForContext("", this.GetType().Name).Error("Data length mismatch");
                     return;
                 }
                 offset += ByteConstants.INT32_LENGTH;
@@ -622,7 +604,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 SocketDataType dataType = (SocketDataType)bytes[offset];
                 if(!Enum.IsDefined(typeof(SocketDataType), dataType))
                 {
-                    Logger.Log.ForContext("", this.GetType().Name).Error("Invalid SocketDataType");
                     return;
                 }
                 offset += RandomLength.DATA_TYPE_LENGTH;
@@ -630,7 +611,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 var result = ByteArrayHelper.ConvertByteArrayToString(bytes, offset, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII);
                 if (!result.IsSuccess)
                 {
-                    Logger.Log.ForContext("", this.GetType().Name).Error("Cannot convert byte array to string");
                     return;
                 }
                 string socketId = result.GetResult();
@@ -713,7 +693,6 @@ namespace VRemoteDesktop.Services.VTCPClient
 
                     if (!Enum.IsDefined(typeof(ChatDataType), (int)task.Data[0]))
                     {
-                        Logger.Log.ForContext("FileName", this.GetType().Name).Error("Invalid ChatDataType, not handler");
                         return;
                     }
                     int offset = 0;
@@ -734,7 +713,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                     int chunkRead = FileHelper.CopyFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
                     if (chunkRead != chunkFileData.Length - headerSize)
                     {
-                        Logger.Log.ForContext("FileName", this.GetType().Name).Error("Error when ProcessFileTransfer send file data error, remove remain send file task");
                         RemoveTaskByType(task.TaskType, type, task.ChunkFileInfo.FileId);
                         return;
                     }

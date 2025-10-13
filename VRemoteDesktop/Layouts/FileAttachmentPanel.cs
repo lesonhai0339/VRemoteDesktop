@@ -212,6 +212,11 @@ namespace VRemoteDesktop.Layouts
         }
         public void RemoveProgressBar()
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(RemoveProgressBar));
+                return;
+            }
             if (_progressBar != null)
             {
                 _progressBar.ProgressBarEvent -= ProgressCompletedEventHandler;

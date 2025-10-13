@@ -125,7 +125,7 @@ namespace VRemoteDesktop.ViewModels
                     ErrorMessage = "Không thể kết nối với chính mình";
                     return;
                 }
-                if(!useTURNSERVER)
+                if (!useTURNSERVER)
                 {
                     //try P2P first
                     _remoteDesktopService.P2PConnect(_host, id, password);
