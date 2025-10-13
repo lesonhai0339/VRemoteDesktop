@@ -18,16 +18,19 @@ namespace VRemoteServer.RelayServer.Networking
     {
         public RemoteControlServer(int numberOfConnections, int receiveBufferSize)
             : base(numberOfConnections, receiveBufferSize) { }
+
         public override void SendToDomain(SocketConnection domain, int offset, int length)
         {
            domain.CalCuLateData(offset, length);
         }
+
         public override SocketConnection CreateDomainFromSocketAsyncEventArgs(SocketAsyncEventArgs read, SocketAsyncEventArgs send, Socket socket, EventHandler<SocketConnectionEventArg> dataCallbackEvent)
         {
             SocketConnection connection = new SocketConnection(read, send, socket);
             connection.SocketConnectionEvent += dataCallbackEvent;
             return connection;
         }
+
         public override (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(SocketConnection domain)
         {
             return (domain.Reader, domain.Sender);
@@ -37,20 +40,20 @@ namespace VRemoteServer.RelayServer.Networking
         {
             return domain.Reader;
         }
-
         public override SocketAsyncEventArgs GetSendSocketAsyncEventArgsFromDomain(SocketConnection domain)
         {
             return domain.Sender;
         }
+
         public override Socket GetSocketFromDomain(SocketConnection domain)
         {
             return domain.Socket;
         }
+
         public override SocketConnectionEventType GetEventTypeFromDomainEvent(SocketConnectionEventArg domainEvent)
         {
             return domainEvent.EventType;
         }
-
         public override void UnRegisterEvent(SocketConnection domain, EventHandler<SocketConnectionEventArg> domainEvent)
         {
             domain.SocketConnectionEvent -= domainEvent;
@@ -60,6 +63,7 @@ namespace VRemoteServer.RelayServer.Networking
         {
             return new RemoteControlErrorEventArgs(ex, note);
         }
+
         public override void SetTime(SocketConnection domain)
         {
             domain.UpdateTime();

@@ -150,6 +150,7 @@ namespace VRemoteServer.RelayServer.Networking
                 }
             }
         }
+
         public void UpdateTime()
         {
             lock (_lockProperty)
@@ -157,6 +158,7 @@ namespace VRemoteServer.RelayServer.Networking
                 _lastSendTime = DateTimeOffset.UtcNow;
             }
         }
+
         private bool CheckAlive()
         {
             try
@@ -183,6 +185,7 @@ namespace VRemoteServer.RelayServer.Networking
                 return false;
             }
         }
+
         private void CheckTimeOut(object obj)
         {
             var timer = DateTimeOffset.UtcNow - _lastSendTime;
@@ -199,22 +202,26 @@ namespace VRemoteServer.RelayServer.Networking
                 SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Disconnected));
             }
         }
+
         private void ProcessData(SocketDataType type, string id, byte[] buffer)
         {
             _lastSendTime = DateTimeOffset.UtcNow;
             SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, buffer));
         }
+
         private void ProcessData(SocketDataType type, string id, int offset, int length)
         {
             _lastSendTime = DateTimeOffset.UtcNow;
             SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, offset, length));
         }
+
         private (int length, SocketDataType type, string id) GetHeader(byte[] buffer, int offset)
         {
             byte[] header = new byte[PACKET_HEADER_LENGTH];
             Buffer.BlockCopy(buffer, offset, header, 0, PACKET_HEADER_LENGTH);
             return PacketFactory.GetHeaderDataFromPacket(header, 0, PACKET_HEADER_LENGTH);
         } 
+
         public void CalCuLateData(int comingOffset, int comingDataLength)
         {
             try
@@ -321,6 +328,7 @@ namespace VRemoteServer.RelayServer.Networking
                 id = default;
             }
         }
+
         //Simple, less performance
         public void CalCuLateData1(int comingOffset, int comingDataLength)
         {

@@ -52,6 +52,7 @@ namespace VRemoteDesktop.ViewModels
         #region Properties
         #endregion
         #region Methods
+
         /// <summary>
         /// Add reference to VClient(contain socket connection to partner) to chat manager after connect succeed
         /// </summary>
@@ -86,6 +87,7 @@ namespace VRemoteDesktop.ViewModels
             return ChatRespondHelper.Success<bool>(
                 systemMessage: string.Format("Added connection with id {0} to chat", connectionId));
         }
+
         /// <summary>
         /// Remove reference of VClient out chat manager and unregister event
         /// </summary>
@@ -122,6 +124,7 @@ namespace VRemoteDesktop.ViewModels
                     message: string.Format("Xóa chat connection thành công"),
                     systemMessage: string.Format("Removed connection with id {0}", connectionId));
         }
+
         //Call invoke to UI to create new control contain new chat connection info
         private bool AddChatConnection(string connectionId)
         {
@@ -133,6 +136,7 @@ namespace VRemoteDesktop.ViewModels
             AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Connection, connection.SocketId, connection.Partner.ComputerName, null));
             return true;    
         }
+
         /// <summary>
         /// Get partner computer name using connectionId(SocketId), to show partner name on chat panel
         /// </summary>
@@ -156,6 +160,7 @@ namespace VRemoteDesktop.ViewModels
                     systemMessage: string.Format("Success {0}, {1}", connectionId, nameof(GetConnectionNameById)),
                     data: connection.Partner.ComputerName);
         }
+
         /// <summary>
         /// Check connection still exists in chat manager or not
         /// </summary>
@@ -179,6 +184,7 @@ namespace VRemoteDesktop.ViewModels
                    systemMessage: string.Format("IsValidConnection success for {0}", nameof(connectionId)),
                    data: true);
         }
+
         /// <summary>
         /// Sets the current active connection to the specified connection Id, activate when user click on new connection control or an chat connection removed 
         /// </summary>
@@ -197,6 +203,7 @@ namespace VRemoteDesktop.ViewModels
             return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("Set current connection activate {0} success", nameof(connectionId)));
         }
+
         /// <summary>
         /// Set save file path to specified file by file id
         /// </summary>
@@ -215,6 +222,7 @@ namespace VRemoteDesktop.ViewModels
             return ChatRespondHelper.Success<bool>(
                    systemMessage: string.Format("Update file path for {0} success", fileId));
         }
+
         /// <summary>
         /// Save chat sent and received to specified file by connection id(connection id will be use to file name, example: 112233.txt)
         /// </summary>
@@ -244,6 +252,7 @@ namespace VRemoteDesktop.ViewModels
             return ChatRespondHelper.Success<bool>(
                   systemMessage: string.Format("Save chat file on connection with id {0} success", connectionId));
         }
+
         /// <summary>
         /// Accepted "request send file" from partner. Send "accepted" packet to partner and partner will send file data after that
         /// </summary>
@@ -277,6 +286,7 @@ namespace VRemoteDesktop.ViewModels
                        systemMessage: string.Format("Unexcepted error on {0}, error: {1}", nameof(AcceptedFile), ex.Message));
             }
         }
+
         /// <summary>
         /// Declined "request send file" from partner. Send "declined" packet to partner and partner will send file data after that
         /// </summary>
@@ -310,6 +320,7 @@ namespace VRemoteDesktop.ViewModels
                        systemMessage: string.Format("Unexcepted error on {0}, error: {1}", nameof(DeclinedFile), ex.Message));
             }
         }/// <summary>
+
          /// Stop received file data from specified file by fileId
          /// </summary>
          /// <param name="fileId"></param>
@@ -342,6 +353,7 @@ namespace VRemoteDesktop.ViewModels
                        systemMessage: string.Format("Unexcepted error on {0}, error: {1}", nameof(DeclinedFile), ex.Message));
             }
         }
+
         /// <summary>
         /// Get current connection id
         /// </summary>
@@ -357,6 +369,7 @@ namespace VRemoteDesktop.ViewModels
                 return ChatRespondHelper.Success<string>(systemMessage: "OK",data: _currentConnectionActivate);
             }
         }
+
         /// <summary>
         /// Send chat to partner on current connection
         /// </summary>
@@ -386,6 +399,7 @@ namespace VRemoteDesktop.ViewModels
                    systemMessage: string.Format("Error when send message on connection id {0}, ex: {1}", _currentConnectionActivate, ex.Message));
             }
         }
+
         /// <summary>
         /// Send request send file to partner on current connection
         /// </summary>
@@ -418,6 +432,7 @@ namespace VRemoteDesktop.ViewModels
                        systemMessage: string.Format("Request send file error on connection id {0}", _currentConnectionActivate));
             }
         }
+
         //Save chat to file
         private bool SaveChat(string id, ChatContentTypeEnum type, ChatOwnerEnum owner, string message = null, string filePath = null, string fileName = null, long fileSize = 0)
         {
@@ -448,6 +463,7 @@ namespace VRemoteDesktop.ViewModels
             }
             return true;
         }
+
         /// <summary>
         /// Load number of <see cref="DEFAULT_MESSAGE_LOAD"/> previous message on current connection 
         /// </summary>
@@ -476,6 +492,7 @@ namespace VRemoteDesktop.ViewModels
 
             return ChatRespondHelper.Failed<bool>(systemMessage: string.Format("Load messages failed on connection id {0}", connectionId));
         }
+
         //Check string
         private bool StringValidate<T>(string value, string nameOfValue, out ChatRespond<T> respond)
         {
@@ -489,6 +506,7 @@ namespace VRemoteDesktop.ViewModels
             }
             return true;
         }
+
         /// <summary>
         /// Get chat path by connection id on <see cref="DEFAULT_CHAT_FOLDER"/>
         /// </summary>
@@ -512,6 +530,7 @@ namespace VRemoteDesktop.ViewModels
                 return string.Empty;
             }
         }
+
         /// <summary>
         /// Add Chat Task to Sender Queue of <see cref="VClient"/> 
         /// </summary>
@@ -565,8 +584,10 @@ namespace VRemoteDesktop.ViewModels
                 return;
             }
         }
+
         #endregion
         #region Events
+
         //Event event handler from ChatManager, this event is used to remove chat connection UI when disconnected
         private void ChatDisconnectedEventHandler(object sender, ChatDisconnectedEventArgs e)
         {
@@ -576,6 +597,7 @@ namespace VRemoteDesktop.ViewModels
                 RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(e.SocketId ,ChatControlType.Connection, e.SocketId));
             }
         }
+
         //Event event handler from FileService, this event is used to update progress bar UI when received file data, finally remove file out attachments when finished
         private void FileDataReceivedEventHandler(object sender, FileEventArgs e)
         {
@@ -586,6 +608,7 @@ namespace VRemoteDesktop.ViewModels
             }
             ProgressBarUpdateEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(e.ConnectionId ,e.FileId, e.Size, e.Status));
         }
+
         //Chat data received from partner from VClient
         private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
         {
@@ -607,6 +630,7 @@ namespace VRemoteDesktop.ViewModels
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
             }
         }
+
         //Handler partner request send file
         private void ProcessRequestSendFile(VClient client, byte[] data)
         {
@@ -625,6 +649,7 @@ namespace VRemoteDesktop.ViewModels
                 return;
             }
         }
+
         //Handler partner send message
         private void ProcessMessage(VClient client, byte[] data)
         {
@@ -641,6 +666,7 @@ namespace VRemoteDesktop.ViewModels
                 return;
             }
         }
+
         //Handler partner accepted request send file
         private void ProcessAcceptSendFile(VClient client, byte[] data)
         {
@@ -676,6 +702,7 @@ namespace VRemoteDesktop.ViewModels
                 return;
             }
         }
+
         //Handler decline request send file from partner
         private void ProcessDeclineSendFile(VClient client, byte[] data)
         {
@@ -694,6 +721,7 @@ namespace VRemoteDesktop.ViewModels
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
             }
         }
+
         //Handler file data received from partner
         private void ProcessFileDataReceived(VClient client, byte[] data)
         {
@@ -706,6 +734,7 @@ namespace VRemoteDesktop.ViewModels
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
             }
         }
+
         private void ProcessPartnerStopReceiveFile(VClient client, byte[] arg2)
         {
             try
@@ -725,6 +754,7 @@ namespace VRemoteDesktop.ViewModels
                 ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
             }
         }
+
         #endregion
         public void Dispose()
         {

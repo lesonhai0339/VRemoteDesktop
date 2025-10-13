@@ -35,6 +35,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             return false;
         }
+
         public bool AddControlled(string id, SocketConnection controlled, out RemoteConnection remoteConnection)
         {
             remoteConnection = null;
@@ -46,23 +47,27 @@ namespace VRemoteServer.RelayServer.Services
             }
             return false;
         }
+
         public SocketConnection GetPartner(SocketConnection me)
         {
             var found = Get(v => ReferenceEquals(v.Controller, me) | ReferenceEquals(v.Controlled, me));
             if (found == null) return null;
             return ReferenceEquals(found.Controller, me) ? found.Controlled : found.Controller;
         }
+
         public IEnumerable<SocketConnection> GetPartners(SocketConnection me)
         {
             var found = GetAll(v => ReferenceEquals(v.Controller, me) | ReferenceEquals(v.Controlled, me));
             if (found == null && found.Count() > 0) return null;
             return found.Select(x => ReferenceEquals(x.Controller, me) ? x.Controlled : x.Controller);
         }
+
         public IEnumerable<RemoteConnection> GetRemoteConnectionBySocketConnection(SocketConnection me)
         {
             var remoteConnections = GetAll(v => ReferenceEquals(v.Controller, me) | ReferenceEquals(v.Controlled, me));
             return remoteConnections;
         }
+
         public bool GetPartner(SocketConnection me, out SocketConnection partner)
         {
             partner = null;
@@ -74,6 +79,7 @@ namespace VRemoteServer.RelayServer.Services
             partner = ReferenceEquals(found.Controller, me) ? found.Controlled : found.Controller;
             return true;
         }
+
         public bool GetPartner(string id, SocketConnection me,  out SocketConnection partner)
         {
             partner = null;
