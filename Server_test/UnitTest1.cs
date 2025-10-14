@@ -39,18 +39,19 @@ namespace Server_test
         [Test]
         public async Task TestServerBearing()
         {
-            ILoginServer x= new LoginServer(50, 50 * 1024);
-            ILoginManager y = new LoginManager();
 
-            ILoginManagerService login = new LoginManagerService(x,y);
-            IRemoteControlManagerService remote = new Mock<IRemoteControlManagerService>().Object;
-            var relayServer = new RelayServerManagerService(login, remote);
-            IPEndPoint loginEP = new IPEndPoint(IPAddress.Any, 2399);
+            //ILoginServer x= new LoginServer(50, 50 * 1024);
+            //ILoginManager y = new LoginManager();
 
-            relayServer.InitLoginServer();
-            _ =  relayServer.StartLoginServer(loginEP);
+            //ILoginManagerService login = new LoginManagerService(x,y);
+            //IRemoteControlManagerService remote = new Mock<IRemoteControlManagerService>().Object;
+            //var relayServer = new RelayServerManagerService(login, remote);
+            //IPEndPoint loginEP = new IPEndPoint(IPAddress.Any, 2399);
 
-            await Task.Delay(500);
+            //relayServer.InitLoginServer();
+            //_ =  relayServer.StartLoginServer(loginEP);
+
+            //await Task.Delay(500);
 
             int numberOfConnections = 55;
             List<Socket> sockets = new List<Socket>();
@@ -64,7 +65,7 @@ namespace Server_test
 
                     numberOfConnections -= 1;
 
-                    Console.WriteLine("Number of users logged: " + relayServer.NumberOfLoginUsers);
+                    Console.WriteLine("Number of users logged: " + numberOfConnections);
                 }
                 catch(Exception ex)
                 {
