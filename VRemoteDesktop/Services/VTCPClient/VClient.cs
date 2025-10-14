@@ -241,7 +241,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         if (task.Type == SocketDataType.ScreenSend || task.Type == SocketDataType.ScreenRegionsChangedSend)
                         {
-                            Logger.Log.ForContext("FileName", "ScreenReceived").Info(string.Format("At: {0} - Remain item in queue: {1}", DateTime.Now.ToString("HH:mm:ss:fff"), _receivedQueue.Count));
                             P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                         }
                         else
@@ -279,6 +278,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         try
                         {
+                            Logger.Log.ForContext("FileName", "SenderDoWork").Info(string.Format("At: {0} - Remain item in queue: {1}", DateTime.Now.ToString("HH:mm:ss:fff"), _senderQueue.Count));
                             if (taskObj is TaskGroup taskGroup)
                             {
                                 int length = taskGroup.Tasks.Count;
@@ -544,6 +544,11 @@ namespace VRemoteDesktop.Services.VTCPClient
                 StateObject stateObject = (StateObject)ar.AsyncState;
                 Socket workSocket = stateObject.WorkSocket;
                 int num = Socket.EndReceive(ar);
+                if(num == 0)
+                {
+                    //socket disconnect, dispose (handle soon)
+                }
+
                 if (num > 0)
                 {
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);

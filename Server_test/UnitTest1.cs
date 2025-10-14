@@ -80,44 +80,44 @@ namespace Server_test
                 socket.NoDelay = true;
                 socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
 
-                IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse("192.168.1.122"), 2399);
+                IPEndPoint remoteEP = new IPEndPoint(IPAddress.Parse("27.0.12.78"), 2399);
                 await socket.ConnectAsync(remoteEP);
 
-                //Init client info
-                var computerName = Environment.MachineName;
-                int width = 1080;
-                int height = 765;
-                OperatingSystem os = Environment.OSVersion;
-                Random rd = new Random();
-                ClientInfo info = new ClientInfo
-                {
-                    Id = rd.Next(10000000, 99999999).ToString(),
-                    Password = "1111",
-                    ComputerName = computerName,
-                    Width = width,
-                    Height = height,
-                    MajorVersion = os.Version.Major.ToString(),
-                    MinorVersion = os.Version.Minor.ToString(),
-                    Ip = "192.168.1.122",
-                    Port = "2399",
-                    PublicIP = null
-                };
-                byte[] encoder = Encoding.ASCII.GetBytes(info.ToNetworkString());
+                ////Init client info
+                //var computerName = Environment.MachineName;
+                //int width = 1080;
+                //int height = 765;
+                //OperatingSystem os = Environment.OSVersion;
+                //Random rd = new Random();
+                //ClientInfo info = new ClientInfo
+                //{
+                //    Id = rd.Next(10000000, 99999999).ToString(),
+                //    Password = "1111",
+                //    ComputerName = computerName,
+                //    Width = width,
+                //    Height = height,
+                //    MajorVersion = os.Version.Major.ToString(),
+                //    MinorVersion = os.Version.Minor.ToString(),
+                //    Ip = "192.168.1.122",
+                //    Port = "2399",
+                //    PublicIP = null
+                //};
+                //byte[] encoder = Encoding.ASCII.GetBytes(info.ToNetworkString());
 
-                //Prepare packet sending
-                byte[] packet = new byte[13 + encoder.Length];
-                int length = encoder.Length + 13;
-                Buffer.BlockCopy(BitConverter.GetBytes(length), 0, packet, 0, 4);
-                packet[4] = 0x01;
+                ////Prepare packet sending
+                //byte[] packet = new byte[13 + encoder.Length];
+                //int length = encoder.Length + 13;
+                //Buffer.BlockCopy(BitConverter.GetBytes(length), 0, packet, 0, 4);
+                //packet[4] = 0x01;
 
-                Buffer.BlockCopy(Encoding.ASCII.GetBytes("00000000"), 0, packet, 5, 8);
-                Buffer.BlockCopy(encoder, 0, packet, 13, encoder.Length);
+                //Buffer.BlockCopy(Encoding.ASCII.GetBytes("00000000"), 0, packet, 5, 8);
+                //Buffer.BlockCopy(encoder, 0, packet, 13, encoder.Length);
 
-                socket.BeginSend(packet, 0, packet.Length, SocketFlags.None, (IAsyncResult) =>
-                {
-                    int sent = socket.EndSend(IAsyncResult);
-                    Console.WriteLine("Sent " + sent + " bytes");
-                }, null);
+                //socket.BeginSend(packet, 0, packet.Length, SocketFlags.None, (IAsyncResult) =>
+                //{
+                //    int sent = socket.EndSend(IAsyncResult);
+                //    Console.WriteLine("Sent " + sent + " bytes");
+                //}, null);
 
                 return socket;
             }

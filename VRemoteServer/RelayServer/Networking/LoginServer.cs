@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Microsoft.Extensions.Options;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Domains;
+using VRemoteServer.RelayServer.DTOs;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 
@@ -16,8 +18,8 @@ namespace VRemoteServer.RelayServer.Networking
     }
     public class LoginServer : BaseServer<SocketConnection, SocketConnectionEventArg, LoginErrorEventArgs>, ILoginServer, IDisposable
     {
-        public LoginServer(int numberOfConnections, int receiveBufferSize)
-            : base(numberOfConnections, receiveBufferSize) { }
+        public LoginServer(IRateLimiter rateLimiter, IOptions<LoginServerOptions> options)
+            : base(rateLimiter, options.Value.MaxConnections, options.Value.MaxBufferSize) { }
         public override void SendToDomain(SocketConnection domain, int offset, int length)
         {
             domain.CalCuLateData(offset, length);

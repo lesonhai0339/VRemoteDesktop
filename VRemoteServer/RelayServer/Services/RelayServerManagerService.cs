@@ -16,7 +16,6 @@ using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
 using VRemoteServer.RelayServer.Networking;
-using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
 
 namespace VRemoteServer.RelayServer.Services
 {
