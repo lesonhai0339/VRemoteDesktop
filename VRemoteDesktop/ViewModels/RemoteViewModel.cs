@@ -55,10 +55,32 @@ namespace VRemoteDesktop.ViewModels
         {
             _remoteDesktopService.AddKeyboardListenerOnFormByHandle(handler);
         }
+
         public void StopKeyboardListener(IntPtr handler)
         {
             _remoteDesktopService.RemoveKeyboardListenerOnFormByHandle(handler);
         }
+
+        public RectangleF TransformSize(Size source, Size img, Rectangle rect)
+        {
+            RectangleF displayRect = _mouseExtension.TransformImageToDisplay(source, img, rect);
+            return displayRect;
+        }
+
+        public void GetClipboard(KeyboardEventArgs e)
+        {
+            string clipboard = _remoteDesktopService.GetClipboardString();
+            if (string.IsNullOrEmpty(clipboard)) return;
+
+            _vClient.AddWork(new TaskObject
+            {
+                TaskType = SocketDataType.ClipboardSend,
+                Data = Encoding.UTF8.GetBytes(clipboard),
+                IsSendHeader = true,
+                SessionId = _vClient.SocketId
+            }, QueuePriority.High);
+        }
+
         private Bitmap ParseScreenByteArrayToBitmapImage(byte[] bytes)
         {
             try
@@ -76,16 +98,7 @@ namespace VRemoteDesktop.ViewModels
                 return null;
             }
         }
-        private void ProcessScreenReceived(byte[] screen)
-        {
-            Bitmap image = ParseScreenByteArrayToBitmapImage(screen);
-            if(image != null)
-            {
-                _vClient.AddWork(
-                    new TaskObject(type: SocketDataType.ScreenOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
-                screenEvent?.Invoke(image);
-            }
-        }
+
         private List<ScreenRegion> ParseScreenRegionsChangedByteArrayToList(byte[] bytes)
         {
             //var regions = _screenCaptureExtension.RawChunksToRegions(bytes);
@@ -96,29 +109,24 @@ namespace VRemoteDesktop.ViewModels
                 return null;
             return regions;
         }
+
+        private void ProcessScreenReceived(byte[] screen)
+        {
+            Bitmap image = ParseScreenByteArrayToBitmapImage(screen);
+            if (image != null)
+            {
+                _vClient.AddWork(
+                    new TaskObject(type: SocketDataType.ScreenOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
+                screenEvent?.Invoke(image);
+            }
+        }
+
         private void ProcessScreenRegionsChangedReceived(byte[] screenRegionsChanged)
         {
             var regions = ParseScreenRegionsChangedByteArrayToList(screenRegionsChanged);
             screenRegionsChangedEvent?.Invoke(regions);
         }
-        public RectangleF TransformSize(Size source, Size img, Rectangle rect)
-        {
-            RectangleF displayRect = _mouseExtension.TransformImageToDisplay(source, img, rect);
-            return displayRect;
-        }
-        public void GetClipboard(KeyboardEventArgs e)
-        {
-            string clipboard = _remoteDesktopService.GetClipboardString();
-            if (string.IsNullOrEmpty(clipboard)) return;
 
-            _vClient.AddWork(new TaskObject
-            {
-                TaskType = SocketDataType.ClipboardSend,
-                Data = Encoding.UTF8.GetBytes(clipboard),
-                IsSendHeader = true,
-                SessionId = _vClient.SocketId
-            }, QueuePriority.High);
-        }
         public void ProcessKeyboard(KeyboardEventArgs e)
         {
             string keyboard = Helpers.StringHelper.StringBuilderWithSeparator(DEFAULT_SEPARATOR,(int)e.Command, (int)e.KeyModifier, (int)e.KeyCode, (int)e.KeyType);
@@ -134,12 +142,8 @@ namespace VRemoteDesktop.ViewModels
                 SessionId = _vClient.SocketId
             }, QueuePriority.High);
         }
-        public void ProcessMouseEvent(
-            MouseEventType mouseEvent,
-            PictureBox p,
-            MouseEventArgs e,
-            WindowsMouseMessage mouseMsg = WindowsMouseMessage.None,
-            MouseAction mouseType = MouseAction.None)
+
+        public void ProcessMouseEvent(MouseEventType mouseEvent, PictureBox p, MouseEventArgs e, WindowsMouseMessage mouseMsg = WindowsMouseMessage.None, MouseAction mouseType = MouseAction.None)
         {
             try
             {
@@ -168,6 +172,7 @@ namespace VRemoteDesktop.ViewModels
                 Log.ForContext("FileName", "FormRemote").Error(ex, "MouseEvents error");
             }
         }
+       
         #endregion
         #region EventHandlers
         public event PropertyChangedEventHandler PropertyChanged;
@@ -176,6 +181,7 @@ namespace VRemoteDesktop.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
+
         public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
             if (e.Type == SocketDataType.ScreenSend)
@@ -187,11 +193,13 @@ namespace VRemoteDesktop.ViewModels
                 ProcessScreenRegionsChangedReceived(e.Data);
             }
         }
+
         private void KeyboardReceivedEventHandler(object sender, KeyboardEventArgs e)
         {
             //Direct to from
             keyboardEvent?.Invoke(sender, e);
         }
+
         #endregion
         public void Dispose()
         {
