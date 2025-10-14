@@ -43,6 +43,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
             _globalHook.KeyboardReceived += KeyboardEventHandler;
             _vClientManager.ClientDataReceived += EventReceived;
+            _vClientManager.ClientClosed += VClientClosedEventHandler;
             StartKeyboardListener();
 
         }
@@ -50,6 +51,21 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public bool Disposed => _disposed;
         #endregion
         #region Methods
+        private void VClientClosedEventHandler(object sender, EventArgs e)
+        {
+           if(sender is VClient client)
+            {
+                try
+                {
+                    _clientInfo.RemovePartner(client.Partner?.Id);
+                    _vClientManager.Remove(client.SocketId);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "VClientClosedEventHandler error ");
+                }
+            }
+        }
         public ClientInfo GetMe()
         {
             return _clientInfo.GetMyInfo();
@@ -155,23 +171,33 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 client.Send(SocketDataType.Login, encoder, null);
             }
         }
-        #region TURN
-        public void P2PConnect(string partnerId, string partnerPassword)
+        public bool CheckRemoteConnected(string id)
         {
-            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
+            return _clientInfo.IsExistPartner(id);
+        }
+        #region TURN
+        public bool P2PConnect(string partnerId, string partnerPassword)
+        {
+            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return false;
 
             _reset.Reset();
             string connectionId = StringHelper.RandomStringNumber(8);
             var newConnection = NewClient(connectionId, VClientType.Sender, false);
             if (newConnection == null)
             {
-                return;
+                return false;
             }
-            newConnection.TryConnect(ip: DEFAULT_SERVER_IP, port: int.Parse(DEFAULT_SERVER_PORT));
-            _reset.WaitOne(3000);
-            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
-            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            newConnection.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, newConnection.SocketId, true);
+            if(newConnection.TryConnect(ip: DEFAULT_SERVER_IP, port: int.Parse(DEFAULT_SERVER_PORT)))
+            {
+                string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
+                byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
+                newConnection.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, newConnection.SocketId, true);
+                return true;
+            }
+            else
+            {
+                return false;
+            } 
         }
         private void TURNRequestConnectHandler(object sender, RemoteDesktopEventArgs e)
         {
@@ -180,6 +206,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 var remoteControlClient = _vClientManager.New(connectionId, VClientType.Receiver, false);
                 remoteControlClient.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
                 remoteControlClient.UpdatePartnerInfo(partnerInfo);
+
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
 
                 remoteControlClient.Send(SocketDataType.RemoteControlAcceptedRequestToConnect, dataBytes, remoteControlClient.SocketId, true);
@@ -338,7 +365,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         if (partnerInfo.TryParseData(dataArray.Skip(1).ToArray()))
                         {
                             client.UpdatePartnerInfo(partnerInfo);
-
+                            _clientInfo.AddPartner(partnerInfo);    
 
                             string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, GetMe().ToNetworkString());
                             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
@@ -369,6 +396,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         if (partnerInfo.TryParseData(dataArray))
                         {
                             client.UpdatePartnerInfo(partnerInfo);
+                            _clientInfo.AddPartner(partnerInfo);
 
                             client.Send(SocketDataType.Ready, new byte[0], client.SocketId, true);
 
@@ -387,6 +415,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 try
                 {
+                    _clientInfo.RemovePartner(client.Partner?.Id);  
                     RemoveClientById(client.SocketId);
                     if (client.Partner != null)
                     {
@@ -659,7 +688,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     _globalHook.KeyboardReceived -= KeyboardEventHandler;
                 }
                 if (_vClientManager != null)
+                {
                     _vClientManager.ClientDataReceived -= EventReceived;
+                    _vClientManager.ClientClosed -= VClientClosedEventHandler;
+                }
 
                 _globalHook?.Dispose();
                 _vClientManager?.Dispose();

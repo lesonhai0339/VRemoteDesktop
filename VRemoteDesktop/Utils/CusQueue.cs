@@ -11,6 +11,7 @@ namespace VRemoteDesktop.Utils
 {
     public interface ICusQueue<T>
     {
+        int Count { get; }
         bool HasItem();
         void Enqueue(T tasks, QueuePriority priority);
         bool Dequeue(out T task);
@@ -52,6 +53,8 @@ namespace VRemoteDesktop.Utils
                 { QueuePriority.Low, _lowLock}
             };
         }
+        public int Count =>
+            _highTasks.Count + _mediumTasks.Count + _lowTasks.Count;
         public bool HasItem()
         {
             return _highTasks.TryPeek(out _) 

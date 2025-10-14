@@ -65,6 +65,7 @@ namespace VRemoteDesktop.Views
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
             base.AutoScaleDimensions = new SizeF(6f, 13f);
             this.Text = _vClient.Partner.Id + " - "+ _vClient.Partner.ComputerName;
+
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
             vPictureBox.Size = new Size(_vClient.Partner.Width, _vClient.Partner.Height);
@@ -76,7 +77,7 @@ namespace VRemoteDesktop.Views
             vPictureBox.MouseDown += MouseDownEventHandler;
             vPictureBox.MouseDown += MouseUpEventHandler;
 
-
+            //timer
             _clickTimer = new System.Windows.Forms.Timer();
             int interval = Math.Min(200, SystemInformation.DoubleClickTime / 2);
             _clickTimer.Interval = interval;
@@ -94,21 +95,26 @@ namespace VRemoteDesktop.Views
                 this.Invoke(new Action(UpdateDisconnectUI));
                 return;
             }
+
             Bitmap bmp = new Bitmap(_curScreen.Width, _curScreen.Height);
+
             using (Graphics g = Graphics.FromImage(bmp))
             {
                 g.Clear(Color.Black);
             }
+
             if (vPictureBox.Image != null)
             {
                 vPictureBox.Image.Dispose();
             }
+
             vPictureBox.Image = bmp;
             var result = MessageBox.Show(
                 "Mất kết nối đến đối tác",
                 "Thông báo",
                 MessageBoxButtons.OK,
-                MessageBoxIcon.Warning);
+                MessageBoxIcon.Warning
+            );
 
             if (result == DialogResult.OK)
             {
@@ -207,8 +213,10 @@ namespace VRemoteDesktop.Views
             {
                 //set delay
                 DateTime now = DateTime.Now;
+
                 if ((now - _lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
                     return; // Skip this event
+
                 _lastMouseMoveTime = now;
 
                 bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;

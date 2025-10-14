@@ -106,7 +106,8 @@ namespace VRemoteDesktop.Models
             }
             else
             {
-                throw new InvalidOperationException("Cannot find client");
+                return null;
+                //throw new InvalidOperationException("Cannot find client");
             }
         }
         public int GetMessageCountById(string id)

@@ -59,16 +59,21 @@ namespace VRemoteServer.RelayServer.Domains
         private ConcurrentDictionary<TDomain, QueueSendState> _sendTasks = new ConcurrentDictionary<TDomain, QueueSendState>();
 
 
+        private readonly IRateLimiter _rateLimit;
+
         public virtual event EventHandler<TDomainEvent> ServerEvent;
         public virtual event EventHandler<TException> ServerErrorEvent;
-        public  BaseServer(int numberOfConnections = 1000, int receiveBufferSize = 1024 * 8)
+        public  BaseServer(IRateLimiter rateLimiter, int numberOfConnections = 1000, int receiveBufferSize = 1024 * 8)
         {
             _freePool = numberOfConnections;
             _disposed = false;
+            _rateLimit = rateLimiter;
+
             this.totalBytesRead = 0;
             this.numberConnectedSockets = 0;
             this.numberOfConnections = numberOfConnections;
             this.receiveBufferSize = receiveBufferSize;
+
             bufferManager = new BufferManager(this.receiveBufferSize * this.numberOfConnections * opsToPreAlloc,
                             receiveBufferSize);
             readWritePool = new SocketAsyncEventArgsPool(numberOfConnections);
@@ -354,6 +359,23 @@ namespace VRemoteServer.RelayServer.Domains
         }
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
+            Socket acceptSocket = e.AcceptSocket;
+            string ip = (acceptSocket.RemoteEndPoint as IPEndPoint).Address.ToString();
+
+            if (string.IsNullOrEmpty(ip))
+            {
+                //Reject connection
+                CloseSocket(acceptSocket);
+                return;
+            }
+
+            if (!_rateLimit.CanAccept(ip))
+            {
+                //Reject connection
+                CloseSocket(acceptSocket);
+                return;
+            }
+
             Interlocked.Increment(ref numberConnectedSockets);
             //Console.WriteLine("Client connection accepted. There are {0} clients connected to the server", numberConnectedSockets);
 
@@ -362,7 +384,7 @@ namespace VRemoteServer.RelayServer.Domains
             SocketAsyncEventArgs sendEventArg = sendWritePool.Pop();
             try
             {
-                TDomain domain = CreateDomainFromSocketAsyncEventArgs(readEventArg, sendEventArg, e.AcceptSocket, TDomainEventHandler);
+                TDomain domain = CreateDomainFromSocketAsyncEventArgs(readEventArg, sendEventArg, acceptSocket, TDomainEventHandler);
                 //readEventArg.UserToken = domain;
 
                 Socket socket = GetSocketFromDomain(domain);
@@ -432,6 +454,23 @@ namespace VRemoteServer.RelayServer.Domains
                 }
             }
         }
+        private void CloseSocket(Socket socket)
+        {
+            try
+            {
+                socket.Shutdown(SocketShutdown.Both);
+                socket.Close();
+                socket.Dispose();
+            }
+            catch(SocketException ex)
+            {
+                //Write log
+            }
+            catch(Exception ex)
+            {
+                //Write log
+            }
+        }
         private void CloseClientSocket(TDomain domain)
         {
             try
@@ -441,11 +480,13 @@ namespace VRemoteServer.RelayServer.Domains
                 domain.Dispose();
 
                 ServerErrorEvent?.Invoke(domain, InitException(new ObjectDisposedException(nameof(TDomain)), "Object disconnected"));
-                var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
-                Socket socket = GetSocketFromDomain(domain);
-                var hashCode = socket.GetHashCode();
                 
-                if(socket != null && socket.Connected)
+                var (read, send) = GetReadAndSendSocketAsyncEventArgsFromDomain(domain);
+
+                Socket socket = GetSocketFromDomain(domain); 
+                string ip = (socket?.RemoteEndPoint as IPEndPoint)?.Address.ToString(); 
+
+                if (socket != null && socket.Connected)
                 {
                     try
                     {
@@ -464,8 +505,9 @@ namespace VRemoteServer.RelayServer.Domains
                 readWritePool.Push(read);
                 sendWritePool.Push(send);
 
-
+                _rateLimit.Release(ip);
                 maxNumberAcceptedClients.Release();
+
                 Log.ForContext("FileName", this.GetType().Name).Information("A client has been disconnected from the server. There are {0} clients connected to the server", numberConnectedSockets);
 
             }

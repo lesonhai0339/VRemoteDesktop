@@ -85,6 +85,10 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Methods
+        public bool IsRemoteConnected(string id)
+        {
+            return _remoteDesktopService.CheckRemoteConnected(id);
+        }
         public void Connect(VClient client = null)
         {
             string ip = AppSettingHelper.GetValue("ServerIP");// ?? "27.0.12.78";
@@ -121,7 +125,7 @@ namespace VRemoteDesktop.ViewModels
                     ErrorMessage = "Không thể kết nối với chính mình";
                     return;
                 }
-                if(!useTURNSERVER)
+                if (!useTURNSERVER)
                 {
                     //try P2P first
                     _remoteDesktopService.P2PConnect(_host, id, password);
@@ -129,7 +133,10 @@ namespace VRemoteDesktop.ViewModels
                 else
                 {
                     //use TURN SERVER
-                    _remoteDesktopService.P2PConnect(id, password);
+                    if(!_remoteDesktopService.P2PConnect(id, password))
+                    {
+                        ErrorMessage = "Kết nối thất bại";
+                    }
                 }
             }
             catch (Exception ex)

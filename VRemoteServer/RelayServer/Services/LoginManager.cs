@@ -45,6 +45,7 @@ namespace VRemoteServer.RelayServer.Services
                 return false;
             }
         }
+
         public bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo)
         {
             connectionsInfo = base.GetAll().Where(x => ReferenceEquals(x.SocketConnection, connection)).ToList();
@@ -54,6 +55,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             return false;
         }
+
         public bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo)
         {
             connectionInfo = null;
