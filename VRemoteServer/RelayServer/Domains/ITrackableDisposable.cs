@@ -4,12 +4,10 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VRemoteServer.RelayServer.Enums
+namespace VRemoteServer.RelayServer.Domains
 {
-    public enum ErrorType
+    public interface ITrackableDisposable : IDisposable
     {
-        Exception,
-        SocketDisconnected,
-
+        bool IsDisposed { get; }
     }
 }

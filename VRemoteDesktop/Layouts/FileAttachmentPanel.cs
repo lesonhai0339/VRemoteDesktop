@@ -11,7 +11,7 @@ using VRemoteDesktop.Models;
 using static VRemoteDesktop.Utils.DefaultForm;
 namespace VRemoteDesktop.Layouts
 {
-    public class FileAttachmentLayout: TableLayoutPanel
+    public class FileAttachmentPanel: TableLayoutPanel
     {
         private readonly Font _defaultFont = new Font("Segoe UI", 9F, FontStyle.Bold);// | FontStyle.Italic);
         private string _socketId;
@@ -24,10 +24,10 @@ namespace VRemoteDesktop.Layouts
         private Button _stop;
         private Label _waitingPartnerAccept;
         private VFileInfo _fileInfo;
-        private VProgressBar _progressBar;
+        private ChatProgressBar _progressBar;
 
         public event EventHandler<P2PFileReceivedEventArgs> AcceptSaveFile;
-        public FileAttachmentLayout(string id, string socketId)
+        public FileAttachmentPanel(string id, string socketId)
         {
             _id = id;
             _socketId = socketId;
@@ -38,6 +38,8 @@ namespace VRemoteDesktop.Layouts
         public VFileInfo FileInfo => _fileInfo;
         private void InitializeComponent()
         {
+            this.Margin = new Padding(0);
+            this.Padding = new Padding(0);  
             this.ColumnCount = 3;
             this.RowCount = 2;
             this.Dock = DockStyle.Top;
@@ -138,7 +140,7 @@ namespace VRemoteDesktop.Layouts
                 this.Controls.Remove(this._save);
                 this.Controls.Remove(this._fileSize);
 
-                _progressBar = new VProgressBar(_fileInfo);
+                _progressBar = new ChatProgressBar(_fileInfo);
                 _progressBar.ProgressBarEvent += ProgressCompletedEventHandler;
                 this.Controls.Add(_stop, 2, 0);
                 this.Controls.Add(_progressBar, 1, 1);
@@ -181,12 +183,15 @@ namespace VRemoteDesktop.Layouts
         {
             if(control is Button btn)
             {
+                btn.Parent.Focus(); 
+
                 btn.Enabled = false;
                 btn.FlatStyle = FlatStyle.Flat;
                 btn.TabStop = false;
                 btn.Text = "";
                 btn.FlatAppearance.BorderSize = 0;
                 btn.BackColor = this.BackColor;
+
             }
         }
         private void ProgressCompletedEventHandler(object sender, ChatProgressBarEventArgs e)
@@ -207,6 +212,11 @@ namespace VRemoteDesktop.Layouts
         }
         public void RemoveProgressBar()
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(RemoveProgressBar));
+                return;
+            }
             if (_progressBar != null)
             {
                 _progressBar.ProgressBarEvent -= ProgressCompletedEventHandler;
@@ -214,9 +224,9 @@ namespace VRemoteDesktop.Layouts
                 _progressBar.Dispose();
                 _progressBar = null;
             }
-            ProgressBarCompletedTask(ProgressbarEnum.Stop);
+            ProgressBarCompletedTask(ProgressBarEnum.Stop);
         }
-        private void ProgressBarCompletedTask(ProgressbarEnum type)
+        private void ProgressBarCompletedTask(ProgressBarEnum type)
         {
             var oldControl = this.GetControlFromPosition(1, 1);
             if(oldControl != null)
@@ -226,17 +236,18 @@ namespace VRemoteDesktop.Layouts
             }
             Label btn = new Label
             {
-                Text = type == ProgressbarEnum.Finished ? FORM_COMPLETED
-                : type == ProgressbarEnum.Error ? FORM_ERROR
-                : type == ProgressbarEnum.Timeout ? FORM_TIMEOUT_TITLE
-                : type == ProgressbarEnum.Stop ? FORM_STOP                                                                                                                                                              
+                Text = type == ProgressBarEnum.Finished ? FORM_COMPLETED
+                : type == ProgressBarEnum.Error ? FORM_ERROR
+                : type == ProgressBarEnum.Timeout ? FORM_TIMEOUT_TITLE
+                : type == ProgressBarEnum.Stop ? FORM_STOP                                                                                                                                                              
                 : FORM_ERROR,
 
-                AutoSize = false,
+                AutoSize = true,
                 Font = _defaultFont,
                 Dock = DockStyle.Fill,
             };
             this.Controls.Add(btn, 1, 1);
+            this.DisableControl(_stop);
         }
         public void UpdateRequestSendFileStatus(string text)
         {

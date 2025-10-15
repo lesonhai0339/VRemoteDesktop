@@ -16,6 +16,10 @@ namespace VRemoteDesktop.Services.ConnectionManager
 {
     public interface IClientInfoManager
     {
+        bool AddPartner(ClientInfo info);
+        bool IsExistPartner(string id);
+        bool IsTheSameNetWork(string partnerPublicIp);
+        bool RemovePartner(string id);
         ClientInfo GetMyInfo();
         string GetLocalIPAddress();
         void UpdateMyInfo(byte[] data);
@@ -26,9 +30,11 @@ namespace VRemoteDesktop.Services.ConnectionManager
     {
         private readonly object _lock = new object();
         private ClientInfo _me;
+        private Dictionary<string, ClientInfo> _partners;
         public ClientInfoManager()
         {
             Me = InitMyInfo();
+            _partners = new Dictionary<string, ClientInfo>();
         }
         #region Properties
         public ClientInfo Me
@@ -50,6 +56,29 @@ namespace VRemoteDesktop.Services.ConnectionManager
         }
         #endregion
         #region Methods
+        public bool AddPartner(ClientInfo info)
+        {
+            if (info == null || string.IsNullOrEmpty(info.Id))
+                return false;
+
+            if (_partners.ContainsKey(info.Id))
+                return false;
+
+            _partners.Add(info.Id, info);
+            return true;
+        }
+        public bool IsExistPartner(string id)
+        {
+            return _partners.ContainsKey(id);
+        }
+        public bool IsTheSameNetWork(string partnerPublicIp)
+        {
+            return string.Compare(Me.PublicIP, partnerPublicIp) == 0;
+        }
+        public bool RemovePartner(string id)
+        {
+            return _partners.Remove(id);
+        }
         public ClientInfo GetMyInfo()
         {
             return Me;  
@@ -76,6 +105,15 @@ namespace VRemoteDesktop.Services.ConnectionManager
             return info;
         }
         public string GetLocalIPAddress()
+        {
+            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0))
+            {
+                socket.Connect("8.8.8.8", 65530);
+                var endPoint = socket.LocalEndPoint as IPEndPoint;
+                return endPoint?.Address.ToString() ?? "";
+            }
+        }
+        public string GetLocalIPAddress1()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var ip in host.AddressList)
@@ -123,6 +161,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 return false;
 
             string[] data = StringHelper.StringToStringArrayWithSeparator(dataString);
+
             if (data.Length != DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + indexAddedIncludesPartnerInfo)
                 return false;
 
@@ -131,6 +170,7 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 return false;
 
             connectionId = data[0];
+
             //Note: data at index[0,1,2] are ConnectionId, MyId and MyPassword then partner info start at DefaultClientInfo.field + 3 instead DefaultClientInfo.field
             clientInfo = new ClientInfo
             {
@@ -144,19 +184,17 @@ namespace VRemoteDesktop.Services.ConnectionManager
                 Ip = data[DefaultClientInfo.CLIENT_INFO_IP_INDEX + indexAddedIncludesPartnerInfo],
                 Port = data[DefaultClientInfo.CLIENT_INFO_PORT_INDEX + indexAddedIncludesPartnerInfo],
                 PublicIP = data[DefaultClientInfo.CLIENT_INFO_PUBLIC_IP_INDEX + indexAddedIncludesPartnerInfo],
-                //Id = data[3],
-                //Password = data[4],
-                //ComputerName = data[5],
-                //Width = int.TryParse(data[6], out int width) ? width : 0,
-                //Height = int.TryParse(data[7], out int height) ? height : 0,
-                //MajorVersion = data[8],
-                //MinorVersion = data[9],
-                //Ip = data[10],
-                //Port = data[11],
-                //PublicIP = data[12],
             };
 
-            return true;
+            if (_partners.ContainsKey(clientInfo.Id))
+            {
+                return false;
+            }
+            else
+            {
+                _partners.Add(clientInfo.Id, clientInfo);
+                return true;
+            }
         }
         #endregion
     }

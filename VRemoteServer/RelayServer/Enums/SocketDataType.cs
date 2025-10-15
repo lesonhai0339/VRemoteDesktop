@@ -8,28 +8,41 @@ namespace VRemoteServer.RelayServer.Enums
 {
     public enum SocketDataType : byte
     {
+        //Login
         None = 0x00,
         Login = 0x01,
-        P2PRequestConnect = 0x02,
+        Connect = 0x13,
+        LoginFailed = 0x90,
         Disconnect = 0x03,
         Ping = 0x04,
         Pong = 0x05,
         Error = 0x06,
-        Screen = 0x07,
-        Chunks = 0x08,
-        Keyboard = 0x09,
-        Mouse = 0x0A,
-        ScreenOk = 0x0C,
-        ChunksOk = 0x0D,
-        Clipboard = 0x0E,
-        Chat = 0x0F,
-        Connect = 0x13,
-        P2PDataSend = 0x14,
-        P2PDataSendError = 0x15,
-        LoginFailed = 0x90,
-        P2PDisconnect = 0x91,
-        P2PConnectFailed = 0x92,
-        P2PAcceptConnect = 0x93,
-        P2PRejectConnect = 0x94
+
+        P2PConnect = 0x10, //RequestToConnectP2P
+        P2PDataRespond = 0x11, //RespondRequestToConnectP2P
+        P2PAcceptConnect = 0x12, //AcceptConnectP2P 
+        P2PLogin = 0x16, //DataTransferP2P
+        P2PLoginSucceed = 0x17, //DataTransferP2PSucceed
+        P2PLoginFailed = 0x18, //DataTransferP2PFailed
+        P2PInvalidConnectData = 0x19,
+
+        //Remote control
+        ScreenSend = 0x07, //Screen
+        ScreenRegionsChangedSend = 0x08, //Chunks
+        RemoteControlScreenSend = 0x09, //Keyboard
+        MouseSend = 0x0A, //Mouse
+        ClipboardSend = 0x0E, //Clipboard
+        ChatSend = 0x0F, //Chat
+        ScreenOk = 0x0C, //ScreenOk
+        RegionsChangedOk = 0x0D, //ChunksOk
+        Ready = 0x95,
+
+        RemoteControlRequestToConnect = 0x02,
+        RemoteControlDataSend = 0x14, //P2PDataSend
+        RemoteControlDataSendFailed = 0x15, //P2PDataSendError
+        RemoteControlDisconnect = 0x91, //P2PDisconnect
+        RemoteControlConnectFailed = 0x92, //P2PConnectFailed
+        RemoteControlAcceptedRequestToConnect = 0x93, //P2PAcceptConnect
+        RemoteControlRefusedRequestToConnect = 0x94, //P2PRejectConnect
     }
 }

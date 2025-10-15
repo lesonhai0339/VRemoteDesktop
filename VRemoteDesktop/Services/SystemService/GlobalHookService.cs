@@ -111,7 +111,7 @@ namespace VRemoteDesktop.Services.SystemService
             type = SocketDataType.None;
             if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
             {
-                type = SocketDataType.Clipboard;
+                type = SocketDataType.ClipboardSend;
                 clipboardBytes = Encoding.UTF8.GetBytes(GetClipboard());
                 return true;
             }
@@ -212,7 +212,7 @@ namespace VRemoteDesktop.Services.SystemService
         }
         public List<byte[]> GetFirstScreen()
         {
-            return _screenCaptureService.GetScreenPacketsWithoutChecksum();
+            return _screenCaptureService.GetScreenPackets();
         }
         #endregion
         #region Events

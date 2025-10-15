@@ -57,6 +57,7 @@ namespace VRemoteDesktop.Views
             _remoteViewModel.screenEvent += ScreenEventHandler;
             _remoteViewModel.screenRegionsChangedEvent += ScreenRegionsChangedEventHandler;
             _remoteViewModel.keyboardEvent += KeyboardReceivedEventHandler;
+            _remoteViewModel.DisconnectedEvent += DisconnectedEventHandler;
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
@@ -64,6 +65,7 @@ namespace VRemoteDesktop.Views
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
             base.AutoScaleDimensions = new SizeF(6f, 13f);
             this.Text = _vClient.Partner.Id + " - "+ _vClient.Partner.ComputerName;
+
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
             vPictureBox.Size = new Size(_vClient.Partner.Width, _vClient.Partner.Height);
@@ -75,11 +77,49 @@ namespace VRemoteDesktop.Views
             vPictureBox.MouseDown += MouseDownEventHandler;
             vPictureBox.MouseDown += MouseUpEventHandler;
 
-
+            //timer
             _clickTimer = new System.Windows.Forms.Timer();
             int interval = Math.Min(200, SystemInformation.DoubleClickTime / 2);
             _clickTimer.Interval = interval;
             _clickTimer.Tick += ClickTimer_Tick;
+        }
+
+        private void DisconnectedEventHandler(object sender, EventArgs e)
+        {
+            UpdateDisconnectUI();
+        }
+        private void UpdateDisconnectUI()
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(UpdateDisconnectUI));
+                return;
+            }
+
+            Bitmap bmp = new Bitmap(_curScreen.Width, _curScreen.Height);
+
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.Black);
+            }
+
+            if (vPictureBox.Image != null)
+            {
+                vPictureBox.Image.Dispose();
+            }
+
+            vPictureBox.Image = bmp;
+            var result = MessageBox.Show(
+                "Mất kết nối đến đối tác",
+                "Thông báo",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning
+            );
+
+            if (result == DialogResult.OK)
+            {
+                this.Close();
+            }
         }
         #region Properties
         #endregion
@@ -101,6 +141,7 @@ namespace VRemoteDesktop.Views
                 _remoteViewModel.screenEvent -= ScreenEventHandler;
                 _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
                 _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;
+                _remoteViewModel.DisconnectedEvent -= DisconnectedEventHandler;
             }
             //Form
             _curScreen?.Dispose();
@@ -172,8 +213,10 @@ namespace VRemoteDesktop.Views
             {
                 //set delay
                 DateTime now = DateTime.Now;
+
                 if ((now - _lastMouseMoveTime).TotalMilliseconds < MOUSE_MOVE_THROTTLE_MS)
                     return; // Skip this event
+
                 _lastMouseMoveTime = now;
 
                 bool isLeftButtonDown = (Control.MouseButtons & MouseButtons.Left) == MouseButtons.Left;

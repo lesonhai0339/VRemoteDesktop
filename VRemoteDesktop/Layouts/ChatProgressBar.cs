@@ -9,7 +9,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Utils;
 namespace VRemoteDesktop.Layouts
 {
-    public class VProgressBar : ProgressBar
+    public class ChatProgressBar : ProgressBar
     {
         private long _totalSize;
         private float _received;
@@ -17,7 +17,7 @@ namespace VRemoteDesktop.Layouts
         private DateTime _time;
 
         public event EventHandler<ChatProgressBarEventArgs> ProgressBarEvent;
-        public VProgressBar(VFileInfo fileInfo)
+        public ChatProgressBar(VFileInfo fileInfo)
         {
             if (fileInfo == null)
                 throw new ArgumentNullException(nameof(fileInfo));
@@ -50,7 +50,7 @@ namespace VRemoteDesktop.Layouts
             if (elapsed > DefaultValue.DEFAULT_TIMEOUT_MINUTES)
             {
                 _timeout?.Dispose();
-                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Timeout));
+                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressBarEnum.Timeout));
             }
         }
         public void SetStep(int length)
@@ -72,7 +72,7 @@ namespace VRemoteDesktop.Layouts
                 this.PerformStep();
             }
             if (this.Value == this.Maximum)
-                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressbarEnum.Finished));
+                ProgressBarEvent?.Invoke(this, new ChatProgressBarEventArgs(ProgressBarEnum.Finished));
         }
     }
 }

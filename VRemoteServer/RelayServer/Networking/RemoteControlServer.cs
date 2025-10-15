@@ -1,10 +1,12 @@
-﻿using System;
+﻿using Microsoft.Extensions.Options;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.Domains;
+using VRemoteServer.RelayServer.DTOs;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 
@@ -16,8 +18,8 @@ namespace VRemoteServer.RelayServer.Networking
     }
     public class RemoteControlServer : BaseServer<SocketConnection, SocketConnectionEventArg, RemoteControlErrorEventArgs>, IRemoteControlServer, IDisposable
     {
-        public RemoteControlServer(int numberOfConnections, int receiveBufferSize)
-            : base(numberOfConnections, receiveBufferSize) { }
+        public RemoteControlServer(IRateLimiter rateLimiter, IOptions<RemoteControlServerOptions> options)
+            : base(rateLimiter, options.Value.MaxConnections, options.Value.MaxBufferSize) { }
         public override void SendToDomain(SocketConnection domain, int offset, int length)
         {
            domain.CalCuLateData(offset, length);
@@ -59,6 +61,10 @@ namespace VRemoteServer.RelayServer.Networking
         public override RemoteControlErrorEventArgs InitException(Exception ex, string note)
         {
             return new RemoteControlErrorEventArgs(ex, note);
+        }
+        public override void SetTime(SocketConnection domain)
+        {
+            domain.UpdateTime();
         }
     }
 }

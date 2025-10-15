@@ -12,8 +12,12 @@ using VRemoteDesktop.Enums;
 
 namespace VRemoteDesktop.Helpers
 {
+     /// <summary>
+     /// Chua cac ham xu ly byte array
+     /// </summary>
     internal static class ByteArrayHelper
     {
+
         public static BaseResponse<string> ConvertByteArrayToString(byte[] data, EncodingType encoding)
         {
             if (data == null || data.Length == 0)
@@ -146,6 +150,13 @@ namespace VRemoteDesktop.Helpers
                     bitmap.UnlockBits(bmpData);
             }
         }
+        /// <summary>
+        /// Cat bo cutLength byte tu dau mang va thay doi kich thuoc mang
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="cutLength"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static BaseResponse<byte[]> RemoveFirstInSource(byte[] data, int cutLength)
         {
             if (cutLength < 0 || cutLength > data.Length)
@@ -167,6 +178,13 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
+        /// <summary>
+        /// Cat bo cutLength byte tu dau va tra ve mang moi chua du lieu con lai
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="cutLength"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentOutOfRangeException"></exception>
         public static BaseResponse<byte[]> RemoveFirstNew(byte[] data, int cutLength)
         {
             if (cutLength < 0 || cutLength > data.Length)
@@ -189,6 +207,12 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
+        /// <summary>
+        /// Su dung de gui cac packets co kich thuoc co đinh. hien khong su dung
+        /// </summary>
+        /// <param name="sourceByte"></param>
+        /// <param name="length"></param>
+        /// <returns></returns>
         public static BaseResponse<byte[]> AddPaddingToBytes(byte[] sourceByte, int length = 1025)
         {
             try
@@ -231,6 +255,11 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
+        /// <summary>
+        /// Compress DeflateStream
+        /// </summary>
+        /// <param name="data"></param>
+        /// <returns></returns>
         public static BaseResponse<byte[]> Compress(byte[] data)
         {
             if (data == null || data.Length == 0)
@@ -389,6 +418,12 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
+        /// <summary>
+        /// Merge two byte array to one array and return new array
+        /// </summary>
+        /// <param name="firstArray"></param>
+        /// <param name="secondArray"></param>
+        /// <returns></returns>
         public static BaseResponse<byte[]> Combine(byte[] firstArray, byte[] secondArray)
         {
             try
@@ -416,6 +451,13 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
+        /// <summary>
+        /// Split byte array to List<byte[]> with each item has size = size, except last item
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="length"></param>
+        /// <param name="size"></param>
+        /// <returns></returns>
         public static BaseResponse<List<byte[]>> ToListByteArray(byte[] source, int length, int size)
         {
             try
@@ -465,6 +507,11 @@ namespace VRemoteDesktop.Helpers
                 );
             }
         }
+        /// <summary>
+        /// Get data from file and convert to byte array
+        /// </summary>
+        /// <param name="filePath"></param>
+        /// <returns></returns>
         public static BaseResponse<byte[]> FileToByteArray(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
