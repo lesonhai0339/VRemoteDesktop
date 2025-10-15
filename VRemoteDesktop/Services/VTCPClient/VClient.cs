@@ -241,19 +241,27 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         if (task.Type == SocketDataType.ScreenSend || task.Type == SocketDataType.ScreenRegionsChangedSend)
                         {
-                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
+                            var latestScreenTask = task;
+                            while (_receivedQueue.TryTake(out var nextTask, 0)) // Non-blocking peek
+                            {
+                                if (nextTask.Type == SocketDataType.ScreenSend ||
+                                    nextTask.Type == SocketDataType.ScreenRegionsChangedSend)
+                                {
+                                    latestScreenTask = nextTask; // Keep the newer one
+                                }
+                                else
+                                {
+                                    // Different task type, we need to process it later
+                                    // Put it back or handle it immediately
+                                    // Since we can't put it back, handle it here:
+                                    ProcessNonScreenTask(nextTask);
+                                }
+                            }
+                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(latestScreenTask.Type, latestScreenTask.Data));
                         }
                         else
                         {
-                            switch (task.Type)
-                            {
-                                case SocketDataType.ChatSend:
-                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
-                                    break;
-                                default:                                  
-                                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
-                                    break;
-                            }
+                            ProcessNonScreenTask(task);
                         }        
                     }
                     catch (Exception ex)
@@ -265,6 +273,18 @@ namespace VRemoteDesktop.Services.VTCPClient
             catch(OperationCanceledException ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
+            }
+        }
+        private void ProcessNonScreenTask(DataReceive task)
+        {
+            switch (task.Type)
+            {
+                case SocketDataType.ChatSend:
+                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
+                    break;
+                default:
+                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
+                    break;
             }
         }
         private void SenderDoWork(object sender, DoWorkEventArgs e)
