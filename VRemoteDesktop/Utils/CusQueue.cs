@@ -87,12 +87,7 @@ namespace VRemoteDesktop.Utils
             }
             lock (_mediumLock)
             {
-                bool foundAny = false;
-                while (_mediumTasks.TryDequeue(out task))
-                {
-                    foundAny = true;
-                }
-                if (foundAny) return true;
+                if (_mediumTasks.TryDequeue(out task)) return true;
             }
             lock (_lowLock)
             {
