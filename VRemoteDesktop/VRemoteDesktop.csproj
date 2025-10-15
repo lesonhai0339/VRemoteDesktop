@@ -193,6 +193,9 @@
     <EmbeddedResource Include="Views\FormChat.resx">
       <DependentUpon>FormChat.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Views\FormMain.en.resx">
+      <DependentUpon>FormMain.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Views\FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
     </EmbeddedResource>
