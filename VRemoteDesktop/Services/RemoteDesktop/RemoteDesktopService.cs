@@ -19,7 +19,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public class RemoteDesktopService : IDisposable
     {
-       
+       private readonly object _lock = new object();
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
@@ -430,9 +430,21 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             if (sender is VClient client)
             {
-                var screen = _globalHook.GetFirstScreen();
+                List<byte[]> screen;
+                lock (_lock)
+                {
+                    screen = _globalHook.GetFirstScreen();
+                }
                 int length = screen.Sum(x => x.Length);
-                SendScreen(client, SocketDataType.ScreenSend, screen, length);
+
+                var header = client.HeaderGenerate(type: SocketDataType.ScreenSend, socketId: client.SocketId, dataSize: length);
+                client.Send(SocketDataType.ScreenSend, header, client.SocketId, false);
+
+                for (int i = 0; i < screen.Count; i++)
+                {
+                    client.Send(SocketDataType.ScreenSend, screen[i], client.SocketId, false);
+                }
+                //SendScreen(client, SocketDataType.ScreenSend, screen, length);
 
                 RespondEvent?.Invoke(client, e);
             }
@@ -443,6 +455,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 client.ScreenSucceeded = true;
             }
+
             if (_vClientManager.HasClientOfType(VClientType.Receiver))
                 StartScreenCapture();
         }

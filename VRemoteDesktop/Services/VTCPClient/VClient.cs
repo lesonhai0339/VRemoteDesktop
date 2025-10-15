@@ -15,17 +15,18 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
     public class VClient : IDisposable
     {
+        private int _isDisposed;
         private bool isHost;
         private bool _screenSucceeded;
         private bool _isSocketConnected;
         private bool _isP2PConnected;
-        private volatile bool _isDisposed;
         private object _lockObject = new object();
         private string _socketId;
         private VClientType _clientType;
@@ -54,9 +55,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         private int bytesPerSecond;
         public VClient(string socketId, VClientType clientType, bool isHost = false)
         {
-            Partner = null;
+            _isDisposed = 0;
+            _partnerInfo = null;
             _screenSucceeded = false;
-            _isDisposed = false;
             _isP2PConnected = false;
             _isSocketConnected = false;
             _socketId = socketId;
@@ -272,6 +273,11 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             catch(OperationCanceledException ex)
             {
+                //Expected
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
+            }
+            catch(Exception ex)
+            {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
             }
         }
@@ -369,12 +375,16 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWork(TaskObject task, QueuePriority priority)
         {
-            if (task == null) return;
+
+            if (task == null) 
+                return;
+
             _senderQueue.Enqueue(task, priority);
             //_senderTasks.Enqueue(task, (int)task.Priority);
         }
         public void AddWorkGroup(List<TaskObject> tasks, QueuePriority priority)
         {
+
             if (tasks == null || tasks.Count == 0) return;
 
             _senderQueue.Enqueue(new TaskGroup(tasks), priority);
@@ -382,13 +392,17 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWorkGroup(TaskObject[] tasks, QueuePriority priority)
         {
-            if (tasks == null || tasks.Length == 0) return;
+
+            if (tasks == null || tasks.Length == 0) 
+                return;
+
             _senderQueue.Enqueue(new TaskGroup(tasks), priority);
             //_senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
         }
 
         public bool TryConnect(string ip, int port, int retry = 0, int waitRespondTime = 3000)
         {
+
             bool respond;
             int count = 0;
             while (count <= retry)
@@ -454,7 +468,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                 Socket.NoDelay = true;
             }
-            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
 
             _socket.Bind(endpoint);
             _socket.Listen(1);
@@ -543,7 +557,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void UpdatePartnerInfo(ClientInfo partnerInfo)
         {
-            if(partnerInfo == null)
+            if (partnerInfo == null)
             {
                 //Info invalid, dispose this class
                 this.Dispose();
@@ -566,7 +580,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                 int num = Socket.EndReceive(ar);
                 if(num == 0)
                 {
-                    //socket disconnect, dispose (handle soon)
+                    //Socket disconnect, dispose this class
+                    this.Dispose();
+                    return;
                 }
 
                 if (num > 0)
@@ -659,10 +675,13 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0)
         {
+
             if (type == SocketDataType.None)
                 return null;
+
             if (string.IsNullOrWhiteSpace(socketId))
                 socketId = this.SocketId;
+
             try
             {
                 int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + socketId.Length;
@@ -765,6 +784,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         /// <param name="isSendHeader"></param>
         public void Send(SocketDataType type, byte[] data, string socketId, bool isSendHeader = true)
         {
+            if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
+                throw new ObjectDisposedException(this.GetType().Name);
+
             try
             {
                 if (type == SocketDataType.None)
@@ -804,15 +826,19 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void Send(Sendstate state)
         {
-            if (_socket == null) return;
+            if (_socket == null) 
+                return;
+
             if (!_socket.Connected)
             {
                 throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
             }
+
             if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
             {
                 throw new TimeoutException("Send timeout");
             }
+
             _socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
         }
         private void SendCallback(IAsyncResult ar)
@@ -850,19 +876,20 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void Cancel()
         {
+            if (_isDisposed == 1) return;
             _cts.Cancel();
         }
         public void Dispose()
         {
-            SocketDisposing?.Invoke(this, new SocketDisposeEventArgs(SocketId));
             Dispose(true);
             GC.SuppressFinalize(this);
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing &&  Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
             {
-                if (_isDisposed) return;
+                SocketDisposing?.Invoke(this, new SocketDisposeEventArgs(SocketId));
+
                 if (_cts != null)
                 {
                     try
@@ -904,19 +931,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     _senderQueue.Dispose();
                 }
-                lock (_lockObject)
-                {
-                    try
-                    {
-                        SocketDataType type = isHost ? SocketDataType.Disconnect : SocketDataType.RemoteControlDisconnect;
-                        Send(type, new byte[0], null, true);
-                        Thread.Sleep(50);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Log.ForContext("", this.GetType().Name).Error(ex, "Send disconnection at dispose error: ");
-                    }
-                }
                 try
                 {
                     _socket?.Shutdown(SocketShutdown.Both);
@@ -930,11 +944,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                 // Set flags
                 _isSocketConnected = false;
                 _isP2PConnected = false;
-                _isDisposed = true;
                 _sckConnect.Dispose();
                 _workAvailable.Dispose();
             }
-            _isDisposed = true;
         }
         #endregion
     }
