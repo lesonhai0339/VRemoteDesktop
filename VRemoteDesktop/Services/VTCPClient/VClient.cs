@@ -242,23 +242,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         if (task.Type == SocketDataType.ScreenSend || task.Type == SocketDataType.ScreenRegionsChangedSend)
                         {
-                            var latestScreenTask = task;
-                            while (_receivedQueue.TryTake(out var nextTask, 0)) // Non-blocking peek
-                            {
-                                if (nextTask.Type == SocketDataType.ScreenSend ||
-                                    nextTask.Type == SocketDataType.ScreenRegionsChangedSend)
-                                {
-                                    latestScreenTask = nextTask; // Keep the newer one
-                                }
-                                else
-                                {
-                                    // Different task type, we need to process it later
-                                    // Put it back or handle it immediately
-                                    // Since we can't put it back, handle it here:
-                                    ProcessNonScreenTask(nextTask);
-                                }
-                            }
-                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(latestScreenTask.Type, latestScreenTask.Data));
+                            P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                         }
                         else
                         {
@@ -304,7 +288,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         try
                         {
-                            Logger.Log.ForContext("FileName", "SenderDoWork").Info(string.Format("At: {0} - Remain item in queue: {1}", DateTime.Now.ToString("HH:mm:ss:fff"), _senderQueue.Count));
                             if (taskObj is TaskGroup taskGroup)
                             {
                                 int length = taskGroup.Tasks.Count;

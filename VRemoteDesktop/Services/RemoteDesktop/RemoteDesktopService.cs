@@ -23,6 +23,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
+        private bool _isCapturting = false; 
 
         private readonly IClientInfoManager _clientInfo;
         private readonly GlobalHookService _globalHook;
@@ -168,12 +169,22 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _vClientManager.Remove(id);
             if (_vClientManager.Connections.Count == 0)
             {
-                StopScreenCapture();
+                lock (_lock)
+                {
+                    StopScreenCapture();
+                    _isCapturting = false;
+                }
             }
             else
             {
                 if (!_vClientManager.HasClientOfType(VClientType.Receiver))
-                    StopScreenCapture();
+                {
+                    lock (_lock)
+                    {
+                        StopScreenCapture();
+                        _isCapturting = false;
+                    }
+                }
             }
         }
         public VClient GetClientById(string id)
@@ -496,7 +507,16 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
 
             if (_vClientManager.HasClientOfType(VClientType.Receiver))
-                StartScreenCapture();
+            {
+                lock (_lock)
+                {
+                     if(!_isCapturting)
+                {
+                    _isCapturting = true;
+                    StartScreenCapture();
+                }
+                }
+            }
         }
         private void SendScreen(VClient client, SocketDataType type, List<byte[]> data, int totalSize)
         {
