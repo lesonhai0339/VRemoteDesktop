@@ -111,6 +111,7 @@
     <Compile Include="Layouts\ChatProgressBar.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Layouts\MsgBox.cs" />
     <Compile Include="Models\ChatManager.cs" />
     <Compile Include="Models\ChatRespond.cs" />
     <Compile Include="Models\ChunkFileInfo.cs" />

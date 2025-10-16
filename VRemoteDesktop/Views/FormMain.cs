@@ -9,6 +9,7 @@ using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.RemoteDesktop;
@@ -86,16 +87,20 @@ namespace VRemoteDesktop
 
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
-
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke((MethodInvoker)(() => OnViewModelPropertyChanged(sender, e)));
+                return;
+            }
             if(e.PropertyName == "ConnectStatus")
             {
                 UpdateConnectionStatus(_viewModel.ConnectStatus);
             }
             else if(e.PropertyName == "ErrorMessage")
             {
-                MessageBox.Show(_viewModel.ErrorMessage, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MsgBox.Show(_viewModel.ErrorMessage, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)

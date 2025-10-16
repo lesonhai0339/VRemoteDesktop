@@ -29,10 +29,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly VClientManager _vClientManager;
         private ManualResetEvent _reset;
 
+        private Dictionary<SocketDataType, Action<object, EventArgs>> _eventHandlers;
+
         public event EventHandler<KeyboardEventArgs> KeyboardEvent;
         public event EventHandler<RemoteDesktopEventArgs> RespondEvent;
         public RemoteDesktopService(GlobalHookService globalHook, VClientManager vClientManager, IClientInfoManager clientInfo)
         {
+            Initialize();
+
             _disposed = false;
             _clientInfo = clientInfo;
             _reset = new ManualResetEvent(false);
@@ -44,8 +48,43 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _globalHook.KeyboardReceived += KeyboardEventHandler;
             _vClientManager.ClientDataReceived += EventReceived;
             _vClientManager.ClientClosed += VClientClosedEventHandler;
-            StartKeyboardListener();
+            StartKeyboardListener();  
+        }
+        private void Initialize()
+        {
+            _eventHandlers = new Dictionary<SocketDataType, Action<object, EventArgs>>
+            {
+                //login
+                { SocketDataType.Connect, null},
+                { SocketDataType.Disconnect, null},
+                { SocketDataType.Login, null},
+                { SocketDataType.LoginFailed, null},
+                { SocketDataType.Error, null},
 
+                //p2p
+                { SocketDataType.P2PConnect, null},
+                { SocketDataType.P2PDataRespond, null},
+                { SocketDataType.P2PAcceptConnect, null},
+                { SocketDataType.P2PLogin, null},
+                { SocketDataType.P2PLoginSucceed, null},
+                { SocketDataType.P2PLoginFailed, null},
+                { SocketDataType.P2PInvalidConnectData, null},
+
+                //turn server
+                { SocketDataType.RemoteControlRequestToConnect, null},
+                { SocketDataType.RemoteControlAcceptedRequestToConnect, null},
+                { SocketDataType.RemoteControlRefusedRequestToConnect, null},
+                { SocketDataType.RemoteControlConnectFailed, null},
+                { SocketDataType.RemoteControlDisconnect, null},
+                { SocketDataType.RemoteControlDataSendFailed, null},
+
+                //low-level
+                { SocketDataType.ClipboardSend, null},
+                { SocketDataType.MouseSend, null},
+                { SocketDataType.KeyboardSend, null},
+                { SocketDataType.Ready, null},
+                { SocketDataType.ScreenOk, null},
+            };
         }
         #region Properties
         public bool Disposed => _disposed;
@@ -662,7 +701,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 case SocketDataType.MouseSend:
                     MouseReceivedEventHandler(sender, e);
                     break;
-                case SocketDataType.RemoteControlScreenSend:
+                case SocketDataType.KeyboardSend:
                     KeyboardReceivedEventHandler(sender, e);
                     break;
                 case SocketDataType.RemoteControlDisconnect:
