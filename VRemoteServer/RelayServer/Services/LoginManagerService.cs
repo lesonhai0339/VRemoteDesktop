@@ -18,7 +18,7 @@ namespace VRemoteServer.RelayServer.Services
     public interface ILoginManagerService
     {
         int NumberOfConnections { get; }
-        void P2PConnectFailed(SocketConnection connection, string connectionId);
+        void P2PConnectFailed(SocketConnection connection);
         void Send(SocketConnection connection, byte[] data);
         bool SendWithRespond(SocketConnection connection, byte[] data);
         bool GetFirst(string id, string password, out ConnectionInfo connectionInfo);
@@ -79,9 +79,9 @@ namespace VRemoteServer.RelayServer.Services
             connection.UpdateTime();
         }
 
-        public void P2PConnectFailed(SocketConnection connection, string connectionId)
+        public void P2PConnectFailed(SocketConnection connection)
         {
-            byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PInvalidConnectData, connectionId);
+            byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PInvalidConnectData);
             Send(connection, packet);
         }
 

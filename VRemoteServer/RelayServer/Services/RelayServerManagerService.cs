@@ -121,35 +121,45 @@ namespace VRemoteServer.RelayServer.Services
 
         private bool P2PLogin(object sender,byte[] data)
         {
-            if (sender is SocketConnection me)
+            var connection = sender as SocketConnection;
+            if (connection == null)
+                return false;
+
+            try
             {
-                try
+                string[] dataParsed = Encoding.ASCII.ByteArrayToStringWithSeparator(data, DefaultValue.Common.SEPARATOR); //three
+                P2PConnectInfo connectInfo = new P2PConnectInfo();
+                if (connectInfo.TryParseData(dataParsed))
                 {
-                    string[] partnerIdAndPassword = Encoding.ASCII.ByteArrayToStringWithSeparator(data, '|'); //three
-                    if (_loginManager.GetFirst(partnerIdAndPassword[1], partnerIdAndPassword[2], out var validInfo))
+                    if (_loginManager.GetFirst(connectInfo.ConnectionId, connectInfo.ConnectionPassword, out var validInfo))
                     {
                         //Send request to partner
-                        var byteArray1 = PacketFactory.CreatePacket(SocketDataType.P2PConnect, data: Encoding.ASCII.StringToByteArray(partnerIdAndPassword[0]));
+                        var byteArray1 = PacketFactory.CreatePacket(SocketDataType.P2PConnect, data: Encoding.ASCII.StringToByteArray(connectInfo.Id));
                         bool respond = _loginManager.SendWithRespond(validInfo.SocketConnection, byteArray1);
 
                         if (respond)
                         {
                             //Send back to me
-                            byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Ip, validInfo.Port);
+                            P2PNetworkInfo networkInfo = new P2PNetworkInfo
+                            (
+                                id: connectInfo.Id,
+                                publicIP: validInfo.PublicIP,
+                                localIP: validInfo.Ip,
+                                port: validInfo.Port
+                            );
+
+                            byte[] dataSend = Encoding.ASCII.StringToByteArray(networkInfo.ToNetworkString());
                             var byteArray = PacketFactory.CreatePacket(SocketDataType.P2PDataRespond, data: dataSend);
-                            _loginManager.SendWithRespond(me, byteArray);
-                            return true;
+                            return _loginManager.SendWithRespond(connection, byteArray);
                         }
                     }
-                    _loginManager.P2PConnectFailed(me, partnerIdAndPassword[0]);
-                    return false;
-                }
-                catch (Exception ex)
-                {
-                    _loginManager.P2PConnectFailed(me, null);
-                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
                 }
             }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+            }
+            _loginManager.P2PConnectFailed(connection);
             return false;
         }
 

@@ -12,7 +12,7 @@ using VRemoteServer.RelayServer.Networking;
 namespace VRemoteServer.RelayServer.DTOs
 {
     [DataContract]
-    public class ConnectionInfo
+    public class ConnectionInfo: BaseClass
     {
         public ConnectionInfo() { }
         public ConnectionInfo(string id, 
@@ -39,89 +39,16 @@ namespace VRemoteServer.RelayServer.DTOs
             Port = port;
             SocketConnection = socketConnection;
         }
-        [DataMember(Order = 0)]
-        public string Id { get; set; }
-        [DataMember(Order = 1)]
-        public string Password { get; set; }
-        [DataMember(Order = 2)]
-        public string ComputerName { get; set; }
-        [DataMember(Order = 3)]
-        public int Width { get; set; }
-        [DataMember(Order = 4)]
-        public int Height { get; set; }
-        [DataMember(Order = 5)]
-        public string MajorVersion { get; set; }
-        [DataMember(Order = 6)]
-        public string MinorVersion { get; set; }
-        [DataMember(Order = 7)]
-        public string Ip { get; set; }
-        [DataMember(Order = 8)]
-        public string Port { get; set; }
-        [DataMember(Order = 9)]
-        public string PublicIP { get; set; }
-
-        [NotMapped]
-        public SocketConnection SocketConnection { get; set; }
-        public string ToNetworkString()
-        {
-            StringBuilder sb = new StringBuilder();
-            var props = this.GetType()
-                            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                            .Where(p => !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
-                            .Select(p => new { prop = p, attr = p.GetCustomAttribute<DataMemberAttribute>() })
-                            .Where(p => p.attr != null)
-                            .OrderBy(p => p.attr.Order)
-                            .Select(p => p.prop)
-                            .ToArray();
-
-            foreach (var prop in props)
-            {
-                if (Attribute.IsDefined(prop, typeof(NotMappedAttribute)))
-                    continue;
-
-                var value = prop.GetValue(this);
-                sb.Append(value ?? string.Empty).Append(DefaultValue.Common.SEPARATOR);
-            }
-            return sb.ToString().TrimEnd(DefaultValue.Common.SEPARATOR);
-        }
-        public bool TryParseData(string[] data)
-        {
-            var props = this.GetType()
-                            .GetProperties(BindingFlags.Public | BindingFlags.Instance)
-                            .Where(p => !Attribute.IsDefined(p, typeof(NotMappedAttribute)))
-                            .Select(p => new { prop = p, attr = p.GetCustomAttribute<DataMemberAttribute>() })
-                            .Where(p => p.attr != null)
-                            .OrderBy(p => p.attr.Order)
-                            .Select(p => p.prop)
-                            .ToArray();
-
-            if (data.Length != props.Length)
-                return false;
-
-            for(int i = 0; i< props.Length; i++)
-            {
-                var prop = props[i];
-                var type =  Nullable.GetUnderlyingType(prop.PropertyType) ?? prop.PropertyType;
-
-                try
-                {
-                    object value;
-                    if (string.IsNullOrEmpty(data[i]))
-                    {
-                        value = type.IsValueType ? Activator.CreateInstance(type) : null;   
-                    }
-                    else
-                    {
-                        value = Convert.ChangeType(data[i], type, System.Globalization.CultureInfo.InvariantCulture);
-                    }
-                    prop.SetValue(this, value);
-                }
-                catch
-                {
-                    return false;
-                }
-            }
-            return true;
-        }
+        [DataMember(Order = 0)] public string Id { get; set; }
+        [DataMember(Order = 1)] public string Password { get; set; }
+        [DataMember(Order = 2)] public string ComputerName { get; set; }
+        [DataMember(Order = 3)] public int Width { get; set; }
+        [DataMember(Order = 4)] public int Height { get; set; }
+        [DataMember(Order = 5)] public string MajorVersion { get; set; }
+        [DataMember(Order = 6)] public string MinorVersion { get; set; }
+        [DataMember(Order = 7)] public string Ip { get; set; }
+        [DataMember(Order = 8)] public string Port { get; set; }
+        [DataMember(Order = 9)] public string PublicIP { get; set; }
+        [NotMapped] public SocketConnection SocketConnection { get; set; }
     }
 }

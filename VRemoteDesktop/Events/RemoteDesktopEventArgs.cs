@@ -8,7 +8,7 @@ namespace VRemoteDesktop.Events
 {
     public class RemoteDesktopEventArgs:  EventArgs
     {
-        public RemoteDesktopEventArgs(SocketDataType type, bool flag, byte[] data)
+        public RemoteDesktopEventArgs(SocketDataType type, bool flag = true, byte[] data= null)
         {
             Type = type;
             Flag = flag;
