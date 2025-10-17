@@ -784,13 +784,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 throw new InvalidOperationException("Invalid eventArgs for ClientDisconnected");
 
 
-            _clientInfo.RemovePartner(client.Partner?.Id);
-            RemoveClientById(client.SocketId);
+            bool flag = _clientInfo.RemovePartner(client.Partner?.Id);
 
-            if (client.Partner != null)
-            {
-                _clientInfo.RemovePartner(client.Partner.Id);
-            }
+            RemoveClientById(client.SocketId);
 
             RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(ev.Type, false, ev.Data));
         }

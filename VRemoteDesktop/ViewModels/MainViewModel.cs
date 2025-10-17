@@ -117,6 +117,7 @@ namespace VRemoteDesktop.ViewModels
                     if(client1 == null)
                     {
                         ShowMessage("Không tồn tại client");
+                        return;
                     }
                     client1.TryConnect(ip: ip, port: validPort);
                 }
