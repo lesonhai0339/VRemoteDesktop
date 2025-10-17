@@ -19,25 +19,20 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public class RemoteDesktopService : IDisposable
     {
-       private readonly object _lock = new object();
+       
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
-        private bool _isCapturting = false; 
 
         private readonly IClientInfoManager _clientInfo;
         private readonly GlobalHookService _globalHook;
         private readonly VClientManager _vClientManager;
         private ManualResetEvent _reset;
 
-        private Dictionary<SocketDataType, Action<object, EventArgs>> _eventHandlers;
-
         public event EventHandler<KeyboardEventArgs> KeyboardEvent;
         public event EventHandler<RemoteDesktopEventArgs> RespondEvent;
         public RemoteDesktopService(GlobalHookService globalHook, VClientManager vClientManager, IClientInfoManager clientInfo)
         {
-            Initialize();
-
             _disposed = false;
             _clientInfo = clientInfo;
             _reset = new ManualResetEvent(false);
@@ -49,43 +44,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _globalHook.KeyboardReceived += KeyboardEventHandler;
             _vClientManager.ClientDataReceived += EventReceived;
             _vClientManager.ClientClosed += VClientClosedEventHandler;
-            StartKeyboardListener();  
-        }
-        private void Initialize()
-        {
-            _eventHandlers = new Dictionary<SocketDataType, Action<object, EventArgs>>
-            {
-                //login
-                { SocketDataType.Connect, null},
-                { SocketDataType.Disconnect, null},
-                { SocketDataType.Login, null},
-                { SocketDataType.LoginFailed, null},
-                { SocketDataType.Error, null},
+            StartKeyboardListener();
 
-                //p2p
-                { SocketDataType.P2PConnect, null},
-                { SocketDataType.P2PDataRespond, null},
-                { SocketDataType.P2PAcceptConnect, null},
-                { SocketDataType.P2PLogin, null},
-                { SocketDataType.P2PLoginSucceed, null},
-                { SocketDataType.P2PLoginFailed, null},
-                { SocketDataType.P2PInvalidConnectData, null},
-
-                //turn server
-                { SocketDataType.RemoteControlRequestToConnect, null},
-                { SocketDataType.RemoteControlAcceptedRequestToConnect, null},
-                { SocketDataType.RemoteControlRefusedRequestToConnect, null},
-                { SocketDataType.RemoteControlConnectFailed, null},
-                { SocketDataType.RemoteControlDisconnect, null},
-                { SocketDataType.RemoteControlDataSendFailed, null},
-
-                //low-level
-                { SocketDataType.ClipboardSend, null},
-                { SocketDataType.MouseSend, null},
-                { SocketDataType.KeyboardSend, null},
-                { SocketDataType.Ready, null},
-                { SocketDataType.ScreenOk, null},
-            };
         }
         #region Properties
         public bool Disposed => _disposed;
@@ -169,22 +129,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _vClientManager.Remove(id);
             if (_vClientManager.Connections.Count == 0)
             {
-                lock (_lock)
-                {
-                    StopScreenCapture();
-                    _isCapturting = false;
-                }
+                StopScreenCapture();
             }
             else
             {
                 if (!_vClientManager.HasClientOfType(VClientType.Receiver))
-                {
-                    lock (_lock)
-                    {
-                        StopScreenCapture();
-                        _isCapturting = false;
-                    }
-                }
+                    StopScreenCapture();
             }
         }
         public VClient GetClientById(string id)
@@ -480,21 +430,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             if (sender is VClient client)
             {
-                List<byte[]> screen;
-                lock (_lock)
-                {
-                    screen = _globalHook.GetFirstScreen();
-                }
+                var screen = _globalHook.GetFirstScreen();
                 int length = screen.Sum(x => x.Length);
-
-                var header = client.HeaderGenerate(type: SocketDataType.ScreenSend, socketId: client.SocketId, dataSize: length);
-                client.Send(SocketDataType.ScreenSend, header, client.SocketId, false);
-
-                for (int i = 0; i < screen.Count; i++)
-                {
-                    client.Send(SocketDataType.ScreenSend, screen[i], client.SocketId, false);
-                }
-                //SendScreen(client, SocketDataType.ScreenSend, screen, length);
+                SendScreen(client, SocketDataType.ScreenSend, screen, length);
 
                 RespondEvent?.Invoke(client, e);
             }
@@ -505,18 +443,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 client.ScreenSucceeded = true;
             }
-
             if (_vClientManager.HasClientOfType(VClientType.Receiver))
-            {
-                lock (_lock)
-                {
-                     if(!_isCapturting)
-                {
-                    _isCapturting = true;
-                    StartScreenCapture();
-                }
-                }
-            }
+                StartScreenCapture();
         }
         private void SendScreen(VClient client, SocketDataType type, List<byte[]> data, int totalSize)
         {
@@ -721,7 +649,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 case SocketDataType.MouseSend:
                     MouseReceivedEventHandler(sender, e);
                     break;
-                case SocketDataType.KeyboardSend:
+                case SocketDataType.RemoteControlScreenSend:
                     KeyboardReceivedEventHandler(sender, e);
                     break;
                 case SocketDataType.RemoteControlDisconnect:

@@ -192,7 +192,10 @@ namespace VRemoteDesktop.ViewModels
         /// <returns><see cref="ChatRespond{T}"/><see cref="bool"/></returns>
         public ChatRespond<bool> SetCurrentConnectionActivate(string connectionId)
         {
-            //Possible null or empty
+            if (!StringValidate<bool>(connectionId, nameof(connectionId), out var respond))
+            {
+                return respond;
+            }
             lock (_lock)
             {
                 _currentConnectionActivate = connectionId;
@@ -359,7 +362,7 @@ namespace VRemoteDesktop.ViewModels
         {
             if (!StringValidate<string>(_currentConnectionActivate, nameof(_currentConnectionActivate), out var respond))
             {
-                return ChatRespondHelper.Success<string>(systemMessage: "Failed", data: string.Empty);
+                return respond;
             }
             else
             {

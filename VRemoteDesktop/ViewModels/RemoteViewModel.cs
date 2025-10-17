@@ -136,7 +136,7 @@ namespace VRemoteDesktop.ViewModels
 
             _vClient.AddWork(new TaskObject
             {
-                TaskType = SocketDataType.KeyboardSend,
+                TaskType = SocketDataType.RemoteControlScreenSend,
                 Data = Encoding.ASCII.GetBytes(keyboard),
                 IsSendHeader = true,
                 SessionId = _vClient.SocketId

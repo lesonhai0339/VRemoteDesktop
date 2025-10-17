@@ -13,7 +13,6 @@ using VRemoteDesktop.Models;
 using System.Diagnostics;
 using static VRemoteDesktop.Utils.DefaultScreen;
 using System.Runtime.ConstrainedExecution;
-using System.Threading;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -26,9 +25,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
     }
     public class ScreenCapture1 : IScreenCapture1, IDisposable
     {
-        private int _isDisposed;
         private int THRESHOLD = 10;
         private int BLOCK_SIZE = DEFAULT_BLOCK_SIZE; // Size of each block for change detection
+        private bool _isDisposed = false;
         private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
         private int maxDegreeOfParallelism;
         private Rectangle _bounds;
@@ -41,7 +40,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private EncoderParameters encoderParams;
         public ScreenCapture1()
         {
-            _isDisposed = 0;
             _bounds = Screen.PrimaryScreen.Bounds;
             _previousFrame = null;
             _lock = new object();
@@ -50,11 +48,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
             encoder = ImageCodecInfo.GetImageEncoders()
                 .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
             encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
+            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 30L);
             regions = new List<Rectangle>();
             maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
             InitRequirements(_bounds.Width, _bounds.Height);
-        } 
+        }
         private void InitRequirements(int width, int height)
         {
             regions = GenerateRegions(width, height);
@@ -328,8 +326,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing && Interlocked.CompareExchange(ref _isDisposed, 1, 0 ) == 0)
+            if (disposing)
             {
+                if (_isDisposed) return;
                 lock (_lockObject)
                 {
 
@@ -341,6 +340,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 regions.Clear();
                 regions = null;
                 encoderParams?.Dispose();
+                _isDisposed = true;
             }
         }
     }

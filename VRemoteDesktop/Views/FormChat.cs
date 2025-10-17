@@ -235,20 +235,20 @@ namespace VRemoteDesktop.Views
         {
             if (sender is ConnectionChatPanel pn && pn.Parent is FlowLayoutPanel flow)
             {
-                //var respond = _chatViewModel.GetCurrentConnectionActivate();
+                var respond = _chatViewModel.GetCurrentConnectionActivate();
 
-                //if (respond.IsSuccess)
-                //{
-                //    bool isSameConnection = (string.Compare(pn.Name, respond.Data, StringComparison.OrdinalIgnoreCase) == 0);
+                if (respond.IsSuccess)
+                {
+                    bool isSameConnection = (string.Compare(pn.Name, respond.Data, StringComparison.OrdinalIgnoreCase) == 0);
 
-                //    if (isSameConnection)
-                //    {
-                //        //Load chat history on current connection
-                //        //if (fpnChat.Controls.Count == 0)
-                //        //    _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
-                //        return;
-                //    }
-                //}
+                    if (isSameConnection)
+                    {
+                        //Load chat history on current connection
+                        //if (fpnChat.Controls.Count == 0)
+                        //    _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
+                        return;
+                    }
+                }
 
                 var isValidConnection = _chatViewModel.IsValidConnection(pn.Name);
                 RespondHandler(isValidConnection);
@@ -442,7 +442,6 @@ namespace VRemoteDesktop.Views
             }
 
             RemoveChatByConnectionId(connectionId);
-
             RefreshUI(fpnNumberChatConnection);
         }
         private void ProcessMessageRemoved(string connectionId, Control control)
@@ -564,27 +563,21 @@ namespace VRemoteDesktop.Views
         }
         private void RemoveChatByConnectionId(string connectionId)
         {
-            _userChatControls.Remove(connectionId);
-
-            foreach (Control item in fpnChat.Controls)
-            {
-                ProcessMessageRemoved(connectionId, item);
-            }
-
-            fpnChat.Controls.Clear();
-
             var currentConnectionId = _chatViewModel.GetCurrentConnectionActivate().Data;
 
             if (!string.IsNullOrEmpty(currentConnectionId))
+                return;
+
+            _userChatControls.Remove(connectionId);
+
+            if (connectionId.Equals(currentConnectionId))
             {
-                int index = fpnNumberChatConnection.Controls.IndexOfKey(currentConnectionId);
-                if((index >= 0 && index < fpnNumberChatConnection.Controls.Count))
+                foreach (Control item in fpnChat.Controls)
                 {
-                    var lb = fpnNumberChatConnection.Controls[index];
-                    ChangeConnectionActivateEventHandler(lb, EventArgs.Empty);
+                    ProcessMessageRemoved(connectionId ,item);
                 }
 
-                //ChangeChatDataByConnectionId(currentConnectionId);
+                fpnChat.Controls.Clear();
             }
         }
         private void ChangeChatDataByConnectionId(string connectionId)
