@@ -138,7 +138,7 @@ namespace VRemoteServer.RelayServer.Services
                             byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Ip, validInfo.Port);
                             var byteArray = PacketFactory.CreatePacket(SocketDataType.P2PDataRespond, data: dataSend);
                             _loginManager.SendWithRespond(me, byteArray);
-                            return false;
+                            return true;
                         }
                     }
                     _loginManager.P2PConnectFailed(me, partnerIdAndPassword[0]);
@@ -146,6 +146,7 @@ namespace VRemoteServer.RelayServer.Services
                 }
                 catch (Exception ex)
                 {
+                    _loginManager.P2PConnectFailed(me, null);
                     Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
                 }
             }

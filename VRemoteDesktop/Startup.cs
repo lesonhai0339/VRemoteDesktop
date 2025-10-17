@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.Keyboard;
@@ -39,6 +41,7 @@ namespace VRemoteDesktop
         {
             try
             {
+                Thread.CurrentThread.CurrentUICulture = new CultureInfo("vi");
                 FormMain frmMain = new FormMain(_remoteDesktopService);
                 Application.Run(frmMain);
             }

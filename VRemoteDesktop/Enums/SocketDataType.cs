@@ -28,7 +28,7 @@ namespace VRemoteDesktop.Models
         //Remote control
         ScreenSend = 0x07,
         ScreenRegionsChangedSend = 0x08,
-        RemoteControlScreenSend = 0x09,
+        KeyboardSend = 0x09,
         MouseSend = 0x0A,
         ClipboardSend = 0x0E,
         ChatSend = 0x0F,

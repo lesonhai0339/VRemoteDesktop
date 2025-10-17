@@ -147,7 +147,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 int remainTime = frameTime - elapsed;
                 if (remainTime > 0)
                 {
-                    //Thread.Sleep(remainTime);
+                    Thread.Sleep(remainTime);
                 }
             }
         }

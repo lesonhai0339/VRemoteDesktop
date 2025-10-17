@@ -9,6 +9,7 @@ using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.RemoteDesktop;
@@ -28,6 +29,7 @@ namespace VRemoteDesktop
         private bool isShow;
 
         private readonly RemoteDesktopService _remoteDesktopService;
+        private readonly ComponentResourceManager resources = new ComponentResourceManager(typeof(FormMain));
         public FormMain(RemoteDesktopService remoteDesktopService)
         {
             InitializeComponent();
@@ -76,6 +78,7 @@ namespace VRemoteDesktop
         }
         private void SetupBinding()
         {
+
             txtOwnerId.DataBindings.Add("Text", ViewModel, "MyId",
                 false, DataSourceUpdateMode.OnPropertyChanged);
 
@@ -84,16 +87,20 @@ namespace VRemoteDesktop
 
             _viewModel.PropertyChanged += OnViewModelPropertyChanged;
         }
-
         private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke((MethodInvoker)(() => OnViewModelPropertyChanged(sender, e)));
+                return;
+            }
             if(e.PropertyName == "ConnectStatus")
             {
                 UpdateConnectionStatus(_viewModel.ConnectStatus);
             }
             else if(e.PropertyName == "ErrorMessage")
             {
-                MessageBox.Show(_viewModel.ErrorMessage, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MsgBox.Show(_viewModel.ErrorMessage, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
@@ -137,7 +144,12 @@ namespace VRemoteDesktop
         {
             if(_viewModel.ConnectStatus == ConnectionStatus.Disconnected)
             {
-                MessageBox.Show("Mất kết nối đến máy chủ", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    resources.GetString("CODE_ERROR_LOST_CONNECTION_TO_SERVER"), 
+                    resources.GetString("CODE_ERROR_MESSAGE"), 
+                    MessageBoxButtons.OK, 
+                    MessageBoxIcon.Error);
+
                 return;
             }
 
@@ -156,7 +168,11 @@ namespace VRemoteDesktop
             }
             else
             {
-                MessageBox.Show("Thông tin không hợp lệ", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show(
+                    resources.GetString("CODE_ERROR_INVALID_INFO"), 
+                    resources.GetString("CODE_ERROR_MESSAGE"), 
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
             }
         }
         private void Connect()
@@ -171,9 +187,9 @@ namespace VRemoteDesktop
         {
             Action action = () =>
             {
-                lbStatus.Text = (status == ConnectionStatus.Connected) ? "Sẵn sàng" : 
-                                (status == ConnectionStatus.Disconnected) ? "Mất kết nối" :
-                                "Chưa sẵn sàng";
+                lbStatus.Text = (status == ConnectionStatus.Connected) ? resources.GetString("CODE_SUCCESS_READY") : 
+                                (status == ConnectionStatus.Disconnected) ? resources.GetString("CODE_ERROR_LOST_CONNECTION") :
+                                resources.GetString("CODE_ERROR_NOT_READY");
 
                 pnStatus.Invalidate();
             };

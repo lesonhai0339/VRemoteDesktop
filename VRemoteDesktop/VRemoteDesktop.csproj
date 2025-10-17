@@ -111,26 +111,27 @@
     <Compile Include="Layouts\ChatProgressBar.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="DTOs\ChatManager.cs" />
-    <Compile Include="DTOs\ChatRespond.cs" />
-    <Compile Include="DTOs\ChunkFileInfo.cs" />
-    <Compile Include="DTOs\EventRegistration.cs" />
-    <Compile Include="DTOs\MouseData.cs" />
-    <Compile Include="DTOs\TaskGroup.cs" />
-    <Compile Include="DTOs\TaskObject.cs" />
-    <Compile Include="DTOs\BaseResponse.cs" />
-    <Compile Include="DTOs\ByteArrayBuilder.cs" />
-    <Compile Include="DTOs\ClientInfo.cs" />
-    <Compile Include="DTOs\DataReceive.cs" />
+    <Compile Include="Layouts\MsgBox.cs" />
+    <Compile Include="Models\ChatManager.cs" />
+    <Compile Include="Models\ChatRespond.cs" />
+    <Compile Include="Models\ChunkFileInfo.cs" />
+    <Compile Include="Models\EventRegistration.cs" />
+    <Compile Include="Models\MouseData.cs" />
+    <Compile Include="Models\TaskGroup.cs" />
+    <Compile Include="Models\TaskObject.cs" />
+    <Compile Include="Models\BaseResponse.cs" />
+    <Compile Include="Models\ByteArrayBuilder.cs" />
+    <Compile Include="Models\ClientInfo.cs" />
+    <Compile Include="Models\DataReceive.cs" />
     <Compile Include="Enums\SocketDataType.cs" />
-    <Compile Include="DTOs\KeyboardReceived.cs" />
-    <Compile Include="DTOs\KeyboardState.cs" />
-    <Compile Include="DTOs\MouseReceived.cs" />
-    <Compile Include="DTOs\ScreenRegion.cs" />
-    <Compile Include="DTOs\StateObject.cs" />
-    <Compile Include="DTOs\Sendstate.cs" />
-    <Compile Include="DTOs\UIPropertyRegistration.cs" />
-    <Compile Include="DTOs\VFileInfo.cs" />
+    <Compile Include="Models\KeyboardReceived.cs" />
+    <Compile Include="Models\KeyboardState.cs" />
+    <Compile Include="Models\MouseReceived.cs" />
+    <Compile Include="Models\ScreenRegion.cs" />
+    <Compile Include="Models\StateObject.cs" />
+    <Compile Include="Models\Sendstate.cs" />
+    <Compile Include="Models\UIPropertyRegistration.cs" />
+    <Compile Include="Models\VFileInfo.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
     <Compile Include="Services\FileService\SaveChat.cs" />
     <Compile Include="Services\FileService\VAttachmentManager.cs" />
@@ -193,13 +194,16 @@
     <EmbeddedResource Include="Views\FormChat.resx">
       <DependentUpon>FormChat.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Views\FormMain.en.resx">
+      <DependentUpon>FormMain.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Views\FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Views\FormRemote.resx">
       <DependentUpon>FormRemote.cs</DependentUpon>
     </EmbeddedResource>
-	 <None Include="Configs\app.config" />
+    <None Include="Configs\App.config" />
     <None Include="Configs\app.manifest" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
