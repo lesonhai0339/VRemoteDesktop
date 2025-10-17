@@ -792,7 +792,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 _clientInfo.RemovePartner(client.Partner.Id);
             }
 
-            RespondEvent?.Invoke(sender, ev);
+            RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(ev.Type, false, ev.Data));
         }
         private void VClientClosedEventHandler(object sender, EventArgs e)
         {
