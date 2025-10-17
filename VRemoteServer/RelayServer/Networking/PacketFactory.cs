@@ -50,7 +50,7 @@ namespace VRemoteServer.RelayServer.Networking
                 return Array.Empty<byte>();
 
             if (string.IsNullOrEmpty(id))
-                return Array.Empty<byte>();
+                id = DefaultValue.SocketConnectionDefault.EMPTY_ID;
 
             int offset = 0;
             int headerLength = PACKET_HEADER_LENGTH;
