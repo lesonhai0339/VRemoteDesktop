@@ -111,11 +111,15 @@
     <Compile Include="Layouts\ChatProgressBar.cs">
       <SubType>Component</SubType>
     </Compile>
+    <Compile Include="Layouts\MsgBox.cs" />
+    <Compile Include="Models\BaseClass.cs" />
     <Compile Include="Models\ChatManager.cs" />
     <Compile Include="Models\ChatRespond.cs" />
     <Compile Include="Models\ChunkFileInfo.cs" />
     <Compile Include="Models\EventRegistration.cs" />
     <Compile Include="Models\MouseData.cs" />
+    <Compile Include="Models\P2PConnectInfo.cs" />
+    <Compile Include="Models\P2PNetworkInfo.cs" />
     <Compile Include="Models\TaskGroup.cs" />
     <Compile Include="Models\TaskObject.cs" />
     <Compile Include="Models\BaseResponse.cs" />
@@ -192,6 +196,9 @@
     </Compile>
     <EmbeddedResource Include="Views\FormChat.resx">
       <DependentUpon>FormChat.cs</DependentUpon>
+    </EmbeddedResource>
+    <EmbeddedResource Include="Views\FormMain.en.resx">
+      <DependentUpon>FormMain.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Views\FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>

@@ -36,15 +36,25 @@ namespace VRemoteDesktop.ViewModels
             _remoteDesktopService = remoteDesktopService;
             _remoteDesktopService.RespondEvent += TCPClientManagerEventHandler;
 
-            MyId = _remoteDesktopService.GetMe().Id;
-            MyPassword = _remoteDesktopService.GetMe().Password;
             Init();
         }
 
         private void Init()
         {
-            _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
-            _host =  _remoteDesktopService.NewClient(_id, VClientType.None, true);
+            try
+            {
+                var myInfo = _remoteDesktopService.GetMe();
+
+                MyId = myInfo.Id;
+                MyPassword = myInfo.Password;
+
+                _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
+                _host = _remoteDesktopService.NewClient(_id, VClientType.None, true);
+            }
+            catch
+            {
+                ErrorMessage = "Khởi tạo thất bại, vui lòng đóng FormRemote và mở lại!";
+            }
         }
         #region Properties
         public string MyId
@@ -104,6 +114,10 @@ namespace VRemoteDesktop.ViewModels
                 if(client == null)
                 {
                     var client1 = _remoteDesktopService.GetClientById(_id);
+                    if(client1 == null)
+                    {
+                        ErrorMessage = "Không tồn tại client";
+                    }
                     client1.TryConnect(ip: ip, port: validPort);
                 }
                 else
@@ -161,10 +175,8 @@ namespace VRemoteDesktop.ViewModels
                         ConnectEventHandler(e.Flag);
                         break;
                     case SocketDataType.Login:
-                        LoginEventHandler(e.Flag, e.Data);
-                        break;
                     case SocketDataType.LoginFailed:
-                        ConnectStatus = ConnectionStatus.Disconnected;
+                        LoginEventHandler(e.Flag, e.Data);
                         break;
                     case SocketDataType.Disconnect:
                         ConnectStatus = ConnectionStatus.Disconnected;
@@ -176,8 +188,7 @@ namespace VRemoteDesktop.ViewModels
                     case SocketDataType.RemoteControlConnectFailed:
                     case SocketDataType.RemoteControlAcceptedRequestToConnect:
                     case SocketDataType.RemoteControlRefusedRequestToConnect:
-                    case SocketDataType.P2PLoginSucceed:
-                    case SocketDataType.P2PLoginFailed:
+                    case SocketDataType.P2PLoginRespond:
                     case SocketDataType.P2PConnect:
                     case SocketDataType.Ready:
                         PartnerRespond(sender, e);
@@ -210,7 +221,10 @@ namespace VRemoteDesktop.ViewModels
             if (flag)
             {
                 ConnectStatus = ConnectionStatus.Connected;
-                _remoteDesktopService.UpdateMyInfo(data);
+            }
+            else
+            {
+                ConnectStatus = ConnectionStatus.Disconnected;
             }
         }
         public event PropertyChangedEventHandler PropertyChanged;

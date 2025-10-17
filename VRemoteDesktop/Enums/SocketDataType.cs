@@ -21,14 +21,13 @@ namespace VRemoteDesktop.Models
         P2PDataRespond = 0x11,
         P2PAcceptConnect = 0x12,
         P2PLogin = 0x16,
-        P2PLoginSucceed = 0x17,
-        P2PLoginFailed = 0x18,
+        P2PLoginRespond = 0x17,
         P2PInvalidConnectData = 0x19,    
 
         //Remote control
         ScreenSend = 0x07,
         ScreenRegionsChangedSend = 0x08,
-        RemoteControlScreenSend = 0x09,
+        KeyboardSend = 0x09,
         MouseSend = 0x0A,
         ClipboardSend = 0x0E,
         ChatSend = 0x0F,
