@@ -8,6 +8,9 @@ using VRemoteServer.RelayServer.Domains;
 using VRemoteServer.RelayServer.Networking;
 using VRemoteServer.RelayServer.Services;
 using VRemoteServer.Utils;
+using Microsoft.Extensions.Configuration;
+using VRemoteServer.RelayServer.DTOs;
+
 
 namespace VRemoteServer
 {
@@ -21,18 +24,30 @@ namespace VRemoteServer
             //SocketListener socketListener = new SocketListener(remoteDesktop);
             //await socketListener.Listen();
 
+            //var config = new ConfigurationBuilder()
+            //    .SetBasePath(AppContext.BaseDirectory)
+            //    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+            //    .Build();
+
             var host = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
+                    var config = context.Configuration;
+
                     //services.AddScoped<RemoteDesktopServer>();
                     //services.AddScoped<SocketListener>();
                     //services.AddScoped<IServer, Server>();
-                    services.AddScoped<ILoginServer>(sp =>new LoginServer(10, 1024 * 32));
-                    services.AddScoped<IRemoteControlServer>(sp => new RemoteControlServer(10, 1024 * 64));
-                    services.AddScoped<ILoginManager, LoginManager>();
-                    services.AddScoped<ILoginManagerService, LoginManagerService>();
-                    services.AddScoped<IRemoteControlManager, RemoteControlManager>();
-                    services.AddScoped<IRemoteControlManagerService, RemoteControlManagerService>();
+
+                    services.Configure<LoginServerOptions>(config.GetSection("LoginServerConfig"));
+                    services.Configure<RemoteControlServerOptions>(config.GetSection("RemoteServerConfig"));
+
+                    services.AddSingleton<IRateLimiter, RateLimiter>();
+                    services.AddSingleton<ILoginServer, LoginServer>();
+                    services.AddSingleton<IRemoteControlServer, RemoteControlServer>();
+                    services.AddSingleton<ILoginManager, LoginManager>();
+                    services.AddSingleton<ILoginManagerService, LoginManagerService>();
+                    services.AddSingleton<IRemoteControlManager, RemoteControlManager>();
+                    services.AddSingleton<IRemoteControlManagerService, RemoteControlManagerService>();
                     services.AddSingleton<IRelayServerManager, RelayServerManagerService>();
                 })
                 .Build();

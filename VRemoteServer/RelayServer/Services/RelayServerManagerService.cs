@@ -16,7 +16,6 @@ using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
 using VRemoteServer.RelayServer.Networking;
-using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
 
 namespace VRemoteServer.RelayServer.Services
 {
@@ -32,7 +31,9 @@ namespace VRemoteServer.RelayServer.Services
     }
     public class RelayServerManagerService : IRelayServerManager, IDisposable
     {
-        private bool _disposed; 
+        private bool _disposed;
+        private ILoginManagerService login;
+        private IRemoteControlManagerService remote;
         private readonly ILoginManagerService _loginManager;
         private readonly IRemoteControlManagerService _remoteControlManager;
         public RelayServerManagerService(ILoginManagerService loginManagerService, IRemoteControlManagerService remoteControlManagerService)
@@ -45,10 +46,13 @@ namespace VRemoteServer.RelayServer.Services
             _loginManager.LoginManagerEvent += LoginManagerEventHandler;
             _remoteControlManager.RemoteControlManagerEvent += RemoteControlManagerEventHandler;
         }
+        public int NumberOfLoginUsers => _loginManager.NumberOfConnections;  
+
         public void InitLoginServer()
         {
             _loginManager.InitServer();
         }
+
         public async Task StartLoginServer(IPEndPoint ep)
         {
             try
@@ -60,14 +64,17 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "StartLoginServer error");
             }
         }
+
         public void CancelLoginServer()
         {
             _remoteControlManager.CancelServer();
         }
+
         public void InitRemoteControlServer()
         {
             _remoteControlManager.InitServer();
         }
+
         public async Task StartRemoteControlServer(IPEndPoint ep)
         {
             try
@@ -79,10 +86,12 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "StartLoginServer error");
             }
         }
+
         public void CancelRemoteControlServer()
         {
             _remoteControlManager.CancelServer();
         }
+
         #region Events
 
         //Login
@@ -101,11 +110,48 @@ namespace VRemoteServer.RelayServer.Services
                     case SocketDataType.Disconnect:
                         LoginUserDisconnected(connection);
                         break;
+                    case SocketDataType.P2PConnect:
+                        P2PLogin(sender, e.Data);
+                        break;
                     default:
                         break;
                 }
             }
         }
+
+        private bool P2PLogin(object sender,byte[] data)
+        {
+            if (sender is SocketConnection me)
+            {
+                try
+                {
+                    string[] partnerIdAndPassword = Encoding.ASCII.ByteArrayToStringWithSeparator(data, '|'); //three
+                    if (_loginManager.GetFirst(partnerIdAndPassword[1], partnerIdAndPassword[2], out var validInfo))
+                    {
+                        //Send request to partner
+                        var byteArray1 = PacketFactory.CreatePacket(SocketDataType.P2PConnect, data: Encoding.ASCII.StringToByteArray(partnerIdAndPassword[0]));
+                        bool respond = _loginManager.SendWithRespond(validInfo.SocketConnection, byteArray1);
+
+                        if (respond)
+                        {
+                            //Send back to me
+                            byte[] dataSend = Encoding.ASCII.StringArrayToByteArrayWithSeparator('|', partnerIdAndPassword[0], validInfo.PublicIP, validInfo.Ip, validInfo.Port);
+                            var byteArray = PacketFactory.CreatePacket(SocketDataType.P2PDataRespond, data: dataSend);
+                            _loginManager.SendWithRespond(me, byteArray);
+                            return false;
+                        }
+                    }
+                    _loginManager.P2PConnectFailed(me, partnerIdAndPassword[0]);
+                    return false;
+                }
+                catch (Exception ex)
+                {
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+                }
+            }
+            return false;
+        }
+
         private void Ping(SocketConnection connection)
         {
             try
@@ -117,6 +163,7 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "Ping");
             }
         }
+
         private void Login(SocketConnection connection, byte[] data)
         {
             try
@@ -147,6 +194,9 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteControlManagerEventHandler");
             }
         }
+
+
+
         //Remote Control
         private void RemoteControlManagerEventHandler(object sender, RemoteControlManagerEventArgs e)
         {
@@ -173,6 +223,7 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteControlManagerEventHandler");
             }
         }
+
         private bool RequestToRemoteDesktopControl(object sender, string connectionId, string partnerId, byte[] data)
         {
             if (sender is SocketConnection controller)
@@ -197,6 +248,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             return false;
         }
+
         private bool AcceptedRequestToRemoteDesktopControl(object sender, string remoteConnectionId, int offset, int length)
         {
             if (sender is SocketConnection controlled)
@@ -248,6 +300,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             return true;
         }
+
         private bool RemoteDesktopControlDataForward(object sender, string remoteConnectionId, byte[] data, int offset, int length)
         {
             if (sender is SocketConnection socketSender)
@@ -282,6 +335,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             return false;
         }
+
         #endregion
         public void Dispose()
         {

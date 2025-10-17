@@ -8,6 +8,7 @@ namespace VRemoteDesktop.Helpers
 {
     public static class AppSettingHelper
     {
+        //Lay key tu app.config
         public static void SetValueByKey(string key, string value)
         {
             bool existed = ConfigurationManager.AppSettings[key] != null;

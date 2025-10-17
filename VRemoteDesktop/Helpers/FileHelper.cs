@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Helpers
 {
@@ -20,15 +21,15 @@ namespace VRemoteDesktop.Helpers
     }
     internal class FileHelper
     {
-        private static readonly ConcurrentDictionary<string, StreamingFile> _filesStreaming = new ConcurrentDictionary<string, StreamingFile>();
-        private static System.Threading.Timer _timer = new System.Threading.Timer(CleanupFileStreaming, null, TimeSpan.FromMinutes(1), TimeSpan.FromMinutes(1));
+        private static readonly ConcurrentDictionary<string, StreamingFile> _openingStream = new ConcurrentDictionary<string, StreamingFile>();
+        private static System.Threading.Timer _timer = new System.Threading.Timer(AutoCleanupOpeningStream, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
         static FileHelper()
         {
             AppDomain.CurrentDomain.ProcessExit += (s, e) => CleanupAllStreams();
         }
         private static void CleanupAllStreams()
         {
-            foreach (var kvp in _filesStreaming)
+            foreach (var kvp in _openingStream)
             {
                 try
                 {
@@ -37,22 +38,28 @@ namespace VRemoteDesktop.Helpers
                 catch { }
             }
 
-            _filesStreaming.Clear();
+            _openingStream.Clear();
         }
-        private static void CleanupFileStreaming(object state)
+        private static void AutoCleanupOpeningStream(object state)
         {
-            foreach(var fileStreaming in _filesStreaming)
+            foreach(var fileStreaming in _openingStream)
             {
                 if(DateTimeOffset.UtcNow - fileStreaming.Value.DateTimeOffset > TimeSpan.FromMinutes(5)) //Close file stream after 5 minutes of inactivity
                 {
                     try
                     {
-                        if (_filesStreaming.TryRemove(fileStreaming.Key, out var stream))
+                        if (_openingStream.TryRemove(fileStreaming.Key, out var streamingFile))
                         {
-                            stream.Stream.Dispose();
+                            lock (streamingFile.Stream) // Lock before disposing
+                            {
+                                streamingFile.Stream?.Dispose();
+                            }
                         }
                     }
-                    catch { }
+                    catch(Exception ex)
+                    {
+                        Logger.Log.ForContext("FileName", "FileHelper").Error(ex, string.Format("Cannot cleanup file stream at", fileStreaming.Key));
+                    }
                 }
             }
         }
@@ -113,7 +120,27 @@ namespace VRemoteDesktop.Helpers
                 byte[] hash = md5.ComputeHash(stream);
                 return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
-        }     
+        }
+        public static long CalculateChunkNumber(long dataSize, int chunkSize = 8192)
+        {
+            if (dataSize <= 0)
+                return 0;
+
+            if (chunkSize <= 0)
+                throw new InvalidOperationException("Data size and chunk size must be positive");
+
+            return (dataSize + chunkSize - 1) / chunkSize;
+        }
+        public static FileInfo GetFileInfo(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"File not found: {filePath}", filePath);
+
+            return new FileInfo(filePath);
+        }
         public static byte[] GetChunkFileDataByOffset(string filePath, long offset, int size = 8192)
         {
             if (!File.Exists(filePath))
@@ -177,21 +204,26 @@ namespace VRemoteDesktop.Helpers
 
             try
             {
-                if (_filesStreaming.TryGetValue(filePath, out var fs))
+                if (_openingStream.TryGetValue(filePath, out var fs))
                 {
-                    fs.Stream.Seek(fileOffset, SeekOrigin.Begin);
-                    int totalBytesRead = 0;
-                    int remainingBytes = size;
-
-                    while (totalBytesRead < size && remainingBytes > 0)
+                    lock (fs.Stream)
                     {
-                        int bytesRead = fs.Stream.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
-                        if (bytesRead == 0)
-                            break;
-                        totalBytesRead += bytesRead;
-                        remainingBytes -= bytesRead;
+                        fs.DateTimeOffset = DateTimeOffset.UtcNow; //Update time active for this stream
+
+                        fs.Stream.Seek(fileOffset, SeekOrigin.Begin);
+                        int totalBytesRead = 0;
+                        int remainingBytes = size;
+
+                        while (totalBytesRead < size && remainingBytes > 0)
+                        {
+                            int bytesRead = fs.Stream.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
+                            if (bytesRead == 0)
+                                break;
+                            totalBytesRead += bytesRead;
+                            remainingBytes -= bytesRead;
+                        }
+                        return totalBytesRead;
                     }
-                    return totalBytesRead;
                 }
                 return 0;
             }
@@ -227,49 +259,23 @@ namespace VRemoteDesktop.Helpers
                         remainingBytes -= bytesRead;
                     }
 
-                    if(_filesStreaming.TryGetValue(filePath, out var streamingFile))
-                    {
-                        //Update time active for this stream
-                        streamingFile.DateTimeOffset = DateTimeOffset.UtcNow;   
-                    } 
-
                     return totalBytesRead;
-                }
+                }  
             }
             catch
             {
                 return 0;
             }
         }
-        public static long CalculateChunkNumber(long dataSize, int chunkSize = 8192)
-        {
-            if (dataSize <= 0)
-                return 0;
-
-            if (chunkSize <= 0)
-                throw new InvalidOperationException("Data size and chunk size must be positive");
-
-            return (dataSize + chunkSize - 1) / chunkSize;
-        }
-        public static FileInfo GetFileInfo(string filePath)
-        {
-            if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
-
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException($"File not found: {filePath}", filePath);
-
-            return new FileInfo(filePath);
-        }
-        public static void InitializeFileTransfer(FileStream stream, string savePath)
+        public static FileStream InitializeFileTransfer(string savePath)
         {
             lock (_lock)
             {
-                stream?.Dispose();
-                stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                var stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                return stream;
             }
         }
-        public static FileStream OpenStream(string filePath)
+        public static void OpenStream(string filePath)
         {
             if (string.IsNullOrWhiteSpace(filePath))
                 throw new ArgumentNullException(filePath + " is null", nameof(filePath)); 
@@ -278,14 +284,16 @@ namespace VRemoteDesktop.Helpers
 
             try
             {
+                if (_openingStream.ContainsKey(filePath))
+                    return;
+
                 FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
 
-                _filesStreaming.TryAdd(filePath, new StreamingFile
+                _openingStream.TryAdd(filePath, new StreamingFile
                 {
                     Stream = fs,
                     DateTimeOffset = DateTimeOffset.UtcNow
                 });
-                return fs;
             }
             catch(Exception ex)
             {
@@ -301,7 +309,7 @@ namespace VRemoteDesktop.Helpers
             try
             {
                 FileStream fs = new FileStream(savePath, FileMode.Open, FileAccess.Read, FileShare.Read);
-                _filesStreaming.TryAdd(savePath, new StreamingFile
+                _openingStream.TryAdd(savePath, new StreamingFile
                 {
                     Stream = fs,
                     DateTimeOffset = DateTimeOffset.UtcNow
@@ -317,18 +325,10 @@ namespace VRemoteDesktop.Helpers
         {
             if (string.IsNullOrWhiteSpace(savePath))
                 throw new ArgumentNullException(savePath + " is null", nameof(savePath));
-            if (!File.Exists(savePath))
-                throw new ArgumentNullException("File does not existed", nameof(savePath));
 
             try
             {
                 FileStream fs = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
-
-                _filesStreaming.TryAdd(savePath, new StreamingFile
-                {
-                    Stream = fs,
-                    DateTimeOffset = DateTimeOffset.UtcNow
-                });
                 return fs;
             }
             catch (Exception ex)
@@ -342,6 +342,11 @@ namespace VRemoteDesktop.Helpers
                 throw new ArgumentException("FileStream cannot be null.", nameof(fs));
             if (data == null)
                 throw new ArgumentException("data cannot be null.", nameof(data));
+
+            if (_openingStream.TryGetValue(fs.Name, out var openingStream))
+            {
+                openingStream.DateTimeOffset = DateTimeOffset.UtcNow;
+            }
 
             lock (fs)
             {
@@ -377,10 +382,6 @@ namespace VRemoteDesktop.Helpers
                     {
                         writer.Write(content);
                     }
-                    if (_filesStreaming.TryGetValue(path, out var fileStreaming))
-                    {
-                        fileStreaming.DateTimeOffset = DateTimeOffset.UtcNow;
-                    }
                 }
                 catch (IOException ex)
                 {
@@ -406,11 +407,6 @@ namespace VRemoteDesktop.Helpers
                         fs.Seek(offset, SeekOrigin.Begin);
                         fs.Write(data, 0, data.Length);
                     }
-
-                    if(_filesStreaming.TryGetValue(path, out var fileStreaming))
-                    {
-                        fileStreaming.DateTimeOffset = DateTimeOffset.UtcNow;   
-                    }
                 }
                 catch (IOException ex)
                 {
@@ -425,9 +421,12 @@ namespace VRemoteDesktop.Helpers
 
             try
             {
-                if (_filesStreaming.TryRemove(filePath, out var stream))
+                if (_openingStream.TryRemove(filePath, out var stream))
                 {
-                    stream.Stream.Dispose();
+                    lock(stream.Stream) // Lock before disposing
+                    {
+                        stream.Stream.Dispose();
+                    }
                     return true;
                 }
 

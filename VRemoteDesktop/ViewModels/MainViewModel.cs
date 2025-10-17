@@ -23,6 +23,7 @@ namespace VRemoteDesktop.ViewModels
         private string _errorMessage;
         private ConnectionStatus _connectStatus;
         private ManualResetEvent _resetEvent;
+        private VClient _host;
 
         private readonly RemoteDesktopService _remoteDesktopService;
         public event EventHandler<RemoteDesktopEventArgs> ClientAcceptRequestRemote;
@@ -43,7 +44,7 @@ namespace VRemoteDesktop.ViewModels
         private void Init()
         {
             _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
-            _remoteDesktopService.NewClient(_id, VClientType.None, true);
+            _host =  _remoteDesktopService.NewClient(_id, VClientType.None, true);
         }
         #region Properties
         public string MyId
@@ -84,6 +85,10 @@ namespace VRemoteDesktop.ViewModels
         }
         #endregion
         #region Methods
+        public bool IsRemoteConnected(string id)
+        {
+            return _remoteDesktopService.CheckRemoteConnected(id);
+        }
         public void Connect(VClient client = null)
         {
             string ip = AppSettingHelper.GetValue("ServerIP");// ?? "27.0.12.78";
@@ -99,11 +104,11 @@ namespace VRemoteDesktop.ViewModels
                 if(client == null)
                 {
                     var client1 = _remoteDesktopService.GetClientById(_id);
-                    client1.Connect(ip, validPort);
+                    client1.TryConnect(ip: ip, port: validPort);
                 }
                 else
                 {
-                    client.Connect(ip, validPort);
+                    client.TryConnect(ip: ip, port: validPort);
                 }
             }
         }
@@ -111,7 +116,7 @@ namespace VRemoteDesktop.ViewModels
         {
             _remoteDesktopService.Login(_id);
         }
-        public void RequestP2PConnect(string id, string password)
+        public void RequestP2PConnect(string id, string password, bool useTURNSERVER = false)
         {
             try
             {
@@ -120,9 +125,21 @@ namespace VRemoteDesktop.ViewModels
                     ErrorMessage = "Không thể kết nối với chính mình";
                     return;
                 }
-                _remoteDesktopService.P2PConnect(id, password);
+                if (!useTURNSERVER)
+                {
+                    //try P2P first
+                    _remoteDesktopService.P2PConnect(_host, id, password);
+                }
+                else
+                {
+                    //use TURN SERVER
+                    if(!_remoteDesktopService.P2PConnect(id, password))
+                    {
+                        ErrorMessage = "Kết nối thất bại";
+                    }
+                }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
             }
@@ -159,7 +176,14 @@ namespace VRemoteDesktop.ViewModels
                     case SocketDataType.RemoteControlConnectFailed:
                     case SocketDataType.RemoteControlAcceptedRequestToConnect:
                     case SocketDataType.RemoteControlRefusedRequestToConnect:
+                    case SocketDataType.P2PLoginSucceed:
+                    case SocketDataType.P2PLoginFailed:
+                    case SocketDataType.P2PConnect:
+                    case SocketDataType.Ready:
                         PartnerRespond(sender, e);
+                        break;
+                    case SocketDataType.P2PInvalidConnectData:
+                        ErrorMessage = "Dữ liệu kết nối không hợp lệ";
                         break;
                     default:
                         break;
@@ -210,6 +234,7 @@ namespace VRemoteDesktop.ViewModels
                 {
                     _remoteDesktopService.RespondEvent -= TCPClientManagerEventHandler;
                 }
+                _host?.Dispose();
                 _resetEvent.Dispose();
             }
         }

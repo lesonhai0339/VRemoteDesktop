@@ -48,7 +48,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             encoder = ImageCodecInfo.GetImageEncoders()
                 .First(c => c.FormatID == ImageFormat.Jpeg.Guid);
             encoderParams = new EncoderParameters(1);
-            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 50L);
+            encoderParams.Param[0] = new EncoderParameter(System.Drawing.Imaging.Encoder.Quality, 30L);
             regions = new List<Rectangle>();
             maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
             InitRequirements(_bounds.Width, _bounds.Height);
@@ -137,6 +137,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             try
             {
+                if (fullScreen == null || encoder == null || encoderParams == null)
+                    return default;
+
                 using (var stream = new MemoryStream())
                 {
                     fullScreen.Save(stream, encoder, encoderParams);
@@ -150,7 +153,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
             catch {
-                return default(List<ScreenRegion>);
+                return default;
             }
         }  
         private List<ScreenRegion> MakeScreenRegions(Bitmap currentScreen, List<Rectangle> dirtyRegions)

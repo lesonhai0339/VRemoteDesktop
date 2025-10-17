@@ -162,6 +162,7 @@ namespace VRemoteDesktop.Services.FileService
             FileStream stream =  Helpers.FileHelper.CreateFileStream(savePath);
             _curStreams.TryAdd(fileId, stream);
         }
+        //Important, error in this methods will close app immediately
         public void ProcessFileDataReceived(string connectionId, byte[] rawData)
         {
             int headerSize = DefaultFileInfo.OFFSET_INT32_LENGTH + DefaultFileInfo.FILE_ID_LENGTH; //offset length + file id
@@ -189,8 +190,9 @@ namespace VRemoteDesktop.Services.FileService
             if (fileStream == null)
                 throw new InvalidOperationException("Does not exist file stream with id: " + fileId);
 
-            //Update file info
-            bool flush = false;
+
+                //Update file info
+                bool flush = false;
             bool updatedSizeReceived = fileInfo.UpdateReceivedSize(data.Length);
             if (!updatedSizeReceived)
                 throw new Exception("Error when update file received");
@@ -313,7 +315,7 @@ namespace VRemoteDesktop.Services.FileService
                     client.AddWork(
                         new TaskObject
                         {
-                            TaskType = SocketDataType.RemoteControlChatSend,
+                            TaskType = SocketDataType.ChatSend,
                             Data = dataSend,
                             SessionId = client.SocketId,
                             IsSendHeader = true

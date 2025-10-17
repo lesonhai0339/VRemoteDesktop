@@ -111,7 +111,7 @@ namespace VRemoteDesktop.Services.SystemService
             type = SocketDataType.None;
             if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
             {
-                type = SocketDataType.RemoteControlClipboardSend;
+                type = SocketDataType.ClipboardSend;
                 clipboardBytes = Encoding.UTF8.GetBytes(GetClipboard());
                 return true;
             }

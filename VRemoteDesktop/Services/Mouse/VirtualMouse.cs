@@ -8,6 +8,7 @@ using VRemoteDesktop.Models;
 using static VRemoteDesktop.Interop.Win32Apis;
 using static VRemoteDesktop.Utils.Logger;
 using VRemoteDesktop.Utils;
+using System.Windows.Forms;
 
 namespace VRemoteDesktop.Services.Mouse
 {
@@ -199,7 +200,72 @@ namespace VRemoteDesktop.Services.Mouse
 
             return flag;
         }
-        /// <summary>
+        private static bool MousePress(float scaleX, float scaleY, int x, int y, List<WindowsMouseEvent> mouseEvents)
+        {
+            int pointX = (int)Math.Round(scaleX * x);
+            int pointY = (int)Math.Round(scaleY * y);
+
+            // Convert to normalized absolute coordinates (0-65535 range)
+            int normalizedX = (pointX * 65535) / Screen.PrimaryScreen.Bounds.Width;
+            int normalizedY = (pointY * 65535) / Screen.PrimaryScreen.Bounds.Height;
+
+            int eventCount = mouseEvents.Count + 1; // +1 for the move event
+            INPUT[] inputs = new INPUT[eventCount];
+
+            // First input: MOVE cursor to position using ABSOLUTE coordinates
+            inputs[0].type = INPUT_MOUSE;
+            inputs[0].u.mi.dwFlags = (uint)(WindowsMouseEvent.MOUSEEVENTF_MOVE |
+                                             WindowsMouseEvent.MOUSEEVENTF_ABSOLUTE);
+            inputs[0].u.mi.dx = normalizedX;
+            inputs[0].u.mi.dy = normalizedY;
+            inputs[0].u.mi.mouseData = 0;
+
+            // Remaining inputs: Mouse click events
+            for (int i = 0; i < mouseEvents.Count; i++)
+            {
+                inputs[i + 1].type = INPUT_MOUSE;
+                inputs[i + 1].u.mi.dwFlags = (uint)mouseEvents[i];
+                inputs[i + 1].u.mi.dx = 0;  // Not needed when not using ABSOLUTE
+                inputs[i + 1].u.mi.dy = 0;
+                inputs[i + 1].u.mi.mouseData = 0;
+            }
+
+            // Send all inputs in one call
+            uint flag = WindowApis.SendInput((uint)eventCount, inputs, Marshal.SizeOf(typeof(INPUT)));
+            return flag == eventCount;
+        }
+
+        private static bool MouseWheel(float scaleX, float scaleY, int x, int y, int wheelDelta)
+        {
+            int pointX = (int)Math.Round(scaleX * x);
+            int pointY = (int)Math.Round(scaleY * y);
+
+            // Convert to normalized coordinates
+            int normalizedX = (pointX * 65535) / Screen.PrimaryScreen.Bounds.Width;
+            int normalizedY = (pointY * 65535) / Screen.PrimaryScreen.Bounds.Height;
+
+            INPUT[] inputs = new INPUT[2];
+
+            // First: Move cursor
+            inputs[0].type = INPUT_MOUSE;
+            inputs[0].u.mi.dwFlags = (uint)(WindowsMouseEvent.MOUSEEVENTF_MOVE |
+                                             WindowsMouseEvent.MOUSEEVENTF_ABSOLUTE);
+            inputs[0].u.mi.dx = normalizedX;
+            inputs[0].u.mi.dy = normalizedY;
+            inputs[0].u.mi.mouseData = 0;
+
+            // Second: Wheel scroll
+            inputs[1].type = INPUT_MOUSE;
+            inputs[1].u.mi.dwFlags = (uint)WindowsMouseEvent.MOUSEEVENTF_WHEEL;
+            inputs[1].u.mi.dx = 0;
+            inputs[1].u.mi.dy = 0;
+            inputs[1].u.mi.mouseData = unchecked((uint)wheelDelta);
+
+            uint flag = WindowApis.SendInput(2, inputs, Marshal.SizeOf(typeof(INPUT)));
+            return flag == 2;
+        }
+
+      /*  /// <summary>
         /// Simulates a mouse wheel scroll event at a specified screen position.
         /// </summary>
         private static bool MouseWheel(float scaleX, float scaleY, int x, int y, int wheelDelta)
@@ -253,7 +319,7 @@ namespace VRemoteDesktop.Services.Mouse
                 return false;
             }
             return true;
-        }
+        }*/
         #endregion
     }
 }

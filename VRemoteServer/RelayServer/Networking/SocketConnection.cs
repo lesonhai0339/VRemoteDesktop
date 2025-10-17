@@ -26,16 +26,6 @@ namespace VRemoteServer.RelayServer.Networking
         private TimeSpan _timeout = TimeSpan.FromSeconds(TIMEOUT);
         private Timer _timer;
         private object _lockProperty = new object();
-        private object _lockMethod = new object();
-
-        //packet metadata
-        private byte[] _currentHeader;
-        private byte[] _remainingData;
-        private int _dataExpected;
-        private int _dataReceived;
-        private string _id;
-
-
         //Test
         byte[] previousData = Array.Empty<byte>();
         SocketDataType type = SocketDataType.None; 
@@ -150,6 +140,7 @@ namespace VRemoteServer.RelayServer.Networking
                 }
             }
         }
+
         public void UpdateTime()
         {
             lock (_lockProperty)
@@ -157,6 +148,7 @@ namespace VRemoteServer.RelayServer.Networking
                 _lastSendTime = DateTimeOffset.UtcNow;
             }
         }
+
         private bool CheckAlive()
         {
             try
@@ -183,6 +175,7 @@ namespace VRemoteServer.RelayServer.Networking
                 return false;
             }
         }
+
         private void CheckTimeOut(object obj)
         {
             var timer = DateTimeOffset.UtcNow - _lastSendTime;
@@ -199,22 +192,26 @@ namespace VRemoteServer.RelayServer.Networking
                 SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Disconnected));
             }
         }
+
         private void ProcessData(SocketDataType type, string id, byte[] buffer)
         {
             _lastSendTime = DateTimeOffset.UtcNow;
             SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, buffer));
         }
+
         private void ProcessData(SocketDataType type, string id, int offset, int length)
         {
             _lastSendTime = DateTimeOffset.UtcNow;
             SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, offset, length));
         }
+
         private (int length, SocketDataType type, string id) GetHeader(byte[] buffer, int offset)
         {
             byte[] header = new byte[PACKET_HEADER_LENGTH];
             Buffer.BlockCopy(buffer, offset, header, 0, PACKET_HEADER_LENGTH);
             return PacketFactory.GetHeaderDataFromPacket(header, 0, PACKET_HEADER_LENGTH);
         } 
+
         public void CalCuLateData(int comingOffset, int comingDataLength)
         {
             try
@@ -321,95 +318,6 @@ namespace VRemoteServer.RelayServer.Networking
                 id = default;
             }
         }
-        //Simple, less performance
-        public void CalCuLateData1(int comingOffset, int comingDataLength)
-        {
-            lock (_lockMethod)
-            {
-                if (_readSocketAsyncEventArgs.Buffer == null)
-                    return;
-                if (_remainingData == null)
-                    _remainingData = new byte[0];
-
-                byte[] totalData = new byte[_remainingData.Length + comingDataLength];
-                Buffer.BlockCopy(_remainingData, 0, totalData, 0, _remainingData.Length);
-                Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, comingOffset, totalData, _remainingData.Length, comingDataLength);
-
-                int bytesProcessed = 0;
-
-                while (bytesProcessed < totalData.Length)
-                {
-                    if (_currentHeader == null)
-                    {
-                        if (totalData.Length - bytesProcessed >= PACKET_HEADER_LENGTH)
-                        {
-                            _currentHeader = new byte[PACKET_HEADER_LENGTH];
-                            Buffer.BlockCopy(totalData, bytesProcessed, _currentHeader, 0, PACKET_HEADER_LENGTH);
-
-                            _dataExpected = BitConverter.ToInt32(_currentHeader, PACKET_SIZE_INDEX);
-                            _id = Encoding.ASCII.GetString(_currentHeader, PACKET_ID_INDEX, PACKET_ID_LENGTH);
-                            _dataReceived = 0;
-                        }
-                        else
-                        {
-                            break;
-                        }
-
-                    }
-                    if (_currentHeader != null)
-                    {
-                        SocketDataType type = (SocketDataType)_currentHeader[PACKET_TYPE_INDEX];
-                        //command packet
-                        if (_dataExpected == 0)
-                        {
-                            ProcessData(type, _id, new byte[0]);
-                            _dataExpected = 0;
-                            _currentHeader = null;
-                            bytesProcessed += PACKET_HEADER_LENGTH;
-                        }
-                        else
-                        {
-                            int remainingDataNeeded = _dataExpected - _dataReceived;
-                            int availableData = totalData.Length - bytesProcessed;
-                            int dataNeedToReceive = Math.Min(remainingDataNeeded, availableData);
-
-                            if (dataNeedToReceive > 0)
-                            {
-                                byte[] bytes = new byte[dataNeedToReceive];
-                                Buffer.BlockCopy(totalData, bytesProcessed, bytes, 0, dataNeedToReceive);
-
-                                _dataReceived += dataNeedToReceive;
-                                bytesProcessed += dataNeedToReceive;
-
-
-                                ProcessData(type, _id, bytes);
-                                if (_dataReceived >= _dataExpected)
-                                {
-                                    _dataExpected = 0;
-                                    _dataReceived = 0;
-                                    _currentHeader = null;
-                                    _id = null;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        break;
-                    }
-                }
-                if (bytesProcessed < totalData.Length)
-                {
-                    int remainingBytes = totalData.Length - bytesProcessed;
-                    _remainingData = new byte[remainingBytes];
-                    Buffer.BlockCopy(totalData, bytesProcessed, _remainingData, 0, remainingBytes);
-                }
-                else
-                {
-                    _remainingData = Array.Empty<byte>();
-                }
-            }
-        }
         #endregion
         public void Dispose()
         {
@@ -420,9 +328,8 @@ namespace VRemoteServer.RelayServer.Networking
         {
             if (!disposing || Interlocked.Exchange(ref _disposed, 1) == 1) return;
 
+            previousData = null;
             _timer?.Dispose();
-            _currentHeader = null;
-            _remainingData = null;
         }
     }
 }

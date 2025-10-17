@@ -16,6 +16,9 @@ namespace VRemoteDesktop.Services.ConnectionManager
 {
     public interface IClientInfoManager
     {
+        bool AddPartner(ClientInfo info);
+        bool IsExistPartner(string id);
+        bool IsTheSameNetWork(string partnerPublicIp);
         bool RemovePartner(string id);
         ClientInfo GetMyInfo();
         string GetLocalIPAddress();
@@ -53,6 +56,25 @@ namespace VRemoteDesktop.Services.ConnectionManager
         }
         #endregion
         #region Methods
+        public bool AddPartner(ClientInfo info)
+        {
+            if (info == null || string.IsNullOrEmpty(info.Id))
+                return false;
+
+            if (_partners.ContainsKey(info.Id))
+                return false;
+
+            _partners.Add(info.Id, info);
+            return true;
+        }
+        public bool IsExistPartner(string id)
+        {
+            return _partners.ContainsKey(id);
+        }
+        public bool IsTheSameNetWork(string partnerPublicIp)
+        {
+            return string.Compare(Me.PublicIP, partnerPublicIp) == 0;
+        }
         public bool RemovePartner(string id)
         {
             return _partners.Remove(id);
@@ -83,6 +105,15 @@ namespace VRemoteDesktop.Services.ConnectionManager
             return info;
         }
         public string GetLocalIPAddress()
+        {
+            using (var socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, 0))
+            {
+                socket.Connect("8.8.8.8", 65530);
+                var endPoint = socket.LocalEndPoint as IPEndPoint;
+                return endPoint?.Address.ToString() ?? "";
+            }
+        }
+        public string GetLocalIPAddress1()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
             foreach (var ip in host.AddressList)

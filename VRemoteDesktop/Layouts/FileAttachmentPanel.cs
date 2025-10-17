@@ -38,6 +38,8 @@ namespace VRemoteDesktop.Layouts
         public VFileInfo FileInfo => _fileInfo;
         private void InitializeComponent()
         {
+            this.Margin = new Padding(0);
+            this.Padding = new Padding(0);  
             this.ColumnCount = 3;
             this.RowCount = 2;
             this.Dock = DockStyle.Top;
@@ -181,12 +183,15 @@ namespace VRemoteDesktop.Layouts
         {
             if(control is Button btn)
             {
+                btn.Parent.Focus(); 
+
                 btn.Enabled = false;
                 btn.FlatStyle = FlatStyle.Flat;
                 btn.TabStop = false;
                 btn.Text = "";
                 btn.FlatAppearance.BorderSize = 0;
                 btn.BackColor = this.BackColor;
+
             }
         }
         private void ProgressCompletedEventHandler(object sender, ChatProgressBarEventArgs e)
@@ -207,6 +212,11 @@ namespace VRemoteDesktop.Layouts
         }
         public void RemoveProgressBar()
         {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action(RemoveProgressBar));
+                return;
+            }
             if (_progressBar != null)
             {
                 _progressBar.ProgressBarEvent -= ProgressCompletedEventHandler;
@@ -232,11 +242,12 @@ namespace VRemoteDesktop.Layouts
                 : type == ProgressBarEnum.Stop ? FORM_STOP                                                                                                                                                              
                 : FORM_ERROR,
 
-                AutoSize = false,
+                AutoSize = true,
                 Font = _defaultFont,
                 Dock = DockStyle.Fill,
             };
             this.Controls.Add(btn, 1, 1);
+            this.DisableControl(_stop);
         }
         public void UpdateRequestSendFileStatus(string text)
         {

@@ -55,22 +55,48 @@ namespace VRemoteServer.RelayServer.Services
         #region Properties
         #endregion
         #region Methods
+        public void InitServer()
+        {
+            _remoteControlServer.Init();
+        }
+
+        public async Task StartServer(IPEndPoint ep)
+        {
+            if (ep == null)
+                throw new ArgumentNullException(nameof(ep));
+
+            await _remoteControlServer.Start(ep);
+        }
+
+        public void CancelServer()
+        {
+            _remoteControlServer.Cancel();
+        }
+
         public bool InitRemoteConnection(string id, SocketConnection controller)
             => _remoteConnectionManager.AddController(id, controller);
+
         public bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection)
             => _remoteConnectionManager.AddControlled(id, controlled, out remoteConnection);
+
         public SocketConnection GetPartner(SocketConnection me)
             => _remoteConnectionManager.GetPartner(me);
+
         public bool GetPartner(SocketConnection me, out SocketConnection partner)
             => _remoteConnectionManager.GetPartner(me, out partner);
+
         public bool GetPartner(string id, SocketConnection me, out SocketConnection partner)
             => _remoteConnectionManager.GetPartner(id, me, out partner);
+
         public IEnumerable<SocketConnection> GetPartners(SocketConnection me)
             => _remoteConnectionManager.GetPartners(me);
+
         public IEnumerable<RemoteConnection> GetRemoteConnectionsBySocketConnection(SocketConnection connection)
             => _remoteConnectionManager.GetRemoteConnectionBySocketConnection(connection);
+
         public bool RemoveRemoteConnection(string id)
             => _remoteConnectionManager.Remove(id);
+
         private void ParseRequestToConnectHeader(SocketConnection connection, int dataOffset, int dataLength)
         {
             try
@@ -87,6 +113,7 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ParsePacketToData error");
             }
         }
+
         private void RemoteControlRequestToConnect(SocketConnection connection, string socketId, int dataOffset, int dataLength)
         {
             try
@@ -102,26 +129,13 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, $"RemoteControlRequestToConnect error");
             }
         }
+
         public void P2PConnectFailed(SocketConnection connection, string connectionId)
         {
             byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlConnectFailed, connectionId);
             Send(connection, packet);
         }
-        public void InitServer()
-        {
-            _remoteControlServer.Init();
-        }
-        public async Task StartServer(IPEndPoint ep)
-        {
-            if (ep == null)
-                throw new ArgumentNullException(nameof(ep));
 
-            await _remoteControlServer.Start(ep);
-        }
-        public void CancelServer()
-        {
-            _remoteControlServer.Cancel();
-        }
         public void Send(SocketConnection connection, byte[] data)
         {
             try
@@ -130,6 +144,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             catch { }
         }
+
         public void Send(SocketConnection connection, int offset, int length)
         {
             try
@@ -138,6 +153,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             catch { }
         }
+
         #endregion
         #region Events
         private void ServerErrorEventHandler(object sender, RemoteControlErrorEventArgs e)
@@ -147,6 +163,7 @@ namespace VRemoteServer.RelayServer.Services
                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.RemoteControlDisconnect));
             }
         }
+
         private void RemoteControlEventHandler(object sender, SocketConnectionEventArg e)
         {
             if (sender is SocketConnection connection)
@@ -162,6 +179,7 @@ namespace VRemoteServer.RelayServer.Services
                 }
             }
         }
+
         #endregion
         public void Dispose()
         {
