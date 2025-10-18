@@ -137,6 +137,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
         private List<ScreenRegion> FullScreenRegion(Bitmap fullScreen)
         {
+            if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1) 
+                return default;
+
             try
             {
                 if (fullScreen == null || encoder == null || encoderParams == null)

@@ -23,7 +23,7 @@ namespace VRemoteDesktop.Services.VTCPClient
     public class VClient : IDisposable
     {
         private int _isDisposed;
-        private bool isHost;
+        private bool _isHost;
         private bool _screenSucceeded;
         private bool _isSocketConnected;
         private bool _isP2PConnected;
@@ -53,6 +53,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
         private System.Threading.Timer _timer;
         private int bytesPerSecond;
+        private DateTime _lastPingTime;
         public VClient(string socketId, VClientType clientType, bool isHost = false)
         {
             _isDisposed = 0;
@@ -60,6 +61,7 @@ namespace VRemoteDesktop.Services.VTCPClient
             _screenSucceeded = false;
             _isP2PConnected = false;
             _isSocketConnected = false;
+            _lastPingTime = DateTime.Now;
             _socketId = socketId;
             _clientType = clientType;
 
@@ -83,12 +85,12 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             bytesPerSecond = 0;
             _timer = new System.Threading.Timer(Ping, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
-            this.isHost = isHost;
+            _isHost = isHost;
         }
 
         private void Ping(object state)
         {
-            if (isHost)
+            if (_isHost)
             {
                 AddWork(
                     new TaskObject { TaskType = SocketDataType.Ping,
@@ -97,6 +99,11 @@ namespace VRemoteDesktop.Services.VTCPClient
                         ChunkFileInfo = null,
                         Data = new byte[0],
                     }, QueuePriority.High);
+            }
+
+            if((DateTime.Now - _lastPingTime).TotalSeconds > 30) //No pong received in last 30 seconds
+            {
+                this.Dispose();
             }
             //lock (_lockObject)
             //{
@@ -107,6 +114,23 @@ namespace VRemoteDesktop.Services.VTCPClient
             //}
         }
         #region Properties
+        public bool IsHost
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _isHost;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _isHost = value;
+                }
+            }
+        }
         public bool ScreenSucceeded
         {
             get
@@ -269,6 +293,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             switch (task.Type)
             {
+                case SocketDataType.Pong:
+                    _lastPingTime = DateTime.Now;
+                    break;
                 case SocketDataType.ChatSend:
                     P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                     break;

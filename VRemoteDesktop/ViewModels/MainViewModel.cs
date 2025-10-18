@@ -53,7 +53,7 @@ namespace VRemoteDesktop.ViewModels
             }
             catch
             {
-                ErrorMessage = "Khởi tạo thất bại, vui lòng đóng FormRemote và mở lại!";
+                ShowMessage("Khởi tạo thất bại, vui lòng đóng FormRemote và mở lại!");
             }
         }
         #region Properties
@@ -116,7 +116,8 @@ namespace VRemoteDesktop.ViewModels
                     var client1 = _remoteDesktopService.GetClientById(_id);
                     if(client1 == null)
                     {
-                        ErrorMessage = "Không tồn tại client";
+                        ShowMessage("Không tồn tại client");
+                        return;
                     }
                     client1.TryConnect(ip: ip, port: validPort);
                 }
@@ -136,7 +137,7 @@ namespace VRemoteDesktop.ViewModels
             {
                 if(string.Equals(id, MyId, StringComparison.CurrentCultureIgnoreCase))
                 {
-                    ErrorMessage = "Không thể kết nối với chính mình";
+                    ShowMessage("Không thể kết nối với chính mình");
                     return;
                 }
                 if (!useTURNSERVER)
@@ -149,7 +150,7 @@ namespace VRemoteDesktop.ViewModels
                     //use TURN SERVER
                     if(!_remoteDesktopService.P2PConnect(id, password))
                     {
-                        ErrorMessage = "Kết nối thất bại";
+                        ShowMessage("Kết nối thất bại");
                     }
                 }
             }
@@ -157,6 +158,10 @@ namespace VRemoteDesktop.ViewModels
             {
                 Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
             }
+        }
+        private void ShowMessage(string message)
+        {
+            ErrorMessage = message;
         }
         #endregion
         #region Events
@@ -167,38 +172,22 @@ namespace VRemoteDesktop.ViewModels
         }
         private void TCPClientManagerEventHandler(object sender, RemoteDesktopEventArgs e)
         {
-            if(sender  is VClient client)
+            switch (e.Type)
             {
-                switch (e.Type)
-                {
-                    case SocketDataType.Connect:
-                        ConnectEventHandler(e.Flag);
-                        break;
-                    case SocketDataType.Login:
-                    case SocketDataType.LoginFailed:
-                        LoginEventHandler(e.Flag, e.Data);
-                        break;
-                    case SocketDataType.Disconnect:
-                        ConnectStatus = ConnectionStatus.Disconnected;
-                        break;
-                    case SocketDataType.Error:
-                        _resetEvent.Set();
-                        break;
-                    case SocketDataType.RemoteControlRequestToConnect:
-                    case SocketDataType.RemoteControlConnectFailed:
-                    case SocketDataType.RemoteControlAcceptedRequestToConnect:
-                    case SocketDataType.RemoteControlRefusedRequestToConnect:
-                    case SocketDataType.P2PLoginRespond:
-                    case SocketDataType.P2PConnect:
-                    case SocketDataType.Ready:
-                        PartnerRespond(sender, e);
-                        break;
-                    case SocketDataType.P2PInvalidConnectData:
-                        ErrorMessage = "Dữ liệu kết nối không hợp lệ";
-                        break;
-                    default:
-                        break;
-                }
+                case SocketDataType.Connect:
+                    ConnectEventHandler(e.Flag);
+                    break;
+                case SocketDataType.Login:
+                case SocketDataType.LoginFailed:
+                case SocketDataType.Disconnect:
+                    LoginEventHandler(e.Flag, e.Data);
+                    break;
+                case SocketDataType.P2PInvalidConnectData:
+                    ShowMessage("Dữ liệu kết nối không hợp lệ");
+                    break;
+                default:
+                    PartnerRespond(sender, e);
+                    break;
             }
         }
         private void ConnectEventHandler(bool flag)

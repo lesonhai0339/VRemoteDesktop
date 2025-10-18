@@ -344,7 +344,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #region Events
         private void ScreenCaptureEventHandler(object sender, ScreenCaptureEventArgs e)
         {
-            SendScreenRegionsChanged(sender, e);
+            try
+            {
+                SendScreenRegionsChanged(sender, e);
+            }
+            catch { /*Ignore*/ }
         }
         private void KeyboardEventHandler(object sender, KeyboardEventArgs e)
         {
@@ -623,7 +627,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
 
             client.Send(SocketDataType.P2PLogin, dataBytes, client.SocketId, true);
-            _reset.Set();
         }
         private void P2PLogin(object sender, EventArgs e)
         {
@@ -638,10 +641,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             string rawData = ByteArrayHelper.ConvertByteArrayToString(ev.Data, EncodingType.ASCII).GetResult();
             string[] dataArray = StringHelper.StringToStringArrayWithSeparator(rawData, DefaultValue.DEFAULT_SEPARATOR);
 
-            if (dataArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + 1)
+            if (dataArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + 1) //+1 for connection id
             {
                 ClientInfo partnerInfo = new ClientInfo();
-                if (partnerInfo.TryParseData(dataArray.Skip(1).ToArray()))
+                if (partnerInfo.TryParseData(dataArray.Skip(1).ToArray())) //Skip connection id
                 {
                     client.UpdatePartnerInfo(partnerInfo);
                     _clientInfo.AddPartner(partnerInfo);
@@ -698,6 +701,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
 
                 remoteControlClient.Send(SocketDataType.RemoteControlAcceptedRequestToConnect, dataBytes, remoteControlClient.SocketId, true);
+                
                 RespondEvent?.Invoke(remoteControlClient, ev);
             }
             else
@@ -726,6 +730,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             string data = ByteArrayHelper.ConvertByteArrayToString(ev.Data, EncodingType.ASCII).GetResult();
             string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
+            
             if (stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
             {
                 partnerInfo = new ClientInfo();
@@ -779,15 +784,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 throw new InvalidOperationException("Invalid eventArgs for ClientDisconnected");
 
 
-            _clientInfo.RemovePartner(client.Partner?.Id);
+            bool flag = _clientInfo.RemovePartner(client.Partner?.Id);
+
             RemoveClientById(client.SocketId);
 
-            if (client.Partner != null)
-            {
-                _clientInfo.RemovePartner(client.Partner.Id);
-            }
-
-            RespondEvent?.Invoke(sender, ev);
+            RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(ev.Type, false, ev.Data));
         }
         private void VClientClosedEventHandler(object sender, EventArgs e)
         {
@@ -796,6 +797,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 try
                 {
+                    if (client.IsHost)
+                    {
+                        RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(SocketDataType.Disconnect, false, new byte[0]));
+                    }
+
                     _clientInfo.RemovePartner(client.Partner?.Id);
                     _vClientManager.Remove(client.SocketId);
                 }

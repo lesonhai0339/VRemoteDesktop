@@ -77,6 +77,8 @@ namespace VRemoteServer.RelayServer.Services
         public void Ping(SocketConnection connection)
         {
             connection.UpdateTime();
+            byte[] packet = PacketFactory.CreatePacket(SocketDataType.Pong);
+            Send(connection, packet);
         }
 
         public void P2PConnectFailed(SocketConnection connection)
