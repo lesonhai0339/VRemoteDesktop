@@ -797,6 +797,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 try
                 {
+                    if (client.IsHost)
+                    {
+                        RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(SocketDataType.Disconnect, false, new byte[0]));
+                    }
+
                     _clientInfo.RemovePartner(client.Partner?.Id);
                     _vClientManager.Remove(client.SocketId);
                 }
