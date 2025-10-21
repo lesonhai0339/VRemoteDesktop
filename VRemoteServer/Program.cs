@@ -10,6 +10,7 @@ using VRemoteServer.RelayServer.Services;
 using VRemoteServer.Utils;
 using Microsoft.Extensions.Configuration;
 using VRemoteServer.RelayServer.DTOs;
+using System.Threading;
 
 
 namespace VRemoteServer
@@ -49,30 +50,41 @@ namespace VRemoteServer
                     services.AddSingleton<IRemoteControlManager, RemoteControlManager>();
                     services.AddSingleton<IRemoteControlManagerService, RemoteControlManagerService>();
                     services.AddSingleton<IRelayServerManager, RelayServerManagerService>();
+                    services.AddHostedService<RelayHostedService>();
+
                 })
                 .Build();
 
-            //var listener = host.Services.GetRequiredService<SocketListener>();
-            //await listener.Listen();
+            await host.RunAsync();
+        }
+    }
 
-            var server = host.Services.GetRequiredService<IRelayServerManager>();
-            IPEndPoint loginEP = new IPEndPoint(IPAddress.Any, 2399);
-            IPEndPoint remoteControlEP = new IPEndPoint(IPAddress.Any, 2400);
-            try
-            {
-                server.InitLoginServer();
-                server.InitRemoteControlServer();
+    internal class RelayHostedService : IHostedService
+    {
+        private readonly IRelayServerManager _server;
+        public RelayHostedService(IRelayServerManager server)
+        {
+            _server = server;
+        }  
+        public async Task StartAsync(CancellationToken cancellationToken)
+        {
+            _server.InitLoginServer();
+            _server.InitRemoteControlServer();
 
-                var loginTask = server.StartLoginServer(loginEP);
-                var remoteTask = server.StartRemoteControlServer(remoteControlEP);
+            var loginEP = new IPEndPoint(IPAddress.Any, 2399);
+            var remoteEP = new IPEndPoint(IPAddress.Any, 2400);
 
-                await Task.WhenAll(loginTask, remoteTask);
-            }
-            finally
-            {
-                server.CancelLoginServer();
-                server.CancelRemoteControlServer(); 
-            }
+            _ = _server.StartLoginServer(loginEP);
+            _ = _server.StartRemoteControlServer(remoteEP);
+
+        }
+
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            _server.CancelLoginServer();
+            _server.CancelRemoteControlServer();
+
+            return Task.CompletedTask;
         }
     }
 }
