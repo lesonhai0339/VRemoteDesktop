@@ -77,6 +77,15 @@ namespace VRemoteServer
             _ = _server.StartLoginServer(loginEP);
             _ = _server.StartRemoteControlServer(remoteEP);
 
+            _ = Task.Run(async () =>
+            {
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    Log.Information("Heartbeat: {time}", DateTime.Now);
+                    await Task.Delay(30000, cancellationToken);
+                }
+            });
+
         }
 
         public Task StopAsync(CancellationToken cancellationToken)
