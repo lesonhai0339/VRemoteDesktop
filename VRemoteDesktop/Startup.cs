@@ -1,7 +1,10 @@
-﻿using System;
+﻿using NetFwTypeLib;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -25,7 +28,73 @@ namespace VRemoteDesktop
         private RemoteDesktopService _remoteDesktopService;
         public Startup()
         {
+            RegisterFirewallAccess();
             Initialize();
+        }
+        private void RegisterFirewallAccess()
+        {
+            try
+            {
+                string ruleName = "Vsign4_RemoteDesktop";
+
+                if (CheckRuleExisted(ruleName)) return;
+
+                var root = Directory.GetCurrentDirectory();
+
+                string projectName = Assembly.GetCallingAssembly().GetName().Name;
+
+                string applicationName = Path.Combine(root, string.Format("{0}.exe", projectName));
+
+
+                CreateRule(ruleName, applicationName, NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_TCP);
+                CreateRule(ruleName, applicationName, NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_UDP);  
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine(ex);
+                throw;
+            }
+        }
+        private void CreateRule(string ruleName, string applicationName, NET_FW_IP_PROTOCOL_ protocol)
+        {
+            INetFwPolicy2 policy =
+                    (INetFwPolicy2)Activator.CreateInstance(
+                        Type.GetTypeFromProgID("HNetCfg.FwPolicy2"));
+
+            INetFwRule rule =
+                (INetFwRule)Activator.CreateInstance(
+                    Type.GetTypeFromProgID("HNetCfg.FWRule"));
+
+            rule.Name = ruleName;
+            rule.Description = "Access for app to open port";
+            rule.Enabled = true;
+            rule.ApplicationName = applicationName;
+            rule.Protocol = (int)protocol;
+            rule.Action = NET_FW_ACTION_.NET_FW_ACTION_ALLOW;
+            rule.Direction = NET_FW_RULE_DIRECTION_.NET_FW_RULE_DIR_IN;
+            rule.InterfaceTypes = "All";
+
+            rule.LocalAddresses = "*";
+            rule.RemoteAddresses = "*";
+
+
+            rule.Profiles = 6; //Private and Public
+
+
+            policy.Rules.Add(rule);
+        }
+        private bool CheckRuleExisted(string ruleName)
+        {
+            INetFwPolicy2 policy =
+                   (INetFwPolicy2)Activator.CreateInstance(
+                       Type.GetTypeFromProgID("HNetCfg.FwPolicy2"));
+
+            foreach(INetFwRule rule in policy.Rules)
+            {
+                if (string.Compare(rule.Name, ruleName, StringComparison.OrdinalIgnoreCase) == 0)
+                    return true;
+            }
+            return false;
         }
         private void Initialize()
         {
