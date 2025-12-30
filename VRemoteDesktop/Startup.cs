@@ -1,6 +1,7 @@
 ﻿using NetFwTypeLib;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -40,12 +41,7 @@ namespace VRemoteDesktop
 
                 if (CheckRuleExisted(ruleName)) return;
 
-                var root = Directory.GetCurrentDirectory();
-
-                string projectName = Assembly.GetCallingAssembly().GetName().Name;
-
-                string applicationName = Path.Combine(root, string.Format("{0}.exe", projectName));
-
+                string applicationName = Process.GetCurrentProcess().MainModule.FileName;
 
                 CreateRule(ruleName, applicationName, NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_TCP);
                 CreateRule(ruleName, applicationName, NET_FW_IP_PROTOCOL_.NET_FW_IP_PROTOCOL_UDP);  
