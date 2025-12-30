@@ -29,6 +29,7 @@ namespace VRemoteDesktop
         public Startup()
         {
             RegisterFirewallAccess();
+
             Initialize();
         }
         private void RegisterFirewallAccess()
