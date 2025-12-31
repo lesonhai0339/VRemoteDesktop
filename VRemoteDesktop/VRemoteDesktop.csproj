@@ -58,7 +58,10 @@
   <ItemGroup>
     <Compile Include="Enums\ChatControlType.cs" />
     <Compile Include="Enums\ChatDataType.cs" />
+    <Compile Include="Enums\ChatFileType.cs" />
     <Compile Include="Enums\ConnectionStatus.cs" />
+    <Compile Include="Enums\FileStatus.cs" />
+    <Compile Include="Enums\ProgressBarEnum.cs" />
     <Compile Include="Enums\QueuePriority.cs" />
     <Compile Include="Enums\UserChatControlEventType.cs" />
     <Compile Include="Enums\VClientType.cs" />

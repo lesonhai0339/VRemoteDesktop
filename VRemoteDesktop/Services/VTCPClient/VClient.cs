@@ -99,12 +99,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                         ChunkFileInfo = null,
                         Data = new byte[0],
                     }, QueuePriority.High);
+                if ((DateTime.Now - _lastPingTime).TotalSeconds > 30) //No pong received in last 30 seconds
+                {
+                    this.Dispose();
+                }
             }
 
-            if((DateTime.Now - _lastPingTime).TotalSeconds > 30) //No pong received in last 30 seconds
-            {
-                this.Dispose();
-            }
+           
             //lock (_lockObject)
             //{
             //    double bandWidth = (bytesPerSecond * 8) * 1.0 / 1000000; 

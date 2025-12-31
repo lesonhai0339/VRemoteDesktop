@@ -99,33 +99,24 @@ namespace VRemoteDesktop.ViewModels
         {
             return _remoteDesktopService.CheckRemoteConnected(id);
         }
-        public void Connect(VClient client = null)
+        public void Connect()
         {
             string ip = AppSettingHelper.GetValue("ServerIP");// ?? "27.0.12.78";
             string port = AppSettingHelper.GetValue("LoginPort");// ?? "2399";
 
-            if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
+            if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port) || !int.TryParse(port, out int validPort))
             {
+                ShowMessage("Không thể lấy server Ip và Port");
                 Log.ForContext("FileName", nameof(Connect)).Error("Error at Connect");
                 return;
             }
-            if(int.TryParse(port, out int validPort))
+            var client1 = _remoteDesktopService.NewClient(_id, VClientType.None, true);
+            if (client1 == null)
             {
-                if(client == null)
-                {
-                    var client1 = _remoteDesktopService.GetClientById(_id);
-                    if(client1 == null)
-                    {
-                        ShowMessage("Không tồn tại client");
-                        return;
-                    }
-                    client1.TryConnect(ip: ip, port: validPort);
-                }
-                else
-                {
-                    client.TryConnect(ip: ip, port: validPort);
-                }
+                ShowMessage("Xảy ra lỗi vui lòng đóng FormRemote và mở lại");
+                return;
             }
+            client1.TryConnect(ip: ip, port: validPort);
         }
         public void Login()
         {

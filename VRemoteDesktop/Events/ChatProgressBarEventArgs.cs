@@ -2,16 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using VRemoteDesktop.Enums;
 
 namespace VRemoteDesktop.Events
 {
-    public enum ProgressBarEnum
-    {
-        Finished,
-        Timeout,
-        Stop,
-        Error
-    }
     public class ChatProgressBarEventArgs: EventArgs
     {
         public ChatProgressBarEventArgs(ProgressBarEnum type)

@@ -32,7 +32,7 @@ namespace VRemoteDesktop.Services.FileService
             var now = DateTime.Now;
             foreach(var file in _files)
             {
-                //remove file if last write time exceed over 30 minutes
+                //remove file if last write time exceed over 60 minutes
                 if(now -  file.Value.LastWriteTime  > TimeSpan.FromMinutes(DefaultValue.DEFAULT_TIMEOUT_MINUTES))
                 {
                     FileRemoved?.Invoke(this, new ChatFileRemovedEventArgs(file.Value.Id));
