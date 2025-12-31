@@ -105,7 +105,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 }
             }
 
-           
+ 
             //lock (_lockObject)
             //{
             //    double bandWidth = (bytesPerSecond * 8) * 1.0 / 1000000; 
