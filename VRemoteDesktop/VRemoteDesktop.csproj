@@ -46,6 +46,7 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -152,6 +153,7 @@
     <Compile Include="Services\ScreenCapture\ScreenCaptureExtensions.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
+    <Compile Include="Services\ScreenCapture\VScreen.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
     <Compile Include="Services\VTCPClient\TCPClient.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />

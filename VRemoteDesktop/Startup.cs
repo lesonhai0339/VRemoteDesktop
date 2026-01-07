@@ -29,7 +29,7 @@ namespace VRemoteDesktop
         private RemoteDesktopService _remoteDesktopService;
         public Startup()
         {
-            RegisterFirewallAccess();
+            //RegisterFirewallAccess();
 
             Initialize();
         }
@@ -95,6 +95,9 @@ namespace VRemoteDesktop
         }
         private void Initialize()
         {
+            var VScreen = new VScreen();
+            VScreen.CaptureToBuffer();
+            VScreen.Get24bppBuffer();
             _capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();
             _vClientManager = new VClientManager();

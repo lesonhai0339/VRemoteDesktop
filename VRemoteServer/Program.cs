@@ -31,6 +31,10 @@ namespace VRemoteServer
             //    .Build();
 
             var host = Host.CreateDefaultBuilder(args)
+                .UseWindowsService(options =>
+                {
+                    options.ServiceName = "VRemoteServer"; 
+                })
                 .ConfigureServices((context, services) =>
                 {
                     var config = context.Configuration;
