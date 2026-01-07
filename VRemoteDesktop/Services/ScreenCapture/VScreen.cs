@@ -24,12 +24,48 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private IntPtr _bits;        // points to raw pixels
         private IntPtr _memDC;
         private Rectangle _bounds;
+        private Rectangle[] rects;
 
         public VScreen()
         {
             _bounds = Screen.PrimaryScreen.Bounds;
+
+            int size = 16;
+            int cols = (_bounds.Width + size - 1) / size;
+            int rows = (_bounds.Height + size - 1) / size;
+
+            rects = new Rectangle[cols * rows];
+
+            InitRectangle(_bounds.Width, _bounds.Height);
+
+
             _bufferPool = Marshal.AllocHGlobal(BUFFER_SIZE);
             InitCaptureBuffer(_bounds.Width, _bounds.Height);
+        }
+        public void Test()
+        {
+            CaptureToBuffer();
+            SaveScreen(_bounds.Width, _bounds.Height, BYTE_PER_PIXEL, _bits, _bufferPool);
+            CaptureToBuffer();
+            foreach(var rect in rects)
+            {
+                var flag = IsRegionChange(_bufferPool, _bits, rect.X, rect.Y, rect.Width, rect.Height);
+            }
+        }
+        private void InitRectangle(int width, int height)
+        {
+            int size = 16;
+            int index = 0;
+            for (int i = 0; i < height; i += size)
+            {
+                for (int j = 0; j < width; j += size)
+                {
+                    int w = Math.Min(size, width - j);
+                    int h = Math.Min(size, height - i);
+
+                    rects[index++] = new Rectangle(j, i, w, h);
+                }
+            }
         }
         private unsafe void SaveScreen(int width, int height, int bytePerPixel, IntPtr src, IntPtr dst)
         {
@@ -37,7 +73,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             int count = stride * height;
             CaptureApis.memcpy(dst, src, (UIntPtr)count);
         }
-        public unsafe void IsRegionChange(IntPtr oldScreen, IntPtr newScreen, int regionX, int regionY, int regionWidth, int regionHeight)
+        public unsafe bool IsRegionChange(IntPtr oldScreen, IntPtr newScreen, int regionX, int regionY, int regionWidth, int regionHeight)
         {
             int stride = ((_bounds.Width * BYTE_PER_PIXEL) + 3) & ~3;
             unsafe
@@ -55,10 +91,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     for (int col = 0; col < regionWidth; col++)
                     {
-                        //TODO: compare pixel by pixel
+                        if (pOld[col] != pNew[col])
+                            return true;
                     }
                 }
-            }         
+            }
+            return false;
         }
         private void InitCaptureBuffer(int width, int height)
         {
@@ -220,7 +258,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     d += 3;
                 }
             }
-        }
+        } 
         #region Dispose
         public void Dispose()
         {
