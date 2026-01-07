@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
@@ -25,7 +27,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private IntPtr _memDC;
         private Rectangle _bounds;
         private Rectangle[] rects;
-
+        private BackgroundWorker _worker;
         public VScreen()
         {
             _bounds = Screen.PrimaryScreen.Bounds;
@@ -41,15 +43,35 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             _bufferPool = Marshal.AllocHGlobal(BUFFER_SIZE);
             InitCaptureBuffer(_bounds.Width, _bounds.Height);
+
+            _worker = new BackgroundWorker();
+            _worker.DoWork += Handler;
         }
+        private void Handler(object sender, DoWorkEventArgs e)
+        {
+            while (true)
+            {
+                CaptureToBuffer();
+                foreach (var rect in rects)
+                {
+                    var flag = IsRegionChange(_bufferPool, _bits, rect.X, rect.Y, rect.Width, rect.Height);
+                    Console.WriteLine(flag);
+                }
+                SaveScreen(_bounds.Width, _bounds.Height, BYTE_PER_PIXEL, _bits, _bufferPool);
+                Thread.Sleep(1000);
+            }
+        }
+
         public void Test()
         {
-            CaptureToBuffer();
-            SaveScreen(_bounds.Width, _bounds.Height, BYTE_PER_PIXEL, _bits, _bufferPool);
-            CaptureToBuffer();
-            foreach(var rect in rects)
+            if (!_worker.IsBusy)
+                _worker.RunWorkerAsync();
+
+
+            while (true)
             {
-                var flag = IsRegionChange(_bufferPool, _bits, rect.X, rect.Y, rect.Width, rect.Height);
+                Console.WriteLine("\n------------------------\n");
+                Thread.Sleep(1000);
             }
         }
         private void InitRectangle(int width, int height)
@@ -73,13 +95,51 @@ namespace VRemoteDesktop.Services.ScreenCapture
             int count = stride * height;
             CaptureApis.memcpy(dst, src, (UIntPtr)count);
         }
+        public unsafe void GetRegionData(ref int offset, IntPtr destination, IntPtr source, int regionX, int regionY, int regionWidth, int regionHeight)
+        {
+            //Get the base pointer
+            byte* basePtr = (byte*)destination + offset;
+
+            //Add header info of region(x,y,w,h)
+            uint* d = (uint*)basePtr;   
+            *d++ = (uint)regionX;
+            *d++ = (uint)regionY;
+            *d++ = (uint)regionWidth;
+            *d++ = (uint)regionHeight;
+
+            //calculate stride of big screen and regions
+            int srcStride = ((_bounds.Width * BYTE_PER_PIXEL) + 3) & ~3;
+            uint dstStride = (uint)(regionWidth * BYTE_PER_PIXEL);
+
+            unsafe
+            {
+                //get address of source and destination 
+                byte* src = (byte*)source;
+                byte* dst = (byte*)d;
+
+                //for-loop to write row from source to destination
+                for (int row = 0; row < regionHeight; row++)
+                {
+                    int sy = (row + regionY) * srcStride; //reverser screen data , see more at InitCaptureBuffer() ->  bmi.Header.biHeight = -height;
+                    int sx = regionX * BYTE_PER_PIXEL; //offset in row
+
+                    IntPtr srcAddr = (IntPtr)(src + sy + sx); //formular => address = base + rowOffset + colOffset 
+
+                    IntPtr dstAddr = (IntPtr)(dst + (row * dstStride)); //formular => address = base + (row * rowStride) 
+
+                    CaptureApis.memcpy(dstAddr, srcAddr, (UIntPtr)dstStride);
+                }
+            }
+            offset += (int)(dstStride * regionHeight) + 16;
+        }
         public unsafe bool IsRegionChange(IntPtr oldScreen, IntPtr newScreen, int regionX, int regionY, int regionWidth, int regionHeight)
         {
             int stride = ((_bounds.Width * BYTE_PER_PIXEL) + 3) & ~3;
             unsafe
             {
                 byte* oBase = (byte*)oldScreen;
-                byte* nBase = (byte*)newScreen;   
+                byte* nBase = (byte*)newScreen;
+
                 for (int row = 0; row < regionHeight; row++)
                 {
                     //get the start off row
@@ -87,7 +147,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     int sx = regionX * BYTE_PER_PIXEL;
 
                     uint* pOld = (uint*)(oBase + sy + sx);
-                    uint* pNew = (uint*)(oBase + sy + sx);
+                    uint* pNew = (uint*)(nBase + sy + sx);
 
                     for (int col = 0; col < regionWidth; col++)
                     {
@@ -270,21 +330,26 @@ namespace VRemoteDesktop.Services.ScreenCapture
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
                 return;
 
+            //Khong the dung cai nay phai dung DeleteObject
             if (_hBitmap != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(_hBitmap);
                 _hBitmap = IntPtr.Zero;
             }
-            if (_bits != IntPtr.Zero)
-            {
-                Marshal.FreeHGlobal(_bits);
-                _bits = IntPtr.Zero;
-            }
+            //Khong the dung cai nay, phai dung DeleteDC
             if (_memDC != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(_memDC);
                 _memDC = IntPtr.Zero;
             }
+
+
+            if (_bits != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(_bits);
+                _bits = IntPtr.Zero;
+            }
+           
 
             if (disposing)
             {

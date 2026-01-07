@@ -97,6 +97,7 @@ namespace VRemoteDesktop
         {
             var VScreen = new VScreen();
             VScreen.Test();
+            return;
             _capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();
             _vClientManager = new VClientManager();
