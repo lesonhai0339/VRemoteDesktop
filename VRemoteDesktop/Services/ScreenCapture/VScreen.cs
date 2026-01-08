@@ -1,8 +1,10 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Drawing;
 using System.Drawing.Imaging;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
@@ -17,53 +19,51 @@ namespace VRemoteDesktop.Services.ScreenCapture
 {
     public class VScreen: IDisposable
     {
+        private readonly object _lock = new object();
         private const int BUFFER_SIZE = 20 * 1024 * 1024; //20MB
         private const uint DIB_RGB_COLORS = 0;
-        private const int BYTE_PER_PIXEL = 4;   
+        private const int BYTE_PER_PIXEL = 3;   
+        private const int REGION_SIZE = 16;  
+
+
         private int _disposed;
         private IntPtr _bufferPool;
+        private IntPtr _testPool;
         private IntPtr _hBitmap;
         private IntPtr _bits;        // points to raw pixels
         private IntPtr _memDC;
         private Rectangle _bounds;
-        private Rectangle[] rects;
+        private Rectangle[] rectangles;
         private BackgroundWorker _worker;
+        private Bitmap _bitmap;
+        private int count = 0;
         public VScreen()
         {
             _bounds = Screen.PrimaryScreen.Bounds;
 
-            int size = 16;
-            int cols = (_bounds.Width + size - 1) / size;
-            int rows = (_bounds.Height + size - 1) / size;
+            _bitmap = new Bitmap(_bounds.Width, _bounds.Height, PixelFormat.Format24bppRgb);
 
-            rects = new Rectangle[cols * rows];
+            int cols = (_bounds.Width + REGION_SIZE - 1) / REGION_SIZE;
+            int rows = (_bounds.Height + REGION_SIZE - 1) / REGION_SIZE;
+
+            rectangles = new Rectangle[cols * rows];
 
             InitRectangle(_bounds.Width, _bounds.Height);
 
 
             _bufferPool = Marshal.AllocHGlobal(BUFFER_SIZE);
+            _testPool = Marshal.AllocHGlobal(BUFFER_SIZE);
             InitCaptureBuffer(_bounds.Width, _bounds.Height);
 
             _worker = new BackgroundWorker();
             _worker.DoWork += Handler;
         }
-        private void Handler(object sender, DoWorkEventArgs e)
-        {
-            while (true)
-            {
-                CaptureToBuffer();
-                foreach (var rect in rects)
-                {
-                    var flag = IsRegionChange(_bufferPool, _bits, rect.X, rect.Y, rect.Width, rect.Height);
-                    Console.WriteLine(flag);
-                }
-                SaveScreen(_bounds.Width, _bounds.Height, BYTE_PER_PIXEL, _bits, _bufferPool);
-                Thread.Sleep(1000);
-            }
-        }
-
         public void Test()
         {
+            CaptureToBuffer();
+            SaveScreen(_bounds.Width, _bounds.Height, BYTE_PER_PIXEL, _bits, _bufferPool);
+            SaveToBitmap();
+
             if (!_worker.IsBusy)
                 _worker.RunWorkerAsync();
 
@@ -73,90 +73,173 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 Console.WriteLine("\n------------------------\n");
                 Thread.Sleep(1000);
             }
-        }
-        private void InitRectangle(int width, int height)
+        } 
+        public unsafe void SaveToBitmap()
         {
-            int size = 16;
-            int index = 0;
-            for (int i = 0; i < height; i += size)
-            {
-                for (int j = 0; j < width; j += size)
-                {
-                    int w = Math.Min(size, width - j);
-                    int h = Math.Min(size, height - i);
-
-                    rects[index++] = new Rectangle(j, i, w, h);
-                }
-            }
+            MergeRegionToSource((IntPtr)_bits, 0, 0 , _bounds.Width, _bounds.Height);
+            _bitmap.Save($"D:\\VinhHy\\Images\\08_01_2025\\{count}.png", ImageFormat.Png);
+            count++;
         }
-        private unsafe void SaveScreen(int width, int height, int bytePerPixel, IntPtr src, IntPtr dst)
+        public void SaveRegion(int x, int y, int w, int h)
         {
-            int stride = ((width * bytePerPixel) + 3) & ~3;
-            int count = stride * height;
-            CaptureApis.memcpy(dst, src, (UIntPtr)count);
+            if (_bitmap == null) return;
+
+            MergeRegionToSource(_bits, x, y, w, h);   
         }
-        public unsafe void GetRegionData(ref int offset, IntPtr destination, IntPtr source, int regionX, int regionY, int regionWidth, int regionHeight)
+        public void MergeRegionToSource(IntPtr source , int x, int y, int width, int height)
         {
-            //Get the base pointer
-            byte* basePtr = (byte*)destination + offset;
 
-            //Add header info of region(x,y,w,h)
-            uint* d = (uint*)basePtr;   
-            *d++ = (uint)regionX;
-            *d++ = (uint)regionY;
-            *d++ = (uint)regionWidth;
-            *d++ = (uint)regionHeight;
+            BitmapData bmpData =  _bitmap.LockBits(new Rectangle(x, y, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);    
 
-            //calculate stride of big screen and regions
-            int srcStride = ((_bounds.Width * BYTE_PER_PIXEL) + 3) & ~3;
-            uint dstStride = (uint)(regionWidth * BYTE_PER_PIXEL);
-
+            int srcStride = GetStride(_bounds.Width, BYTE_PER_PIXEL);
             unsafe
             {
-                //get address of source and destination 
-                byte* src = (byte*)source;
-                byte* dst = (byte*)d;
+                byte* srcBase = (byte*)source;
+                byte* dstBase = (byte*)bmpData.Scan0;   
 
-                //for-loop to write row from source to destination
-                for (int row = 0; row < regionHeight; row++)
+                for(int row = 0; row < height; row++)
                 {
-                    int sy = (row + regionY) * srcStride; //reverser screen data , see more at InitCaptureBuffer() ->  bmi.Header.biHeight = -height;
-                    int sx = regionX * BYTE_PER_PIXEL; //offset in row
+                    int sy = y + height - row - 1;
+                    var srcPtr = srcBase + ((sy * srcStride) + (x * BYTE_PER_PIXEL));
+                    var dstPtr = dstBase + (row * bmpData.Stride);
 
-                    IntPtr srcAddr = (IntPtr)(src + sy + sx); //formular => address = base + rowOffset + colOffset 
-
-                    IntPtr dstAddr = (IntPtr)(dst + (row * dstStride)); //formular => address = base + (row * rowStride) 
-
-                    CaptureApis.memcpy(dstAddr, srcAddr, (UIntPtr)dstStride);
+                    CaptureApis.memcpy((IntPtr)dstPtr, (IntPtr)srcPtr, (UIntPtr)(width * BYTE_PER_PIXEL));    
                 }
             }
-            offset += (int)(dstStride * regionHeight) + 16;
+            _bitmap.UnlockBits(bmpData);
         }
-        public unsafe bool IsRegionChange(IntPtr oldScreen, IntPtr newScreen, int regionX, int regionY, int regionWidth, int regionHeight)
+        public int MergeRegionToSource1(IntPtr regionChanged, int x, int y, int width, int height)
         {
-            int stride = ((_bounds.Width * BYTE_PER_PIXEL) + 3) & ~3;
+
+            BitmapData bmpData = _bitmap.LockBits(new Rectangle(x, y, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            int srcStride = GetStride(_bounds.Width, BYTE_PER_PIXEL);
             unsafe
             {
-                byte* oBase = (byte*)oldScreen;
-                byte* nBase = (byte*)newScreen;
+                byte* srcBase = (byte*)regionChanged;
+                byte* dstBase = (byte*)bmpData.Scan0;
 
-                for (int row = 0; row < regionHeight; row++)
+                for (int row = 0; row < height; row++)
                 {
-                    //get the start off row
-                    int sy = (row + regionY) * stride;
-                    int sx = regionX * BYTE_PER_PIXEL;
+                    int sy = y + height - row - 1;
+                    var srcPtr = srcBase + ((sy * srcStride) + (x * BYTE_PER_PIXEL));
+                    var dstPtr = dstBase + (row * bmpData.Stride);
 
-                    uint* pOld = (uint*)(oBase + sy + sx);
-                    uint* pNew = (uint*)(nBase + sy + sx);
+                    CaptureApis.memcpy((IntPtr)dstPtr, (IntPtr)srcPtr, (UIntPtr)(width * BYTE_PER_PIXEL));
+                }
+            }
+            _bitmap.UnlockBits(bmpData);
 
-                    for (int col = 0; col < regionWidth; col++)
+             return width * height * BYTE_PER_PIXEL;
+        }
+        /// <summary>
+        /// Only use for test
+        /// </summary>
+        /// <param name="source"></param>
+        /// <param name="x"></param>
+        /// <param name="y"></param>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <returns></returns>
+        public int MergeRegionToSource2(IntPtr source, int x, int y, int width, int height)
+        {
+
+            BitmapData bmpData = _bitmap.LockBits(new Rectangle(x, y, width, height), ImageLockMode.WriteOnly, PixelFormat.Format24bppRgb);
+
+            int srcStride = GetStride(width, BYTE_PER_PIXEL);
+            unsafe
+            {
+                byte* srcBase = (byte*)source;
+                byte* dstBase = (byte*)bmpData.Scan0;
+
+                for (int row = 0; row < height; row++)
+                {
+                    int sy = height - row - 1;
+                    var srcPtr = srcBase + (sy * srcStride);
+                    var dstPtr = dstBase + (row * bmpData.Stride);
+
+                    CaptureApis.memcpy((IntPtr)dstPtr, (IntPtr)srcPtr, (UIntPtr)(width * BYTE_PER_PIXEL));
+                }
+            }
+            _bitmap.UnlockBits(bmpData);
+
+            return height * srcStride;
+        }
+        #region Methods
+        #region Worker
+        private void Handler(object sender, DoWorkEventArgs e)
+        {
+            while (true)
+            {
+                int offset = 0;
+                CaptureToBuffer();
+
+                var changedRectArray = rectangles.Where(x => IsRegionChangeInRange(5, _bufferPool, _bits, x.X, x.Y, x.Width, x.Height)).ToArray();
+                MergeRect(changedRectArray);
+                /*for (int i = 0; i < rectangles.Length; i++)
+                {
+                    if (IsRegionChangeInRange(5, _bufferPool, 
+                        _bits, 
+                        rectangles[i].X, 
+                        rectangles[i].Y, 
+                        rectangles[i].Width, 
+                        rectangles[i].Height
+                    ))
                     {
-                        if (pOld[col] != pNew[col])
-                            return true;
+                        //SaveRegion(rectangles[i].X, rectangles[i].Y, rectangles[i].Width, rectangles[i].Height);
+                        GetRegionData(ref offset, _testPool, _bits,
+                            rectangles[i].X,
+                            rectangles[i].Y,
+                            rectangles[i].Width,
+                            rectangles[i].Height
+                        );
                     }
                 }
+                if(offset > 0)
+                {
+                    byte[] regionsData = new byte[offset];
+                    Marshal.Copy(_testPool, regionsData, 0, regionsData.Length);
+                    ParsePacketToRegionsChange(regionsData);
+
+                    SaveToBitmap();
+                }
+
+
+*/
+                //SaveToBitmap();
+                //SaveScreen(_bounds.Width, _bounds.Height, BYTE_PER_PIXEL, _bits, _bufferPool);
+                Thread.Sleep(1000);
             }
-            return false;
+        }
+        #endregion
+        #region Initialize
+        private void InitRectangle(int width, int height)
+        {
+            int index = 0;
+            for (int i = 0; i < height; i += REGION_SIZE)
+            {
+                for (int j = 0; j < width; j += REGION_SIZE)
+                {
+                    int w = Math.Min(REGION_SIZE, width - j);
+                    int h = Math.Min(REGION_SIZE, height - i);
+
+                    rectangles[index++] = new Rectangle(j, i, w, h);
+                }
+            }
+        }
+        public void MergeRect(Rectangle[] rectangles)
+        {
+            var groups = rectangles.GroupBy(x => x.Top / REGION_SIZE)
+                .ToDictionary(g => g.Key, g => g.ToArray())
+                .Select(k => k.Value)
+                .ToList();
+
+        }
+        private Rectangle CanMerge(Rectangle[] regions, int y, int height)
+        {
+            var xMin = regions.Min(r => r.Left);
+            var xMax = regions.Max(r => r.Right);
+            return new Rectangle(xMin, y, xMax - xMin, height);
         }
         private void InitCaptureBuffer(int width, int height)
         {
@@ -165,7 +248,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             bmi.Header.biWidth = width;
             bmi.Header.biHeight = -height; //top-down
             bmi.Header.biPlanes = 1;
-            bmi.Header.biBitCount = 32; //32 bits per pixel
+            bmi.Header.biBitCount = 24; //24 bits per pixel
             bmi.Header.biCompression = 0; //BI_RGB
 
             IntPtr screenDC = CaptureApis.GetDC(IntPtr.Zero);
@@ -182,61 +265,16 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             CaptureApis.ReleaseDC(IntPtr.Zero, screenDC);
         }
-        public void Something(int width, int height)
-        {
-            int srcStride = ((width * 4) + 3) & ~3;
-            int dataLength = srcStride * height;
-        }
-        public void CaptureToBuffer()
-        {
-            IntPtr screenDC = CaptureApis.GetDC(IntPtr.Zero);
-
-            CaptureApis.BitBlt(
-                _memDC,
-                0, 0,
-                _bounds.Width,
-                _bounds.Height,
-                screenDC,
-                _bounds.X,
-                _bounds.Y,
-                0x00CC0020); // SRCCOPY
-
-            CaptureApis.ReleaseDC(IntPtr.Zero, screenDC);
-        }
-        public void Get24bppBuffer()
-        {
-            int width = _bounds.Width;
-            int height = _bounds.Height;
-            Bitmap bitmap = new Bitmap(width, height, System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-            BitmapData bmp = bitmap.LockBits(
-                new Rectangle(0, 0, width, height),
-                ImageLockMode.WriteOnly,
-                System.Drawing.Imaging.PixelFormat.Format24bppRgb);
-
-            unsafe
-            {
-           
-                byte* dstPtr = (byte*)bmp.Scan0;
-                Convert32To24((byte*)_bits, dstPtr, width, height);
-
-
-                byte[] ddd = new byte[bmp.Stride * bmp.Height];
-                Marshal.Copy(bmp.Scan0, ddd, 0, ddd.Length);
-                Console.WriteLine($"Before compress: {ddd.Length}");
-                var compressed = ByteArrayHelper.CompressDeflate(ddd);
-                Console.WriteLine($"After compressed: {compressed.Data.Length}");
-            }
-
-            bitmap.UnlockBits(bmp);
-        }
+        #endregion
+        #region converter
         unsafe void Convert32To24(
-        byte* src,    // _bits from 32bpp DIB
-        byte* dst,    // your destination buffer
-        int width,
-        int height)
+           byte* src,    // _bits from 32bpp DIB
+           byte* dst,    // destination buffer
+           int width,
+           int height)
         {
-            int srcStride = width * 4;
-            int dstStride = (width * 3 + 3) & ~3;
+            int srcStride = GetStride(width , 4);
+            int dstStride = GetStride(width , 3);
 
             for (int y = 0; y < height; y++)
             {
@@ -256,12 +294,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         unsafe void Convert32To565(
            byte* src,    // _bits from 32bpp DIB
-           byte* dst,    // your destination buffer
+           byte* dst,    //destination buffer
            int width,
            int height)
         {
-            int srcStride = ((width * 4) + 3) & ~3;
-            int dstStride = ((width * 2) + 3) & ~3;
+            int srcStride = GetStride(width, 4);
+            int dstStride = GetStride(width, 2);
 
             for (int y = 0; y < height; y++)
             {
@@ -288,13 +326,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         unsafe void RGB565ToRGB24(byte* src, byte* dst, int width, int height)
         {
-            int srcStride = ((width * 2) + 3) & ~3;
-            int dstStride = ((width * 3) + 3) & ~3;
+            int srcStride = GetStride(width, 2);
+            int dstStride = GetStride(width, 3);
 
             for (int y = 0; y < height; y++)
             {
-                ushort* s = (ushort*)(src + y * dstStride);
-                byte* d = dst + y * srcStride;
+                ushort* s = (ushort*)(src + y * srcStride);
+                byte* d = dst + y * dstStride;
 
                 for (int x = 0; x < width; x++)
                 {
@@ -318,7 +356,177 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     d += 3;
                 }
             }
-        } 
+        }
+        #endregion
+        private int GetStride(int width, int bytePerPixel)
+        {
+            return ((width * bytePerPixel) + 3) & ~3;   
+        }
+        public void CaptureToBuffer()
+        {
+            IntPtr screenDC = CaptureApis.GetDC(IntPtr.Zero);
+
+            CaptureApis.BitBlt(
+                _memDC,
+                0, 0,
+                _bounds.Width,
+                _bounds.Height,
+                screenDC,
+                _bounds.X,
+                _bounds.Y,
+                0x00CC0020); // SRCCOPY
+
+            CaptureApis.ReleaseDC(IntPtr.Zero, screenDC);
+        }
+        public unsafe void GetRegionData(ref int offset, IntPtr destination, IntPtr source, int regionX, int regionY, int regionWidth, int regionHeight)
+        {
+            //Get the base pointer
+            byte* basePtr = (byte*)destination + offset;
+
+            //Add header info of region(x,y,w,h)
+            uint* d = (uint*)basePtr;
+            *d++ = (uint)regionX;
+            *d++ = (uint)regionY;
+            *d++ = (uint)regionWidth;
+            *d++ = (uint)regionHeight;
+
+            //calculate stride of big screen and regions
+            int srcStride = GetStride(_bounds.Width , BYTE_PER_PIXEL);
+            uint dstStride = (uint)GetStride(regionWidth , BYTE_PER_PIXEL);
+
+            unsafe
+            {
+                //get address of source and destination 
+                byte* src = (byte*)source;
+                byte* dst = (byte*)d;
+
+                //for-loop to write row from source to destination
+                for (int row = 0; row < regionHeight; row++)
+                {
+                    int sy = (row + regionY) * srcStride; //reverser screen data , see more at InitCaptureBuffer() ->  bmi.Header.biHeight = -height;
+                    int sx = regionX * BYTE_PER_PIXEL; //offset in row
+
+                    IntPtr srcAdd = (IntPtr)(src + sy + sx); //formular => address = base + rowOffset + colOffset 
+
+                    IntPtr dstAdd = (IntPtr)(dst + (row * dstStride)); //formular => address = base + (row * rowStride) 
+
+                    CaptureApis.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
+                }
+            }
+            offset += (int)(dstStride * regionHeight) + 16;
+        }
+        public unsafe void ParsePacketToRegionsChange(byte[] packet)
+        {
+            fixed (byte* pPacket = packet)
+            {
+                int offset = 0;
+                int length = packet.Length;
+                while (offset + 16 <= length)
+                {
+                    // get pointer to current position
+                    byte* src = pPacket + offset;
+
+                    // move to uint pointer, each d++ move 4 bytes
+                    uint* d = (uint*)src;
+
+                    int x = (int)*d++;
+                    int y = (int)*d++;
+                    int w = (int)*d++;
+                    int h = (int)*d++;
+
+                    // back to single byte pointer, each d++ move 1 byte
+                    IntPtr dst = (IntPtr)d;
+
+                    offset += 16;
+
+                    offset += MergeRegionToSource2(dst, x, y, w, h);
+
+                    Console.WriteLine($"Expected: {packet.Length} -  Current: {offset}");
+                }
+            }
+        }
+        public unsafe bool IsRegionChange(IntPtr oldScreen, IntPtr newScreen, int regionX, int regionY, int regionWidth, int regionHeight)
+        {
+            int stride = ((_bounds.Width * BYTE_PER_PIXEL) + 3) & ~3;
+            unsafe
+            {
+                byte* oBase = (byte*)oldScreen;
+                byte* nBase = (byte*)newScreen;
+
+                for (int row = 0; row < regionHeight; row++)
+                {
+                    //get the start off row
+                    int sy = (row + regionY) * stride;
+                    int sx = regionX * BYTE_PER_PIXEL;
+
+                    byte* pOld = (oBase + sy + sx);
+                    byte* pNew = (nBase + sy + sx);
+
+                    for (int col = 0; col < regionWidth; col++)
+                    {
+                        if (pOld[0] != pNew[0] ||
+                            pOld[1] != pNew[1] ||
+                            pOld[2] != pNew[2])
+                        {
+                            return true;
+                        }
+
+                        pOld += BYTE_PER_PIXEL;
+                        pNew += BYTE_PER_PIXEL; 
+                    }
+                }
+            }
+            return false;
+        }
+        /// <summary>
+        /// Compare region with range, range is acceptable difference color value. Example range = 5, if R,G,B difference less than 5, it is considered unchanged
+        /// </summary>
+        /// <param name="range"></param>
+        /// <param name="oldScreen"></param>
+        /// <param name="newScreen"></param>
+        /// <param name="regionX"></param>
+        /// <param name="regionY"></param>
+        /// <param name="regionWidth"></param>
+        /// <param name="regionHeight"></param>
+        /// <returns></returns>
+        public unsafe bool IsRegionChangeInRange(int range, IntPtr oldScreen, IntPtr newScreen, int regionX, int regionY, int regionWidth, int regionHeight)
+        {
+            int stride = ((_bounds.Width * BYTE_PER_PIXEL) + 3) & ~3;
+            unsafe
+            {
+                byte* oBase = (byte*)oldScreen;
+                byte* nBase = (byte*)newScreen;
+
+                for (int row = 0; row < regionHeight; row++)
+                {
+                    //get the start off row
+                    int sy = (row + regionY) * stride;
+                    int sx = regionX * BYTE_PER_PIXEL;
+
+                    byte* pOld = (oBase + sy + sx);
+                    byte* pNew = (nBase + sy + sx);
+
+                    for (int col = 0; col < regionWidth; col++)
+                    {
+                        if (Math.Abs(pOld[0] - pNew[0]) > range ||
+                            Math.Abs(pOld[1] - pNew[1]) > range ||
+                            Math.Abs(pOld[2] - pNew[2]) > range)
+                                return true;
+
+                        pOld += BYTE_PER_PIXEL;
+                        pNew += BYTE_PER_PIXEL;
+                    }
+                }
+            }
+            return false;
+        }
+        private unsafe void SaveScreen(int width, int height, int bytePerPixel, IntPtr src, IntPtr dst)
+        {
+            int stride = ((width * bytePerPixel) + 3) & ~3;
+            int count = stride * height;
+            CaptureApis.memcpy(dst, src, (UIntPtr)count);
+        }
+        #endregion
         #region Dispose
         public void Dispose()
         {
@@ -330,13 +538,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
                 return;
 
-            //Khong the dung cai nay phai dung DeleteObject
+            // Khong the dung cai nay phai dung DeleteObject
             if (_hBitmap != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(_hBitmap);
                 _hBitmap = IntPtr.Zero;
             }
-            //Khong the dung cai nay, phai dung DeleteDC
+            // Khong the dung cai nay, phai dung DeleteDC
             if (_memDC != IntPtr.Zero)
             {
                 Marshal.FreeHGlobal(_memDC);
@@ -349,7 +557,17 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 Marshal.FreeHGlobal(_bits);
                 _bits = IntPtr.Zero;
             }
-           
+            if (_bufferPool != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(_bufferPool);
+                _bufferPool = IntPtr.Zero;
+            }
+            if (_testPool != IntPtr.Zero)
+            {
+                Marshal.FreeHGlobal(_testPool);
+                _testPool = IntPtr.Zero;
+            }
+
 
             if (disposing)
             {
