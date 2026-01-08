@@ -235,6 +235,36 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 .ToList();
 
         }
+        public void MergeRect1(Rectangle[] rectangles, double threshold = 0.8)
+        {
+            var groups = rectangles.OrderBy(x => x.Top)
+                .ThenBy(x => x.Left)
+                .ToList();
+
+            List<Rectangle> rectangles1 = new List<Rectangle>();
+            var baseRect = groups[0];
+            for(int i= 1; i< groups.Count; i++)
+            {
+                var rect = groups[i];
+                
+                var b = Rectangle.Union(baseRect, rect);
+
+                var areaUnion = b.Width * b.Height;
+                var areaSum = baseRect.Width * baseRect.Height + rect.Width * rect.Height;
+
+                var ratio = (double)areaSum / areaUnion;
+                if(ratio > threshold)
+                {
+                    baseRect = b;
+                }
+                else
+                {
+                    rectangles1.Add(baseRect);
+                    baseRect = rect;
+                }
+
+            }
+        }
         private Rectangle CanMerge(Rectangle[] regions, int y, int height)
         {
             var xMin = regions.Min(r => r.Left);
