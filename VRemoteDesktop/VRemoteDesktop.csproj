@@ -75,6 +75,7 @@
     <Compile Include="Enums\MouseAction.cs" />
     <Compile Include="Enums\ResponseStatus.cs" />
     <Compile Include="Enums\UISizeMode.cs" />
+    <Compile Include="Enums\VScreenType.cs" />
     <Compile Include="Enums\WindowsClipboardFormat.cs" />
     <Compile Include="Enums\WindowsKeyboardEvent.cs" />
     <Compile Include="Enums\WindowsMouseEvent.cs" />
@@ -154,6 +155,7 @@
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\ScreenCapture\VScreen.cs" />
+    <Compile Include="Services\ScreenCapture\VScreenSender.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
     <Compile Include="Services\VTCPClient\TCPClient.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
@@ -229,6 +231,7 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="Services\RemoteDesktop\RemoteDesktopService_backup.txt" />
+    <Content Include="Services\ScreenCapture\VScreenBackup.txt" />
     <Content Include="Services\VTCPClient\VClient_Backup.txt" />
     <Content Include="ViewModels\ChatViewModel_Backup.txt" />
   </ItemGroup>

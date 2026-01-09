@@ -95,7 +95,8 @@ namespace VRemoteDesktop
         }
         private void Initialize()
         {
-            var VScreen = new VScreen();
+            var VScreen = new VScreenSender();
+            VScreen.ChangeToReceiver(1920, 1080);
             VScreen.Test();
             return;
             _capture = new ScreenCapture1();

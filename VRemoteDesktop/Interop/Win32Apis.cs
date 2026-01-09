@@ -55,6 +55,22 @@ namespace VRemoteDesktop.Interop
 
             [DllImport("msvcrt.dll", EntryPoint = "memcpy", CallingConvention = CallingConvention.Cdecl, SetLastError = false)]
             public static extern IntPtr memcpy(IntPtr dest, IntPtr src, UIntPtr count);
+
+            [DllImport("gdi32.dll", SetLastError = true)]
+            public static extern bool DeleteObject(IntPtr hObject);
+
+            [DllImport("gdi32.dll", SetLastError = true)]
+            public static extern bool DeleteDC(IntPtr hdc);
+
+            [DllImport("gdi32.dll", SetLastError = true)]
+            public static extern bool GdiFlush();
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            public static extern IntPtr CreateFileMappingA(IntPtr hFile, IntPtr lpFileMappingAttributes, uint flProtect, uint dwMaximumSizeHigh, uint dwMaximumSizeLow, string lpName);
+
+            [DllImport("kernel32.dll", SetLastError = true)]
+            public static extern bool CloseHandle(IntPtr hObjecy);
+
         }
         public static class MouseApis
         {
