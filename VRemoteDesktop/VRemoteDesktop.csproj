@@ -155,6 +155,7 @@
     <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
     <Compile Include="Services\ScreenCapture\VScreen.cs" />
+    <Compile Include="Services\ScreenCapture\VScreenReceiver.cs" />
     <Compile Include="Services\ScreenCapture\VScreenSender.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
     <Compile Include="Services\VTCPClient\TCPClient.cs" />
