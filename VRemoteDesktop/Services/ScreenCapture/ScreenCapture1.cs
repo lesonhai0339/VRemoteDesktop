@@ -14,6 +14,7 @@ using System.Diagnostics;
 using static VRemoteDesktop.Utils.DefaultScreen;
 using System.Runtime.ConstrainedExecution;
 using System.Threading;
+using VRemoteDesktop.Services.ScreenCapture.Interop;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -203,13 +204,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
             using (Graphics bitmapGraphics = Graphics.FromImage(bitmap))
             {
                 IntPtr bitmapHdc = bitmapGraphics.GetHdc();
-                IntPtr screenHdc = CaptureApis.GetDC(IntPtr.Zero);
+                IntPtr screenHdc = CaptureApi.GetDC(IntPtr.Zero);
 
-                CaptureApis.BitBlt(bitmapHdc, 0, 0, _bounds.Width, _bounds.Height,
+                CaptureApi.BitBlt(bitmapHdc, 0, 0, _bounds.Width, _bounds.Height,
                        screenHdc, _bounds.X, _bounds.Y, 0x00CC0020); // SRCCOPY
 
                 bitmapGraphics.ReleaseHdc(bitmapHdc);
-                CaptureApis.ReleaseDC(IntPtr.Zero, screenHdc);
+                CaptureApi.ReleaseDC(IntPtr.Zero, screenHdc);
             }
             return bitmap;
         }

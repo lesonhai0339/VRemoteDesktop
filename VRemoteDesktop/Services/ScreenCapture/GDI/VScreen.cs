@@ -10,6 +10,8 @@ using static VRemoteDesktop.Interop.Win32Apis;
 using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
+using static VRemoteDesktop.Services.ScreenCapture.Interop.CaptureApi;
+using VRemoteDesktop.Services.ScreenCapture.Interop;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -43,8 +45,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
             bmi.Header.biBitCount = bitPerPixel;
             bmi.Header.biCompression = compression;
 
-            IntPtr screenDC = CaptureApis.GetDC(screenDCPtr);
-            hBitmap = CaptureApis.CreateDIBSection(
+            IntPtr screenDC = CaptureApi.GetDC(screenDCPtr);
+            hBitmap = CaptureApi.CreateDIBSection(
               screenDC,
               ref bmi,
               DIB_RGB_COLORS,
@@ -58,10 +60,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 throw new Exception("CreateDIBSection failed with error: " + error);
             }
 
-            memDC = CaptureApis.CreateCompatibleDC(screenDC);
-            CaptureApis.SelectObject(memDC, hBitmap);
+            memDC = CaptureApi.CreateCompatibleDC(screenDC);
+            CaptureApi.SelectObject(memDC, hBitmap);
 
-            CaptureApis.ReleaseDC(screenDCPtr, screenDC);
+            CaptureApi.ReleaseDC(screenDCPtr, screenDC);
         }
         public virtual Rectangle[] InitRectangle(int width, int height, int regionSize = 16)
         {
@@ -94,7 +96,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             // Create shared memory for DIBSection https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-createfilemappinga
             // It is hSection in https://learn.microsoft.com/en-us/windows/win32/api/wingdi/nf-wingdi-createdibsection
-            fileMappingPtr = CaptureApis.CreateFileMappingA(
+            fileMappingPtr = CaptureApi.CreateFileMappingA(
                 new IntPtr(-1),
                 IntPtr.Zero,
                 pageProtect, //PAGE_EXECUTE_READWRITE
@@ -118,11 +120,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             return (((width * bytePerPixel * 8) + 31) & ~31) >> 3;
         }
-        public virtual void CaptureToBuffer(IntPtr memDC, IntPtr screenDCPtr, int x, int y, int width, int height)
+        public virtual void CaptureToBuffer(IntPtr memDC, IntPtr screenDC, int x, int y, int width, int height)
         {
-            IntPtr screenDC = CaptureApis.GetDC(screenDCPtr);
-
-            CaptureApis.BitBlt(
+            CaptureApi.BitBlt(
                 memDC,
                 0, 0,
                 width,
@@ -131,9 +131,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 x,
                 y,
                 0x00CC0020); // SRCCOPY
-
-            CaptureApis.ReleaseDC(IntPtr.Zero, screenDC);
-            CaptureApis.GdiFlush();
+            //CaptureApi.GdiFlush();
         }
         public virtual List<Rectangle> MergeRegions(Rectangle[] regions, double threshold = 0.8)
         {
@@ -225,10 +223,57 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     IntPtr dstAdd = (IntPtr)(dst + (row * dstStride)); //formular => address = base + (row * rowStride) 
 
-                    CaptureApis.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
+                    CaptureApi.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
                 }
             }
             offset += (int)(dstStride * regionHeight) + 16; //Data + header(16 bytes for x,y,w,h)
+        }
+        public virtual unsafe void GetRegionsData(
+         ref int offset,
+         byte[] destination,
+         IntPtr source,
+         int srcWidth,
+         int regionX,
+         int regionY,
+         int regionWidth,
+         int regionHeight,
+         int bytePerPixel = 3)
+        {
+            fixed (byte* bst = destination)
+            {
+                byte* basePtr = bst + offset;
+                //Add header info of region(x,y,w,h)
+                uint* d = (uint*)basePtr;
+                *d++ = (uint)regionX;
+                *d++ = (uint)regionY;
+                *d++ = (uint)regionWidth;
+                *d++ = (uint)regionHeight;
+
+                //calculate stride of big screen and regions
+                int srcStride = GetStride(srcWidth, bytePerPixel);
+                uint dstStride = (uint)(regionWidth * bytePerPixel);
+
+                unsafe
+                {
+                    //get address of source and destination 
+                    byte* src = (byte*)source;
+                    byte* dst = (byte*)d;
+
+                    //for-loop to write row from source to destination
+                    for (int row = 0; row < regionHeight; row++)
+                    {
+                        int sy = (row + regionY) * srcStride; //reverser screen data , see more at InitCaptureBuffer() ->  bmi.Header.biHeight = -height;
+                        int sx = regionX * bytePerPixel; //offset in row
+
+                        IntPtr srcAdd = (IntPtr)(src + sy + sx); //formular => address = base + rowOffset + colOffset 
+
+                        IntPtr dstAdd = (IntPtr)(dst + (row * dstStride)); //formular => address = base + (row * rowStride) 
+
+                        CaptureApi.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
+                    }
+                }
+                offset += (int)(dstStride * regionHeight) + 16; //Data + header(16 bytes for x,y,w,h)
+            }
         }
         public virtual unsafe void GetFullScreenData(
             ref int offset,
@@ -261,10 +306,48 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     IntPtr dstAdd = (IntPtr)(dst + (row * dstStride)); //formular => address = base + (row * rowStride) 
 
-                    CaptureApis.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
+                    CaptureApi.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
                 }
             }
             offset += (int)(dstStride * regionHeight);
+        }
+        public virtual unsafe void GetFullScreenData(
+           ref int offset,
+           byte[] destination,
+           IntPtr source,
+           int srcWidth,
+           int regionX,
+           int regionY,
+           int regionWidth,
+           int regionHeight,
+           int bytePerPixel = 3)
+        {
+            fixed(byte* dstPtr = destination)
+            {
+                byte* dst = dstPtr + offset;
+                int srcStride = GetStride(srcWidth, bytePerPixel);
+                uint dstStride = (uint)(regionWidth * bytePerPixel); //Only send raw data without padding
+
+                unsafe
+                {
+                    //get address of source and destination 
+                    byte* src = (byte*)source;
+
+                    //for-loop to write row from source to destination
+                    for (int row = 0; row < regionHeight; row++)
+                    {
+                        int sy = (row + regionY) * srcStride; //reverser screen data , see more at InitCaptureBuffer() ->  bmi.Header.biHeight = -height;
+                        int sx = regionX * bytePerPixel; //offset in row
+
+                        IntPtr srcAdd = (IntPtr)(src + sy + sx); //formular => address = base + rowOffset + colOffset 
+
+                        IntPtr dstAdd = (IntPtr)(dst + (row * dstStride)); //formular => address = base + (row * rowStride) 
+
+                        CaptureApi.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
+                    }
+                }
+                offset += (int)(dstStride * regionHeight);
+            }
         }
         public virtual unsafe bool IsRegionChange(
             IntPtr oldScreen,
@@ -375,7 +458,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
         }
-        public virtual int MergeRegionToSource(IntPtr source, int x, int y, int width, int height, IntPtr destination, int dstWidth, int dstHeight, int bytePerPixel)
+        public virtual int MergeRegionToSource(IntPtr source, int x, int y, int width, int height, IntPtr destination, int dstWidth, int dstHeight, int bytePerPixel =3)
         {
             if (x < 0 || y < 0 || x + width > dstWidth || y + height > dstHeight)
                 return 0;
@@ -393,7 +476,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     var srcPtr = srcBase + (row * srcStride);
                     var dstPtr = dst + (row * dstStride);
 
-                    CaptureApis.memcpy((IntPtr)dstPtr, (IntPtr)srcPtr, (UIntPtr)(width * bytePerPixel));
+                    CaptureApi.memcpy((IntPtr)dstPtr, (IntPtr)srcPtr, (UIntPtr)srcStride);
                 }
             }
             return height * srcStride;

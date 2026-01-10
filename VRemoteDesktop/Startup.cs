@@ -13,8 +13,10 @@ using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture;
+using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop
 {
@@ -95,9 +97,40 @@ namespace VRemoteDesktop
         }
         private void Initialize()
         {
-            var VScreen = new VScreenSender();
-            VScreen.ChangeToReceiver(1920, 1080);
-            VScreen.Test();
+            //sender rent buffer
+            var buffer = VArrayPool.Rent(10 * 1024 * 1024);
+            var screenTask = new ScreenTask(buffer);
+            var sender = new VScreenSender(screenTask);
+
+            var receiver = new VScreenReceiver(1920, 1080);
+            sender.OnScreenCaptured += (s, e) =>
+            {
+                try
+                {
+                    if (e.Type == Services.ScreenCapture.Enums.VScreenSenderEventType.FullScreen)
+                    {
+                        receiver.MergeFullScreenToBitmap(e.ScreenTask.Buffer, e.Length);
+                    }
+                    else
+                    {
+                        receiver.ParsePacketToRegionsChange(e.ScreenTask.Buffer, e.Length);
+                    }
+                }
+                finally
+                {
+                    e.ScreenTask.Complete();
+                }
+            };
+
+            sender.GetFullScreen();
+            sender.Start();
+            int count = 0;
+            while (count < 300)
+            {
+                Console.WriteLine("\n----------------------------\n");
+                Thread.Sleep(1000);
+            }
+            VArrayPool.Return(buffer);
             return;
             _capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();
