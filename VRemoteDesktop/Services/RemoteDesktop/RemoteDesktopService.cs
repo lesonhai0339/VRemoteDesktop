@@ -10,6 +10,8 @@ using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.ScreenCapture;
+using VRemoteDesktop.Services.ScreenCapture.Enums;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
@@ -23,8 +25,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
-        private bool _isCapturing = false; 
+        private bool _isCapturing = false;
 
+#if DEBUG
+        private readonly IVScreenSender _screenSender;
+#endif
         private readonly IClientInfoManager _clientInfo;
         private readonly GlobalHookService _globalHook;
         private readonly VClientManager _vClientManager;
@@ -34,7 +39,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         public event EventHandler<KeyboardEventArgs> KeyboardEvent;
         public event EventHandler<RemoteDesktopEventArgs> RespondEvent;
-        public RemoteDesktopService(GlobalHookService globalHook, VClientManager vClientManager, IClientInfoManager clientInfo)
+        public RemoteDesktopService(IVScreenSender screenSender ,GlobalHookService globalHook, VClientManager vClientManager, IClientInfoManager clientInfo)
         {
             Initialize();
 
@@ -45,12 +50,51 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _globalHook = globalHook;
             _vClientManager = vClientManager;
 
+#if DEBUG
+            _screenSender = screenSender;
+            _screenSender.OnScreenCaptured += OnScreenCapturedEventHandler;
+#endif
+
             _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
             _globalHook.KeyboardReceived += KeyboardEventHandler;
             _vClientManager.ClientDataReceived += EventReceived;
             _vClientManager.ClientClosed += VClientClosedEventHandler;
             StartKeyboardListener();  
         }
+
+#if DEBUG
+        private void OnScreenCapturedEventHandler(object sender, VScreenSenderEventArgs e)
+        {
+            var connections = _vClientManager.Connections;
+
+            foreach (var connection in connections)
+            {
+                //                if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
+                if (connection.Value.ClientType == VClientType.Receiver)
+                {
+                    var type = (e.Type == VScreenSenderEventType.FullScreen) ? SocketDataType.ScreenSend : SocketDataType.ScreenRegionsChangedSend;
+                    var header = connection.Value.HeaderGenerate(type: type, socketId: connection.Value.SocketId, dataSize: e.ScreenTask.CompressedLength);
+
+                    var headerPacket = new TaskObject
+                    {
+                        TaskType = type,
+                        Data = header,
+                        SessionId = connection.Value.SocketId,
+                        IsSendHeader = false
+                    };
+                    var payloadPacket = new TaskObject
+                    {
+                        TaskType = type,
+                        SessionId = connection.Value.SocketId,
+                        ScreenTask = e.ScreenTask,
+                        IsSendHeader = false
+                    };
+
+                    connection.Value.AddWorkGroup(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
+                }
+            }
+        }
+#endif
         private void Initialize()
         {
             _eventHandlers = new Dictionary<SocketDataType, Action<object, EventArgs>>
@@ -305,10 +349,18 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void StartScreenCapture()
         {
+#if DEBUG
+            _screenSender.Start();
+            return;
+#endif
             _globalHook.StartScreenCapture();
         }
         private void StopScreenCapture()
         {
+#if DEBUG
+            _screenSender.Stop();
+            return;
+#endif
             _globalHook.StopScreenCapture();
         }
         private void RemoveClientById(string id)
@@ -756,6 +808,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             RespondEvent?.Invoke(client, ((RemoteDesktopEventArgs)e));
 
+
+#if DEBUG
+            _screenSender.GetFullScreen();
+            return;
+#endif
             //Send first screen
             List<byte[]> screen;
             lock (_lock)

@@ -62,6 +62,7 @@
     <Compile Include="Enums\ChatFileType.cs" />
     <Compile Include="Enums\ConnectionStatus.cs" />
     <Compile Include="Enums\FileStatus.cs" />
+    <Compile Include="Enums\OnScreenEventArgs.cs" />
     <Compile Include="Enums\ProgressBarEnum.cs" />
     <Compile Include="Enums\QueuePriority.cs" />
     <Compile Include="Enums\UserChatControlEventType.cs" />
@@ -159,6 +160,7 @@
     <Compile Include="Services\ScreenCapture\GDI\VScreen.cs" />
     <Compile Include="Services\ScreenCapture\GDI\VScreenReceiver.cs" />
     <Compile Include="Services\ScreenCapture\GDI\VScreenSender.cs" />
+    <Compile Include="Services\ScreenCapture\Utils\Compressor.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
     <Compile Include="Services\VTCPClient\TCPClient.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
@@ -235,12 +237,12 @@
     <Folder Include="Resources\" />
     <Folder Include="Services\ScreenCapture\Events\" />
     <Folder Include="Services\ScreenCapture\Helpers\" />
-    <Folder Include="Services\ScreenCapture\Utils\" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Services\RemoteDesktop\RemoteDesktopService_backup.txt" />
     <Content Include="Services\ScreenCapture\VScreenBackup.txt" />
     <Content Include="Services\VTCPClient\VClient_Backup.txt" />
+    <Content Include="Services\VTCPClient\VClient_Backup_12_01_2026.txt" />
     <Content Include="ViewModels\ChatViewModel_Backup.txt" />
   </ItemGroup>
   <ItemGroup>
@@ -253,6 +255,11 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="lz4net">
+      <Version>1.0.5.93</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -16,6 +16,11 @@ using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.RemoteDesktop;
 using static VRemoteDesktop.Utils.DefaultValue;
 using VRemoteDesktop.Services.ScreenCapture;
+using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using System.Drawing.Imaging;
+using static System.Net.Mime.MediaTypeNames;
+using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -26,6 +31,13 @@ namespace VRemoteDesktop.ViewModels
         private readonly IMouseExtensions _mouseExtension;
         private readonly IScreenCaptureExtensions _screenCaptureExtension;
         private readonly RemoteDesktopService _remoteDesktopService;
+#if DEBUG
+        private byte[] _buffer;
+        private readonly IVScreenReceiver _screenReceiver;
+        public Bitmap Picture;
+        public event EventHandler<OnScreenEventArgs> UpdateScreen;
+        private Stopwatch stopwatch = new Stopwatch();
+#endif
 
         public Action<Bitmap> screenEvent;
         public Action<List<ScreenRegion>> screenRegionsChangedEvent;
@@ -35,6 +47,12 @@ namespace VRemoteDesktop.ViewModels
         {
             _disposed = false;
             _vClient = vClient;
+#if DEBUG
+            _buffer = VArrayPool.Rent(10 * 1024 * 1024);
+            var receiverScreenTask = new ScreenTask(_buffer);
+            _screenReceiver = new VScreenReceiver(vClient.Partner.Width, vClient.Partner.Height, receiverScreenTask);
+            Picture = new Bitmap(_screenReceiver.Width, _screenReceiver.Height, _screenReceiver.Stride, _screenReceiver.PixelFormat, _screenReceiver.ScreenHDC);
+#endif
             _mouseExtension = mouseExtension;
             _screenCaptureExtension = screenCaptureExtensions;
             _remoteDesktopService = remoteDesktopService;
@@ -181,9 +199,26 @@ namespace VRemoteDesktop.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-
+        public void AddWork(TaskObject obj, QueuePriority priority)
+        {
+            _vClient.AddWork(obj, priority);
+        }
         public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
+#if DEBUG
+            stopwatch.Restart();
+            stopwatch.Start();
+            var type = (e.Type == SocketDataType.ScreenSend) ? true : false;
+
+            var rectangles = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length, type);
+
+            if (UpdateScreen != null)
+                UpdateScreen.Invoke(this, new OnScreenEventArgs(type, rectangles));
+
+            stopwatch.Stop();
+            Console.WriteLine($"{e.Type} - {e.Data.Length} - {stopwatch.Elapsed.TotalMilliseconds}");
+            return;
+#endif
             if (e.Type == SocketDataType.ScreenSend)
             {
                 ProcessScreenReceived(e.Data);
@@ -211,6 +246,10 @@ namespace VRemoteDesktop.ViewModels
             if (disposing)
             {
                 if (_disposed) return;
+
+#if DEBUG
+                VArrayPool.Return(_buffer);
+#endif
 
                 if (_vClient != null)
                     _vClient.P2PScreenReceived -= P2PScreenReceivedEventHandler;

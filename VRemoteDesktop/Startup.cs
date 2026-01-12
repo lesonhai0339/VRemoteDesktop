@@ -22,6 +22,8 @@ namespace VRemoteDesktop
 {
     public class Startup
     {
+        private byte[] _buffer;
+        private IVScreenSender _screenSender;
         private IScreenCapture1 _capture;
         private IScreenCaptureServiceListener _screenCaptureService;
         private IKeyboardService _keyboardHookService;
@@ -98,47 +100,53 @@ namespace VRemoteDesktop
         private void Initialize()
         {
             //sender rent buffer
-            var buffer = VArrayPool.Rent(10 * 1024 * 1024);
-            var screenTask = new ScreenTask(buffer);
-            var sender = new VScreenSender(screenTask);
+            //var senderBuffer = VArrayPool.Rent(10 * 1024 * 1024);
+            //var senderScreenTask = new ScreenTask(senderBuffer);
+            //var sender = new VScreenSender(senderScreenTask);
 
-            var receiver = new VScreenReceiver(1920, 1080);
-            sender.OnScreenCaptured += (s, e) =>
-            {
-                try
-                {
-                    if (e.Type == Services.ScreenCapture.Enums.VScreenSenderEventType.FullScreen)
-                    {
-                        receiver.MergeFullScreenToBitmap(e.ScreenTask.Buffer, e.Length);
-                    }
-                    else
-                    {
-                        receiver.ParsePacketToRegionsChange(e.ScreenTask.Buffer, e.Length);
-                    }
-                }
-                finally
-                {
-                    e.ScreenTask.Complete();
-                }
-            };
+            //var receiverBuffer = VArrayPool.Rent(10 * 1024 * 1024);
+            //var receiverScreenTask = new ScreenTask(receiverBuffer);
+            //var receiver = new VScreenReceiver(1920, 1080, receiverScreenTask);
+            //sender.OnScreenCaptured += (s, e) =>
+            //{
+            //    try
+            //    {
+            //        receiver.DecompressedRawData(e.ScreenTask.Buffer, e.CompressedOffset, e.CompressedLength, (e.Type == Services.ScreenCapture.Enums.VScreenSenderEventType.FullScreen) ? true : false);
+            //    }
+            //    catch(Exception ex)
+            //    {
+            //        Console.WriteLine(ex.Message);
+            //    }
+            //    finally
+            //    {
+            //        e.ScreenTask.Complete();
+            //    }
+            //};
 
-            sender.GetFullScreen();
-            sender.Start();
-            int count = 0;
-            while (count < 300)
-            {
-                Console.WriteLine("\n----------------------------\n");
-                Thread.Sleep(1000);
-            }
-            VArrayPool.Return(buffer);
-            return;
+            //sender.GetFullScreen();
+            //sender.Start();
+            //Console.ReadLine(); 
+            //int count = 0;
+            //while (count < 300)
+            //{
+            //    Console.WriteLine("\n----------------------------\n");
+            //    Thread.Sleep(1000);
+            //}
+            //VArrayPool.Return(senderBuffer);
+            //VArrayPool.Return(receiverBuffer);
+            //return;
+
+            _buffer = VArrayPool.Rent(10 * 1024 * 1024);
+            _screenSender = new VScreenSender(new ScreenTask(_buffer));    
+
+
             _capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();
             _vClientManager = new VClientManager();
             _clientInfoManager = new ClientInfoManager();
             _screenCaptureService = new ScreenCaptureService(_capture);
             _globalHook = new GlobalHookService(_keyboardHookService, _screenCaptureService);
-            _remoteDesktopService = new RemoteDesktopService(_globalHook, _vClientManager, _clientInfoManager);
+            _remoteDesktopService = new RemoteDesktopService(_screenSender, _globalHook, _vClientManager, _clientInfoManager);
         }
         public void Run()
         {
@@ -150,6 +158,7 @@ namespace VRemoteDesktop
             }
             finally
             {
+                VArrayPool.Return(_buffer);
                 _remoteDesktopService?.Dispose();
             }
         }

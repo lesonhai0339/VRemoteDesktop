@@ -2,18 +2,30 @@
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Drawing;
+using System.IO.Compression;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.Enums;
 using VRemoteDesktop.Services.ScreenCapture.Interop;
 using VRemoteDesktop.Utils;
+using VRemoteDesktop.Services.ScreenCapture.Utils;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
-    public class VScreenSender: VScreen
+    public interface IVScreenSender
+    {
+        event EventHandler<VScreenSenderEventArgs> OnScreenCaptured;
+        bool Start();
+        bool Stop();
+        void GetFullScreen();
+        void Cancel();
+    }
+    public class VScreenSender: VScreen, IVScreenSender, IDisposable
     {
         private const uint DIB_RGB_COLORS = 0;
         private const int BYTE_PER_PIXEL = 3;   
@@ -64,9 +76,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
         public VScreenSender(ScreenTask screenTask)
         {
             _cancellationTokenSource = new CancellationTokenSource();
-
-            InitializeSenderComponents();
             _screenTask = screenTask;
+            InitializeSenderComponents();
         }
         public bool Start()
         {
@@ -98,43 +109,74 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             int offset = 0;
             base.GetFullScreenData(ref offset, _screenTask.Buffer, _allBits[frontIdx], _width, 0, 0, _width, _height);
-            if (OnScreenCaptured != null)
-                OnScreenCaptured(this, new VScreenSenderEventArgs(type: VScreenSenderEventType.FullScreen, screenTask: _screenTask, length: offset));
+            int compressedLength = Compressor.CompressedLZ4(_screenTask.Buffer, offset);
+            //Console.WriteLine($"Regions: Source Length: {offset + 1} - Compressed Length: {compressedLength}");
+            if(offset > 0)
+            {
+                if (OnScreenCaptured != null)
+                {
+                    _screenTask.Add(dataOffset: 0, dataLength: offset + 1, compressedOffset: offset + 1, compressLength: compressedLength);
+                    OnScreenCaptured(this, new VScreenSenderEventArgs(
+                        type: VScreenSenderEventType.FullScreen,
+                        screenTask: _screenTask));
+                }
+                else
+                {
+                    _screenTask.Complete();
+                }
+            }
+            else
+            {
+                _screenTask.Complete();
+            }
         }
         private void GetChangedRegions(int range)
         {
-              //First
-              var changedRectArray = _rectangles.Where(x =>
-                      IsRegionChangeInRange(
-                          range,
-                          _allBits[prevIdx],
-                          _allBits[frontIdx],
-                          _width,
-                          x.X,
-                          x.Y,
-                          x.Width,
-                          x.Height)).ToArray();
-
-              var result = base.MergeRegions(changedRectArray, 0.8);
-              int offset = 0;
-              for (int i = 0; i < result.Count; i++)
-              {
-                  var rect = result[i];
-                  base.GetRegionsData(
-                      ref offset,
-                      _screenTask.Buffer,
-                      _allBits[frontIdx],
-                      _width,
-                      rect.X,
-                      rect.Y,
-                      rect.Width,
-                      rect.Height);
-              }
-              if (offset > 0)
-              {
-                  if (OnScreenCaptured != null)
-                      OnScreenCaptured(this, new VScreenSenderEventArgs(type: VScreenSenderEventType.RegionChange, screenTask: _screenTask, length: offset));
-              }
+            //First
+            var changedRectArray = _rectangles.Where(x =>
+                    IsRegionChange(
+                        _allBits[prevIdx],
+                        _allBits[frontIdx],
+                        _width,
+                        x.X,
+                        x.Y,
+                        x.Width,
+                        x.Height)).ToArray();
+            var result = base.MergeRegions(changedRectArray, 0.8);
+            int offset = 0;
+            for (int i = 0; i < result.Count; i++)
+            {
+                var rect = result[i];
+                base.GetRegionsData(
+                    ref offset,
+                    _screenTask.Buffer,
+                    _allBits[frontIdx],
+                    _width,
+                    rect.X,
+                    rect.Y,
+                    rect.Width,
+                    rect.Height);
+            }
+            int compressedLength = Compressor.CompressedLZ4(_screenTask.Buffer, offset);
+            //Console.WriteLine($"Regions: Source Length: {offset} - Compressed Length: {compressedLength}");
+            if (offset > 0)
+            {
+                if (OnScreenCaptured != null)
+                {
+                    _screenTask.Add(dataOffset: 0, dataLength: offset + 1, compressedOffset: offset + 1, compressLength: compressedLength);
+                    OnScreenCaptured(this, new VScreenSenderEventArgs(
+                      type: VScreenSenderEventType.RegionChange,
+                      screenTask: _screenTask));
+                }
+                else
+                {
+                    _screenTask.Complete(); 
+                }
+            }
+            else
+            {
+                _screenTask.Complete();
+            }
         }
         private int RegionTotalByteTake(Rectangle rect)
         {
@@ -192,16 +234,23 @@ namespace VRemoteDesktop.Services.ScreenCapture
             Stopwatch _st = new Stopwatch();
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
-                if (_screenTask.Wait(1000))
+                try
                 {
-                    _screenTask.Reset();
-                    _st.Restart();
-                    Capturing();
-                    GetChangedRegions(RANGE);
-                    _st.Stop();
-                    Console.WriteLine($"Elapsed: {_st.Elapsed.TotalMilliseconds}");
-                    Thread.Sleep(1);
-                }         
+                    if (_screenTask.Wait(200))
+                    {
+                        _screenTask.Reset();
+                        _st.Restart();
+                        Capturing();
+                        GetChangedRegions(RANGE);
+                        _st.Stop();
+                        Console.WriteLine($"Elapsed: {_st.Elapsed.TotalMilliseconds}");
+                        Thread.Sleep(1);
+                    }
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine($"Background error: {ex.Message}");
+                }
             }
             e.Cancel = true;
         }
@@ -255,6 +304,5 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 Cancel();
             }
         }
-
     }
 }

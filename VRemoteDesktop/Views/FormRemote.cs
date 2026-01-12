@@ -54,6 +54,10 @@ namespace VRemoteDesktop.Views
             _screenCaptureExtension = new ScreenCaptureExtensions();
             _remoteDesktopService = remoteDesktopService;
             _remoteViewModel = new RemoteViewModel(_vClient ,_screenCaptureExtension, _mouseExtension, _remoteDesktopService);
+
+#if DEBUG
+            _remoteViewModel.UpdateScreen += UpdateScreenEventHandler;
+#endif
             _remoteViewModel.screenEvent += ScreenEventHandler;
             _remoteViewModel.screenRegionsChangedEvent += ScreenRegionsChangedEventHandler;
             _remoteViewModel.keyboardEvent += KeyboardReceivedEventHandler;
@@ -71,6 +75,15 @@ namespace VRemoteDesktop.Views
             vPictureBox.Size = new Size(_vClient.Partner.Width, _vClient.Partner.Height);
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
+#if DEBUG
+            vPictureBox.Image = _remoteViewModel.Picture;
+            typeof(Control).GetProperty("DoubleBuffered",
+    System.Reflection.BindingFlags.NonPublic |
+    System.Reflection.BindingFlags.Instance)
+    ?.SetValue(vPictureBox, true, null);
+
+            vPictureBox.Paint += VPictureBox_Paint;
+#endif
 
             vPictureBox.MouseWheel += MouseWheelEventHandler;
             vPictureBox.MouseMove += MouseMoveEvent;
@@ -83,6 +96,36 @@ namespace VRemoteDesktop.Views
             _clickTimer.Interval = interval;
             _clickTimer.Tick += ClickTimer_Tick;
         }
+
+        private void VPictureBox_Paint(object sender, PaintEventArgs e)
+        {
+            e.Graphics.CompositingQuality = CompositingQuality.HighSpeed;
+            e.Graphics.InterpolationMode = InterpolationMode.Low;
+            e.Graphics.SmoothingMode = SmoothingMode.HighSpeed;
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+        }
+#if DEBUG
+        private void UpdateScreenEventHandler(object sender, OnScreenEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action<object, OnScreenEventArgs>(UpdateScreenEventHandler), sender, e);
+                return;
+            }
+            vPictureBox.Invalidate();
+            vPictureBox.Update();
+            //foreach (var rect in e.Rectangles)
+            //{
+            //    vPictureBox.Invalidate(rect);
+            //}
+            //vPictureBox.Update();
+            _remoteViewModel.AddWork(
+                 new TaskObject(type: (e.IsFullScreen) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
+        }
+#endif
 
         private void DisconnectedEventHandler(object sender, EventArgs e)
         {
@@ -138,6 +181,9 @@ namespace VRemoteDesktop.Views
             //Unregister events
             if(_remoteViewModel != null)
             {
+#if DEBUG
+                _remoteViewModel.UpdateScreen -= UpdateScreenEventHandler;
+#endif
                 _remoteViewModel.screenEvent -= ScreenEventHandler;
                 _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
                 _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;

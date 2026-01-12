@@ -13,14 +13,14 @@ namespace VRemoteDesktop.Services.ScreenCapture.Enums
     }
     public class VScreenSenderEventArgs: EventArgs
     {
-        public VScreenSenderEventArgs(VScreenSenderEventType type, ScreenTask screenTask, int length)
+        public VScreenSenderEventArgs(
+            VScreenSenderEventType type, 
+            ScreenTask screenTask)
         {
             Type = type;
             ScreenTask = screenTask;
-            Length = length;    
         }   
         public VScreenSenderEventType Type { get; set; }
         public ScreenTask ScreenTask { get; set; }
-        public int Length { get; set; }
     }
 }

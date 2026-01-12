@@ -17,8 +17,6 @@ namespace VRemoteDesktop
             Application.SetCompatibleTextRenderingDefault(false);
 
             Startup startup = new Startup();
-            Console.WriteLine("End");
-            return;
             startup.Run();
         }
     }

@@ -13,7 +13,6 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
-using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
@@ -351,13 +350,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 ProcessFileTransfer(task);
                 return;
             }
-#if DEBUG
-            if(task.ScreenTask != null)
-            {
-                SendScreen(task.ScreenTask);
-                return;
-            }
-#endif
             Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
         }
         public void RemoveTaskByType(SocketDataType socketType, object dataType, object data)
@@ -794,123 +786,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                 }
             }
         }
-        ///// <summary>
-        ///// Create packet header before sending to remote server
-        ///// </summary>
-        ///// <param name="type"></param>
-        ///// <param name="data"></param>
-        ///// <param name="socketId"></param>
-        ///// <param name="isSendHeader"></param>
-        //public void Send(SocketDataType type, byte[] data, string socketId, bool isSendHeader = true)
-        //{
-        //    if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
-        //        throw new ObjectDisposedException(this.GetType().Name);
-
-        //    try
-        //    {
-        //        if (type == SocketDataType.None)
-        //            return;
-        //        if (string.IsNullOrWhiteSpace(socketId))
-        //            socketId = this.SocketId;
-
-
-        //        if (isSendHeader)
-        //        {
-        //            data = HeaderGenerate(type: type,socketId: socketId, true, data);
-        //        }
-        //        Send(data);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
-        //    }
-        //}
-        //private void Send(byte[] data)
-        //{
-        //    try
-        //    {
-        //        Sendstate state = new Sendstate
-        //        {
-        //            Data = data,
-        //            Remained = data.Length,
-        //            Sent = 0,
-        //            Timeout = DateTime.Now
-        //        };
-        //        Send(state);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
-        //    }
-        //}
-        //private void Send(Sendstate state)
-        //{
-        //    if (_socket == null) 
-        //        return;
-
-        //    if (!_socket.Connected)
-        //    {
-        //        throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
-        //    }
-
-        //    if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
-        //    {
-        //        throw new TimeoutException("Send timeout");
-        //    }
-
-        //    _socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
-        //}
-        //private void SendCallback(IAsyncResult ar)
-        //{
-        //    var sentState = (Sendstate)ar.AsyncState;
-        //    try
-        //    {
-        //        checked
-        //        {
-        //            int num = Socket.EndSend(ar);
-        //            lock (_lockObject)
-        //            {
-        //                bytesPerSecond += num;
-        //            }
-        //            if (num <= 0)
-        //            {
-        //                throw new InvalidOperationException("Send error on socket with socket Id: " + SocketId.ToString());
-        //            }
-        //            sentState.Sent += num;
-        //            sentState.Remained -= num;
-        //            if (sentState.Remained > 0)
-        //            {
-        //                Send(sentState);
-        //            }
-        //        }
-        //    }
-        //    catch(SocketException ex)
-        //    {
-        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback error on socketid: " + SocketId);
-        //    }
-        //}
-#if DEBUG
-        public void SendScreen(ScreenTask screenTask)
-        {
-            if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
-                throw new ObjectDisposedException(this.GetType().Name);
-            try
-            {
-                Send(screenTask.Buffer, screenTask.CompressedOffset, screenTask.CompressedLength);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("Screen task error: " + ex.Message);
-            }
-            finally
-            {
-                screenTask.Complete();
-            }
-        }
+        /// <summary>
+        /// Create packet header before sending to remote server
+        /// </summary>
+        /// <param name="type"></param>
+        /// <param name="data"></param>
+        /// <param name="socketId"></param>
+        /// <param name="isSendHeader"></param>
         public void Send(SocketDataType type, byte[] data, string socketId, bool isSendHeader = true)
         {
             if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
@@ -926,7 +808,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
                 if (isSendHeader)
                 {
-                    data = HeaderGenerate(type: type, socketId: socketId, true, data);
+                    data = HeaderGenerate(type: type,socketId: socketId, true, data);
                 }
                 Send(data);
             }
@@ -935,15 +817,15 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
             }
         }
-        private void Send(byte[] data, int offset = 0, int length = 0)
+        private void Send(byte[] data)
         {
             try
             {
                 Sendstate state = new Sendstate
                 {
                     Data = data,
-                    Remained = (length != 0) ? length : data.Length,
-                    Sent = (offset != 0) ? offset : 0,
+                    Remained = data.Length,
+                    Sent = 0,
                     Timeout = DateTime.Now
                 };
                 Send(state);
@@ -955,12 +837,12 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void Send(Sendstate state)
         {
-            if (_socket == null)
+            if (_socket == null) 
                 return;
 
             if (!_socket.Connected)
             {
-                throw new InvalidOperationException("Socket with id: " + SocketId + " no available");
+                throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
             }
 
             if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
@@ -994,16 +876,15 @@ namespace VRemoteDesktop.Services.VTCPClient
                     }
                 }
             }
-            catch (SocketException ex)
+            catch(SocketException ex)
             {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: " + SocketId);
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback error on socketid: " + SocketId);
             }
         }
-#endif
         private void Cancel()
         {
             if (_isDisposed == 1) return;
