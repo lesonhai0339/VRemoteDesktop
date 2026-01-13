@@ -18,6 +18,10 @@ namespace VRemoteDesktop.Services.ScreenCapture.Interop
 
         [DllImport("gdi32.dll")]
         public static extern bool BitBlt(IntPtr hdc, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hdcSrc, int nXSrc, int nYSrc, uint dwRop);
+
+        [DllImport("gdi32.dll")]
+        public static extern bool StretchBlt(IntPtr hdc, int nXDest, int nYDest, int wDest, int hDest, IntPtr hdcSrc, int nXSrc, int nYSrc, int wSrc, int hSrc, uint dwRop);
+
         [DllImport("user32.dll")]
 
         public static extern IntPtr GetDC(IntPtr hWnd);
@@ -56,6 +60,9 @@ namespace VRemoteDesktop.Services.ScreenCapture.Interop
 
         [DllImport("kernel32.dll", SetLastError = true)]
         public static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("gdi32.dll", SetLastError = true)]
+        public static extern IntPtr SetStretchBltMode(IntPtr hdc, int mode);
 
         #endregion
         #region Structures

@@ -37,6 +37,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
         private int _width;
         private int _height;
+        private readonly int _fps;
+        private readonly double _waitTime;
 
         private Rectangle[] _rectangles;
         private BackgroundWorker _worker;
@@ -73,9 +75,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private readonly ScreenTask _screenTask;
 
         public event EventHandler<VScreenSenderEventArgs> OnScreenCaptured;
-        public VScreenSender(ScreenTask screenTask)
+        public VScreenSender(ScreenTask screenTask, int fps = 10)
         {
             _cancellationTokenSource = new CancellationTokenSource();
+            _fps = fps;
+            _waitTime = 1000 / _fps;
             _screenTask = screenTask;
             InitializeSenderComponents();
         }
@@ -231,25 +235,33 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         private void Handler(object sender, DoWorkEventArgs e)
         {
-            Stopwatch _st = new Stopwatch();
+            double time = 0.0;
+            Stopwatch st = new Stopwatch();
             while (!_cancellationTokenSource.IsCancellationRequested)
             {
+                st.Restart();
                 try
                 {
                     if (_screenTask.Wait(200))
                     {
                         _screenTask.Reset();
-                        _st.Restart();
                         Capturing();
                         GetChangedRegions(RANGE);
-                        _st.Stop();
-                        Console.WriteLine($"Elapsed: {_st.Elapsed.TotalMilliseconds}");
                         Thread.Sleep(1);
                     }
                 }
                 catch(Exception ex)
                 {
                     Console.WriteLine($"Background error: {ex.Message}");
+                }
+                finally
+                {
+                    st.Stop();
+                    if(st.Elapsed.TotalMilliseconds < _waitTime)
+                    {
+                        time = _waitTime - st.Elapsed.TotalMilliseconds;
+                        Thread.Sleep(TimeSpan.FromMilliseconds(time));
+                    }
                 }
             }
             e.Cancel = true;

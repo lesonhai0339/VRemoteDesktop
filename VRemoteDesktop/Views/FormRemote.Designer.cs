@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Windows.Forms;
+using VRemoteDesktop.Layouts;
 
 namespace VRemoteDesktop.Views
 {
@@ -31,6 +32,7 @@ namespace VRemoteDesktop.Views
         /// </summary>
         private void InitializeComponent()
         {
+
             this.vPictureBox = new System.Windows.Forms.PictureBox();
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox)).BeginInit();
             this.SuspendLayout();
@@ -56,12 +58,9 @@ namespace VRemoteDesktop.Views
             this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormRemote_FormClosing);
             ((System.ComponentModel.ISupportInitialize)(this.vPictureBox)).EndInit();
             this.ResumeLayout(false);
-
         }
 
-
         #endregion
-
         private System.Windows.Forms.PictureBox vPictureBox;
     }
 }

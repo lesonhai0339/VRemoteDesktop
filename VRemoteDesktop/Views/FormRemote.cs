@@ -115,13 +115,13 @@ namespace VRemoteDesktop.Views
                 this.BeginInvoke(new Action<object, OnScreenEventArgs>(UpdateScreenEventHandler), sender, e);
                 return;
             }
+            //Rectangle baseRect = e.Rectangles[0];
+            //for(int i = 1; i< e.Rectangles.Count; i++)
+            //{
+            //    baseRect = Rectangle.Union(baseRect, e.Rectangles[i]);
+            //}
             vPictureBox.Invalidate();
             vPictureBox.Update();
-            //foreach (var rect in e.Rectangles)
-            //{
-            //    vPictureBox.Invalidate(rect);
-            //}
-            //vPictureBox.Update();
             _remoteViewModel.AddWork(
                  new TaskObject(type: (e.IsFullScreen) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
         }

@@ -21,6 +21,7 @@ using System.Drawing.Imaging;
 using static System.Net.Mime.MediaTypeNames;
 using System.Threading.Tasks;
 using System.Diagnostics;
+using VRemoteDesktop.Layouts;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -36,7 +37,6 @@ namespace VRemoteDesktop.ViewModels
         private readonly IVScreenReceiver _screenReceiver;
         public Bitmap Picture;
         public event EventHandler<OnScreenEventArgs> UpdateScreen;
-        private Stopwatch stopwatch = new Stopwatch();
 #endif
 
         public Action<Bitmap> screenEvent;
@@ -169,7 +169,7 @@ namespace VRemoteDesktop.ViewModels
                 if (p.Image == null) return;
 
                 //get actual mouse coordinate before send
-                Point adjustedPoint = _mouseExtension.GetImagePointFromMouse(UISizeMode.Zoom, p.Size,p.Image.Size, e.X, e.Y);
+                Point adjustedPoint = _mouseExtension.GetImagePointFromMouse(UISizeMode.Zoom, p.Size, p.Image.Size, e.X, e.Y);
 
                 var adjustedMouseEventArgs = new MouseData((VMouseButtons)e.Button, e.Clicks, adjustedPoint.X, adjustedPoint.Y, e.Delta);
 
@@ -183,12 +183,13 @@ namespace VRemoteDesktop.ViewModels
                     Data = Encoding.ASCII.GetBytes(mouseEventString),
                     IsSendHeader = true,
                     SessionId = _vClient.SocketId
-                }, QueuePriority.High);            
+                }, QueuePriority.High);
             }
             catch (Exception ex)
             {
                 Log.ForContext("FileName", "FormRemote").Error(ex, "MouseEvents error");
             }
+
         }
        
         #endregion
@@ -206,8 +207,6 @@ namespace VRemoteDesktop.ViewModels
         public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         {
 #if DEBUG
-            stopwatch.Restart();
-            stopwatch.Start();
             var type = (e.Type == SocketDataType.ScreenSend) ? true : false;
 
             var rectangles = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length, type);
@@ -215,8 +214,6 @@ namespace VRemoteDesktop.ViewModels
             if (UpdateScreen != null)
                 UpdateScreen.Invoke(this, new OnScreenEventArgs(type, rectangles));
 
-            stopwatch.Stop();
-            Console.WriteLine($"{e.Type} - {e.Data.Length} - {stopwatch.Elapsed.TotalMilliseconds}");
             return;
 #endif
             if (e.Type == SocketDataType.ScreenSend)

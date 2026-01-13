@@ -13,6 +13,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 {
     public interface IVScreenReceiver
     {
+        IntPtr MemDC { get; }
         IntPtr ScreenHDC { get; }
         int Width { get; }
         int Height { get; }
@@ -47,6 +48,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
             InitializeReceiverComponents(width, height);
         }
         #region Properties
+        public IntPtr MemDC
+        {
+            get
+            {
+                return _memDC;
+            }
+        }
         public IntPtr ScreenHDC
         {
             get
