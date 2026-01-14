@@ -49,6 +49,9 @@ namespace VRemoteDesktop.Views
         public FormRemote(VClient vClient, RemoteDesktopService remoteDesktopService)
         {
             InitializeComponent();
+            this.MaximizeBox = false;
+            this.FormBorderStyle = FormBorderStyle.None;
+            this.WindowState = FormWindowState.Maximized;
             _vClient = vClient;
             _mouseExtension = new MouseExtensions();
             _screenCaptureExtension = new ScreenCaptureExtensions();

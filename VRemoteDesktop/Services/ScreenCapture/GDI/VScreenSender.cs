@@ -14,6 +14,7 @@ using VRemoteDesktop.Services.ScreenCapture.Enums;
 using VRemoteDesktop.Services.ScreenCapture.Interop;
 using VRemoteDesktop.Utils;
 using VRemoteDesktop.Services.ScreenCapture.Utils;
+using static VRemoteDesktop.Services.ScreenCapture.Interop.CaptureApi;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -44,6 +45,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private BackgroundWorker _worker;
         private CancellationTokenSource _cancellationTokenSource;
         private ManualResetEventSlim _completedEvent = new ManualResetEventSlim(false); 
+
+
+        private BITMAPINFO _bitmapInfo;
 
         // Filed mapping buffer pool
         private IntPtr _fileMappingPtr;
@@ -204,10 +208,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
             uint cur = 10 * 1024 * 1024; ; //10MB
             uint next = 20 * 1024 * 1024; //10MB 
 
+            _bitmapInfo = base.InitBitmapInfo(_width, _height, BYTE_PER_PIXEL * 8, 0); 
 
-            base.InitCaptureBuffer(_width, _height, ref _hBitmap, ref _memDC, ref _bits, _fileMappingPtr, pre, IntPtr.Zero);
-            base.InitCaptureBuffer(_width, _height, ref _hBitmap1, ref _memDC1, ref _bits1, _fileMappingPtr, cur, IntPtr.Zero);
-            base.InitCaptureBuffer(_width, _height, ref _hBitmap2, ref _memDC2, ref _bits2, _fileMappingPtr, next, IntPtr.Zero);
+            base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, _fileMappingPtr, pre , IntPtr.Zero, _bitmapInfo);
+            base.InitCaptureBuffer(ref _hBitmap1, ref _memDC1, ref _bits1, _fileMappingPtr, cur, IntPtr.Zero, _bitmapInfo);
+            base.InitCaptureBuffer(ref _hBitmap2, ref _memDC2, ref _bits2, _fileMappingPtr, next, IntPtr.Zero, _bitmapInfo);
 
             _allDCs = new IntPtr[] { _memDC, _memDC1, _memDC2 };
             _allBits = new IntPtr[] { _bits, _bits1, _bits2 };

@@ -12,6 +12,7 @@ using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using static VRemoteDesktop.Services.ScreenCapture.Interop.CaptureApi;
 using VRemoteDesktop.Services.ScreenCapture.Interop;
+using VRemoteDesktop.Services.ScreenCapture.Utils;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -24,18 +25,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
         public VScreen()
         {
         }
-        protected virtual void InitCaptureBuffer(
+        public virtual BITMAPINFO InitBitmapInfo(
             int width,
             int height,
-            ref IntPtr hBitmap,
-            ref IntPtr memDC,
-            ref IntPtr bits,
-            IntPtr sectionPool,
-            uint offset,
-            IntPtr screenDCPtr,
             ushort bitPerPixel = 24,
-            uint compression = 0,
-            uint DIB_RGB_COLORS = 0)
+            uint compression = 0)
         {
             var bmi = new BITMAPINFO();
             bmi.Header.biSize = (uint)Marshal.SizeOf(typeof(BITMAPINFOHEADER));
@@ -45,6 +39,18 @@ namespace VRemoteDesktop.Services.ScreenCapture
             bmi.Header.biBitCount = bitPerPixel;
             bmi.Header.biCompression = compression;
 
+            return bmi;
+        }
+        protected virtual void InitCaptureBuffer(
+            ref IntPtr hBitmap,
+            ref IntPtr memDC,
+            ref IntPtr bits,
+            IntPtr sectionPool,
+            uint offset,
+            IntPtr screenDCPtr,
+            BITMAPINFO bmi,
+            uint DIB_RGB_COLORS = 0)
+        {
             IntPtr screenDC = CaptureApi.GetDC(screenDCPtr);
             hBitmap = CaptureApi.CreateDIBSection(
               screenDC,

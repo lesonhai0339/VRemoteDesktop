@@ -22,6 +22,7 @@ using static System.Net.Mime.MediaTypeNames;
 using System.Threading.Tasks;
 using System.Diagnostics;
 using VRemoteDesktop.Layouts;
+using static VRemoteDesktop.Services.ScreenCapture.Interop.CaptureApi;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -35,7 +36,14 @@ namespace VRemoteDesktop.ViewModels
 #if DEBUG
         private byte[] _buffer;
         private readonly IVScreenReceiver _screenReceiver;
+
+
+
         public Bitmap Picture;
+        public int Width;
+        public int Height;
+        public BITMAPINFO BitmapInfo;
+        public IntPtr Bits;
         public event EventHandler<OnScreenEventArgs> UpdateScreen;
 #endif
 
@@ -52,6 +60,10 @@ namespace VRemoteDesktop.ViewModels
             var receiverScreenTask = new ScreenTask(_buffer);
             _screenReceiver = new VScreenReceiver(vClient.Partner.Width, vClient.Partner.Height, receiverScreenTask);
             Picture = new Bitmap(_screenReceiver.Width, _screenReceiver.Height, _screenReceiver.Stride, _screenReceiver.PixelFormat, _screenReceiver.ScreenHDC);
+            Width = _screenReceiver.Width;
+            Height = _screenReceiver.Height;
+            BitmapInfo = _screenReceiver.BITMAPINFO;
+            Bits = _screenReceiver.Bits;
 #endif
             _mouseExtension = mouseExtension;
             _screenCaptureExtension = screenCaptureExtensions;

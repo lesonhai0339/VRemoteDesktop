@@ -8,11 +8,14 @@ using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.Enums;
 using VRemoteDesktop.Services.ScreenCapture.Interop;
 using VRemoteDesktop.Services.ScreenCapture.Utils;
+using static VRemoteDesktop.Services.ScreenCapture.Interop.CaptureApi;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
     public interface IVScreenReceiver
     {
+        IntPtr Bits { get; }
+        BITMAPINFO BITMAPINFO { get; }
         IntPtr MemDC { get; }
         IntPtr ScreenHDC { get; }
         int Width { get; }
@@ -34,6 +37,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private Rectangle[] _rectangles;
         private int count = 0;
 
+        private BITMAPINFO _bitmapInfo;
+
         //bitmap 1
         private IntPtr _hBitmap;
         private IntPtr _bits;        // points to raw pixels
@@ -48,11 +53,25 @@ namespace VRemoteDesktop.Services.ScreenCapture
             InitializeReceiverComponents(width, height);
         }
         #region Properties
+        public IntPtr Bits
+        {
+            get
+            {
+                return _bits;
+            }
+        }
         public IntPtr MemDC
         {
             get
             {
                 return _memDC;
+            }
+        }
+        public BITMAPINFO BITMAPINFO
+        {
+            get
+            {
+                return _bitmapInfo;
             }
         }
         public IntPtr ScreenHDC
@@ -100,7 +119,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
             _width = partnerWidth;
             _height = partnerHeight;
 
-            base.InitCaptureBuffer(_width, _height, ref _hBitmap, ref _memDC, ref _bits, IntPtr.Zero, 0, IntPtr.Zero);
+            _bitmapInfo = base.InitBitmapInfo(Width, Height, BYTE_PER_PIXEL * 8, 0);
+
+            base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
             _rectangles = base.InitRectangle(_width, _height);
 
             _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, BYTE_PER_PIXEL), PixelFormat.Format24bppRgb, _bits);

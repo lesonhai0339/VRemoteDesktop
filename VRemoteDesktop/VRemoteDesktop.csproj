@@ -98,6 +98,12 @@
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
     <Compile Include="Events\SocketDisposeEventArgs.cs" />
     <Compile Include="Events\UserChatControlEventArgs.cs" />
+    <Compile Include="Layouts\VDisplay.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Layouts\VDisplay.Designer.cs">
+      <DependentUpon>VDisplay.cs</DependentUpon>
+    </Compile>
     <Compile Include="Services\ScreenCapture\DTOs\ScreenTask.cs" />
     <Compile Include="Services\ScreenCapture\Enums\VScreenSenderEventArgs.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
