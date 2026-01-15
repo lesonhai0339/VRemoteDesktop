@@ -14,6 +14,7 @@ using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
@@ -352,9 +353,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                 return;
             }
 #if DEBUG
-            if(task.ScreenTask != null)
+            if(task.CapturedFrame != null)
             {
-                SendScreen(task.ScreenTask);
+                SendScreen(task.CapturedFrame);
                 return;
             }
 #endif
@@ -894,21 +895,17 @@ namespace VRemoteDesktop.Services.VTCPClient
         //    }
         //}
 #if DEBUG
-        public void SendScreen(ScreenTask screenTask)
+        public void SendScreen(CapturedFrame frame)
         {
             if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
                 throw new ObjectDisposedException(this.GetType().Name);
             try
             {
-                Send(screenTask.Buffer, screenTask.CompressedOffset, screenTask.CompressedLength);
+                Send(frame);
             }
             catch (Exception ex)
             {
                 Console.WriteLine("Screen task error: " + ex.Message);
-            }
-            finally
-            {
-                screenTask.Complete();
             }
         }
         public void Send(SocketDataType type, byte[] data, string socketId, bool isSendHeader = true)
@@ -923,12 +920,30 @@ namespace VRemoteDesktop.Services.VTCPClient
                 if (string.IsNullOrWhiteSpace(socketId))
                     socketId = this.SocketId;
 
-
                 if (isSendHeader)
                 {
                     data = HeaderGenerate(type: type, socketId: socketId, true, data);
                 }
                 Send(data);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+            }
+        }
+        private void Send(CapturedFrame frame)
+        {
+            try
+            {
+                Sendstate state = new Sendstate
+                {
+                    Data = frame.CompressedData,
+                    Remained = frame.CompressedDataLength,
+                    Sent = frame.CompressedDataOffset,
+                    Timeout = Environment.TickCount,
+                    CapturedFrame = frame
+                };
+                Send(state);
             }
             catch (Exception ex)
             {
@@ -944,7 +959,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     Data = data,
                     Remained = (length != 0) ? length : data.Length,
                     Sent = (offset != 0) ? offset : 0,
-                    Timeout = DateTime.Now
+                    Timeout = Environment.TickCount,
+                    CapturedFrame = null
                 };
                 Send(state);
             }
@@ -963,7 +979,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 throw new InvalidOperationException("Socket with id: " + SocketId + " no available");
             }
 
-            if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
+            if ((Environment.TickCount - state.Timeout) > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
             {
                 throw new TimeoutException("Send timeout");
             }
@@ -973,6 +989,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         private void SendCallback(IAsyncResult ar)
         {
             var sentState = (Sendstate)ar.AsyncState;
+            bool isFinalPart = false;
             try
             {
                 checked
@@ -992,15 +1009,28 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         Send(sentState);
                     }
+                    else
+                    {
+                        isFinalPart = true;
+                    }
                 }
             }
             catch (SocketException ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: " + SocketId);
+                isFinalPart = true;
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback error on socketid: " + SocketId);
+                isFinalPart = true;
+            }
+            finally
+            {
+                if(isFinalPart && sentState.CapturedFrame != null)
+                {
+                    sentState.CapturedFrame.DecRef();   
+                }
             }
         }
 #endif

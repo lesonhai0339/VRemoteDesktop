@@ -135,10 +135,7 @@ namespace VRemoteDesktop
             //VArrayPool.Return(senderBuffer);
             //VArrayPool.Return(receiverBuffer);
             //return;
-
-            _buffer = VArrayPool.Rent(10 * 1024 * 1024);
-            _screenSender = new VScreenSender(new ScreenTask(_buffer));    
-
+            _screenSender = new VScreenSender();    
 
             _capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();

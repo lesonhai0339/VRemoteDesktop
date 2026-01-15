@@ -12,6 +12,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.ScreenCapture.Enums;
+using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
@@ -65,33 +66,60 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 #if DEBUG
         private void OnScreenCapturedEventHandler(object sender, VScreenSenderEventArgs e)
         {
-            var connections = _vClientManager.Connections;
+            var receiverConnections = _vClientManager.Connections.Values.ToList();
 
-            foreach (var connection in connections)
+            //var receiverConnections = _vClientManager.Connections.Values
+            //                     .Where(x => x.IsP2PConnected && x.ClientType == VClientType.Receiver)
+            //                     .ToList();
+            //var turnConnections = _vClientManager.Connections.Values
+            //                    .Count(x => !x.IsP2PConnected);
+
+            CapturedFrame frame = new CapturedFrame(e.Type, e.Buffer, e.CompressedOffset, e.CompressedLength);
+
+            //Send to Turn server, implement after
+            //if(turnConnections > 0)
+            //{
+            //    frame.IncRef();
+            //    //Send to server
+            //}
+
+
+            foreach (var connection in receiverConnections)
             {
-                //                if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
-                if (connection.Value.ClientType == VClientType.Receiver)
+                //if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
+                if (connection.ClientType == VClientType.Receiver && connection.SocketConnected)
                 {
                     var type = (e.Type == VScreenSenderEventType.FullScreen) ? SocketDataType.ScreenSend : SocketDataType.ScreenRegionsChangedSend;
-                    var header = connection.Value.HeaderGenerate(type: type, socketId: connection.Value.SocketId, dataSize: e.ScreenTask.CompressedLength);
+                    var header = connection.HeaderGenerate(type: type, socketId: connection.SocketId, dataSize: e.CompressedLength);
 
                     var headerPacket = new TaskObject
                     {
                         TaskType = type,
                         Data = header,
-                        SessionId = connection.Value.SocketId,
+                        SessionId = connection.SocketId,
                         IsSendHeader = false
                     };
                     var payloadPacket = new TaskObject
                     {
                         TaskType = type,
-                        SessionId = connection.Value.SocketId,
-                        ScreenTask = e.ScreenTask,
+                        SessionId = connection.SocketId,
+                        CapturedFrame = frame,
                         IsSendHeader = false
                     };
 
-                    connection.Value.AddWorkGroup(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
+                    frame.IncRef();
+                    try
+                    {
+                        connection.AddWorkGroup(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
+                    }
+                    catch {
+                        frame.DecRef();
+                    }
                 }
+            }
+            if(frame.CurrentRefCount == 0)
+            {
+                frame.DecRef();
             }
         }
 #endif
@@ -127,13 +155,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 { SocketDataType.KeyboardSend, KeyboardReceived},
                 { SocketDataType.Ready, ReadyToRemote},
                 { SocketDataType.ScreenOk, SendScreenSucceeded},
-                { SocketDataType.RegionsChangedOk, SendRegionChangedSucceed},
             };
-        }
-
-        private void SendRegionChangedSucceed(object arg1, EventArgs args)
-        {
-            _screenSender.RegionChangeSendComplete();
         }
 
         #region Properties

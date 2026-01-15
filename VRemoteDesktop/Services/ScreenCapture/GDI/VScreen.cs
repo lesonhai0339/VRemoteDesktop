@@ -25,6 +25,29 @@ namespace VRemoteDesktop.Services.ScreenCapture
         public VScreen()
         {
         }
+        public int GetScreenDataLength(List<Rectangle> rects, int bytePerPixel)
+        {
+            return rects.Sum(x => GetScreenDataLength(x.Width, x.Height, bytePerPixel));
+        }
+        public int GetScreenDataLength(int width, int height, int bytePerPixel)
+        {
+            int stride = GetStride1(width, bytePerPixel);
+            return stride * height;
+        }
+        /// <summary>
+        /// If bytePerPixel is 1 bit per pixel
+        /// </summary>
+        /// <param name="width"></param>
+        /// <param name="bytePerPixel"></param>
+        /// <returns></returns>
+        public virtual int GetStride1(int width, int bytePerPixel)
+        {
+            return (((width * bytePerPixel * 8) + 31) & ~31) >> 3;
+        }
+        public virtual int GetStride(int width, int bytePerPixel)
+        {
+            return ((width * bytePerPixel) + 3) & ~3;
+        }
         public virtual BITMAPINFO InitBitmapInfo(
             int width,
             int height,
@@ -112,20 +135,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 );
         }
 
-        public virtual int GetStride(int width, int bytePerPixel)
-        {
-            return ((width * bytePerPixel) + 3) & ~3;
-        }
-        /// <summary>
-        /// If bytePerPixel is 1 bit per pixel
-        /// </summary>
-        /// <param name="width"></param>
-        /// <param name="bytePerPixel"></param>
-        /// <returns></returns>
-        public virtual int GetStride1(int width, int bytePerPixel)
-        {
-            return (((width * bytePerPixel * 8) + 31) & ~31) >> 3;
-        }
+      
         public virtual void CaptureToBuffer(IntPtr memDC, IntPtr screenDC, int x, int y, int width, int height)
         {
             CaptureApi.BitBlt(

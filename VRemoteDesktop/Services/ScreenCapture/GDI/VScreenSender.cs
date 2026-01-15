@@ -23,7 +23,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
         event EventHandler<VScreenSenderEventArgs> OnScreenCaptured;
         bool Start();
         bool Stop();
-        void RegionChangeSendComplete();
         void GetFullScreen();
         void Cancel();
     }
@@ -77,15 +76,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private int prevIdx = 2;
 
         private IntPtr _screenDC;
-        private readonly ScreenTask _screenTask;
 
         public event EventHandler<VScreenSenderEventArgs> OnScreenCaptured;
-        public VScreenSender(ScreenTask screenTask, int fps = 10)
+        public VScreenSender(int fps = 10)
         {
             _cancellationTokenSource = new CancellationTokenSource();
             _fps = fps;
             _waitTime = 1000 / _fps;
-            _screenTask = screenTask;
             InitializeSenderComponents();
         }
         public bool Start()
@@ -114,33 +111,26 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             return flag;
         }
-        public void RegionChangeSendComplete()
-        {
-            _screenTask.Complete(); 
-        }
         public void GetFullScreen()
         {
             int offset = 0;
-            base.GetFullScreenData(ref offset, _screenTask.Buffer, _allBits[frontIdx], _width, 0, 0, _width, _height);
-            int compressedLength = Compressor.CompressedLZ4(_screenTask.Buffer, offset);
-            //Console.WriteLine($"Regions: Source Length: {offset + 1} - Compressed Length: {compressedLength}");
+
+            //Get buffer length and rent buffer from pool * 2 because compressed data also place on this buffer
+            int bufferLength = base.GetScreenDataLength(_width, _height, BYTE_PER_PIXEL);
+            byte[] buffer = VArrayPool.Rent(bufferLength * 2);
+
+            // Get bitmap data
+            base.GetFullScreenData(ref offset, buffer, _allBits[frontIdx], _width, 0, 0, _width, _height);
+
+            //Compress
+            int compressedLength = Compressor.CompressedLZ4(buffer, offset);
+
             if(offset > 0)
             {
                 if (OnScreenCaptured != null)
                 {
-                    _screenTask.Add(dataOffset: 0, dataLength: offset + 1, compressedOffset: offset + 1, compressLength: compressedLength);
-                    OnScreenCaptured(this, new VScreenSenderEventArgs(
-                        type: VScreenSenderEventType.FullScreen,
-                        screenTask: _screenTask));
-                }
-                else
-                {
-                    _screenTask.Complete();
-                }
-            }
-            else
-            {
-                _screenTask.Complete();
+                    OnScreenCaptured(this, new VScreenSenderEventArgs(VScreenSenderEventType.FullScreen, buffer,0, offset + 1, offset + 1, compressedLength));
+                }       
             }
         }
         private void GetChangedRegions(int range)
@@ -155,14 +145,19 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         x.Y,
                         x.Width,
                         x.Height)).ToArray();
-            var result = base.MergeRegions(changedRectArray, 0.8);
+            var dittyRegions = base.MergeRegions(changedRectArray, 0.8);
+
+            // Get buffer length and rent buffer from pool
+            int bufferLength = base.GetScreenDataLength(dittyRegions, BYTE_PER_PIXEL);
+            byte[] buffer = VArrayPool.Rent(bufferLength);
+
             int offset = 0;
-            for (int i = 0; i < result.Count; i++)
+            for (int i = 0; i < dittyRegions.Count; i++)
             {
-                var rect = result[i];
+                var rect = dittyRegions[i];
                 base.GetRegionsData(
                     ref offset,
-                    _screenTask.Buffer,
+                    buffer,
                     _allBits[frontIdx],
                     _width,
                     rect.X,
@@ -170,32 +165,15 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     rect.Width,
                     rect.Height);
             }
-            int compressedLength = Compressor.CompressedLZ4(_screenTask.Buffer, offset);
+            int compressedLength = Compressor.CompressedLZ4(buffer, offset);
             //Console.WriteLine($"Regions: Source Length: {offset} - Compressed Length: {compressedLength}");
             if (offset > 0)
             {
                 if (OnScreenCaptured != null)
                 {
-                    _screenTask.Add(dataOffset: 0, dataLength: offset + 1, compressedOffset: offset + 1, compressLength: compressedLength);
-                    OnScreenCaptured(this, new VScreenSenderEventArgs(
-                      type: VScreenSenderEventType.RegionChange,
-                      screenTask: _screenTask));
-                }
-                else
-                {
-                    _screenTask.Complete(); 
-                }
+                     OnScreenCaptured(this, new VScreenSenderEventArgs(VScreenSenderEventType.RegionChange, buffer, 0, offset + 1, offset + 1, compressedLength));
+                }        
             }
-            else
-            {
-                _screenTask.Complete();
-            }
-        }
-        private int RegionTotalByteTake(Rectangle rect)
-        {
-            int header = 16; //x,y,w,h(int32)
-            int payload = rect.Width * rect.Height * BYTE_PER_PIXEL;
-            return header + payload;
         }
         public void Cancel()
         {
@@ -252,13 +230,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 st.Restart();
                 try
                 {
-                    if (_screenTask.Wait(200))
-                    {
-                        _screenTask.Reset();
-                        Capturing();
-                        GetChangedRegions(RANGE);
-                        Thread.Sleep(1);
-                    }
+                    Capturing();
+                    GetChangedRegions(RANGE);
+                    Thread.Sleep(1);
                 }
                 catch(Exception ex)
                 {

@@ -566,7 +566,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     Data = list[i],
                     Remained = list[i].Length,
                     Sent = 0,
-                    Timeout = DateTime.Now
+                    Timeout = Environment.TickCount,
+                    CapturedFrame = null
                 };
 
             }

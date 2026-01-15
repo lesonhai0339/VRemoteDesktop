@@ -158,6 +158,8 @@
     <Compile Include="Services\Mouse\MouseExtensions.cs" />
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
+    <Compile Include="Services\ScreenCapture\Enums\VScreenSenderEventType.cs" />
+    <Compile Include="Services\ScreenCapture\GDI\CaptureFrame.cs" />
     <Compile Include="Services\ScreenCapture\Interop\CaptureApi.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCapture1.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureExtensions.cs" />
