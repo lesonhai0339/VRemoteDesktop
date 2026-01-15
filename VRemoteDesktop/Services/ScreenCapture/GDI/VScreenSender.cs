@@ -149,7 +149,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             // Get buffer length and rent buffer from pool
             int bufferLength = base.GetScreenDataLength(dittyRegions, BYTE_PER_PIXEL);
-            byte[] buffer = VArrayPool.Rent(bufferLength);
+            byte[] buffer = VArrayPool.Rent(bufferLength * 2);
 
             int offset = 0;
             for (int i = 0; i < dittyRegions.Count; i++)

@@ -87,7 +87,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             foreach (var connection in receiverConnections)
             {
                 //if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
-                if (connection.ClientType == VClientType.Receiver && connection.SocketConnected)
+                if (connection.ClientType == VClientType.Receiver && connection.IsP2PConnected)
                 {
                     var type = (e.Type == VScreenSenderEventType.FullScreen) ? SocketDataType.ScreenSend : SocketDataType.ScreenRegionsChangedSend;
                     var header = connection.HeaderGenerate(type: type, socketId: connection.SocketId, dataSize: e.CompressedLength);
@@ -831,6 +831,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private void ReadyToRemote(object sender, EventArgs e)
         {
             var client = sender as VClient;
+            client.IsP2PConnected = true;   
             if (client == null)
                 throw new InvalidOperationException("Invalid sender for ReadyToRemote");
 
@@ -882,6 +883,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 try
                 {
+                    client.IsP2PConnected = false;
+
                     if (client.IsHost)
                     {
                         RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(SocketDataType.Disconnect, false, new byte[0]));
