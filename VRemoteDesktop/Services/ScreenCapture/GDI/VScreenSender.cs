@@ -23,6 +23,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         event EventHandler<VScreenSenderEventArgs> OnScreenCaptured;
         bool Start();
         bool Stop();
+        void RegionChangeSendComplete();
         void GetFullScreen();
         void Cancel();
     }
@@ -112,6 +113,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 CaptureApi.ReleaseDC(IntPtr.Zero, _screenDC);
 
             return flag;
+        }
+        public void RegionChangeSendComplete()
+        {
+            _screenTask.Complete(); 
         }
         public void GetFullScreen()
         {

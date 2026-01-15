@@ -8,12 +8,12 @@ namespace VRemoteDesktop.Enums
 {
     public class OnScreenEventArgs: EventArgs
     {
-        public OnScreenEventArgs(bool isFullScreen, List<Rectangle> rectangles)
+        public OnScreenEventArgs(bool isFullScreen, Rectangle rectangle)
         {
             IsFullScreen = isFullScreen;
-            Rectangles = rectangles;    
+            Rectangle = rectangle;    
         }
         public bool IsFullScreen { get; set; }  
-        public List<Rectangle> Rectangles { get; set; }   
+        public Rectangle Rectangle { get; set; }   
     }
 }

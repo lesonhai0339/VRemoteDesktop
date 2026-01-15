@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.Security.Cryptography;
+using System.Text.RegularExpressions;
 using System.Threading;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.Enums;
@@ -22,10 +23,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
         int Height { get; }
         int Stride { get; }
         PixelFormat PixelFormat { get; }
-        List<Rectangle> DecompressedRawData(byte[] data, int offset, int length, bool isFullScreen = false);
+        Rectangle DecompressedRawData(byte[] data, int offset, int length, bool isFullScreen = false);
     }   
     public class VScreenReceiver : VScreen, IVScreenReceiver, IDisposable
     {
+        private readonly object _lock = new object();
         private const uint DIB_RGB_COLORS = 0;
         private const int BYTE_PER_PIXEL = 3;
         private const int REGION_SIZE = 16;
@@ -126,7 +128,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, BYTE_PER_PIXEL), PixelFormat.Format24bppRgb, _bits);
         }
-        public List<Rectangle> DecompressedRawData(byte[] data, int offset, int length, bool isFullScreen = false)
+        public Rectangle DecompressedRawData(byte[] data, int offset, int length, bool isFullScreen = false)
         {
             int decompressLength = Compressor.DeCompressedLZ4(data, offset, length, _screenTask.Buffer);
             if (isFullScreen)
@@ -138,9 +140,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 return ParsePacketToRegionsChange(_screenTask.Buffer, decompressLength);
             }
         }   
-        private unsafe List<Rectangle> ParsePacketToRegionsChange(byte[] packet, int actualLength)
+        private unsafe Rectangle ParsePacketToRegionsChange(byte[] packet, int actualLength)
         {
-            List<Rectangle> rectangles = new List<Rectangle>();
+            Rectangle rect = Rectangle.Empty;
             fixed (byte* pPacket = packet)
             {
                 int offset = 0;
@@ -164,15 +166,22 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     offset += base.MergeRegionToSource(srcPtr, x, y, w, h, _bits, _width, _height);
 
-                    rectangles.Add(new Rectangle(x, y, w, h));
+                    if (rect.IsEmpty)
+                    {
+                        rect = new Rectangle(x, y, w, h);
+                    }
+                    else
+                    {
+                        rect = Rectangle.Union(rect, new Rectangle(x, y, w, h));
+                    }
                 }
             }
 #if DEBUG
             //Test11(GetStride1(_width, BYTE_PER_PIXEL), _bits);
 #endif
-           return rectangles;
+            return rect;
         }
-        private unsafe List<Rectangle> MergeFullScreenToBitmap(byte[] packet, int actualLength)
+        private unsafe Rectangle MergeFullScreenToBitmap(byte[] packet, int actualLength)
         {
             byte* dst = (byte*)_bits;
             int srcStride = _width * 3;
@@ -191,7 +200,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 #if DEBUG
             //Test11(dstStride, (IntPtr)dst, true);
 #endif
-            return new List<Rectangle> { new Rectangle(0, 0, _width, _height) };
+            return new Rectangle(0, 0, _width, _height);
         }
 #if DEBUG
         private void Test11(int stride, IntPtr source, bool isFullScreen = false)

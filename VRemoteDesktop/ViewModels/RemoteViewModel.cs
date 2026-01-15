@@ -42,6 +42,7 @@ namespace VRemoteDesktop.ViewModels
         public Bitmap Picture;
         public int Width;
         public int Height;
+        public int Stride;
         public BITMAPINFO BitmapInfo;
         public IntPtr Bits;
         public event EventHandler<OnScreenEventArgs> UpdateScreen;
@@ -64,6 +65,7 @@ namespace VRemoteDesktop.ViewModels
             Height = _screenReceiver.Height;
             BitmapInfo = _screenReceiver.BITMAPINFO;
             Bits = _screenReceiver.Bits;
+            Stride = _screenReceiver.Stride;
 #endif
             _mouseExtension = mouseExtension;
             _screenCaptureExtension = screenCaptureExtensions;
@@ -221,11 +223,13 @@ namespace VRemoteDesktop.ViewModels
 #if DEBUG
             var type = (e.Type == SocketDataType.ScreenSend) ? true : false;
 
-            var rectangles = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length, type);
+            var rectangle = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length, type);
 
             if (UpdateScreen != null)
-                UpdateScreen.Invoke(this, new OnScreenEventArgs(type, rectangles));
+                UpdateScreen.Invoke(this, new OnScreenEventArgs(type, rectangle));
 
+            _vClient.AddWork(
+                  new TaskObject(type: (type) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
             return;
 #endif
             if (e.Type == SocketDataType.ScreenSend)

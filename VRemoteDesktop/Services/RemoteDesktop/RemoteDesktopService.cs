@@ -127,7 +127,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 { SocketDataType.KeyboardSend, KeyboardReceived},
                 { SocketDataType.Ready, ReadyToRemote},
                 { SocketDataType.ScreenOk, SendScreenSucceeded},
+                { SocketDataType.RegionsChangedOk, SendRegionChangedSucceed},
             };
+        }
+
+        private void SendRegionChangedSucceed(object arg1, EventArgs args)
+        {
+            _screenSender.RegionChangeSendComplete();
         }
 
         #region Properties
