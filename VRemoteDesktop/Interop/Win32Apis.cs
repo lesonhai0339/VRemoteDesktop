@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography;
 using System.Text;
 
 namespace VRemoteDesktop.Interop
@@ -20,28 +21,6 @@ namespace VRemoteDesktop.Interop
 
             [DllImport("user32.dll")]
             public static extern short GetAsyncKeyState(int vKey);
-        }
-        public static class CaptureApis
-        {
-            [DllImport("user32.dll")]
-            public static extern bool SetProcessDPIAware();
-
-            [DllImport("user32.dll")]
-            public static extern int GetSystemMetrics(int nIndex);
-
-            [DllImport("gdi32.dll")]
-            public static extern bool BitBlt(IntPtr hdc, int nXDest, int nYDest, int nWidth, int nHeight, IntPtr hdcSrc, int nXSrc, int nYSrc, uint dwRop);
-            [DllImport("user32.dll")]
-
-            public static extern IntPtr GetDC(IntPtr hWnd);
-            [DllImport("user32.dll")]
-            public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
-
-            [DllImport("user32.dll")]
-            public static extern bool ScreenToClient(IntPtr hWnd, ref POINT lpPoint);
-
-            [DllImport("user32.dll")]
-            public static extern bool IsChild(IntPtr hWndParent, IntPtr hWnd);
         }
         public static class MouseApis
         {

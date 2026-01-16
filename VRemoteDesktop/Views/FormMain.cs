@@ -192,11 +192,11 @@ namespace VRemoteDesktop
         {
             if(sender is VClient vClient)
             {
-                if(e.Type == SocketDataType.RemoteControlAcceptedRequestToConnect || e.Type == SocketDataType.P2PLoginSucceed)
+                if(e.Type == SocketDataType.RemoteControlAcceptedRequestToConnect || (e.Type == SocketDataType.P2PLoginRespond && e.Flag == true))
                 {
                     OpenRemoteForm(vClient);
                 }
-                else if (e.Type == SocketDataType.P2PLoginFailed)
+                else if (e.Type == SocketDataType.P2PLoginRespond && e.Flag == false)
                 {
                     //try use TURN SERVER
                     string partnerId = txtPartnerId.Text.Replace(" ", "");

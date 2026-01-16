@@ -86,6 +86,24 @@ namespace VRemoteDesktop.Services.VTCPClient
             Add(id, client);
             return client;
         }
+        public VClient AddNewAndListen(string id, VClientType type, bool host)
+        {
+            if (_connections.TryGetValue(id, out var existed))
+            {
+                return existed;
+            }
+
+            VClient client = new VClient(id, type, host);
+            Add(id, client);
+
+            bool result = client.Listen();
+            if (!result)
+            {
+                Remove(id);
+                throw new InvalidOperationException(string.Format("Cannot start listening for client with Id:{0}", id));
+            }
+            return client;
+        }
         private void TCPClientResponseEventHandler(object sender, RemoteDesktopEventArgs e)
         {
             ClientDataReceived?.Invoke(sender, e);

@@ -49,11 +49,27 @@ namespace VRemoteDesktop.Views
         public FormRemote(VClient vClient, RemoteDesktopService remoteDesktopService)
         {
             InitializeComponent();
+            //this.MaximizeBox = false;
+            //this.FormBorderStyle = FormBorderStyle.None;
+            //this.WindowState = FormWindowState.Maximized;
+            //Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
+            //int newWidth = (int)(workingArea.Width * 0.7);
+            //int newHeight = (int)(workingArea.Height * 0.7);
+            //this.Size = new Size(newWidth, newHeight);
+            //this.Location = new Point(
+            //    workingArea.Left + (workingArea.Width - newWidth) / 2,
+            //    workingArea.Top + (workingArea.Height - newHeight) / 2
+            //);
+
             _vClient = vClient;
             _mouseExtension = new MouseExtensions();
             _screenCaptureExtension = new ScreenCaptureExtensions();
             _remoteDesktopService = remoteDesktopService;
             _remoteViewModel = new RemoteViewModel(_vClient ,_screenCaptureExtension, _mouseExtension, _remoteDesktopService);
+
+#if DEBUG
+            _remoteViewModel.UpdateScreen += UpdateScreenEventHandler;
+#endif
             _remoteViewModel.screenEvent += ScreenEventHandler;
             _remoteViewModel.screenRegionsChangedEvent += ScreenRegionsChangedEventHandler;
             _remoteViewModel.keyboardEvent += KeyboardReceivedEventHandler;
@@ -71,6 +87,11 @@ namespace VRemoteDesktop.Views
             vPictureBox.Size = new Size(_vClient.Partner.Width, _vClient.Partner.Height);
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
+#if DEBUG
+            //vPictureBox.Setup(_vClient.Partner.Width, _vClient.Partner.Height, _remoteViewModel.Stride, _remoteViewModel.Bits, _remoteViewModel.BitmapInfo);
+            vPictureBox.Image = _remoteViewModel.Picture;
+            vPictureBox.Paint += VPictureBox_Paint;
+#endif
 
             vPictureBox.MouseWheel += MouseWheelEventHandler;
             vPictureBox.MouseMove += MouseMoveEvent;
@@ -84,6 +105,56 @@ namespace VRemoteDesktop.Views
             _clickTimer.Tick += ClickTimer_Tick;
         }
 
+        private void VPictureBox_Paint(object sender, PaintEventArgs e)
+        {
+            e.Graphics.CompositingQuality = CompositingQuality.HighSpeed;
+            e.Graphics.InterpolationMode = InterpolationMode.Low;
+            e.Graphics.SmoothingMode = SmoothingMode.HighSpeed;
+        }
+
+        protected override void OnPaintBackground(PaintEventArgs e)
+        {
+        }
+#if DEBUG
+        private void UpdateScreenEventHandler(object sender, OnScreenEventArgs e)
+        {
+            if (this.InvokeRequired)
+            {
+                this.BeginInvoke(new Action<object, OnScreenEventArgs>(UpdateScreenEventHandler), sender, e);
+                return;
+            }
+            //int dstX = (int)((e.Rectangle.X * vPictureBox.ImageScale) + vPictureBox.ImageOffsetX);
+            //int dstY = (int)((e.Rectangle.Y * vPictureBox.ImageScale) + vPictureBox.ImageOffsetY);
+
+            //int dstWidth = (int)Math.Ceiling(e.Rectangle.Width * vPictureBox.ImageScale);
+            //int dstHeight = (int)Math.Ceiling(e.Rectangle.Height * vPictureBox.ImageScale);
+
+            //Rectangle mergedRect = new Rectangle(dstX, dstY, dstWidth, dstHeight);
+
+            var scaleWidth = (double)vPictureBox.ClientSize.Width / _vClient.Partner.Width;
+            var scaleHeight = (double)vPictureBox.ClientSize.Height / _vClient.Partner.Height;
+            var scale = Math.Min(scaleWidth, scaleHeight);
+
+
+            int dstWidth = (int)Math.Ceiling(e.Rectangle.Width * scale);
+            int dstHeight = (int)Math.Ceiling(e.Rectangle.Height * scale);
+
+            int offsetX = (int)((vPictureBox.ClientSize.Width - dstWidth) / 2);
+            int offsetY = (int)((vPictureBox.ClientSize.Height - dstHeight) / 2);
+
+            int dstX = (int)((e.Rectangle.X * scale) + offsetX);
+            int dstY = (int)((e.Rectangle.Y * scale) + offsetY);
+
+            Rectangle mergedRect = new Rectangle(dstX, dstY, dstWidth, dstHeight);
+
+            vPictureBox.Invalidate();
+            vPictureBox.Update();
+
+            _remoteViewModel.AddWork(
+                 new TaskObject(type: (e.IsFullScreen) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
+        }
+#endif
+
         private void DisconnectedEventHandler(object sender, EventArgs e)
         {
             UpdateDisconnectUI();
@@ -96,19 +167,19 @@ namespace VRemoteDesktop.Views
                 return;
             }
 
-            Bitmap bmp = new Bitmap(_curScreen.Width, _curScreen.Height);
+            //Bitmap bmp = new Bitmap(_curScreen.Width, _curScreen.Height);
 
-            using (Graphics g = Graphics.FromImage(bmp))
-            {
-                g.Clear(Color.Black);
-            }
+            //using (Graphics g = Graphics.FromImage(bmp))
+            //{
+            //    g.Clear(Color.Black);
+            //}
 
-            if (vPictureBox.Image != null)
-            {
-                vPictureBox.Image.Dispose();
-            }
+            //if (vPictureBox.Image != null)
+            //{
+            //    vPictureBox.Image.Dispose();
+            //}
 
-            vPictureBox.Image = bmp;
+            //vPictureBox.Image = bmp;
             var result = MessageBox.Show(
                 "Mất kết nối đến đối tác",
                 "Thông báo",
@@ -138,6 +209,9 @@ namespace VRemoteDesktop.Views
             //Unregister events
             if(_remoteViewModel != null)
             {
+#if DEBUG
+                _remoteViewModel.UpdateScreen -= UpdateScreenEventHandler;
+#endif
                 _remoteViewModel.screenEvent -= ScreenEventHandler;
                 _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
                 _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;
@@ -197,11 +271,11 @@ namespace VRemoteDesktop.Views
 
             if (_pendingClickArgs != null && !_isDrag && mouseType != MouseEventType.None)
             {
-                _remoteViewModel.ProcessMouseEvent(
-                   mouseType,
-                   vPictureBox,
-                   _pendingClickArgs
-               );
+               // _remoteViewModel.ProcessMouseEvent(
+               //    mouseType,
+               //    vPictureBox,
+               //    _pendingClickArgs
+               //);
             }
             _pendingClickArgs = null;
             _pendingSender = null;
@@ -251,13 +325,13 @@ namespace VRemoteDesktop.Views
                     }
                 }
 
-                _remoteViewModel.ProcessMouseEvent(
-                    mouseEvent,
-                    vPictureBox,
-                    e,
-                    mouseMessage,
-                    MouseAction.Down
-                );
+                //_remoteViewModel.ProcessMouseEvent(
+                //    mouseEvent,
+                //    vPictureBox,
+                //    e,
+                //    mouseMessage,
+                //    MouseAction.Down
+                //);
             }
             catch (Exception ex)
             {
@@ -267,11 +341,11 @@ namespace VRemoteDesktop.Views
 
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            _remoteViewModel.ProcessMouseEvent(
-                MouseEventType.Wheel,
-                vPictureBox,
-                e
-            );
+            //_remoteViewModel.ProcessMouseEvent(
+            //    MouseEventType.Wheel,
+            //    vPictureBox,
+            //    e
+            //);
         }
         #region Events
         private void InitializeGraphicsSettings()
@@ -290,9 +364,9 @@ namespace VRemoteDesktop.Views
         {
             try
             {
-                RectangleF rectF = _remoteViewModel.TransformSize(vPictureBox.Size, vPictureBox.Image.Size, rectangle);
-                Rectangle rect = Rectangle.Round(rectF);
-                vPictureBox.Invalidate(rect);
+                //RectangleF rectF = _remoteViewModel.TransformSize(vPictureBox.Size, vPictureBox.Image.Size, rectangle);
+                //Rectangle rect = Rectangle.Round(rectF);
+                //vPictureBox.Invalidate(rect);
             }
             catch (Exception ex)
             {
@@ -319,20 +393,20 @@ namespace VRemoteDesktop.Views
             // UI thread code
             try
             {
-                lock (_screenLock)
-                {
-                    // Dispose old image to prevent memory leak
-                    var oldImage = vPictureBox.Image;
-                    _screenGraphics?.Dispose();
-                    _curScreen?.Dispose();
+                //lock (_screenLock)
+                //{
+                //    // Dispose old image to prevent memory leak
+                //    var oldImage = vPictureBox.Image;
+                //    _screenGraphics?.Dispose();
+                //    _curScreen?.Dispose();
 
-                    _curScreen = new Bitmap(image);
-                    _screenGraphics = Graphics.FromImage(_curScreen);
+                //    _curScreen = new Bitmap(image);
+                //    _screenGraphics = Graphics.FromImage(_curScreen);
 
-                    vPictureBox.Image = _curScreen;
-                    oldImage?.Dispose();
-                    image?.Dispose();
-                }
+                //    vPictureBox.Image = _curScreen;
+                //    oldImage?.Dispose();
+                //    image?.Dispose();
+                //}
             }
             catch (Exception ex)
             {

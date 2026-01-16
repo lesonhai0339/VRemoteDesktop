@@ -2,16 +2,10 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using VRemoteDesktop.Enums;
 
 namespace VRemoteDesktop.Events
 {
-    public enum ChatFileType
-    {
-        None,
-        Accept, 
-        Reject,
-        Stop
-    }
     public class P2PFileReceivedEventArgs : EventArgs
     {
         public P2PFileReceivedEventArgs(ChatFileType type, string filePath)

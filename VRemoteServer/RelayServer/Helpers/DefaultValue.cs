@@ -10,6 +10,7 @@ namespace VRemoteServer.RelayServer.Helpers
     {
         public static class Common
         {
+            public static int SOCKET_ID_LENGTH = 8;
             public static char SEPARATOR = '|';
             public static int DEFAULT_PORT = 2399;
         }
