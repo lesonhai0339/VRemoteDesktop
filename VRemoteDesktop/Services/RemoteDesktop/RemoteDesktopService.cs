@@ -74,7 +74,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             //var turnConnections = _vClientManager.Connections.Values
             //                    .Count(x => !x.IsP2PConnected);
 
-            CapturedFrame frame = new CapturedFrame(e.Type, e.Buffer, e.CompressedOffset, e.CompressedLength);
+            CapturedFrame frame = new CapturedFrame(e.Type, e.CompressedBuffer, e.CompressedOffset, e.CompressedLength, 1);
 
             //Send to Turn server, implement after
             //if(turnConnections > 0)
@@ -107,20 +107,19 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         IsSendHeader = false
                     };
 
-                    frame.IncRef();
-                    try
+                    if(connection.ScreenSendAvailable)
                     {
-                        connection.AddWorkGroup(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
-                    }
-                    catch {
-                        frame.DecRef();
+                        frame.IncRef();
+                        try{
+                            connection.AddWorkGroup(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
+                        }
+                        catch{
+                            frame.DecRef();
+                        }
                     }
                 }
             }
-            if(frame.CurrentRefCount == 0)
-            {
-                frame.DecRef();
-            }
+            frame.DecRef();
         }
 #endif
         private void Initialize()

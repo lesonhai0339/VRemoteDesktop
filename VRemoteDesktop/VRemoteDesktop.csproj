@@ -230,6 +230,7 @@
     </EmbeddedResource>
     <None Include="Configs\App.config" />
     <None Include="Configs\app.manifest" />
+    <None Include="Interop\openh264-2.6.0-win32.dll.bz2" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>

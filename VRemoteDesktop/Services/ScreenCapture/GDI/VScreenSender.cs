@@ -117,21 +117,34 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             //Get buffer length and rent buffer from pool * 2 because compressed data also place on this buffer
             int bufferLength = base.GetScreenDataLength(_width, _height, BYTE_PER_PIXEL);
-            byte[] buffer = VArrayPool.Rent(bufferLength * 2);
+            byte[] buffer = VArrayPool.Rent(bufferLength);
 
-            // Get bitmap data
-            base.GetFullScreenData(ref offset, buffer, _allBits[frontIdx], _width, 0, 0, _width, _height);
-
-            //Compress
-            int compressedLength = Compressor.CompressedLZ4(buffer, offset);
-
-            if(offset > 0)
+            int compressedBufferLength = Compressor.GetMaxOutputLength(bufferLength);
+            byte[] compressedBuffer = VArrayPool.Rent(compressedBufferLength);
+            try
             {
-                if (OnScreenCaptured != null)
+                // Get bitmap data
+                base.GetFullScreenData(ref offset, buffer, _allBits[frontIdx], _width, 0, 0, _width, _height);
+
+                //Compress
+                int compressedLength = Compressor.CompressedLZ4(buffer, offset, compressedBuffer, compressedBufferLength);
+
+                if (compressedLength > 0)
                 {
-                    OnScreenCaptured(this, new VScreenSenderEventArgs(VScreenSenderEventType.FullScreen, buffer,0, offset + 1, offset + 1, compressedLength));
-                }       
+                    if (OnScreenCaptured != null)
+                    {
+                        OnScreenCaptured(this, new VScreenSenderEventArgs(VScreenSenderEventType.FullScreen, compressedBuffer, 0, compressedLength));
+                    }
+                }
+                else
+                {
+                    VArrayPool.Return(compressedBuffer);
+                }
             }
+            finally
+            {
+                VArrayPool.Return(buffer);
+            }    
         }
         private void GetChangedRegions(int range)
         {
@@ -145,34 +158,48 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         x.Y,
                         x.Width,
                         x.Height)).ToArray();
-            var dittyRegions = base.MergeRegions(changedRectArray, 0.8);
+            var dittyRegions = base.MergeRegions(changedRectArray, 0.9);
 
             // Get buffer length and rent buffer from pool
             int bufferLength = base.GetScreenDataLength(dittyRegions, BYTE_PER_PIXEL);
-            byte[] buffer = VArrayPool.Rent(bufferLength * 2);
+            byte[] buffer = VArrayPool.Rent(bufferLength);
 
-            int offset = 0;
-            for (int i = 0; i < dittyRegions.Count; i++)
+            int compressedBufferLength = Compressor.GetMaxOutputLength(bufferLength);
+            byte[] compressedBuffer = VArrayPool.Rent(compressedBufferLength);
+
+            try
             {
-                var rect = dittyRegions[i];
-                base.GetRegionsData(
-                    ref offset,
-                    buffer,
-                    _allBits[frontIdx],
-                    _width,
-                    rect.X,
-                    rect.Y,
-                    rect.Width,
-                    rect.Height);
-            }
-            int compressedLength = Compressor.CompressedLZ4(buffer, offset);
-            //Console.WriteLine($"Regions: Source Length: {offset} - Compressed Length: {compressedLength}");
-            if (offset > 0)
-            {
-                if (OnScreenCaptured != null)
+                int offset = 0;
+                for (int i = 0; i < dittyRegions.Count; i++)
                 {
-                     OnScreenCaptured(this, new VScreenSenderEventArgs(VScreenSenderEventType.RegionChange, buffer, 0, offset + 1, offset + 1, compressedLength));
-                }        
+                    var rect = dittyRegions[i];
+                    base.GetRegionsData(
+                        ref offset,
+                        buffer,
+                        _allBits[frontIdx],
+                        _width,
+                        rect.X,
+                        rect.Y,
+                        rect.Width,
+                        rect.Height);
+                }
+
+                int compressedLength = Compressor.CompressedLZ4(buffer, offset, compressedBuffer, compressedBufferLength);
+                if (compressedLength > 0)
+                {
+                    if (OnScreenCaptured != null)
+                    {
+                        OnScreenCaptured(this, new VScreenSenderEventArgs(VScreenSenderEventType.RegionChange, compressedBuffer, 0, compressedLength));
+                    }
+                }
+                else
+                {
+                    VArrayPool.Return(compressedBuffer);
+                }
+            }
+            finally
+            {
+                VArrayPool.Return(buffer);
             }
         }
         public void Cancel()
@@ -212,14 +239,21 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         private void Capturing()
         {
-            base.CaptureToBuffer(_allDCs[backIdx], _screenDC, 0, 0, _width, _height);
-            //Console.WriteLine($"{backIdx} - {frontIdx} - {prevIdx}");
+            try
+            {
+                base.CaptureToBuffer(_allDCs[backIdx], _screenDC, 0, 0, _width, _height);
+                //Console.WriteLine($"{backIdx} - {frontIdx} - {prevIdx}");
 
-            // 0, 1, 2 -> 2 , 0, 1 -> 1, 2, 0 -> ...
-            int tempPrev = prevIdx;
-            prevIdx = frontIdx;
-            frontIdx = backIdx;
-            backIdx = tempPrev;
+                // 0, 1, 2 -> 2 , 0, 1 -> 1, 2, 0 -> ...
+                int tempPrev = prevIdx;
+                prevIdx = frontIdx;
+                frontIdx = backIdx;
+                backIdx = tempPrev;
+            }
+            catch(Exception ex)
+            {
+                Console.WriteLine($"Capture err: ", ex);
+            }
         }
         private void Handler(object sender, DoWorkEventArgs e)
         {

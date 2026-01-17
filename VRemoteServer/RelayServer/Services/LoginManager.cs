@@ -59,23 +59,32 @@ namespace VRemoteServer.RelayServer.Services
         public bool NewConnectionInfo(byte[] data, SocketConnection socketConnection, out ConnectionInfo connectionInfo)
         {
             connectionInfo = null;
+            try
+            {
+                if (data == null || data.Length == 0)
+                    return false;
 
-            if (data == null || data.Length == 0)
-                return false;
+                if (socketConnection == null)
+                    return false;
 
-            if (socketConnection == null)
-                return false;
-
-            string[] rawInfo = Encoding.ASCII.ByteArrayToStringWithSeparator(data, DefaultValue.Common.SEPARATOR);        
-            connectionInfo = new ConnectionInfo();
-            bool parseRespond = connectionInfo.TryParseData(rawInfo);
-            if (!parseRespond)
+                connectionInfo = new ConnectionInfo();
+                bool parseRespond = connectionInfo.TryParseDataWithSeparator(data, Encoding.ASCII, DefaultValue.Common.SEPARATOR);
+                if (!parseRespond)
+                {
+                    return false;
+                }
+                connectionInfo.SetPublicIP(socketConnection.IP);
+                connectionInfo.SetSocketConnection(socketConnection);
+                return Add(connectionInfo.Id, connectionInfo);
+            }
+            catch (ArgumentNullException)
             {
                 return false;
             }
-            connectionInfo.PublicIP = socketConnection.IP;
-            connectionInfo.SocketConnection = socketConnection;
-            return Add(connectionInfo.Id, connectionInfo);
+            catch (Exception)
+            {
+                return false;
+            }
         }
     }
 }

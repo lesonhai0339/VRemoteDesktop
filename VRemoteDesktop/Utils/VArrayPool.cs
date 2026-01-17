@@ -1,10 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 public static class VArrayPool
 {
+    private static int _rent = 0;
+    private static int _free = 0;   
     // 20 buckets bao phủ từ 1KB đến 1GB (2^10 đến 2^30)
     private static readonly Stack<byte[]>[] _buckets = new Stack<byte[]>[20];
-    private static readonly int _maxArraysPerBucket = 10;
+    private static readonly int _maxArraysPerBucket = 50;
     private static readonly object _lock = new object();
 
     static VArrayPool()
@@ -19,20 +22,32 @@ public static class VArrayPool
     /// </summary>
     public static byte[] Rent(int minimumLength)
     {
-        int index = GetBucketIndex(minimumLength);
-
-        // Nếu vượt quá khả năng quản lý (1GB), tạo mới mảng thô (không cho vào pool)
-        if (index >= _buckets.Length)
-            return new byte[minimumLength];
-
-        lock (_lock)
+        try
         {
-            if (_buckets[index].Count > 0)
-                return _buckets[index].Pop();
-        }
+            lock (_lock)
+            {
+                _rent++;
+                Console.WriteLine($"Rent: {_rent}");
+            }
+            int index = GetBucketIndex(minimumLength);
 
-        // Tạo mảng mới theo kích thước chuẩn của Bucket (2^(index + 10))
-        return new byte[1 << (index + 10)];
+            // Nếu vượt quá khả năng quản lý (1GB), tạo mới mảng thô (không cho vào pool)
+            if (index >= _buckets.Length)
+                return new byte[minimumLength];
+
+            lock (_lock)
+            {
+                if (_buckets[index].Count > 0)
+                    return _buckets[index].Pop();
+            }
+
+            // Tạo mảng mới theo kích thước chuẩn của Bucket (2^(index + 10))
+            return new byte[1 << (index + 10)];
+        }
+        catch( Exception ex)
+        {
+            throw ex;
+        }
     }
 
     /// <summary>
@@ -40,6 +55,12 @@ public static class VArrayPool
     /// </summary>
     public static void Return(byte[] array)
     {
+
+        lock (_lock)
+        {
+            _free++;
+            Console.WriteLine($"Free: {_free}");
+        }
         if (array == null) return;
 
         int index = GetBucketIndex(array.Length);

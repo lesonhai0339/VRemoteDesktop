@@ -27,12 +27,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         public int GetScreenDataLength(List<Rectangle> rects, int bytePerPixel)
         {
-            return rects.Sum(x => GetScreenDataLength(x.Width, x.Height, bytePerPixel));
+            return rects.Sum(x => GetScreenDataLength(x.Width , x.Height , bytePerPixel)); //Only send raw bytes + 16 is header
         }
         public int GetScreenDataLength(int width, int height, int bytePerPixel)
         {
-            int stride = GetStride1(width, bytePerPixel);
-            return stride * height;
+            return (width * height * bytePerPixel) + 16; //Only send raw bytes + 16 is header
         }
         /// <summary>
         /// If bytePerPixel is 1 bit per pixel
@@ -269,6 +268,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 int srcStride = GetStride(srcWidth, bytePerPixel);
                 uint dstStride = (uint)(regionWidth * bytePerPixel);
 
+                if (offset + (dstStride * regionHeight) + 16 > destination.Length)
+                {
+                    throw new IndexOutOfRangeException("Buffer quá nhỏ để chứa dữ liệu vùng này!");
+                }
+
                 unsafe
                 {
                     //get address of source and destination 
@@ -343,6 +347,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 byte* dst = dstPtr + offset;
                 int srcStride = GetStride(srcWidth, bytePerPixel);
                 uint dstStride = (uint)(regionWidth * bytePerPixel); //Only send raw data without padding
+
+                if (offset + (dstStride * regionHeight) + 16 > destination.Length)
+                {
+                    throw new IndexOutOfRangeException("Buffer quá nhỏ để chứa dữ liệu vùng này!");
+                }
 
                 unsafe
                 {

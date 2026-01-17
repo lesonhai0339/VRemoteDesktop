@@ -39,16 +39,30 @@ namespace VRemoteServer.RelayServer.DTOs
             Port = port;
             SocketConnection = socketConnection;
         }
-        [DataMember(Order = 0)] public string Id { get; set; }
-        [DataMember(Order = 1)] public string Password { get; set; }
-        [DataMember(Order = 2)] public string ComputerName { get; set; }
-        [DataMember(Order = 3)] public int Width { get; set; }
-        [DataMember(Order = 4)] public int Height { get; set; }
-        [DataMember(Order = 5)] public string MajorVersion { get; set; }
-        [DataMember(Order = 6)] public string MinorVersion { get; set; }
-        [DataMember(Order = 7)] public string Ip { get; set; }
-        [DataMember(Order = 8)] public string Port { get; set; }
-        [DataMember(Order = 9)] public string PublicIP { get; set; }
-        [NotMapped] public SocketConnection SocketConnection { get; set; }
+        public void SetPublicIP(string publicIp)
+        {
+            if (string.IsNullOrEmpty(publicIp))
+                throw new ArgumentNullException(nameof(publicIp));
+
+            PublicIP = publicIp;
+        }
+        public void SetSocketConnection(SocketConnection sckConnection)
+        {
+            if (sckConnection == null)
+                throw new ArgumentNullException(nameof(sckConnection));
+
+            SocketConnection = sckConnection;
+        }
+        [DataMember(Order = 0)] public string Id { get; private set; }
+        [DataMember(Order = 1)] public string Password { get; private set; }
+        [DataMember(Order = 2)] public string ComputerName { get; private set; }
+        [DataMember(Order = 3)] public int Width { get; private set; }
+        [DataMember(Order = 4)] public int Height { get; private set; }
+        [DataMember(Order = 5)] public string MajorVersion { get; private set; }
+        [DataMember(Order = 6)] public string MinorVersion { get; private set; }
+        [DataMember(Order = 7)] public string Ip { get; private set; }
+        [DataMember(Order = 8)] public string Port { get; private set; }
+        [DataMember(Order = 9)] public string PublicIP { get; private set; }
+        [NotMapped] public SocketConnection SocketConnection { get; private set; }
     }
 }

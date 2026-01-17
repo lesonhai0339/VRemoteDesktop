@@ -30,6 +30,15 @@ namespace VRemoteServer.RelayServer.DTOs
             }
             return sb.ToString().TrimEnd(DefaultValue.Common.SEPARATOR);
         }
+        public bool TryParseDataWithSeparator(byte[] raw, Encoding encoding, char separator = '|')
+        {
+            string[] infoArray =  encoding.ByteArrayToStringWithSeparator(raw, separator);
+
+            if (infoArray.Length <= 0) 
+                return false;
+
+            return TryParseData(infoArray);
+        }
         public bool TryParseData(string[] data)
         {
             var props = this.GetType()

@@ -19,10 +19,10 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
         private int _refCount;
 
-        public CapturedFrame(VScreenSenderEventType type,  byte[] data, int compressedDataOffset, int compressedDataLength, int count = 0)
+        public CapturedFrame(VScreenSenderEventType type,  byte[] compressedData, int compressedDataOffset, int compressedDataLength, int count = 0)
         {
             Type = type;
-            CompressedData = data;
+            CompressedData = compressedData;
             CompressedDataOffset = compressedDataOffset;
             CompressedDataLength = compressedDataLength;
             FrameId = DateTime.Now.Ticks.ToString();

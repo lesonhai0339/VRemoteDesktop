@@ -14,6 +14,8 @@ namespace VRemoteDesktop.Utils
         int Count { get; }
         bool HasItem();
         void Enqueue(T tasks, QueuePriority priority);
+        bool TryPeek(out T task);
+        bool Dequeue(T input, QueuePriority priority);
         bool Dequeue(out T task);
         int RemoveAll(Func<T, bool> match);
         int RemoveAll(QueuePriority priority, Func<T, bool> match);
@@ -74,6 +76,52 @@ namespace VRemoteDesktop.Utils
             {
                 _keyValuePairs[priority].Enqueue(tasks);
             }
+        }
+        public bool TryPeek(out T task)
+        {
+            task = default(T);
+
+            if (IsDispose()) return false;
+
+            lock (_highLock)
+            {
+                if (_highTasks.TryPeek(out task)) return true;
+            }
+            lock (_mediumLock)
+            {
+                if (_mediumTasks.TryPeek(out task)) return true;
+            }
+            lock (_lowLock)
+            {
+                if (_lowTasks.Count > 0)
+                {
+                    DateTimeOffset now = DateTimeOffset.UtcNow;
+                    var elapsed = (now - _lastFileSend).TotalMilliseconds;
+                    if (elapsed >= _limitPacketSendPerSecond)
+                    {
+                        _lastFileSend = now;
+                        if (_lowTasks.TryPeek(out task)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+        public bool Dequeue(T input, QueuePriority priority)
+        {
+            if (IsDispose()) return false;
+
+
+            var @lock = _locks[priority];
+            var queue = _keyValuePairs[priority];
+
+            lock (@lock)
+            {
+                if (queue.TryPeek(out var task) && ReferenceEquals(input, task))
+                {
+                    return queue.TryDequeue(out _);
+                }
+            }
+            return false;
         }
         public bool Dequeue(out T task)
         {

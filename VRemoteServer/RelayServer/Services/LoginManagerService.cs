@@ -22,6 +22,10 @@ namespace VRemoteServer.RelayServer.Services
         void Send(SocketConnection connection, byte[] data);
         bool SendWithRespond(SocketConnection connection, byte[] data);
         bool GetFirst(string id, string password, out ConnectionInfo connectionInfo);
+        /// <summary>
+        /// Received Ping packet from client and send back Pong packet
+        /// </summary>
+        /// <param name="connection"></param>
         void Ping(SocketConnection connection);
         bool Add(SocketConnection connection, byte[] data, out ConnectionInfo connectionInfo);
         void LoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo);
@@ -62,7 +66,6 @@ namespace VRemoteServer.RelayServer.Services
 
         public async Task StartServer(IPEndPoint ep)
         {
-
             if (ep == null)
                 throw new ArgumentNullException(nameof(ep));
 
@@ -77,21 +80,17 @@ namespace VRemoteServer.RelayServer.Services
         public void Ping(SocketConnection connection)
         {
             connection.UpdateTime();
-            byte[] packet = PacketFactory.CreatePacket(SocketDataType.Pong);
-            Send(connection, packet);
+            Send(connection, SocketDataType.Pong);
         }
 
         public void P2PConnectFailed(SocketConnection connection)
         {
-            byte[] packet = PacketFactory.CreatePacket(SocketDataType.P2PInvalidConnectData);
-            Send(connection, packet);
+            Send(connection, SocketDataType.P2PInvalidConnectData);
         }
 
         public bool GetFirst(string id, string password, out ConnectionInfo connectionInfo)
         {
-            connectionInfo = null;
-            Func<ConnectionInfo, bool> predicate = (c) => c.Id == id && c.Password == password;
-            connectionInfo = _loginConnectionManager.GetFirst(predicate); 
+            connectionInfo = _loginConnectionManager.GetFirst(c => c.Id == id && c.Password == password);
             return connectionInfo != null;
         }
 
@@ -105,8 +104,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             if (_loginConnectionManager.RemoveLoginInfoBySocketConnection(connection))
             {
-                byte[] packet = PacketFactory.CreatePacket(SocketDataType.Disconnect, EMPTY_ID);
-                Send(connection, packet);
+                Send(connection, SocketDataType.Disconnect);
             }
         }
 
@@ -186,8 +184,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             try
             {
-                byte[] data = Encoding.ASCII.StringToByteArray(connectionInfo.ToNetworkString());
-                byte[] packet = PacketFactory.CreatePacket(SocketDataType.Login, connectionInfo.Id, data);
+                var packet = PacketFactory.CreatePacket(SocketDataType.Login, Encoding.ASCII, connectionInfo.ToNetworkString(), connectionInfo.Id);
                 Send(connection, packet);
             }
             catch (Exception ex)
@@ -200,8 +197,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             try
             {
-                byte[] packet = PacketFactory.CreatePacket(SocketDataType.LoginFailed, EMPTY_ID);
-                Send(connection, packet);
+                Send(connection, SocketDataType.LoginFailed);
             }
             catch (Exception ex)
             {
@@ -209,6 +205,18 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
+        public void Send(SocketConnection connection, SocketDataType type)
+        {
+            try
+            {
+                var packet = PacketFactory.CreatePacket(type);
+                _loginServer.Send(connection, packet);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteSend error");
+            }
+        }
         public void Send(SocketConnection connection, byte[] data)
         {
             try
