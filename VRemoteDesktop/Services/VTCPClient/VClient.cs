@@ -317,6 +317,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 case SocketDataType.RegionsChangedOk:
                     if (Interlocked.CompareExchange(ref _screenSendPending, 0, 1) == 1)
                     {
+                        Console.WriteLine("Received " + _screenSendPending);
                         _lastScreenSent = Environment.TickCount;
                     }
                     TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
@@ -931,6 +932,7 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             if(Interlocked.CompareExchange(ref _screenSendPending, 1, 0) == 0)
             {
+                Console.WriteLine("Send " + _screenSendPending);
                 _lastScreenSent = Environment.TickCount;
                 try
                 {
@@ -996,6 +998,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                     Timeout = Environment.TickCount,
                     CapturedFrame = null
                 };
+                Send(state);
             }
             catch (Exception ex)
             {
@@ -1012,7 +1015,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 throw new InvalidOperationException("Socket with id: " + SocketId + " no available");
             }
 
-            if ((Environment.TickCount - state.Timeout) > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
+            if ((Environment.TickCount - state.Timeout) > DefaultValue.DEFAULT_TIMEOUT_SECONDS * 1000)
             {
                 throw new TimeoutException("Send timeout");
             }
