@@ -160,6 +160,7 @@
     <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
     <Compile Include="Services\ScreenCapture\Enums\VScreenSenderEventType.cs" />
     <Compile Include="Services\ScreenCapture\GDI\CaptureFrame.cs" />
+    <Compile Include="Services\ScreenCapture\GDI\VRegions.cs" />
     <Compile Include="Services\ScreenCapture\Interop\CaptureApi.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCapture1.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCaptureExtensions.cs" />
