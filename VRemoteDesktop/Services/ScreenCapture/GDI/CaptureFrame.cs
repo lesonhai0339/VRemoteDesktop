@@ -14,7 +14,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         public int CompressedDataOffset { get; private set; }
 
         public int CompressedDataLength { get; private set; }
-        public string FrameId { get; private set; }
+        public int FrameId { get; private set; }
+
         public int CurrentRefCount => _refCount;
 
         private int _refCount;
@@ -25,7 +26,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             CompressedData = compressedData;
             CompressedDataOffset = compressedDataOffset;
             CompressedDataLength = compressedDataLength;
-            FrameId = DateTime.Now.Ticks.ToString();
+            FrameId = Environment.TickCount;
             _refCount = count;
         }
         public void IncRef() { Interlocked.Increment(ref _refCount); }

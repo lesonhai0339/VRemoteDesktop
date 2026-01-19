@@ -61,6 +61,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         //Screen 
         private int _screenSendPending = 0;
         private int _lastScreenSent = 0;
+        private volatile int _lastScreenId = 0;
         public VClient(string socketId, VClientType clientType, bool isHost = false)
         {
             _isDisposed = 0;
@@ -125,7 +126,10 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             get
             {
-                return (_screenSendPending == 0) ? true : false;
+                lock (_lockObject)
+                {
+                    return Interlocked.CompareExchange(ref _screenSendPending, -1, -1) == 0;
+                }
             }
         }
         public bool IsHost
@@ -314,13 +318,15 @@ namespace VRemoteDesktop.Services.VTCPClient
                     P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
                     break;
                 case SocketDataType.ScreenOk:
-                case SocketDataType.RegionsChangedOk:
-                    if (Interlocked.CompareExchange(ref _screenSendPending, 0, 1) == 1)
-                    {
-                        Console.WriteLine("Received " + _screenSendPending);
-                        _lastScreenSent = Environment.TickCount;
-                    }
+                    string screenid = Encoding.ASCII.GetString(task.Data, 0, 10);
+                    Console.WriteLine("Received");
+                    Interlocked.Exchange(ref _screenSendPending, 0);
                     TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
+                    break;
+                case SocketDataType.RegionsChangedOk:
+                    string regionsid = Encoding.ASCII.GetString(task.Data, 0, 10);
+                    Console.WriteLine("Received");
+                    Interlocked.Exchange(ref _screenSendPending, 0);
                     break;
                 default:
                     TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
@@ -374,22 +380,35 @@ namespace VRemoteDesktop.Services.VTCPClient
                 return;
             }
 #if DEBUG
-            if(task.TaskType == SocketDataType.ScreenSend || task.TaskType == SocketDataType.ScreenRegionsChangedSend)
+            else if(task.TaskType == SocketDataType.ScreenSend || task.TaskType == SocketDataType.ScreenRegionsChangedSend)
             {
-                if(_screenSendPending == 1)
-                    return;
-
                 if (task.CapturedFrame != null)
                 {
-                    SendScreen(task.CapturedFrame);
+                    try
+                    {
+                        if (SendScreen(task.CapturedFrame))
+                        {
+                            _senderQueue.Dequeue(task, QueuePriority.Medium);
+                        }
+                    }
+                    catch
+                    {
+                        _senderQueue.Dequeue(task, QueuePriority.Medium);
+                    }
+                }
+                else
+                {
+                    Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
                     _senderQueue.Dequeue(task, QueuePriority.Medium);
-                    return;
                 }
             }
-           
+
 #endif
-            Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
-            _senderQueue.Dequeue(task, QueuePriority.High);
+            else
+            {
+                Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
+                _senderQueue.Dequeue(task, QueuePriority.High);
+            }
         }
         public void RemoveTaskByType(SocketDataType socketType, object dataType, object data)
         {
@@ -432,6 +451,21 @@ namespace VRemoteDesktop.Services.VTCPClient
             _senderQueue.Enqueue(task, priority);
             //_senderTasks.Enqueue(task, (int)task.Priority);
         }
+        public void AddWork(TaskObject[] tasks, QueuePriority priority)
+        {
+
+            if (tasks == null || tasks.Length == 0)
+                return;
+
+            lock (_lockObject)
+            {
+                for(int i = 0; i< tasks.Length; i++)
+                {
+                    _senderQueue.Enqueue(tasks[i], priority);
+                }
+            }
+        }
+
         public void AddWorkGroup(List<TaskObject> tasks, QueuePriority priority)
         {
 
@@ -560,7 +594,8 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             finally
             {
-                _sckConnect.Set();
+                try { _sckConnect.Set(); } catch { }
+                
             }
         }
         /// <summary>
@@ -723,7 +758,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Logger.Log.ForContext("", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
-        public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0)
+        public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0, string packetId = null)
         {
 
             if (type == SocketDataType.None)
@@ -734,10 +769,12 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             try
             {
+                int packetIdLength = (string.IsNullOrEmpty(packetId))  ? 0 : packetId.Length;
+
                 int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + socketId.Length;
-                int actualDataSize = includeData ? data.Length : dataSize;
+                int actualDataSize = includeData ? (data.Length + packetIdLength) : (dataSize + packetIdLength);
                 int totalMessageSize = headerOnlySize + actualDataSize;
-                int headerSize = includeData ? totalMessageSize : headerOnlySize;
+                int headerSize = includeData ? (totalMessageSize + packetIdLength) : (headerOnlySize + packetIdLength);
 
                 byte[] header = new byte[headerSize];
                 int offset = 0;
@@ -752,10 +789,24 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Buffer.BlockCopy(idByteArray, 0, header, offset, idByteArray.Length);
                 offset += idByteArray.Length;
 
-                if (includeData)
+                if (packetIdLength != 0)
                 {
-                    Buffer.BlockCopy(data, 0, header, offset, data.Length);
-                    offset += data.Length;
+                    byte[] packetIdByteArray = Encoding.ASCII.GetBytes(packetId);
+                    Buffer.BlockCopy(packetIdByteArray, 0, header, offset, packetIdLength);
+                    offset += packetIdLength;
+                    if (includeData)
+                    {
+                        Buffer.BlockCopy(data, 0, header, offset, data.Length);
+                        offset += data.Length;
+                    }
+                }
+                else
+                {
+                    if (includeData)
+                    {
+                        Buffer.BlockCopy(data, 0, header, offset, data.Length);
+                        offset += data.Length;
+                    }
                 }
                 return header;
             }
@@ -925,24 +976,35 @@ namespace VRemoteDesktop.Services.VTCPClient
         //    }
         //}
 #if DEBUG
-        public void SendScreen(CapturedFrame frame)
+        public bool SendScreen(CapturedFrame frame)
         {
-            if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
-                throw new ObjectDisposedException(this.GetType().Name);
+            //if (Interlocked.CompareExchange(ref _screenSendPending, 1, 0) != 0)
+            //    return false;
 
-            if(Interlocked.CompareExchange(ref _screenSendPending, 1, 0) == 0)
+            try
             {
-                Console.WriteLine("Send " + _screenSendPending);
-                _lastScreenSent = Environment.TickCount;
-                try
+                if (_lastScreenId == 0 || _lastScreenId < frame.FrameId)
                 {
+                    Interlocked.Exchange(ref _lastScreenId, frame.FrameId);
+                    Console.WriteLine(_lastScreenId);
                     Send(frame);
+                    return true;
                 }
-                catch (Exception ex)
+                else
                 {
-                    Console.WriteLine("Screen task error: " + ex.Message);
+                    frame.DecRef();
+                    Interlocked.Exchange(ref _screenSendPending, 0);
+                    return true;
                 }
-            }  
+                //Send(frame);
+                //return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Screen task error: " + ex.Message);
+                Interlocked.Exchange(ref _screenSendPending, 0);
+                return false;
+            }
         }
         public void Send(SocketDataType type, byte[] data, string socketId, bool isSendHeader = true)
         {

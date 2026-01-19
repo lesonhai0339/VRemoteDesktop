@@ -295,6 +295,51 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 offset += (int)(dstStride * regionHeight) + 16; //Data + header(16 bytes for x,y,w,h)
             }
         }
+        public virtual unsafe void GetRegionsDataWithoutRectangle(
+       ref int offset,
+       byte[] destination,
+       IntPtr source,
+       int srcWidth,
+       int regionX,
+       int regionY,
+       int regionWidth,
+       int regionHeight,
+       int bytePerPixel = 3)
+        {
+            fixed (byte* bst = destination)
+            {
+                byte* dst = bst + offset;              
+
+                //calculate stride of big screen and regions
+                int srcStride = GetStride(srcWidth, bytePerPixel);
+                uint dstStride = (uint)(regionWidth * bytePerPixel);
+
+                if (offset + (dstStride * regionHeight) > destination.Length)
+                {
+                    throw new IndexOutOfRangeException("Available buffer less than data");
+                }
+
+                unsafe
+                {
+                    //get address of source and destination 
+                    byte* src = (byte*)source;
+
+                    //for-loop to write row from source to destination
+                    for (int row = 0; row < regionHeight; row++)
+                    {
+                        int sy = (row + regionY) * srcStride;
+                        int sx = regionX * bytePerPixel;
+
+                        IntPtr srcAdd = (IntPtr)(src + sy + sx);
+
+                        IntPtr dstAdd = (IntPtr)(dst + (row * dstStride)); 
+
+                        CaptureApi.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
+                    }
+                }
+                offset += (int)(dstStride * regionHeight);
+            }
+        }
         public virtual unsafe void GetFullScreenData(
             ref int offset,
             IntPtr destination,

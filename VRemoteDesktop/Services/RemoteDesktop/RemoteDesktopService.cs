@@ -74,8 +74,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             //var turnConnections = _vClientManager.Connections.Values
             //                    .Count(x => !x.IsP2PConnected);
 
-            CapturedFrame frame = new CapturedFrame(e.Type, e.CompressedBuffer, e.CompressedOffset, e.CompressedLength, 1);
-
             //Send to Turn server, implement after
             //if(turnConnections > 0)
             //{
@@ -87,11 +85,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             foreach (var connection in receiverConnections)
             {
                 //if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
-                if (connection.ClientType == VClientType.Receiver && connection.IsP2PConnected)
+                if (connection.ClientType == VClientType.Receiver)
                 {
-                    var type = (e.Type == VScreenSenderEventType.FullScreen) ? SocketDataType.ScreenSend : SocketDataType.ScreenRegionsChangedSend;
-                    var header = connection.HeaderGenerate(type: type, socketId: connection.SocketId, dataSize: e.CompressedLength);
-
+                    var type = (e.Frame.Type == VScreenSenderEventType.FullScreen) ? SocketDataType.ScreenSend : (e.Frame.Type == VScreenSenderEventType.RegionChange)
+                                            ? SocketDataType.ScreenRegionsChangedSend : SocketDataType.None; 
+                    var header = connection.HeaderGenerate(type: type, socketId: connection.SocketId, includeData: false, data: null, dataSize: e.Frame.CompressedDataLength, e.Id);
                     var headerPacket = new TaskObject
                     {
                         TaskType = type,
@@ -103,23 +101,33 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     {
                         TaskType = type,
                         SessionId = connection.SocketId,
-                        CapturedFrame = frame,
+                        CapturedFrame = e.Frame,
                         IsSendHeader = false
                     };
-
-                    if(connection.ScreenSendAvailable)
+                    e.Frame.IncRef();
+                    try
                     {
-                        frame.IncRef();
+                        connection.AddWork(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
+                    }
+                    catch
+                    {
+                        e.Frame.DecRef();
+                    }
+                    return;
+
+                    if (connection.ScreenSendAvailable)
+                    {
+                        e.Frame.IncRef();
                         try{
-                            connection.AddWorkGroup(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
+                            Console.WriteLine($"Screen {e.Id} - User {connection.SocketId}");
+                            connection.AddWork(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
                         }
                         catch{
-                            frame.DecRef();
+                            e.Frame.DecRef();
                         }
                     }
                 }
             }
-            frame.DecRef();
         }
 #endif
         private void Initialize()

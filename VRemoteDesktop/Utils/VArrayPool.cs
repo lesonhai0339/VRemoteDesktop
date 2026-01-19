@@ -3,8 +3,6 @@ using System.Collections.Generic;
 
 public static class VArrayPool
 {
-    private static int _rent = 0;
-    private static int _free = 0;   
     // 20 buckets bao phủ từ 1KB đến 1GB (2^10 đến 2^30)
     private static readonly Stack<byte[]>[] _buckets = new Stack<byte[]>[20];
     private static readonly int _maxArraysPerBucket = 50;
@@ -24,11 +22,6 @@ public static class VArrayPool
     {
         try
         {
-            lock (_lock)
-            {
-                _rent++;
-                Console.WriteLine($"Rent: {_rent}");
-            }
             int index = GetBucketIndex(minimumLength);
 
             // Nếu vượt quá khả năng quản lý (1GB), tạo mới mảng thô (không cho vào pool)
@@ -55,12 +48,6 @@ public static class VArrayPool
     /// </summary>
     public static void Return(byte[] array)
     {
-
-        lock (_lock)
-        {
-            _free++;
-            Console.WriteLine($"Free: {_free}");
-        }
         if (array == null) return;
 
         int index = GetBucketIndex(array.Length);

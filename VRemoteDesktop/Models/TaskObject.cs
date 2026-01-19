@@ -30,6 +30,7 @@ namespace VRemoteDesktop.Models
         public TaskObject(SocketDataType type, string sessionId, bool isSendHeader, ChunkFileInfo chunkFileInfo)
             : this(type, sessionId, null, isSendHeader, null, chunkFileInfo) { }
 
+
         public TaskObject(SocketDataType taskType, string sessionId, byte[] data, bool isSendHeader, CapturedFrame capturedFrame, ChunkFileInfo chunkFileInfo)
         {
             TaskType = taskType;
