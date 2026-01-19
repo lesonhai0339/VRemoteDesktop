@@ -8,7 +8,7 @@ using VRemoteDesktop.Services.ScreenCapture.DTOs;
 
 namespace VRemoteDesktop.Services.ScreenCapture.GDI
 {
-    public class VRegions
+    public class VRegions: IDisposable
     {
         private readonly ConcurrentDictionary<long, RegionFrame> _remainingFrames = new ConcurrentDictionary<long, RegionFrame>();
         private DateTimeOffset _lastTimeGet;
@@ -28,7 +28,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         }
         public bool Find(RegionFrame frame, out KeyValuePair<long, RegionFrame> existedFrame)
         {
-            existedFrame = _remainingFrames.FirstOrDefault(x => frame.Equals(RectFromXYWH(x.Value.X, x.Value.Y, x.Value.Width, x.Value.Height)));
+            existedFrame = _remainingFrames.FirstOrDefault(x => frame.Equals(x.Value.Bounds));
             if(existedFrame.Value != null)
             {
                 return true;
@@ -37,10 +37,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             {
                 return false;
             }
-        }
-        public Rectangle RectFromXYWH(int x, int y, int w, int h)
-        {
-            return new Rectangle(x, y, w, h);
         }
         public bool Contains(Rectangle rect1, Rectangle rect2)
         {
@@ -63,6 +59,11 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             {
                 return false;
             }
+        }
+
+        public void Dispose()
+        {
+            throw new NotImplementedException();
         }
     }
 }

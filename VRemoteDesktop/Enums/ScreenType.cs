@@ -8,7 +8,7 @@ namespace VRemoteDesktop.Enums
     public enum ScreenType
     {
         None = 0,
-        FULLSCREEN = 1,
-        REGIONSCREENS = 2,
+        FULL_SCREEN = 1,
+        DIRTY_REGIONS = 2,
     }
 }

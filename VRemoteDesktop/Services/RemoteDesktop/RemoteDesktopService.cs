@@ -54,6 +54,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 #if DEBUG
             _screenSender = screenSender;
             _screenSender.OnScreenCaptured += OnScreenCapturedEventHandler;
+            _screenSender.OnScreenCaptured += OnScreenEventHandler;
+
 #endif
 
             _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
@@ -63,7 +65,17 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             StartKeyboardListener();  
         }
 
+
+
 #if DEBUG
+        private void OnScreenEventHandler(object sender, VScreenSenderEventArgs e)
+        {
+            var clients = _vClientManager.Connections.Where(x => !x.Value.IsHost);
+            foreach (var client in clients)
+            {
+
+            }
+        }
         private void OnScreenCapturedEventHandler(object sender, VScreenSenderEventArgs e)
         {
             var receiverConnections = _vClientManager.Connections.Values.ToList();
@@ -87,7 +99,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 //if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
                 if (connection.ClientType == VClientType.Receiver)
                 {
-                    var type = (e.Frame.Type == VScreenSenderEventType.FullScreen) ? SocketDataType.ScreenSend : (e.Frame.Type == VScreenSenderEventType.RegionChange)
+                    var type = (e.Frame.Type == ScreenCapture.Enums.ScreenType.FullScreen) ? SocketDataType.ScreenSend : (e.Frame.Type == ScreenCapture.Enums.ScreenType.RegionChange)
                                             ? SocketDataType.ScreenRegionsChangedSend : SocketDataType.None; 
                     var header = connection.HeaderGenerate(type: type, socketId: connection.SocketId, includeData: false, data: null, dataSize: e.Frame.CompressedDataLength, e.Id);
                     var headerPacket = new TaskObject

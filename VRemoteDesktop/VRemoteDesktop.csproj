@@ -104,6 +104,7 @@
     <Compile Include="Layouts\VDisplay.Designer.cs">
       <DependentUpon>VDisplay.cs</DependentUpon>
     </Compile>
+    <Compile Include="Services\RemoteDesktop\ClientSession.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\RegionFrame.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\ScreenTask.cs" />
     <Compile Include="Services\ScreenCapture\Enums\VScreenSenderEventArgs.cs" />
@@ -159,8 +160,8 @@
     <Compile Include="Services\Mouse\MouseExtensions.cs" />
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
-    <Compile Include="Services\ScreenCapture\Enums\VScreenSenderEventType.cs" />
-    <Compile Include="Services\ScreenCapture\Events\DirtyRegionEventArgs.cs" />
+    <Compile Include="Services\ScreenCapture\Enums\ScreenType.cs" />
+    <Compile Include="Services\ScreenCapture\Events\ScreenEventArgs.cs" />
     <Compile Include="Services\ScreenCapture\Events\VScreenSenderEventArgs.cs" />
     <Compile Include="Services\ScreenCapture\GDI\CaptureFrame.cs" />
     <Compile Include="Services\ScreenCapture\GDI\VRegions.cs" />

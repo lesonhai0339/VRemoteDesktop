@@ -10,13 +10,13 @@ namespace VRemoteDesktop.Services.ScreenCapture.Enums
 
     public class VScreenSenderEventArgs : EventArgs
     {
-        public VScreenSenderEventArgs(string id, CapturedFrame frame)
+        public VScreenSenderEventArgs(CapturedFrame frame, string id = "0000000000")
         {
             Id = id;
             Frame = frame;
 
         }
-        public string Id { get; set; }  
+        public string Id { get; set; }
         public CapturedFrame Frame { get; set; }
     }
 }

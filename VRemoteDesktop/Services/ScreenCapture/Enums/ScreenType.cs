@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteDesktop.Services.ScreenCapture.Enums
 {
-    public enum VScreenSenderEventType
+    public enum ScreenType
     {
         FullScreen,
         RegionChange
