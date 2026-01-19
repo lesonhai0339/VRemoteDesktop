@@ -104,6 +104,7 @@
     <Compile Include="Layouts\VDisplay.Designer.cs">
       <DependentUpon>VDisplay.cs</DependentUpon>
     </Compile>
+    <Compile Include="Services\ScreenCapture\DTOs\RegionFrame.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\ScreenTask.cs" />
     <Compile Include="Services\ScreenCapture\Enums\VScreenSenderEventArgs.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
@@ -159,6 +160,8 @@
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
     <Compile Include="Services\ScreenCapture\Enums\VScreenSenderEventType.cs" />
+    <Compile Include="Services\ScreenCapture\Events\DirtyRegionEventArgs.cs" />
+    <Compile Include="Services\ScreenCapture\Events\VScreenSenderEventArgs.cs" />
     <Compile Include="Services\ScreenCapture\GDI\CaptureFrame.cs" />
     <Compile Include="Services\ScreenCapture\GDI\VRegions.cs" />
     <Compile Include="Services\ScreenCapture\Interop\CaptureApi.cs" />
@@ -245,7 +248,6 @@
   <ItemGroup>
     <Folder Include="ChatData\" />
     <Folder Include="Resources\" />
-    <Folder Include="Services\ScreenCapture\Events\" />
     <Folder Include="Services\ScreenCapture\Helpers\" />
   </ItemGroup>
   <ItemGroup>
