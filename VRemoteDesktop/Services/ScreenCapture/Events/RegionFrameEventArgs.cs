@@ -7,16 +7,14 @@ using VRemoteDesktop.Services.ScreenCapture.DTOs;
 
 namespace VRemoteDesktop.Services.ScreenCapture.Events
 {
-    public class ScreenEventArgs: EventArgs
+    public class RegionFrameEventArgs : EventArgs
     {
-        public ScreenEventArgs(ScreenType type, RegionFrame regionFrame, long order = 0)
+        public RegionFrameEventArgs(ScreenType type, RegionFrame regionFrame)
         {
             Type = type;
-            Order = order;
             RegionFrame = regionFrame;
         }
-        public  ScreenType Type { get; set; }
-        public long Order { get; set; }
+        public ScreenType Type { get; set; }
         public RegionFrame RegionFrame { get; set; }
     }
 }

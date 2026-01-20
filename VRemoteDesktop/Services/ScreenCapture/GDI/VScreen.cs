@@ -460,6 +460,50 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             return false;
         }
+        public virtual unsafe bool IsRegionChangeUseLong(
+           IntPtr oldScreen,
+           IntPtr newScreen,
+           int srcWidth,
+           int regionX,
+           int regionY,
+           int regionWidth,
+           int regionHeight,
+           int bytePerPixel = 3)
+        {
+            int stride = GetStride(srcWidth, bytePerPixel);
+            unsafe
+            {
+                byte* oBase = (byte*)oldScreen;
+                byte* nBase = (byte*)newScreen;
+
+                int rowBytes = regionWidth * bytePerPixel;
+                int longCount = rowBytes >> 3; 
+
+                for (int row = 0; row < regionHeight; row++)
+                {
+                    int offset = (row + regionY) * stride + (regionX * bytePerPixel);
+
+                    long* o = (long*)(oBase + offset);
+                    long* n = (long*)(nBase + offset);
+
+                    for (int i = 0; i < longCount; i++)
+                    {
+                        if (*(o + i) != *(n + i))
+                        {
+                            return true;
+                        }
+                    }
+
+                    byte* bO = (byte*)(o + longCount);
+                    byte* bN = (byte*)(n + longCount);
+                    for (int i = 0; i < (rowBytes % 8); i++)
+                    {
+                        if (bO[i] != bN[i]) return true;
+                    }
+                }
+            }
+            return false;
+        }
         public virtual unsafe bool IsRegionChangeInRange(
             int range,
             IntPtr oldScreen,

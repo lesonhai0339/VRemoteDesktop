@@ -14,14 +14,12 @@ namespace VRemoteDesktop.Services.ScreenCapture.Utils
         {
             return LZ4Codec.MaximumOutputLength(inputLength);  
         }
-        public static unsafe int CompressedLZ4(byte[] buffer, int writeOffset,  byte[] compressedBuffer, int compressedBufferLength)
+        public static unsafe int CompressedLZ4(byte[] buffer, int bufferLength,  byte[] compressedBuffer, int compressedBufferLength)
         {
-            int writeLength = writeOffset + 1;
-
             int compressedLength = LZ4Codec.Encode(
                 buffer,
                 0,
-                writeLength,
+                bufferLength,
                 compressedBuffer,
                 0,
                 compressedBufferLength);

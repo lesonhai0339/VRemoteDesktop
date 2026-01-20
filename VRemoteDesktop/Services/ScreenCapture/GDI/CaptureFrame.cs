@@ -9,7 +9,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 {
     public class CapturedFrame : IDisposable
     {
-        public ScreenType Type { get; private set; }
+        public VScreenType Type { get; private set; }
         public byte[] CompressedData { get; private set; }
         public int CompressedDataOffset { get; private set; }
 
@@ -20,7 +20,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
         private int _refCount;
 
-        public CapturedFrame(ScreenType type,  byte[] compressedData, int compressedDataOffset, int compressedDataLength, int count = 0)
+        public CapturedFrame(VScreenType type,  byte[] compressedData, int compressedDataOffset, int compressedDataLength, int count = 0)
         {
             Type = type;
             CompressedData = compressedData;

@@ -104,10 +104,11 @@
     <Compile Include="Layouts\VDisplay.Designer.cs">
       <DependentUpon>VDisplay.cs</DependentUpon>
     </Compile>
-    <Compile Include="Services\RemoteDesktop\ClientSession.cs" />
+    <Compile Include="Services\SessionManagement\ClientSession.cs" />
+    <Content Include="Services\RemoteDesktop\RemoteDesktopService - Copy.txt" />
+    <Compile Include="Services\ScreenCapture\DTOs\FullScreenFrame.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\RegionFrame.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\ScreenTask.cs" />
-    <Compile Include="Services\ScreenCapture\Enums\VScreenSenderEventArgs.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
     <Compile Include="Helpers\ChatRespondHelper.cs" />
@@ -160,8 +161,9 @@
     <Compile Include="Services\Mouse\MouseExtensions.cs" />
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
-    <Compile Include="Services\ScreenCapture\Enums\ScreenType.cs" />
-    <Compile Include="Services\ScreenCapture\Events\ScreenEventArgs.cs" />
+    <Compile Include="Services\ScreenCapture\Enums\VScreenType.cs" />
+    <Compile Include="Services\ScreenCapture\Events\FullScreenFrameEventArgs.cs" />
+    <Compile Include="Services\ScreenCapture\Events\RegionFrameEventArgs.cs" />
     <Compile Include="Services\ScreenCapture\Events\VScreenSenderEventArgs.cs" />
     <Compile Include="Services\ScreenCapture\GDI\CaptureFrame.cs" />
     <Compile Include="Services\ScreenCapture\GDI\VRegions.cs" />
@@ -174,7 +176,10 @@
     <Compile Include="Services\ScreenCapture\GDI\VScreenReceiver.cs" />
     <Compile Include="Services\ScreenCapture\GDI\VScreenSender.cs" />
     <Compile Include="Services\ScreenCapture\Utils\Compressor.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\QueueItem.cs" />
+    <Compile Include="Services\SessionManagement\SessionManager.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
+    <Compile Include="Services\VTCPClient\Events\SocketDataReceivedEventArgs.cs" />
     <Compile Include="Services\VTCPClient\TCPClient.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClient\VClientManager.cs" />

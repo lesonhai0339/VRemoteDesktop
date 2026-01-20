@@ -23,7 +23,7 @@ namespace VRemoteDesktop.ViewModels
         private string _errorMessage;
         private ConnectionStatus _connectStatus;
         private ManualResetEvent _resetEvent;
-        private VClient _host;
+        private ClientSession _host;
 
         private readonly RemoteDesktopService _remoteDesktopService;
         public event EventHandler<RemoteDesktopEventArgs> ClientAcceptRequestRemote;

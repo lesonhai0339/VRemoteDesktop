@@ -15,6 +15,7 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.GDI;
+using VRemoteDesktop.Services.VTCPClient.Events;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
@@ -52,6 +53,11 @@ namespace VRemoteDesktop.Services.VTCPClient
         public event EventHandler<RemoteDesktopEventArgs> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
+
+
+        //Test
+        public event EventHandler<SocketDataReceivedEventArgs> OnDataReceived;
+
 
         private System.Threading.Timer _timer;
         private int bytesPerSecond;
@@ -91,7 +97,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 SenderWorker.RunWorkerAsync();
             }
             bytesPerSecond = 0;
-            _timer = new System.Threading.Timer(Ping, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            //_timer = new System.Threading.Timer(Ping, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
             _isHost = isHost;
         }
 
@@ -620,7 +626,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                     ReceivedWorker.RunWorkerAsync();
                 }
                 //Connected?.Invoke(this, new ConnectEventArgs(true));
-                TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, true, new byte[0]));
+                if (OnDataReceived != null)
+                {
+                    OnDataReceived.Invoke(this, new SocketDataReceivedEventArgs(SocketDataType.Connect, new byte[0]));
+                }
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
                 stateObject.SckId = _socketId;
@@ -752,13 +761,19 @@ namespace VRemoteDesktop.Services.VTCPClient
                     data: data,
                     socketId: socketId
                 ));
+
+                if(OnDataReceived != null)
+                {
+                    OnDataReceived.Invoke(this, new SocketDataReceivedEventArgs(dataType, data));
+                }
+
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("", GetType().Name).Error(ex, "ProcessReceiveData error");
             }
         }
-        public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0, string packetId = null)
+        public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0)
         {
 
             if (type == SocketDataType.None)
@@ -769,12 +784,10 @@ namespace VRemoteDesktop.Services.VTCPClient
 
             try
             {
-                int packetIdLength = (string.IsNullOrEmpty(packetId))  ? 0 : packetId.Length;
-
                 int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + socketId.Length;
-                int actualDataSize = includeData ? (data.Length + packetIdLength) : (dataSize + packetIdLength);
+                int actualDataSize = includeData ? data.Length : dataSize;
                 int totalMessageSize = headerOnlySize + actualDataSize;
-                int headerSize = includeData ? (totalMessageSize + packetIdLength) : (headerOnlySize + packetIdLength);
+                int headerSize = includeData ? totalMessageSize : headerOnlySize;
 
                 byte[] header = new byte[headerSize];
                 int offset = 0;
@@ -789,24 +802,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Buffer.BlockCopy(idByteArray, 0, header, offset, idByteArray.Length);
                 offset += idByteArray.Length;
 
-                if (packetIdLength != 0)
+                if (includeData)
                 {
-                    byte[] packetIdByteArray = Encoding.ASCII.GetBytes(packetId);
-                    Buffer.BlockCopy(packetIdByteArray, 0, header, offset, packetIdLength);
-                    offset += packetIdLength;
-                    if (includeData)
-                    {
-                        Buffer.BlockCopy(data, 0, header, offset, data.Length);
-                        offset += data.Length;
-                    }
-                }
-                else
-                {
-                    if (includeData)
-                    {
-                        Buffer.BlockCopy(data, 0, header, offset, data.Length);
-                        offset += data.Length;
-                    }
+                    Buffer.BlockCopy(data, 0, header, offset, data.Length);
+                    offset += data.Length;
                 }
                 return header;
             }
