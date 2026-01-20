@@ -218,35 +218,35 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         private void DirtyRegionSend()
         {
-            byte[] dirtyRegions = _screenRegions.GetRegionData();
-            if (dirtyRegions == null) return;
-            try
-            {
-                byte[] buffer = VArrayPool.Rent((int)(dirtyRegions.Length * 1.2));
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions, dirtyRegions.Length, buffer, buffer.Length);
-                var type = SocketDataType.ScreenRegionsChangedSend;
+            //byte[] dirtyRegions = _screenRegions.GetRegionData();
+            //if (dirtyRegions == null) return;
+            //try
+            //{
+            //    byte[] buffer = VArrayPool.Rent((int)(dirtyRegions.Length * 1.2));
+            //    int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions, dirtyRegions.Length, buffer, buffer.Length);
+            //    var type = SocketDataType.ScreenRegionsChangedSend;
 
-                var header = HeaderGenerate(type: type,
-                   id: this.SessionId,
-                   includeData: false,
-                   data: null,
-                   dataSize: length);
+            //    var header = HeaderGenerate(type: type,
+            //       id: this.SessionId,
+            //       includeData: false,
+            //       data: null,
+            //       dataSize: length);
 
-                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.RegionChange, buffer, 0, length);
+            //    var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.RegionChange, buffer, 0, length);
 
-                Send(type, header, this.SessionId, false);
+            //    Send(type, header, this.SessionId, false);
 
-                _client.SendScreen(frame);
+            //    _client.SendScreen(frame);
 
-            }
-            catch(Exception ex)
-            {
-                Console.WriteLine("DirtyRegionSend err: ", ex.Message);
-            }
-            finally
-            {
-                VArrayPool.Return(dirtyRegions);
-            }
+            //}
+            //catch(Exception ex)
+            //{
+            //    Console.WriteLine("DirtyRegionSend err: ", ex.Message);
+            //}
+            //finally
+            //{
+            //    VArrayPool.Return(dirtyRegions);
+            //}
         }
 
         private void HighQueueHandler(QueueItem highTask)

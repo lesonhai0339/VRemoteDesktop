@@ -104,6 +104,7 @@
     <Compile Include="Layouts\VDisplay.Designer.cs">
       <DependentUpon>VDisplay.cs</DependentUpon>
     </Compile>
+    <Compile Include="Services\ScreenCapture\DTOs\SceenWarpper.cs" />
     <Compile Include="Services\SessionManagement\ClientSession.cs" />
     <Content Include="Services\RemoteDesktop\RemoteDesktopService - Copy.txt" />
     <Compile Include="Services\ScreenCapture\DTOs\FullScreenFrame.cs" />

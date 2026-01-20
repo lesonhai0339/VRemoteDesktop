@@ -133,8 +133,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 null
                 );
         }
-
-      
         public virtual void CaptureToBuffer(IntPtr memDC, IntPtr screenDC, int x, int y, int width, int height)
         {
             CaptureApi.BitBlt(
@@ -147,6 +145,26 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 y,
                 0x00CC0020); // SRCCOPY
             //CaptureApi.GdiFlush();
+        }
+        public unsafe virtual void CopySourceToDest(IntPtr source, IntPtr dest, int x, int y, int width, int height, int fullWidth, int bytePerPixel = 3)
+        {
+            int stride = GetStride1(fullWidth, bytePerPixel);
+            int rowWidthInBytes = width * bytePerPixel;
+
+            byte* src = (byte*)source;
+            byte* dst = (byte*)dest;
+
+            int startOffset = (y * stride) + (x * bytePerPixel);
+            src += startOffset;
+            dst += startOffset;
+
+            for (int row = 0; row < height; row++)
+            {
+                CaptureApi.memcpy((IntPtr)dst, (IntPtr)src, (UIntPtr)rowWidthInBytes);
+
+                src += stride;
+                dst += stride;
+            }
         }
         public virtual List<Rectangle> MergeRegions(Rectangle[] regions, double threshold = 0.8)
         {
@@ -295,7 +313,44 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 offset += (int)(dstStride * regionHeight) + 16; //Data + header(16 bytes for x,y,w,h)
             }
         }
-        public virtual unsafe void GetRegionsDataWithoutRectangle(
+        //New
+       public virtual unsafe void GetRegionsDataWithoutRectangle(
+       ref int offset,
+       IntPtr destination,
+       IntPtr source,
+       int srcWidth,
+       int regionX,
+       int regionY,
+       int regionWidth,
+       int regionHeight,
+       int bytePerPixel = 3)
+       {
+            byte* dst = (byte*)destination + offset;
+            //calculate stride of big screen and regions
+            int srcStride = GetStride(srcWidth, bytePerPixel);
+            uint dstStride = (uint)(regionWidth * bytePerPixel);
+
+            unsafe
+            {
+                //get address of source and destination 
+                byte* src = (byte*)source;
+
+                //for-loop to write row from source to destination
+                for (int row = 0; row < regionHeight; row++)
+                {
+                    int sy = (row + regionY) * srcStride;
+                    int sx = regionX * bytePerPixel;
+
+                    IntPtr srcAdd = (IntPtr)(src + sy + sx);
+
+                    IntPtr dstAdd = (IntPtr)(dst + (row * dstStride));
+
+                    CaptureApi.memcpy(dstAdd, srcAdd, (UIntPtr)dstStride);
+                }
+            }
+            offset += (int)(dstStride * regionHeight);
+        }
+       public virtual unsafe void GetRegionsDataWithoutRectangle(
        ref int offset,
        byte[] destination,
        IntPtr source,

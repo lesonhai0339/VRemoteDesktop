@@ -14,6 +14,7 @@ using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Services.SessionManagement;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
@@ -152,6 +153,12 @@ namespace VRemoteDesktop
         {
             try
             {
+                VRegions region = new VRegions(1920, 1080, 3);
+                VScreenSender sender = new VScreenSender();
+                sender.AddSessionBuffer(region.Buffer);
+                sender.Start(); 
+                Console.ReadLine(); 
+                return;
                 Thread.CurrentThread.CurrentUICulture = new CultureInfo("vi");
                 FormMain frmMain = new FormMain(_remoteDesktopService);
                 Application.Run(frmMain);
