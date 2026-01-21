@@ -4,31 +4,32 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using VRemoteDesktop.Events;
+using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.VTCPClient;
 
 namespace VRemoteDesktop.Models
 {
     public class VChat<T>
     {
-        public VChat(VClient client, List<T> messages)
+        public VChat(ClientSession clientSession, List<T> messages)
         {
-            Client = client;
+            ClientSession = clientSession;
             Messages = messages;
         }
-        public VClient Client { get; set; }
+        public ClientSession ClientSession { get; set; }
         public List<T> Messages { get; set; }
     }
     public interface IChatManager<T>
     {
-        bool Add(string id, VClient client);
+        bool Add(string id, ClientSession clientSession);
         bool Remove(string id);
         void AddMessage(string id, T message);
         string GetLastConnectionId();
-        VClient GetClientById(string id);
+        ClientSession GetClientById(string id);
         int GetMessageCountById(string id);
         List<T> GetMessages(string id);
         List<T> GetMessages(string id, int offset, int length);
-        List<VClient> GetAllConnection();
+        List<ClientSession> GetAllConnection();
         bool ContainsKey(string id);
         event EventHandler<ChatDisconnectedEventArgs> ChatDisconnected;
         void Dispose();
@@ -41,20 +42,20 @@ namespace VRemoteDesktop.Models
         {
             _curChat = new ConcurrentDictionary<string, VChat<T>>();
         }
-        public List<VClient> GetAllConnection()
+        public List<ClientSession> GetAllConnection()
         {
-            return _curChat.Values.ToArray().Select(x => x.Client).ToList();
+            return _curChat.Values.ToArray().Select(x => x.ClientSession).ToList();
         }
-        public bool Add(string id, VClient client)
+        public bool Add(string id, ClientSession clientSession)
         {
             if (string.IsNullOrEmpty(id))
                 throw new ArgumentException("Missing id");
-            if (client == null)
+            if (clientSession == null)
                 throw new ArgumentException("Client cannot be null");
 
-            client.SocketDisposing += SocketDisposingEventHandler;
+            clientSession.OnDisposing += SocketDisposingEventHandler;
             return _curChat.TryAdd(id, new VChat<T>(
-                        client: client,
+                        clientSession: clientSession,
                         messages: new List<T>())
                    );
         }
@@ -67,9 +68,9 @@ namespace VRemoteDesktop.Models
             if (string.IsNullOrEmpty(id))
                 throw new ArgumentException("id cannot be null or empty");
 
-            if(_curChat.TryGetValue(id, out var client))
+            if(_curChat.TryGetValue(id, out var clientSession))
             {
-                client.Client.SocketDisposing -= SocketDisposingEventHandler;
+                clientSession.ClientSession.OnDisposing -= SocketDisposingEventHandler;
                 return _curChat.TryRemove(id, out _);
             }
             return false;
@@ -96,13 +97,13 @@ namespace VRemoteDesktop.Models
                 return string.Empty;
             return _curChat.Last().Key;
         }
-        public VClient GetClientById(string id)
+        public ClientSession GetClientById(string id)
         {
             if (string.IsNullOrEmpty(id))
                 throw new ArgumentException("Missing id");
             if(_curChat.TryGetValue(id, out var chat))
             {
-                return chat.Client;
+                return chat.ClientSession;
             }
             else
             {
@@ -160,9 +161,12 @@ namespace VRemoteDesktop.Models
                 throw new InvalidOperationException("Cannot find chat connection with id:  " + id);
             }
         }
-        private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
+        //private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
+
+        private void SocketDisposingEventHandler(object sender, EventArgs g)
         {
-            if(sender is VClient client)
+            var e = (SocketDisposeEventArgs)g;
+            if (sender is VClient client)
             {
                 ChatDisconnected?.Invoke(this, new ChatDisconnectedEventArgs(client.SocketId));
             }

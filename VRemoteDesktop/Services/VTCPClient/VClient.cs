@@ -18,6 +18,7 @@ using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Services.VTCPClient.Events;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
+using static System.Windows.Forms.AxHost;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
 
@@ -68,6 +69,7 @@ namespace VRemoteDesktop.Services.VTCPClient
         private int _screenSendPending = 0;
         private int _lastScreenSent = 0;
         private volatile int _lastScreenId = 0;
+        private int _sending = 0;
         public VClient(string socketId, VClientType clientType, bool isHost = false)
         {
             _isDisposed = 0;
@@ -1030,6 +1032,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void Send(CapturedFrame frame)
         {
+            if (Interlocked.CompareExchange(ref _sending, 1, 0) != 0)
+                return;
+
             try
             {
                 Sendstate state = new Sendstate
@@ -1049,6 +1054,9 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void Send(byte[] data, int offset = 0, int length = 0)
         {
+            if (Interlocked.CompareExchange(ref _sending, 1, 0) != 0)
+                return;
+
             try
             {
                 Sendstate state = new Sendstate
@@ -1124,7 +1132,11 @@ namespace VRemoteDesktop.Services.VTCPClient
             }
             finally
             {
-                if(isFinalPart && sentState.CapturedFrame != null)
+                if (sentState.Remained <= 0 || !_socket.Connected)
+                {
+                    Interlocked.Exchange(ref _sending, 0);
+                }
+                if (isFinalPart && sentState.CapturedFrame != null)
                 {
                     sentState.CapturedFrame.DecRef();   
                 }

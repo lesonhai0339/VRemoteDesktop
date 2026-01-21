@@ -18,6 +18,7 @@ using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
+using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.ViewModels;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
@@ -119,9 +120,9 @@ namespace VRemoteDesktop.Views
 
             this.txtChatContent.KeyDown += KeyDownEventHandler;
         }
-        public void AddConnection(string id, VClient client)
+        public void AddConnection(string id, ClientSession clientSession)
         {
-            RespondHandler(_chatViewModel.AddConnection(id, client));
+            RespondHandler(_chatViewModel.AddConnection(id, clientSession));
         }    
         private void PositionForm()
         {

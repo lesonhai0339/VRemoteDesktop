@@ -28,7 +28,7 @@ namespace VRemoteDesktop.Views
         private readonly object _lockObject = new object();
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
-        private readonly VClient _vClient;
+        private readonly ClientSession _clienSession;
         private readonly RemoteViewModel _remoteViewModel;
         private readonly RemoteDesktopService _remoteDesktopService;
 
@@ -46,7 +46,7 @@ namespace VRemoteDesktop.Views
         private MouseEventArgs _pendingClickArgs;
         private Control _pendingSender;
         private int _clickCount;
-        public FormRemote(VClient vClient, RemoteDesktopService remoteDesktopService)
+        public FormRemote(ClientSession clientSession, RemoteDesktopService remoteDesktopService)
         {
             InitializeComponent();
             //this.MaximizeBox = false;
@@ -61,11 +61,11 @@ namespace VRemoteDesktop.Views
             //    workingArea.Top + (workingArea.Height - newHeight) / 2
             //);
 
-            _vClient = vClient;
+            _clienSession = clientSession;
             _mouseExtension = new MouseExtensions();
             _screenCaptureExtension = new ScreenCaptureExtensions();
             _remoteDesktopService = remoteDesktopService;
-            _remoteViewModel = new RemoteViewModel(_vClient ,_screenCaptureExtension, _mouseExtension, _remoteDesktopService);
+            _remoteViewModel = new RemoteViewModel(_clienSession, _screenCaptureExtension, _mouseExtension, _remoteDesktopService);
 
 #if DEBUG
             _remoteViewModel.UpdateScreen += UpdateScreenEventHandler;
@@ -80,11 +80,11 @@ namespace VRemoteDesktop.Views
 
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
             base.AutoScaleDimensions = new SizeF(6f, 13f);
-            this.Text = _vClient.Partner.Id + " - "+ _vClient.Partner.ComputerName;
+            this.Text = _clienSession.PartnerInfo.Id + " - "+ _clienSession.PartnerInfo.ComputerName;
 
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
-            vPictureBox.Size = new Size(_vClient.Partner.Width, _vClient.Partner.Height);
+            vPictureBox.Size = new Size(_clienSession.PartnerInfo.Width, _clienSession.PartnerInfo.Height);
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
 #if DEBUG
@@ -131,8 +131,8 @@ namespace VRemoteDesktop.Views
 
             //Rectangle mergedRect = new Rectangle(dstX, dstY, dstWidth, dstHeight);
 
-            var scaleWidth = (double)vPictureBox.ClientSize.Width / _vClient.Partner.Width;
-            var scaleHeight = (double)vPictureBox.ClientSize.Height / _vClient.Partner.Height;
+            var scaleWidth = (double)vPictureBox.ClientSize.Width / _clienSession.PartnerInfo.Width;
+            var scaleHeight = (double)vPictureBox.ClientSize.Height / _clienSession.PartnerInfo.Height;
             var scale = Math.Min(scaleWidth, scaleHeight);
 
 
@@ -151,7 +151,13 @@ namespace VRemoteDesktop.Views
             vPictureBox.Update();
 
             _remoteViewModel.AddWork(
-                 new TaskObject(type: (e.IsFullScreen) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
+                QueuePriority.High,
+                new TaskObject(
+                    type: (e.IsFullScreen) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, 
+                    _clienSession.SessionId, 
+                    isSendHeader: true, 
+                    data: new byte[0]
+                ));
         }
 #endif
 
@@ -228,7 +234,6 @@ namespace VRemoteDesktop.Views
             _mouseExtension?.Dispose();
             _screenCaptureExtension?.Dispose();
             _remoteViewModel?.Dispose();
-            _vClient?.Dispose();
         }
         private void StartFormKeyboardListener()
         {

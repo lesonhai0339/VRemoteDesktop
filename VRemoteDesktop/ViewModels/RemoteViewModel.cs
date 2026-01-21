@@ -29,7 +29,7 @@ namespace VRemoteDesktop.ViewModels
     public class RemoteViewModel : INotifyPropertyChanged, IDisposable
     {
         private bool _disposed;
-        private readonly VClient _vClient;
+        private readonly ClientSession _clientSession;
         private readonly IMouseExtensions _mouseExtension;
         private readonly IScreenCaptureExtensions _screenCaptureExtension;
         private readonly RemoteDesktopService _remoteDesktopService;
@@ -52,14 +52,14 @@ namespace VRemoteDesktop.ViewModels
         public Action<List<ScreenRegion>> screenRegionsChangedEvent;
         public event EventHandler<KeyboardEventArgs> keyboardEvent;
         public event EventHandler<EventArgs> DisconnectedEvent; 
-        public RemoteViewModel(VClient vClient, IScreenCaptureExtensions screenCaptureExtensions, IMouseExtensions mouseExtension, RemoteDesktopService remoteDesktopService)
+        public RemoteViewModel(ClientSession clientSession, IScreenCaptureExtensions screenCaptureExtensions, IMouseExtensions mouseExtension, RemoteDesktopService remoteDesktopService)
         {
             _disposed = false;
-            _vClient = vClient;
+            _clientSession = clientSession;
 #if DEBUG
             _buffer = VArrayPool.Rent(10 * 1024 * 1024);
             var receiverScreenTask = new ScreenTask(_buffer);
-            _screenReceiver = new VScreenReceiver(vClient.Partner.Width, vClient.Partner.Height, receiverScreenTask);
+            _screenReceiver = new VScreenReceiver(_clientSession.PartnerInfo.Width, _clientSession.PartnerInfo.Height, receiverScreenTask);
             Picture = new Bitmap(_screenReceiver.Width, _screenReceiver.Height, _screenReceiver.Stride, _screenReceiver.PixelFormat, _screenReceiver.ScreenHDC);
             Width = _screenReceiver.Width;
             Height = _screenReceiver.Height;
@@ -71,13 +71,14 @@ namespace VRemoteDesktop.ViewModels
             _screenCaptureExtension = screenCaptureExtensions;
             _remoteDesktopService = remoteDesktopService;
 
-            _vClient.P2PScreenReceived += P2PScreenReceivedEventHandler;
-            _vClient.SocketDisposing += SocketDisposingEventHandler;
+            _clientSession.OnScreenReceived += P2PScreenReceivedEventHandler;
+            _clientSession.OnDisposing += SocketDisposingEventHandler;
             _remoteDesktopService.KeyboardEvent += KeyboardReceivedEventHandler;
         }
-
-        private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
+        //private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
+        private void SocketDisposingEventHandler(object sender, EventArgs g)
         {
+            var e = (SocketDisposeEventArgs)g;
             DisconnectedEvent?.Invoke(this, e);
         }
         #region Properties
@@ -104,13 +105,15 @@ namespace VRemoteDesktop.ViewModels
             string clipboard = _remoteDesktopService.GetClipboardString();
             if (string.IsNullOrEmpty(clipboard)) return;
 
-            _vClient.AddWork(new TaskObject
-            {
-                TaskType = SocketDataType.ClipboardSend,
-                Data = Encoding.UTF8.GetBytes(clipboard),
-                IsSendHeader = true,
-                SessionId = _vClient.SocketId
-            }, QueuePriority.High);
+            _clientSession.AddWork(
+                QueuePriority.High,
+                new TaskObject
+                {
+                    TaskType = SocketDataType.ClipboardSend,
+                    Data = Encoding.UTF8.GetBytes(clipboard),
+                    IsSendHeader = true,
+                    SessionId = _clientSession.SessionId,
+                });
         }
 
         private Bitmap ParseScreenByteArrayToBitmapImage(byte[] bytes)
@@ -147,8 +150,14 @@ namespace VRemoteDesktop.ViewModels
             Bitmap image = ParseScreenByteArrayToBitmapImage(screen);
             if (image != null)
             {
-                _vClient.AddWork(
-                    new TaskObject(type: SocketDataType.ScreenOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
+                _clientSession.AddWork(
+                    QueuePriority.High,
+                    new TaskObject(
+                        type: SocketDataType.ScreenOk,
+                        _clientSession.SessionId, 
+                        isSendHeader: true, 
+                        data: new byte[0]
+                    ));
                 screenEvent?.Invoke(image);
             }
         }
@@ -166,13 +175,15 @@ namespace VRemoteDesktop.ViewModels
             //return if data is empty
             if (string.IsNullOrEmpty(keyboard)) return;
 
-            _vClient.AddWork(new TaskObject
-            {
-                TaskType = SocketDataType.KeyboardSend,
-                Data = Encoding.ASCII.GetBytes(keyboard),
-                IsSendHeader = true,
-                SessionId = _vClient.SocketId
-            }, QueuePriority.High);
+            _clientSession.AddWork(
+                QueuePriority.High,
+                new TaskObject
+                {
+                    TaskType = SocketDataType.KeyboardSend,
+                    Data = Encoding.ASCII.GetBytes(keyboard),
+                    IsSendHeader = true,
+                    SessionId = _clientSession.SessionId
+                });
         }
 
         public void ProcessMouseEvent(MouseEventType mouseEvent, PictureBox p, MouseEventArgs e, WindowsMouseMessage mouseMsg = WindowsMouseMessage.None, MouseAction mouseType = MouseAction.None)
@@ -191,13 +202,15 @@ namespace VRemoteDesktop.ViewModels
                 if (string.IsNullOrEmpty(mouseEventString))
                     return;
 
-                _vClient.AddWork(new TaskObject
-                {
-                    TaskType = SocketDataType.MouseSend,
-                    Data = Encoding.ASCII.GetBytes(mouseEventString),
-                    IsSendHeader = true,
-                    SessionId = _vClient.SocketId
-                }, QueuePriority.High);
+                _clientSession.AddWork(
+                     QueuePriority.High,
+                    new TaskObject
+                    {
+                        TaskType = SocketDataType.MouseSend,
+                        Data = Encoding.ASCII.GetBytes(mouseEventString),
+                        IsSendHeader = true,
+                        SessionId = _clientSession.SessionId
+                    });
             }
             catch (Exception ex)
             {
@@ -214,13 +227,15 @@ namespace VRemoteDesktop.ViewModels
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
-        public void AddWork(TaskObject obj, QueuePriority priority)
+        public void AddWork(QueuePriority priority, TaskObject obj)
         {
-            _vClient.AddWork(obj, priority);
+            _clientSession.AddWork(priority, obj);
         }
-        public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
+        //public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
+        public void P2PScreenReceivedEventHandler(object sender, EventArgs g)
         {
 #if DEBUG
+            var e = (P2PScreenEventArgs)g;
             var type = (e.Type == SocketDataType.ScreenSend) ? true : false;
 
             var rectangle = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length);
@@ -228,8 +243,13 @@ namespace VRemoteDesktop.ViewModels
             if (UpdateScreen != null)
                 UpdateScreen.Invoke(this, new OnScreenEventArgs(type, rectangle));
 
-            _vClient.AddWork(
-                  new TaskObject(type: (type) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, _vClient.SocketId, isSendHeader: true, data: new byte[0]), QueuePriority.High);
+            _clientSession.AddWork(
+                QueuePriority.High,
+                new TaskObject(
+                    type: (type) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, 
+                    _clientSession.SessionId, 
+                    isSendHeader: true, 
+                    data: new byte[0]));
             return;
 #endif
             if (e.Type == SocketDataType.ScreenSend)
@@ -264,9 +284,12 @@ namespace VRemoteDesktop.ViewModels
                 VArrayPool.Return(_buffer);
 #endif
 
-                if (_vClient != null)
-                    _vClient.P2PScreenReceived -= P2PScreenReceivedEventHandler;
-                if(_remoteDesktopService != null)
+                if (_clientSession != null)
+                {
+                    _clientSession.OnScreenReceived -= P2PScreenReceivedEventHandler;
+                    _clientSession.OnDisposing -= SocketDisposingEventHandler;
+                }
+                if (_remoteDesktopService != null)
                     _remoteDesktopService.KeyboardEvent -= KeyboardReceivedEventHandler;
                 _disposed = true;
             }

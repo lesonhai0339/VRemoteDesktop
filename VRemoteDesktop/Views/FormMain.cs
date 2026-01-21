@@ -206,11 +206,11 @@ namespace VRemoteDesktop
         }
         private void ClientAcceptRequestRemoteEventHandler(object sender ,RemoteDesktopEventArgs e)
         {
-            if(sender is VClient vClient)
+            if(sender is ClientSession clientSession)
             {
                 if(e.Type == SocketDataType.RemoteControlAcceptedRequestToConnect || (e.Type == SocketDataType.P2PLoginRespond && e.Flag == true))
                 {
-                    OpenRemoteForm(vClient);
+                    OpenRemoteForm(clientSession);
                 }
                 else if (e.Type == SocketDataType.P2PLoginRespond && e.Flag == false)
                 {
@@ -222,7 +222,7 @@ namespace VRemoteDesktop
                 }
                 else if (e.Type == SocketDataType.Ready)
                 {
-                    AddChat(vClient);
+                    AddChat(clientSession);
                 }
                 else if (e.Type == SocketDataType.RemoteControlRefusedRequestToConnect)
                 {
@@ -234,28 +234,28 @@ namespace VRemoteDesktop
                 }
             }
         }
-        private void OpenRemoteForm(VClient client)
+        private void OpenRemoteForm(ClientSession clientSession)
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action<VClient>(OpenRemoteForm), client);
+                this.Invoke(new Action<ClientSession>(OpenRemoteForm), clientSession);
                 return;
             }
 
-            FormRemote remoteForm = new FormRemote(client, _remoteDesktopService);
+            FormRemote remoteForm = new FormRemote(clientSession, _remoteDesktopService);
 
             remoteForm.Show();
-            AddChat(client);
+            AddChat(clientSession);
         }
-        private void AddChat(VClient client)
+        private void AddChat(ClientSession clientSession)
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action<VClient>(AddChat), client);
+                this.Invoke(new Action<ClientSession>(AddChat), clientSession);
                 return;
             }
 
-            if (client == null) return;
+            if (clientSession == null) return;
 
             if (!isShow)
             {
@@ -267,7 +267,7 @@ namespace VRemoteDesktop
                 chatForm.Show();
                 isShow = true;
             }
-            chatForm.AddConnection(client.SocketId, client);
+            chatForm.AddConnection(clientSession.SessionId, clientSession);
         }
     }
 }

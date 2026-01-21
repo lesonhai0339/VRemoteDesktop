@@ -89,27 +89,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 Logger.Log.ForContext("FileName", "OnDirtyRegionError").Error(ex.Message);
             }
         }
-        private TaskObject[] CreateTask(VClient client, FullScreenFrame frame, SocketDataType type)
-        {
-            var header = client.HeaderGenerate(type: type, socketId: client.SocketId, includeData: false, data: null, dataSize: frame.Length);
-            var headerPacket = new TaskObject
-            {
-                TaskType = type,
-                Data = header,
-                SessionId = client.SocketId,
-                IsSendHeader = false
-            };
-            var payloadPacket = new TaskObject
-            {
-                TaskType = type,
-                SessionId = client.SocketId,
-                CapturedFrame = null,
-                IsSendHeader = false
-            };
-            return new TaskObject[] { headerPacket, payloadPacket };
-           
-        }
-
 #if DEBUG
 
 #endif
@@ -707,13 +686,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             else
             {
-                var client = sender as VClient;
-                if (client != null)
+                var clientSession = sender as ClientSession;
+                if (clientSession != null)
                 {
                     string id = ByteArrayHelper.ConvertByteArrayToString(ev.Data, 0, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII).GetResult();
                     byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
 
-                    client.Send(SocketDataType.RemoteControlRefusedRequestToConnect, dataBytes, client.SocketId, true);
+                    clientSession.Send(SocketDataType.RemoteControlRefusedRequestToConnect, dataBytes, clientSession.SessionId, true);
                 }
             }
         }
@@ -786,8 +765,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void ClientDisconnected(object sender, EventArgs e)
         {
-            var client = sender as VClient;
-            if (client == null)
+            var clientSession = sender as ClientSession;
+            if (clientSession == null)
                 throw new InvalidOperationException("Invalid sender for ClientDisconnected");
 
             var ev = e as RemoteDesktopEventArgs;
@@ -795,28 +774,28 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 throw new InvalidOperationException("Invalid eventArgs for ClientDisconnected");
 
 
-            bool flag = _clientInfo.RemovePartner(client.Partner?.Id);
+            bool flag = _clientInfo.RemovePartner(clientSession.PartnerInfo.Id);
 
-            RemoveClientById(client.SocketId);
+            RemoveClientById(clientSession.SessionId);
 
             RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(ev.Type, false, ev.Data));
         }
         private void VClientClosedEventHandler(object sender, EventArgs e)
         {
-            var client = sender as VClient;
-            if (client != null)
+            var clientSession = sender as ClientSession;
+            if (clientSession != null)
             {
                 try
                 {
-                    client.IsP2PConnected = false;
+                    //clientSession.IsP2PConnected = false;
 
-                    if (client.IsHost)
+                    if (clientSession.IsHost)
                     {
                         RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(SocketDataType.Disconnect, false, new byte[0]));
                     }
 
-                    _clientInfo.RemovePartner(client.Partner?.Id);
-                    _sessionManager.Remove(client.SocketId);
+                    _clientInfo.RemovePartner(clientSession.PartnerInfo?.Id);
+                    _sessionManager.Remove(clientSession.SessionId);
                 }
                 catch (Exception ex)
                 {

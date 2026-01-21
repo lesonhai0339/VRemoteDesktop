@@ -57,8 +57,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         private CancellationTokenSource _cancelationTokenSource;
 
+
         public event EventHandler<RemoteDesktopEventArgs> OnDataReceived;
         public event EventHandler<EventArgs> OnDisconnected;
+
+        //still not implement, using after
+        public event EventHandler<EventArgs> OnChatReceived;
+        public event EventHandler<EventArgs> OnScreenReceived;
+        public event EventHandler<EventArgs> OnDisposing; 
         public ClientSession(string id, VClientType type, bool isHost)
         {
             if (string.IsNullOrEmpty(id)) throw new ArgumentNullException("id");
@@ -216,39 +222,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 }
             }
         }
-
-        private void DirtyRegionSend()
-        {
-            var dirtyRegions = _screenRegions.GetData();
-            if (dirtyRegions == null) return;
-            try
-            {
-                byte[] buffer = VArrayPool.Rent((int)(dirtyRegions.Length * 1.2));
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, buffer, buffer.Length);
-                var type = SocketDataType.ScreenRegionsChangedSend;
-
-                var header = HeaderGenerate(type: type,
-                   id: this.SessionId,
-                   includeData: false,
-                   data: null,
-                   dataSize: length);
-
-                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.RegionChange, buffer, 0, length, 1);
-                Send(type, header, this.SessionId, false);
-
-                _client.SendScreen(frame);
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("DirtyRegionSend err: ", ex.Message);
-            }
-            finally
-            {
-                VArrayPool.Return(dirtyRegions.Buffer);
-            }
-        }
-
         private void HighQueueHandler(QueueItem highTask)
         {
             switch (highTask.Data)
@@ -314,6 +287,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     case SocketDataType.RegionsChangedOk:
                         ReadyToNextRegionSend();
                         break;
+                    case SocketDataType.ScreenSend:
+                    case SocketDataType.ScreenRegionsChangedSend:
+                        OnScreenReceived?.Invoke(this, new P2PScreenEventArgs(e.Type, e.Data));
+                        break;
                     default:
                         if (OnDataReceived != null)
                             OnDataReceived.Invoke(this, new RemoteDesktopEventArgs(type: e.Type, data: e.Data));
@@ -321,7 +298,38 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         
                 }
             }
-            
+
+        }
+        private void DirtyRegionSend()
+        {
+            var dirtyRegions = _screenRegions.GetData();
+            if (dirtyRegions == null) return;
+            try
+            {
+                byte[] buffer = VArrayPool.Rent((int)(dirtyRegions.Length * 1.2));
+                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, buffer, buffer.Length);
+                var type = SocketDataType.ScreenRegionsChangedSend;
+
+                var header = HeaderGenerate(type: type,
+                   id: this.SessionId,
+                   includeData: false,
+                   data: null,
+                   dataSize: length);
+
+                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.RegionChange, buffer, 0, length, 1);
+                Send(type, header, this.SessionId, false);
+
+                _client.SendScreen(frame);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("DirtyRegionSend err: ", ex.Message);
+            }
+            finally
+            {
+                VArrayPool.Return(dirtyRegions.Buffer);
+            }
         }
         private void EnableRegionsSend()
         {

@@ -8,6 +8,7 @@ using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
+using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
 using static System.Net.WebRequestMethods;
@@ -18,7 +19,7 @@ namespace VRemoteDesktop.ViewModels
         private bool _disposed = false;
         private readonly object _lock = new object();
         private string _currentConnectionActivate;
-        private readonly Dictionary<ChatDataType, Action<VClient, byte[]>> _handlers;
+        private readonly Dictionary<ChatDataType, Action<ClientSession, byte[]>> _handlers;
         private readonly IChatManager<object> _chatConnections;
 
         private readonly ISaveChat _saveChat;
@@ -33,7 +34,7 @@ namespace VRemoteDesktop.ViewModels
         public ChatViewModel()
         {
             _currentConnectionActivate = string.Empty;
-            _handlers = new Dictionary<ChatDataType, Action<VClient, byte[]>>()
+            _handlers = new Dictionary<ChatDataType, Action<ClientSession, byte[]>>()
             {
                 { ChatDataType.Message, ProcessMessage },
                 { ChatDataType.RequestSendFile, ProcessRequestSendFile },
@@ -59,24 +60,24 @@ namespace VRemoteDesktop.ViewModels
         /// <param name="connectionId">SocketId</param>
         /// <param name="connection">Reference to VClient</param>
         /// <returns><see cref="ChatRespond{T}"/><see cref="bool"/></returns>
-        public ChatRespond<bool> AddConnection(string connectionId, VClient connection)
+        public ChatRespond<bool> AddConnection(string connectionId, ClientSession clienSession)
         {
             if (!StringValidate<bool>(connectionId, nameof(connectionId), out var respond))
             {
                 return respond;
             }
 
-            if (connection == null)
+            if (clienSession == null)
                 return ChatRespondHelper.Failed<bool>(
-                    message: string.Format("Thiếu tham số {0}", nameof(connection)),
-                    systemMessage: string.Format("Missing arguments for {0}", nameof(connection)));
+                    message: string.Format("Thiếu tham số {0}", nameof(clienSession)),
+                    systemMessage: string.Format("Missing arguments for {0}", nameof(clienSession)));
 
-            if (!_chatConnections.Add(connectionId, connection))
+            if (!_chatConnections.Add(connectionId, clienSession))
             {
                 return ChatRespondHelper.Failed<bool>(
                     systemMessage: string.Format("Cannot add connection with id {0} to chat", connectionId));
             }
-            connection.P2PChatReceived += P2PChatReceivedEventHandler;
+            clienSession.OnChatReceived += P2PChatReceivedEventHandler;
             bool flag =  AddChatConnection(connectionId);
             if(!flag)
             {
@@ -107,7 +108,7 @@ namespace VRemoteDesktop.ViewModels
                     message: string.Format("Xảy ra lỗi khi xóa chat connection"),
                     systemMessage: string.Format("Does not exists connection with id {0} in chat connections", connectionId));
             }
-            connection.P2PChatReceived -= P2PChatReceivedEventHandler;
+            connection.OnChatReceived -= P2PChatReceivedEventHandler;
             bool flag = _chatConnections.Remove(connectionId);
             if (!flag)
             {
@@ -133,7 +134,7 @@ namespace VRemoteDesktop.ViewModels
             {
                 return false;
             }
-            AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Connection, connection.SocketId, connection.Partner.ComputerName, null));
+            AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Connection, connection.SessionId, connection.PartnerInfo.ComputerName, null));
             return true;    
         }
 
@@ -158,7 +159,7 @@ namespace VRemoteDesktop.ViewModels
             }
             return ChatRespondHelper.Success<string>(
                     systemMessage: string.Format("Success {0}, {1}", connectionId, nameof(GetConnectionNameById)),
-                    data: connection.Partner.ComputerName);
+                    data: connection.PartnerInfo.ComputerName);
         }
 
         /// <summary>
@@ -518,7 +519,7 @@ namespace VRemoteDesktop.ViewModels
                 {
                     return string.Empty;
                 }
-                string savePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DefaultChat.DEFAULT_CHAT_FOLDER, connection.Partner.ComputerName + ".txt");
+                string savePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, DefaultChat.DEFAULT_CHAT_FOLDER, connection.PartnerInfo.ComputerName + ".txt");
                 return savePath;
             }
             catch(Exception ex)
@@ -536,19 +537,19 @@ namespace VRemoteDesktop.ViewModels
         /// <param name="chatType"></param>
         /// <param name="data"></param>
         /// <param name="chunk"></param>
-        private void Send(VClient connection, SocketDataType type, ChatDataType chatType, byte[] data = null, ChunkFileInfo chunk = null)
+        private void Send(ClientSession clientSession, SocketDataType type, ChatDataType chatType, byte[] data = null, ChunkFileInfo chunk = null)
         {
             try
             {
-                if (connection == null)
+                if (clientSession == null)
                 {
                     //using current connection
                     if (string.IsNullOrEmpty(_currentConnectionActivate))
                     {
                         SetCurrentConnectionActivate(_chatConnections.GetLastConnectionId());
                     }
-                    connection = _chatConnections.GetClientById(_currentConnectionActivate);
-                    if (connection == null)
+                    clientSession = _chatConnections.GetClientById(_currentConnectionActivate);
+                    if (clientSession == null)
                     {
                         ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException(string.Format("Does not exists connection with id {0}", _currentConnectionActivate))));
                         return;
@@ -566,14 +567,16 @@ namespace VRemoteDesktop.ViewModels
                     ? QueuePriority.Low
                     : QueuePriority.High;
 
-                connection.AddWork(new TaskObject
-                {
-                    TaskType = type,
-                    Data = payload,
-                    IsSendHeader = true,
-                    SessionId = connection.SocketId,
-                    ChunkFileInfo = chunk
-                }, priority);
+                clientSession.AddWork(
+                    priority,
+                    new TaskObject
+                    {
+                        TaskType = type,
+                        Data = payload,
+                        IsSendHeader = true,
+                        SessionId = clientSession.SessionId,
+                        ChunkFileInfo = chunk
+                    });
             }
             catch (Exception ex)
             {
@@ -607,11 +610,13 @@ namespace VRemoteDesktop.ViewModels
         }
 
         //Chat data received from partner from VClient
-        private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
+        //private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
+        private void P2PChatReceivedEventHandler(object sender, EventArgs g)
         {
+            var e = (P2PChatEventArgs)g;
             try
             {
-                if (sender is VClient client)
+                if (sender is ClientSession clientSession)
                 {
                     //First byte always ChatDataType, see more at Send(..) method above
                     ChatDataType type = e.Data[0] is byte b ? (ChatDataType)b : ChatDataType.None;
@@ -619,7 +624,7 @@ namespace VRemoteDesktop.ViewModels
                     Buffer.BlockCopy(e.Data, 1, data, 0, data.Length);
 
                     if (_handlers.TryGetValue(type, out var handler))
-                        handler(client, data);
+                        handler(clientSession, data);
                 }
             }
             catch(Exception ex)
@@ -629,7 +634,7 @@ namespace VRemoteDesktop.ViewModels
         }
 
         //Handler partner request send file
-        private void ProcessRequestSendFile(VClient client, byte[] data)
+        private void ProcessRequestSendFile(ClientSession clientSession, byte[] data)
         {
             try
             {
@@ -638,7 +643,7 @@ namespace VRemoteDesktop.ViewModels
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("Error when received request send file")));
                     return;
                 }
-                AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.ReceivedAttachment, client.SocketId, null, info));
+                AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.ReceivedAttachment, clientSession.SessionId, null, info));
             }
             catch(Exception ex)
             {
@@ -648,14 +653,14 @@ namespace VRemoteDesktop.ViewModels
         }
 
         //Handler partner send message
-        private void ProcessMessage(VClient client, byte[] data)
+        private void ProcessMessage(ClientSession clientSession, byte[] data)
         {
             try
             {
                 string message = Helpers.ByteArrayHelper.ConvertByteArrayToString(data, Enums.EncodingType.UTF8).GetResult();
-                bool flag = SaveChat(client.SocketId, ChatContentTypeEnum.Message, ChatOwnerEnum.Partner, message);
+                bool flag = SaveChat(clientSession.SessionId, ChatContentTypeEnum.Message, ChatOwnerEnum.Partner, message);
                 if(flag)
-                    AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, client.SocketId, message, null, client.Partner.ComputerName));
+                    AddedEvent?.Invoke(this, new ChatControlAddedEventArgs(ChatControlType.Message, clientSession.SessionId, message, null, clientSession.PartnerInfo.ComputerName));
             }
             catch(Exception ex)
             {
@@ -665,7 +670,7 @@ namespace VRemoteDesktop.ViewModels
         }
 
         //Handler partner accepted request send file
-        private void ProcessAcceptSendFile(VClient client, byte[] data)
+        private void ProcessAcceptSendFile(ClientSession clientSession, byte[] data)
         {
             try
             {
@@ -675,7 +680,7 @@ namespace VRemoteDesktop.ViewModels
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
                     return;
                 }
-                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(client.SocketId ,ChatControlType.AcceptAttachment, fileId));
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(clientSession.SessionId ,ChatControlType.AcceptAttachment, fileId));
 
                 //Calculate number of chunks need to send, offset and size each chunk
                 List<ChunkFileInfo> chunks =  _chatAttachmentService.CalculateNumberOfChunksFromFileByFileId(fileId);
@@ -686,7 +691,7 @@ namespace VRemoteDesktop.ViewModels
                 }
                 for (int i = 0; i< chunks.Count; i++)
                 {
-                    Send(client, SocketDataType.ChatSend, ChatDataType.FileData, null, chunks[i]);
+                    Send(clientSession, SocketDataType.ChatSend, ChatDataType.FileData, null, chunks[i]);
 
                 }
 
@@ -701,7 +706,7 @@ namespace VRemoteDesktop.ViewModels
         }
 
         //Handler decline request send file from partner
-        private void ProcessDeclineSendFile(VClient client, byte[] data)
+        private void ProcessDeclineSendFile(ClientSession clientSession, byte[] data)
         {
             try
             {
@@ -711,7 +716,7 @@ namespace VRemoteDesktop.ViewModels
                     ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, new InvalidOperationException("FileId is null or empty")));
                     return;
                 }
-                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(client.SocketId, ChatControlType.RefuseAttachment, fileId));
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(clientSession.SessionId, ChatControlType.RefuseAttachment, fileId));
             }
             catch (Exception ex)
             {
@@ -720,11 +725,11 @@ namespace VRemoteDesktop.ViewModels
         }
 
         //Handler file data received from partner
-        private void ProcessFileDataReceived(VClient client, byte[] data)
+        private void ProcessFileDataReceived(ClientSession clientSession, byte[] data)
         {
             try
             {
-                _chatAttachmentService.ProcessFileDataReceived(client.SocketId, data);
+                _chatAttachmentService.ProcessFileDataReceived(clientSession.SessionId, data);
             }
             catch (Exception ex)
             {
@@ -732,18 +737,18 @@ namespace VRemoteDesktop.ViewModels
             }
         }
 
-        private void ProcessPartnerStopReceiveFile(VClient client, byte[] arg2)
+        private void ProcessPartnerStopReceiveFile(ClientSession clientSession, byte[] arg2)
         {
             try
             {
                 string fileId = Helpers.ByteArrayHelper.ConvertByteArrayToString(arg2, 0, RandomLength.FILE_ID_LENGTH, EncodingType.ASCII).GetResult();
-                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(client.SocketId, ChatControlType.StopSendingAttachment, fileId));
+                UpdateEvent?.Invoke(this, new ChatControlUpdateEventArgs(clientSession.SessionId, ChatControlType.StopSendingAttachment, fileId));
 
                 //Need to find which VClient sending this file but now using for to send stop send file with specific file id to all Vclient
                 var connections = _chatConnections.GetAllConnection();
                 foreach (var connection in connections)
                 {
-                    connection.RemoveTaskByType(SocketDataType.ChatSend, ChatDataType.StopReceivedFileData, fileId);
+                    connection.RemoveFile(fileId);
                 }
             }
             catch (Exception ex)
