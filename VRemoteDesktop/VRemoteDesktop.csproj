@@ -164,7 +164,7 @@
     <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
     <Compile Include="Services\ScreenCapture\Enums\VScreenType.cs" />
     <Compile Include="Services\ScreenCapture\Events\FullScreenFrameEventArgs.cs" />
-    <Compile Include="Services\ScreenCapture\Events\RegionFrameEventArgs.cs" />
+    <Compile Include="Services\ScreenCapture\Events\FrameEventArgs.cs" />
     <Compile Include="Services\ScreenCapture\Events\VScreenSenderEventArgs.cs" />
     <Compile Include="Services\ScreenCapture\GDI\CaptureFrame.cs" />
     <Compile Include="Services\ScreenCapture\GDI\VRegions.cs" />
@@ -178,6 +178,7 @@
     <Compile Include="Services\ScreenCapture\GDI\VScreenSender.cs" />
     <Compile Include="Services\ScreenCapture\Utils\Compressor.cs" />
     <Compile Include="Services\SessionManagement\DTOs\QueueItem.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\ScreenDataDto.cs" />
     <Compile Include="Services\SessionManagement\SessionManager.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
     <Compile Include="Services\VTCPClient\Events\SocketDataReceivedEventArgs.cs" />

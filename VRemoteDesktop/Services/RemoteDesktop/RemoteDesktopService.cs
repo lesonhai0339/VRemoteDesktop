@@ -56,9 +56,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
 #if DEBUG
             _screenSender = screenSender;
-            _screenSender.OnScreenCaptured += OnScreenCapturedEventHandler;
-            _screenSender.OnRegion += OnRegionEventHandler;
-            _screenSender.OnScreen += OnScreenEventHandler;
+            _screenSender.OnFrame += OnRegionEventHandler;
             if (!_screenSender.IsCapturing)
             {
                 _screenSender.Start();
@@ -73,35 +71,22 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             StartKeyboardListener();  
         }
 
-        private void OnRegionEventHandler(object sender, RegionFrameEventArgs e)
+        private void OnRegionEventHandler(object sender, FrameEventArgs e)
         {
             try
             {
-                _sessionManager.AddDirtyRegions(VClientType.Receiver, e.RegionFrame);
+                if(e.Type == ScreenType.FULL_SCREEN)
+                {
+                    _sessionManager.AddScreen(VClientType.Receiver, e.RegionFrame);
+                }
+                else if(e.Type == ScreenType.DIRTY_REGIONS)
+                {
+                    _sessionManager.AddDirtyRegions(VClientType.Receiver, e.RegionFrame);
+                }
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", "OnDirtyRegionError").Error(ex.Message);
-            }
-        }
-
-        private void OnScreenEventHandler(object sender, FullScreenFrameEventArgs e)
-        {
-            try
-            {
-                e.FullScreenFrame.InRef();
-                try
-                {
-                    _sessionManager.AddScreen(VClientType.Receiver, e.FullScreenFrame);
-                }
-                catch
-                {
-                    e.FullScreenFrame.DeRef();
-                }
-            }
-            catch(Exception ex)
-            {
-                Logger.Log.ForContext("FileName", "OnScreenError").Error(ex.Message);
             }
         }
         private TaskObject[] CreateTask(VClient client, FullScreenFrame frame, SocketDataType type)
@@ -126,59 +111,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
 
 #if DEBUG
-        private void OnScreenCapturedEventHandler(object sender, VScreenSenderEventArgs e)
-        {
-            var receiverConnections = _sessionManager.Connections.Values.ToList();
 
-            //var receiverConnections = _vClientManager.Connections.Values
-            //                     .Where(x => x.IsP2PConnected && x.ClientType == VClientType.Receiver)
-            //                     .ToList();
-            //var turnConnections = _vClientManager.Connections.Values
-            //                    .Count(x => !x.IsP2PConnected);
-
-            //Send to Turn server, implement after
-            //if(turnConnections > 0)
-            //{
-            //    frame.IncRef();
-            //    //Send to server
-            //}
-
-
-            foreach (var connection in receiverConnections)
-            {
-                //if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
-                if (connection.SessionType == VClientType.Receiver)
-                {
-                    var type = (e.Frame.Type == ScreenCapture.Enums.VScreenType.FullScreen) ? SocketDataType.ScreenSend : (e.Frame.Type == ScreenCapture.Enums.VScreenType.RegionChange)
-                                            ? SocketDataType.ScreenRegionsChangedSend : SocketDataType.None; 
-                    var header = connection.HeaderGenerate(type: type, id: connection.SessionId, includeData: false, data: null, dataSize: e.Frame.CompressedDataLength);
-                    var headerPacket = new TaskObject
-                    {
-                        TaskType = type,
-                        Data = header,
-                        SessionId = connection.SessionId,
-                        IsSendHeader = false
-                    };
-                    var payloadPacket = new TaskObject
-                    {
-                        TaskType = type,
-                        SessionId = connection.SessionId,
-                        CapturedFrame = e.Frame,
-                        IsSendHeader = false
-                    };
-                    e.Frame.IncRef();
-                    try
-                    {
-                        connection.AddWork(QueuePriority.Medium, headerPacket, payloadPacket);
-                    }
-                    catch
-                    {
-                        e.Frame.DecRef();
-                    }
-                    return;
-                }
-            }
-        }
 #endif
         private void Initialize()
         {
@@ -211,7 +144,17 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 { SocketDataType.MouseSend, MouseReceived},
                 { SocketDataType.KeyboardSend, KeyboardReceived},
                 { SocketDataType.Ready, ReadyToRemote},
+                { SocketDataType.ScreenOk, ScreenCompleted}
             };
+        }
+
+        private void ScreenCompleted(object sender, EventArgs e)
+        {
+            var clientSession = sender as ClientSession;
+            if(clientSession != null)
+            {
+                _screenSender.AddSessionBuffer(clientSession.SessionId , clientSession.Image);
+            }
         }
 
         #region Properties
@@ -820,7 +763,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
 
 #if DEBUG
-            _screenSender.GetFullScreen();
+            _screenSender.GetFullScreen(session.Image);
             return;
 #endif
 

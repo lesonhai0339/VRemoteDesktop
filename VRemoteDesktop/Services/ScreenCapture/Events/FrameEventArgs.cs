@@ -7,9 +7,9 @@ using VRemoteDesktop.Services.ScreenCapture.DTOs;
 
 namespace VRemoteDesktop.Services.ScreenCapture.Events
 {
-    public class RegionFrameEventArgs : EventArgs
+    public class FrameEventArgs : EventArgs
     {
-        public RegionFrameEventArgs(ScreenType type, RegionFrame regionFrame)
+        public FrameEventArgs(ScreenType type, RegionFrame regionFrame)
         {
             Type = type;
             RegionFrame = regionFrame;

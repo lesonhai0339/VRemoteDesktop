@@ -153,12 +153,6 @@ namespace VRemoteDesktop
         {
             try
             {
-                VRegions region = new VRegions(1920, 1080, 3);
-                VScreenSender sender = new VScreenSender();
-                sender.AddSessionBuffer(region.Buffer);
-                sender.Start(); 
-                Console.ReadLine(); 
-                return;
                 Thread.CurrentThread.CurrentUICulture = new CultureInfo("vi");
                 FormMain frmMain = new FormMain(_remoteDesktopService);
                 Application.Run(frmMain);

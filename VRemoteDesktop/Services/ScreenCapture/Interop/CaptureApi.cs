@@ -12,6 +12,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.Interop
     public static class CaptureApi
     {
         #region Methods
+
         [DllImport("user32.dll")]
         public static extern bool SetProcessDPIAware();
 

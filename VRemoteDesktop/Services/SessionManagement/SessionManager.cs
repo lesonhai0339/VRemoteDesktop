@@ -127,19 +127,19 @@ namespace VRemoteDesktop.Services.SessionManagement
         }
         #endregion
         #region Dispatch
-        public void AddScreen(VClientType type, FullScreenFrame screen)
+        public void AddScreen(VClientType type, RegionFrame screen)
         {
             if (type == VClientType.None) return;
             if (screen == null)
                 throw new ArgumentNullException("Full screen cannot be null");
 
-            var sessions = _sessions.Where(x => x.Value.SessionType == type).Select(x => x.Value).ToList();
+            var sessions = _sessions.Where(x => x.Value.SessionType == type && x.Value.FullScreenReceived()).Select(x => x.Value).ToList();
             foreach(var session in sessions)
             {
                 AddScreen(session, screen);
             }
         }
-        private void AddScreen(ClientSession session, FullScreenFrame screen)
+        private void AddScreen(ClientSession session, RegionFrame screen)
         {
             session.AddScreen(screen);
         }
@@ -151,12 +151,12 @@ namespace VRemoteDesktop.Services.SessionManagement
             var sessions = _sessions.Where(x => x.Value.SessionType == sessionType && x.Value.AcceptScreen).Select(x => x.Value).ToList();
             foreach(var session in sessions)
             {
-                AddDirtyRegions(session, frame);
+                AddRegions(session, frame);
             }
         }
-        private void AddDirtyRegions(ClientSession session, RegionFrame frame)
+        private void AddRegions(ClientSession session, RegionFrame frame)
         {
-            session.AddDirtyRegions(frame);
+            session.AddRegions(frame);
         }
         #endregion
         public void Dispose()

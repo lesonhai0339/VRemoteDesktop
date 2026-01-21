@@ -166,6 +166,55 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 dst += stride;
             }
         }
+        public virtual List<Rectangle> MergeRegions(List<Rectangle> regions, double threshold = 0.8)
+        {
+            if (regions == null || regions.Count == 0)
+                return new List<Rectangle>();
+
+            var dirtyRegionsSorted = regions.OrderBy(x => x.Top)
+                .ThenBy(x => x.Left)
+                .ToList();
+
+            List<Rectangle> groups = new List<Rectangle>();
+
+            // Using first rectangle as base
+            var baseRect = dirtyRegionsSorted[0];
+
+            // For-loop to try to merge other rectangles
+            for (int i = 1; i < dirtyRegionsSorted.Count; i++)
+            {
+                // Get current rectangle    
+                var rect = dirtyRegionsSorted[i];
+
+                // Union base rectangle and current rectangle
+                var area = Rectangle.Union(baseRect, rect);
+
+                // Get acreage of union area
+                var areaUnion = area.Width * area.Height;
+                // Get acreage sum of base rectangle and current rectangle
+                var areaSum = baseRect.Width * baseRect.Height + rect.Width * rect.Height;
+
+                // Calculate ratio between union area and acreage sum
+                var ratio = (double)areaSum / areaUnion;
+
+                // If ratio > threshold, assign union area to base rectangle and continue try to merge next rectangle
+                if (ratio > threshold)
+                {
+                    baseRect = area;
+                }
+                // Else, add base rectangle to groups result and assign current as a new base rectangle
+                else
+                {
+                    groups.Add(baseRect);
+                    baseRect = rect;
+                }
+            }
+
+            // Finally, add last base rectangle to groups result
+            groups.Add(baseRect);
+
+            return groups;
+        }
         public virtual List<Rectangle> MergeRegions(Rectangle[] regions, double threshold = 0.8)
         {
             if (regions == null || regions.Length == 0)
@@ -283,7 +332,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 *d++ = (uint)regionHeight;
 
                 //calculate stride of big screen and regions
-                int srcStride = GetStride(srcWidth, bytePerPixel);
+                int srcStride = GetStride1(srcWidth, bytePerPixel);
                 uint dstStride = (uint)(regionWidth * bytePerPixel);
 
                 if (offset + (dstStride * regionHeight) + 16 > destination.Length)
@@ -394,6 +443,38 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
                 offset += (int)(dstStride * regionHeight);
             }
+        }
+        public virtual unsafe void CopyFullScreenSourceToDest(
+          ref int offset,
+          IntPtr destination,
+          IntPtr source,
+          int srcWidth,
+          int regionX,
+          int regionY,
+          int regionWidth,
+          int regionHeight,
+          int bytePerPixel = 3)
+        {
+            byte* dst = (byte*)destination + offset;
+
+            int srcStride = GetStride1(srcWidth, bytePerPixel);
+            unsafe
+            {
+                byte* src = (byte*)source;
+
+                for (int row = 0; row < regionHeight; row++)
+                {
+                    int sy = (row + regionY) * srcStride;
+                    int sx = regionX * bytePerPixel;
+
+                    IntPtr srcAdd = (IntPtr)(src + sy + sx);
+
+                    IntPtr dstAdd = (IntPtr)(dst + (row * srcStride)); 
+
+                    CaptureApi.memcpy(dstAdd, srcAdd, (UIntPtr)srcStride);
+                }
+            }
+            offset += (int)(srcStride * regionHeight);
         }
         public virtual unsafe void GetFullScreenData(
             ref int offset,

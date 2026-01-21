@@ -25,13 +25,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
 {
     public interface IVScreenSender
     {
-        event EventHandler<VScreenSenderEventArgs> OnScreenCaptured;
-        event EventHandler<FullScreenFrameEventArgs> OnScreen;
-        event EventHandler<RegionFrameEventArgs> OnRegion;
+        event EventHandler<FrameEventArgs> OnFrame;
         bool IsCapturing { get; }
+        void AddSessionBuffer(string id, IntPtr buffer);
+        void RemoveSessionBuffer(string id);
         bool Start();
         bool Stop();
-        void GetFullScreen();
+        void GetFullScreen(IntPtr image);
         void Cancel();
     }
     public class VScreenSender : VScreen, IVScreenSender, IDisposable
@@ -56,7 +56,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private Task _captureTask;
 
 
-        private List<IntPtr> _clientSessionBitmap;
+        private ConcurrentDictionary<string ,IntPtr> _clientSessionBitmap;
         private Rectangle[] _rectangles;
         private CancellationTokenSource _cancellationTokenSource;
         private ManualResetEventSlim _completedEvent = new ManualResetEventSlim(false);
@@ -91,12 +91,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
         private IntPtr _screenDC;
 
-        public event EventHandler<VScreenSenderEventArgs> OnScreenCaptured;
-        public event EventHandler<RegionFrameEventArgs> OnRegion;
-        public event EventHandler<FullScreenFrameEventArgs> OnScreen;
+        public event EventHandler<FrameEventArgs> OnFrame;
         public VScreenSender(int fps = 10)
         {
-            _clientSessionBitmap = new List<IntPtr>();
+            _clientSessionBitmap = new ConcurrentDictionary<string, IntPtr>();
             _cancellationTokenSource = new CancellationTokenSource();
             _fps = fps;
             _waitTime = 1000 / _fps;
@@ -113,18 +111,18 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
         }
-        public void AddSessionBuffer(IntPtr buffer)
+        public void AddSessionBuffer(string id, IntPtr buffer)
         {
             lock (_lock)
             {
-                _clientSessionBitmap.Add(buffer);
+                _clientSessionBitmap.TryAdd(id, buffer);
             }
         }
-        public void RemoveSessionBuffer(IntPtr buffer)
+        public void RemoveSessionBuffer(string id)
         {
             lock (_lock)
             {
-                _clientSessionBitmap.Remove(buffer);
+                _clientSessionBitmap.TryRemove(id,out _);
             }
         }
         public void Cancel()
@@ -187,101 +185,27 @@ namespace VRemoteDesktop.Services.ScreenCapture
             Interlocked.Exchange(ref _isCapturing, 0);
             return flag;
         }
-        public void GetFullScreen()
+        public void GetFullScreen(IntPtr image)
         {
             int offset = 0;
 
-            int dataLength = base.GetScreenDataLength(_width, _height, BYTE_PER_PIXEL);
-            byte[] buffer = VArrayPool.Rent(dataLength);
-
             try
             {
-                base.GetFullScreenData(ref offset, buffer, _allBits[frontIdx], _width, 0, 0, _width, _height);
+                base.CopyFullScreenSourceToDest(ref offset, image, _allBits[frontIdx], _width, 0, 0, _width, _height);
                 if (offset > 0)
                 {
-                    if (OnScreenCaptured != null)
+                    if (OnFrame != null)
                     {
-                        FullScreenFrame frame = new FullScreenFrame(new Rectangle(0, 0, _width, _height), buffer, dataLength);
-                        OnScreen(this, new FullScreenFrameEventArgs(VRemoteDesktop.Enums.ScreenType.FULL_SCREEN, frame));
+                        RegionFrame frame = new RegionFrame(new Rectangle[] { new Rectangle(0, 0, _width, _height) });
+                        OnFrame(this, new FrameEventArgs(VRemoteDesktop.Enums.ScreenType.FULL_SCREEN, frame));
                     }
                 }
-                else
-                {
-                    VArrayPool.Return(buffer);
-                }
             }
-            catch
+            catch(Exception ex)
             {
-                VArrayPool.Return(buffer);
+                Logger.Log.ForContext("FileName", "VScreenSender").Error(ex.Message);
             }
         }
-        /*    private void GetChangedRegions(int range)
-            {
-                //First
-                var changedRectArray = _rectangles.Where(x =>
-                        IsRegionChange(
-                            _allBits[prevIdx],
-                            _allBits[frontIdx],
-                            _width,
-                            x.X,
-                            x.Y,
-                            x.Width,
-                            x.Height)).ToArray();
-                var dittyRegions = base.MergeRegions(changedRectArray, 0.9);
-
-                // Get buffer length and rent buffer from pool
-                int bufferLength = base.GetScreenDataLength(dittyRegions, BYTE_PER_PIXEL);
-                byte[] buffer = VArrayPool.Rent(bufferLength);
-
-                int compressedBufferLength = (int)(bufferLength * 1.2); //Compressor.GetMaxOutputLength(bufferLength);
-                byte[] compressedBuffer = VArrayPool.Rent(compressedBufferLength);
-
-                try
-                {
-                    int offset = 0;
-                    for (int i = 0; i < dittyRegions.Count; i++)
-                    {
-                        var rect = dittyRegions[i];
-                        base.GetRegionsData(
-                            ref offset,
-                            buffer,
-                            _allBits[frontIdx],
-                            _width,
-                            rect.X,
-                            rect.Y,
-                            rect.Width,
-                            rect.Height);
-                    }
-
-                    int compressedLength = Compressor.CompressedLZ4(buffer, offset, compressedBuffer, compressedBufferLength);
-                    if (compressedLength > 0)
-                    {
-                        if (OnScreenCaptured != null)
-                        {
-                            CapturedFrame frame = new CapturedFrame(VScreenSenderEventType.RegionChange, compressedBuffer, 0, compressedLength);
-                            if (!_frames.TryAdd(_packetId.ToString().PadLeft(10, '0'), frame))
-                            {
-                                VArrayPool.Return(compressedBuffer);
-                            }
-                            else
-                            {
-                                lock (_lock)
-                                {
-                                    _packetId++;
-                                }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        VArrayPool.Return(compressedBuffer);
-                    }
-                }
-                finally
-                {
-                    VArrayPool.Return(buffer);
-                }
-            }*/
         private void GetChangedRegions(int range)
         {
             var dirtyRegions = _rectangles.Where(x =>
@@ -296,23 +220,26 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             if (dirtyRegions.Length > 0)
             {
-                foreach (var buffer in _clientSessionBitmap)
+                foreach (var key in _clientSessionBitmap.Keys.ToArray())
                 {
-                    foreach (var rect in dirtyRegions)
+                    if(_clientSessionBitmap.TryGetValue(key, out var buffer))
                     {
-                        base.CopySourceToDest(
-                            buffer,
-                            _allBits[frontIdx],
-                            rect.X,
-                            rect.Y,
-                            rect.Width,
-                            rect.Height,
-                            _width);
-                    }
+                        foreach (var rect in dirtyRegions)
+                        {
+                            base.CopySourceToDest(
+                                _allBits[frontIdx],
+                                buffer,
+                                rect.X,
+                                rect.Y,
+                                rect.Width,
+                                rect.Height,
+                                _width, 3);
+                        }
+                    }     
                 }
-                if (OnRegion != null)
+                if (OnFrame != null)
                 {
-                    OnRegion.Invoke(this, new RegionFrameEventArgs(VRemoteDesktop.Enums.ScreenType.DIRTY_REGIONS, new RegionFrame(dirtyRegions)));
+                    OnFrame.Invoke(this, new FrameEventArgs(VRemoteDesktop.Enums.ScreenType.DIRTY_REGIONS, new RegionFrame(dirtyRegions)));
                 }
             }
         }
@@ -360,7 +287,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     if (st.Elapsed.TotalMilliseconds < _waitTime)
                     {
                         time = _waitTime - st.Elapsed.TotalMilliseconds;
-                        Console.WriteLine($"Capturing: {st.Elapsed.TotalMilliseconds}");
                         Thread.Sleep(TimeSpan.FromMilliseconds(time));
                     }
                 }
