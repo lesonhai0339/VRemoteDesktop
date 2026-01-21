@@ -15,7 +15,6 @@ using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.Enums;
 using VRemoteDesktop.Services.ScreenCapture.Events;
 using VRemoteDesktop.Services.ScreenCapture.GDI;
-using VRemoteDesktop.Services.SessionManagement;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
@@ -36,14 +35,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 #endif
         private readonly IClientInfoManager _clientInfo;
         private readonly GlobalHookService _globalHook;
-        private readonly SessionManager _sessionManager;
+        private readonly VClientManager _vClientManager;
         private ManualResetEvent _reset;
 
         private Dictionary<SocketDataType, Action<object, EventArgs>> _eventHandlers;
 
         public event EventHandler<KeyboardEventArgs> KeyboardEvent;
         public event EventHandler<RemoteDesktopEventArgs> RespondEvent;
-        public RemoteDesktopService(IVScreenSender screenSender ,GlobalHookService globalHook, SessionManager sessionManager, IClientInfoManager clientInfo)
+        public RemoteDesktopService(IVScreenSender screenSender ,GlobalHookService globalHook, VClientManager vClientManager, IClientInfoManager clientInfo)
         {
             Initialize();
 
@@ -52,42 +51,32 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _reset = new ManualResetEvent(false);
 
             _globalHook = globalHook;
-            _sessionManager = sessionManager;
+            _vClientManager = vClientManager;
 
 #if DEBUG
             _screenSender = screenSender;
-            _screenSender.OnFrame += OnRegionEventHandler;
-            if (!_screenSender.IsCapturing)
-            {
-                _screenSender.Start();
-            }
+            _screenSender.OnScreenCaptured += OnScreenCapturedEventHandler;
+            _screenSender.OnRegion += OnRegionEventHandler;
+            _screenSender.OnScreen += OnScreenEventHandler;
+
 
 #endif
 
             _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
             _globalHook.KeyboardReceived += KeyboardEventHandler;
-            _sessionManager.SessionDataReceived += EventReceived;
-            _sessionManager.SessionClosed += VClientClosedEventHandler;
+            _vClientManager.ClientDataReceived += EventReceived;
+            _vClientManager.ClientClosed += VClientClosedEventHandler;
             StartKeyboardListener();  
         }
 
-        private void OnRegionEventHandler(object sender, FrameEventArgs e)
+        private void OnRegionEventHandler(object sender, RegionFrameEventArgs e)
         {
-            try
-            {
-                if(e.Type == ScreenType.FULL_SCREEN)
-                {
-                    _sessionManager.AddScreen(VClientType.Receiver, e.RegionFrame);
-                }
-                else if(e.Type == ScreenType.DIRTY_REGIONS)
-                {
-                    _sessionManager.AddDirtyRegions(VClientType.Receiver, e.RegionFrame);
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.ForContext("FileName", "OnDirtyRegionError").Error(ex.Message);
-            }
+            Console.WriteLine("On region changed");
+        }
+
+        private void OnScreenEventHandler(object sender, FullScreenFrameEventArgs e)
+        {
+            Console.WriteLine("On Screen");
         }
         private TaskObject[] CreateTask(VClient client, FullScreenFrame frame, SocketDataType type)
         {
@@ -111,7 +100,71 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
 
 #if DEBUG
+        private void OnScreenCapturedEventHandler(object sender, VScreenSenderEventArgs e)
+        {
+            var receiverConnections = _vClientManager.Connections.Values.ToList();
 
+            //var receiverConnections = _vClientManager.Connections.Values
+            //                     .Where(x => x.IsP2PConnected && x.ClientType == VClientType.Receiver)
+            //                     .ToList();
+            //var turnConnections = _vClientManager.Connections.Values
+            //                    .Count(x => !x.IsP2PConnected);
+
+            //Send to Turn server, implement after
+            //if(turnConnections > 0)
+            //{
+            //    frame.IncRef();
+            //    //Send to server
+            //}
+
+
+            foreach (var connection in receiverConnections)
+            {
+                //if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
+                if (connection.ClientType == VClientType.Receiver)
+                {
+                    var type = (e.Frame.Type == ScreenCapture.Enums.VScreenType.FullScreen) ? SocketDataType.ScreenSend : (e.Frame.Type == ScreenCapture.Enums.VScreenType.RegionChange)
+                                            ? SocketDataType.ScreenRegionsChangedSend : SocketDataType.None; 
+                    var header = connection.HeaderGenerate(type: type, socketId: connection.SocketId, includeData: false, data: null, dataSize: e.Frame.CompressedDataLength);
+                    var headerPacket = new TaskObject
+                    {
+                        TaskType = type,
+                        Data = header,
+                        SessionId = connection.SocketId,
+                        IsSendHeader = false
+                    };
+                    var payloadPacket = new TaskObject
+                    {
+                        TaskType = type,
+                        SessionId = connection.SocketId,
+                        CapturedFrame = e.Frame,
+                        IsSendHeader = false
+                    };
+                    e.Frame.IncRef();
+                    try
+                    {
+                        connection.AddWork(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
+                    }
+                    catch
+                    {
+                        e.Frame.DecRef();
+                    }
+                    return;
+
+                    if (connection.ScreenSendAvailable)
+                    {
+                        e.Frame.IncRef();
+                        try{
+                            Console.WriteLine($"Screen {e.Id} - User {connection.SocketId}");
+                            connection.AddWork(new TaskObject[] { headerPacket, payloadPacket }, QueuePriority.Medium);
+                        }
+                        catch{
+                            e.Frame.DecRef();
+                        }
+                    }
+                }
+            }
+        }
 #endif
         private void Initialize()
         {
@@ -144,17 +197,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 { SocketDataType.MouseSend, MouseReceived},
                 { SocketDataType.KeyboardSend, KeyboardReceived},
                 { SocketDataType.Ready, ReadyToRemote},
-                { SocketDataType.ScreenOk, ScreenCompleted}
+                { SocketDataType.ScreenOk, SendScreenSucceeded},
             };
-        }
-
-        private void ScreenCompleted(object sender, EventArgs e)
-        {
-            var clientSession = sender as ClientSession;
-            if(clientSession != null)
-            {
-                _screenSender.AddSessionBuffer(clientSession.SessionId , clientSession.Image);
-            }
         }
 
         #region Properties
@@ -253,33 +297,33 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 return false;
             }
         }
-        public ClientSession GetClientById(string id)
+        public VClient GetClientById(string id)
         {
             if (string.IsNullOrWhiteSpace(id)) return null;
 
             try
             {
-                var session = _sessionManager.GetByKey(id);
-                return session;
+                var client = _vClientManager.GetByKey(id);
+                return client;
             }
             catch
             {
                 return null;
             }
         }
-        public ClientSession NewClient(string id, VClientType type, bool isHost)
+        public VClient NewClient(string id, VClientType type, bool isHost)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(id)) return null;
 
-                var session = _sessionManager.New(id, type, isHost);
-                if (_sessionManager.Connections.Count > 0)
+                var newClient = _vClientManager.New(id, type, isHost);
+                if (_vClientManager.Connections.Count > 0)
                 {
-                    if (_sessionManager.HasClientOfType(VClientType.Receiver))
+                    if (_vClientManager.HasClientOfType(VClientType.Receiver))
                         StartScreenCapture();
                 }
-                return session;
+                return newClient;
             }
             catch
             {
@@ -292,11 +336,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             try
             {
-                var session = _sessionManager.GetByKey(id);
-                if (session != null)
+                var client = _vClientManager.GetByKey(id);
+                if (client != null)
                 {
                     byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
-                    session.Send(SocketDataType.Login, encoder, null);
+                    client.Send(SocketDataType.Login, encoder, null);
                 }
             }
             catch (Exception ex)
@@ -324,9 +368,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             if (newConnection.TryConnect(ip: DEFAULT_SERVER_IP, port: int.Parse(DEFAULT_SERVER_PORT)))
             {
-                string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SessionId, partnerId, partnerPassword, GetMe().ToNetworkString());
+                string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-                newConnection.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, newConnection.SessionId, true);
+                newConnection.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, newConnection.SocketId, true);
                 return true;
             }
             else
@@ -335,7 +379,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
         }
         //P2P connect
-        public void P2PConnect(ClientSession session, string partnerId, string partnerPassword)
+        public void P2PConnect(VClient client, string partnerId, string partnerPassword)
         {
             if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
 
@@ -344,11 +388,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var result = ByteArrayHelper.ConvertStringToByteArray(connectInfo.ToNetworkString(), EncodingType.ASCII);
             if (result.IsSuccess)
             {
-                session.Send(SocketDataType.P2PConnect, result.Data, session.SessionId, true);
+                client.Send(SocketDataType.P2PConnect, result.Data, client.SocketId, true);
             }
             else
             {
-                RespondEvent?.Invoke(session, new RemoteDesktopEventArgs(SocketDataType.P2PInvalidConnectData, false, new byte[0]));
+                RespondEvent?.Invoke(client, new RemoteDesktopEventArgs(SocketDataType.P2PInvalidConnectData, false, new byte[0]));
             }
         }
 
@@ -394,8 +438,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             if (string.IsNullOrWhiteSpace(id)) return;
 
-            _sessionManager.Remove(id);
-            if (_sessionManager.Connections.Count == 0)
+            _vClientManager.Remove(id);
+            if (_vClientManager.Connections.Count == 0)
             {
                 lock (_lock)
                 {
@@ -405,7 +449,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             else
             {
-                if (!_sessionManager.HasClientOfType(VClientType.Receiver))
+                if (!_vClientManager.HasClientOfType(VClientType.Receiver))
                 {
                     lock (_lock)
                     {
@@ -415,9 +459,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 }
             }
         }
-        private ConcurrentDictionary<string, ClientSession> GetClients()
+        private ConcurrentDictionary<string, VClient> GetClients()
         {
-            return _sessionManager.Connections;
+            return _vClientManager.Connections;
         }
         #endregion
         #region Events
@@ -425,6 +469,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
+                SendScreenRegionsChanged(sender, e);
             }
             catch { /*Ignore*/ }
         }
@@ -432,17 +477,17 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             if (_globalHook.CheckClipboard(e, out var data, out var type))
             {
-                foreach (var connection in _sessionManager.Connections)
+                foreach (var connection in _vClientManager.Connections)
                 {
-                    if (connection.Value.SessionType == VClientType.Receiver)
-                        connection.Value.AddWork(QueuePriority.High, new TaskObject
+                    if (connection.Value.ClientType == VClientType.Receiver)
+                        connection.Value.AddWork(new TaskObject
                         {
                             TaskType = type,
                             Data = data,
-                            SessionId = connection.Value.SessionId,
+                            SessionId = connection.Value.SocketId,
                             IsSendHeader = true,
                             ChunkFileInfo = null
-                        });
+                        }, QueuePriority.High);
                 }
             }
             else
@@ -511,6 +556,83 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
         }
+        private void SendScreenRegionsChanged(object sender, ScreenCaptureEventArgs e)
+        {
+            var connections = _vClientManager.Connections;
+            TaskObject[] tasks = ConvertRawScreenRegionsChangedToArrayObject(e.Type, e.Data, e.TotalSize);
+
+            foreach (var connection in connections)
+            {
+                if (connection.Value.ClientType == VClientType.Receiver && connection.Value.ScreenSucceeded)
+                {
+                    var header = connection.Value.HeaderGenerate(type: e.Type, socketId: connection.Value.SocketId, dataSize: e.TotalSize);
+
+                    var payload = new TaskObject
+                    {
+                        TaskType = e.Type,
+                        Data = header,
+                        SessionId = connection.Value.SocketId,
+                        IsSendHeader = false
+                    };
+                    var newTasks = new TaskObject[tasks.Length + 1];
+                    newTasks[0] = payload;
+                    Array.Copy(tasks, 0, newTasks, 1, tasks.Length);
+
+                    connection.Value.AddWorkGroup(newTasks, QueuePriority.Medium);
+                }
+            }
+        }
+        private TaskObject[] ConvertRawScreenRegionsChangedToArrayObject(SocketDataType type, List<byte[]> data, int totalSize)
+        {
+            try
+            {
+                if (data.Count == 0 || totalSize == 0)
+                {
+                    Logger.Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
+                    return null;
+                }
+                TaskObject[] tasks = new TaskObject[data.Count];
+                //data
+                for (int i = 0; i < data.Count; i++)
+                {
+                    var task = new TaskObject
+                    {
+                        TaskType = type,
+                        Data = data[i],
+                        IsSendHeader = false,
+                    };
+
+                    tasks[i] = task;
+                }
+                return tasks;
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
+                return null;
+            }
+        }
+        private void SendScreenSucceeded(object sender, EventArgs e)
+        {
+
+            var client = sender as VClient;
+            if (client != null)
+                client.ScreenSucceeded = true;
+
+            if (_vClientManager.HasClientOfType(VClientType.Receiver))
+            {
+                lock (_lock)
+                {
+                    if (!_isCapturing)
+                    {
+                        _isCapturing = true;
+                        StartScreenCapture();
+                    }
+                }
+            }
+        }
+
+        //Clipboard
         private void ClipboardReceived(object sender, EventArgs e)
         {
             SetClipboard(((RemoteDesktopEventArgs)e).Data);
@@ -569,7 +691,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             string id = Encoding.ASCII.GetString(ev.Data);
 
             //Create a new VClient and listen for incoming connection, if success return VClient else remove VClient and return null
-            var remoteClient = _sessionManager.AddNewAndListen(id, VClientType.Receiver, false);
+            var remoteClient = _vClientManager.AddNewAndListen(id, VClientType.Receiver, false);
 
             //P2P handshake success, send accept connect
             if (remoteClient != null)
@@ -583,8 +705,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void P2PConnectDataRespond(object sender, EventArgs e)
         {
-            var session = sender as ClientSession;
-            if (session == null)
+            var client = sender as VClient;
+            if (client == null)
                 throw new InvalidOperationException("Invalid sender for P2PConnectDataRespond");
 
             var ev = e as RemoteDesktopEventArgs;
@@ -599,14 +721,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 string connectIp = _clientInfo.IsTheSameNetWork(networkInfo.PublicIP) ? networkInfo.LocalIP : networkInfo.PublicIP;
 
-                var remoteControlClient = _sessionManager.New(networkInfo.Id, VClientType.Sender, false);
+                var remoteControlClient = _vClientManager.New(networkInfo.Id, VClientType.Sender, false);
                 if(int.TryParse(networkInfo.Port, out int port))
                 {
-                    bool respond = remoteControlClient.TryConnect(ip: connectIp, port: port, retry: 3, timeout: 1000);
+                    bool respond = remoteControlClient.TryConnect(ip: connectIp, port: port, retry: 3, waitRespondTime: 1000);
 
                     //P2P connect failed
                     if (!respond)
-                        RespondEvent?.Invoke(session, new RemoteDesktopEventArgs(SocketDataType.P2PLoginRespond, false, new byte[0]));
+                        RespondEvent?.Invoke(client, new RemoteDesktopEventArgs(SocketDataType.P2PLoginRespond, false, new byte[0]));
                 }
                 else
                 {
@@ -620,19 +742,19 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void P2PRequestToConnectAccepted(object sender, EventArgs e)
         {
-            var session = sender as ClientSession;
-            if (session == null)
+            var client = sender as VClient;
+            if (client == null)
                 throw new InvalidOperationException("Invalid sender for P2PRequestToConnectAccepted");
 
-            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, session.SessionId, GetMe().ToNetworkString());
+            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, client.SocketId, GetMe().ToNetworkString());
             byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
 
-            session.Send(SocketDataType.P2PLogin, dataBytes, session.SessionId, true);
+            client.Send(SocketDataType.P2PLogin, dataBytes, client.SocketId, true);
         }
         private void P2PLogin(object sender, EventArgs e)
         {
-            var session = sender as ClientSession;
-            if (session == null)
+            var client = sender as VClient;
+            if (client == null)
                 throw new InvalidOperationException("Invalid sender for P2PLogin");
 
             var ev = e as RemoteDesktopEventArgs;
@@ -647,22 +769,22 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 ClientInfo partnerInfo = new ClientInfo();
                 if (partnerInfo.TryParseData(dataArray.Skip(1).ToArray())) //Skip connection id
                 {
-                    session.UpdatePartnerInfo(partnerInfo);
+                    client.UpdatePartnerInfo(partnerInfo);
                     _clientInfo.AddPartner(partnerInfo);
 
                     byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
-                    session.Send(SocketDataType.P2PLoginRespond, dataBytes, session.SessionId, true);
+                    client.Send(SocketDataType.P2PLoginRespond, dataBytes, client.SocketId, true);
                     return;
                 }
             }
-            session.Send(SocketDataType.P2PLoginRespond, new byte[0], session.SessionId, true);
-            session.UpdatePartnerInfo(null);
+            client.Send(SocketDataType.P2PLoginRespond, new byte[0], client.SocketId, true);
+            client.UpdatePartnerInfo(null);
         }
         private void P2PLoginRespond(object sender, EventArgs e)
         {
 
-            var session = sender as ClientSession;
-            if (session == null)
+            var client = sender as VClient;
+            if (client == null)
                 throw new InvalidOperationException("Invalid sender for P2PLoginRespond");
 
             var ev = e as RemoteDesktopEventArgs;
@@ -677,12 +799,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 ClientInfo partnerInfo = new ClientInfo();
                 if (partnerInfo.TryParseData(dataArray))
                 {
-                    session.UpdatePartnerInfo(partnerInfo);
+                    client.UpdatePartnerInfo(partnerInfo);
                     _clientInfo.AddPartner(partnerInfo);
 
-                    session.Send(SocketDataType.Ready, new byte[0], session.SessionId, true);
+                    client.Send(SocketDataType.Ready, new byte[0], client.SocketId, true);
 
-                    RespondEvent?.Invoke(session, ev);
+                    RespondEvent?.Invoke(client, ev);
                     return;
                 }
             }
@@ -695,13 +817,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             if (_clientInfo.IsAuthenticated(ev.Data, out ClientInfo partnerInfo, out string connectionId))
             {
-                var remoteControlClient = _sessionManager.New(connectionId, VClientType.Receiver, false);
+                var remoteControlClient = _vClientManager.New(connectionId, VClientType.Receiver, false);
                 remoteControlClient.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
                 remoteControlClient.UpdatePartnerInfo(partnerInfo);
 
                 byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
 
-                remoteControlClient.Send(SocketDataType.RemoteControlAcceptedRequestToConnect, dataBytes, remoteControlClient.SessionId, true);
+                remoteControlClient.Send(SocketDataType.RemoteControlAcceptedRequestToConnect, dataBytes, remoteControlClient.SocketId, true);
                 
                 RespondEvent?.Invoke(remoteControlClient, ev);
             }
@@ -719,8 +841,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void RelayRequestToConnectAccepted(object sender, EventArgs e)
         {
-            var session = sender as ClientSession;
-            if (session == null)
+            var client = sender as VClient;
+            if (client == null)
                 throw new InvalidOperationException("Invalid sender for RelayRequestToConnectAccepted");
 
             var ev = e as RemoteDesktopEventArgs;
@@ -737,52 +859,48 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 partnerInfo = new ClientInfo();
                 if (partnerInfo.TryParseData(stringArray))
                 {
-                    session.UpdatePartnerInfo(partnerInfo);
+                    client.UpdatePartnerInfo(partnerInfo);
 
-                    session.Send(SocketDataType.Ready, new byte[0], session.SessionId, true);
+                    client.Send(SocketDataType.Ready, new byte[0], client.SocketId, true);
                 }
             }
             else
             {
                 //When partnerInfo is null this method will call dispose method
-                session.UpdatePartnerInfo(partnerInfo);
+                client.UpdatePartnerInfo(partnerInfo);
             }
             ForwardEvent(sender, e);
         }
         private void ReadyToRemote(object sender, EventArgs e)
         {
-            var session = sender as ClientSession;
-            if (session == null)
+            var client = sender as VClient;
+            client.IsP2PConnected = true;   
+            if (client == null)
                 throw new InvalidOperationException("Invalid sender for ReadyToRemote");
 
-            session.Connected = true;
-            if (session == null)
-                throw new InvalidOperationException("Invalid sender for ReadyToRemote");
-
-            RespondEvent?.Invoke(session, ((RemoteDesktopEventArgs)e));
+            RespondEvent?.Invoke(client, ((RemoteDesktopEventArgs)e));
 
 
 #if DEBUG
-            _screenSender.GetFullScreen(session.Image);
+            _screenSender.GetFullScreen();
             return;
 #endif
+            //Send first screen
+            List<byte[]> screen;
+            lock (_lock)
+            {
+                screen = _globalHook.GetFirstScreen();
+            }
+            int length = screen.Sum(x => x.Length);
 
-            ////Send first screen
-            //List<byte[]> screen;
-            //lock (_lock)
-            //{
-            //    screen = _globalHook.GetFirstScreen();
-            //}
-            //int length = screen.Sum(x => x.Length);
+            var header = client.HeaderGenerate(type: SocketDataType.ScreenSend, socketId: client.SocketId, dataSize: length);
+            client.Send(SocketDataType.ScreenSend, header, client.SocketId, false);
 
-            //var header = client.HeaderGenerate(type: SocketDataType.ScreenSend, socketId: client.SocketId, dataSize: length);
-            //client.Send(SocketDataType.ScreenSend, header, client.SocketId, false);
-
-            //for (int i = 0; i < screen.Count; i++)
-            //{
-            //    client.Send(SocketDataType.ScreenSend, screen[i], client.SocketId, false);
-            //}
-            ////SendScreen(client, SocketDataType.ScreenSend, screen, length);
+            for (int i = 0; i < screen.Count; i++)
+            {
+                client.Send(SocketDataType.ScreenSend, screen[i], client.SocketId, false);
+            }
+            //SendScreen(client, SocketDataType.ScreenSend, screen, length);
         }
         private void ClientDisconnected(object sender, EventArgs e)
         {
@@ -816,7 +934,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     }
 
                     _clientInfo.RemovePartner(client.Partner?.Id);
-                    _sessionManager.Remove(client.SocketId);
+                    _vClientManager.Remove(client.SocketId);
                 }
                 catch (Exception ex)
                 {
@@ -843,14 +961,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     _globalHook.ScreenCaptureChanged -= ScreenCaptureEventHandler;
                     _globalHook.KeyboardReceived -= KeyboardEventHandler;
                 }
-                if (_sessionManager != null)
+                if (_vClientManager != null)
                 {
-                    _sessionManager.SessionDataReceived -= EventReceived;
-                    _sessionManager.SessionClosed -= VClientClosedEventHandler;
+                    _vClientManager.ClientDataReceived -= EventReceived;
+                    _vClientManager.ClientClosed -= VClientClosedEventHandler;
                 }
 
                 _globalHook?.Dispose();
-                _sessionManager?.Dispose();
+                _vClientManager?.Dispose();
                 _reset?.Dispose();
                 _disposed = true;
             }

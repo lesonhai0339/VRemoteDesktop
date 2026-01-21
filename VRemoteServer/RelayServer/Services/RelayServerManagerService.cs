@@ -46,20 +46,18 @@ namespace VRemoteServer.RelayServer.Services
             _loginManager.LoginManagerEvent += LoginManagerEventHandler;
             _remoteControlManager.RemoteControlManagerEvent += RemoteControlManagerEventHandler;
         }
-        public int NumberOfLoginUsers => _loginManager.NumberOfConnections;  
-
+        #region System
         public void InitLoginServer()
         {
             _loginManager.InitServer();
         }
-
         public async Task StartLoginServer(IPEndPoint ep)
         {
             try
             {
                 await _loginManager.StartServer(ep);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "StartLoginServer error");
             }
@@ -91,10 +89,11 @@ namespace VRemoteServer.RelayServer.Services
         {
             _remoteControlManager.CancelServer();
         }
+        #endregion
 
         #region Events
 
-        //Login
+        #region Login Server
         private void LoginManagerEventHandler(object sender, LoginEventArgs e)
         {
             if (sender is SocketConnection connection)
@@ -119,7 +118,7 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
-        private bool P2PLogin(object sender,byte[] data)
+        private bool P2PLogin(object sender, byte[] data)
         {
             var connection = sender as SocketConnection;
             if (connection == null)
@@ -179,7 +178,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             try
             {
-                if(_loginManager.Add(connection, data, out ConnectionInfo connectionInfo))
+                if (_loginManager.Add(connection, data, out ConnectionInfo connectionInfo))
                 {
                     _loginManager.LoginSucceeded(connection, connectionInfo);
                 }
@@ -205,10 +204,11 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteControlManagerEventHandler");
             }
         }
+        #endregion server Server
 
 
 
-        //Remote Control
+        #region Turn Server
         private void RemoteControlManagerEventHandler(object sender, RemoteControlManagerEventArgs e)
         {
             try
@@ -229,7 +229,7 @@ namespace VRemoteServer.RelayServer.Services
                         break;
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteControlManagerEventHandler");
             }
@@ -289,10 +289,10 @@ namespace VRemoteServer.RelayServer.Services
 
         private bool RemoteDesktopControlDisconnected(object sender)
         {
-            if(sender is SocketConnection connection)
+            if (sender is SocketConnection connection)
             {
                 var remoteConnections = _remoteControlManager.GetRemoteConnectionsBySocketConnection(connection).ToArray();
-                if(remoteConnections.Length != 0)
+                if (remoteConnections.Length != 0)
                 {
                     foreach (var remoteConnection in remoteConnections)
                     {
@@ -318,9 +318,9 @@ namespace VRemoteServer.RelayServer.Services
             {
                 try
                 {
-                    if(_remoteControlManager.GetPartner(remoteConnectionId, socketSender, out SocketConnection socketReceive))
+                    if (_remoteControlManager.GetPartner(remoteConnectionId, socketSender, out SocketConnection socketReceive))
                     {
-                        if(data != null)
+                        if (data != null)
                         {
                             _remoteControlManager.Send(socketReceive, data);
                         }
@@ -346,6 +346,8 @@ namespace VRemoteServer.RelayServer.Services
             }
             return false;
         }
+        #endregion
+
 
         #endregion
         public void Dispose()

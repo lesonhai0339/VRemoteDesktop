@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Text;
+using VRemoteServer.RelayServer.DTOs;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Helpers;
 using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
@@ -43,6 +44,12 @@ namespace VRemoteServer.RelayServer.Networking
             {
                 throw;
             }
+        }
+        public static byte[] CreatePacket(SocketDataType type, Encoding encoding, string data, string id= null)
+        {
+            var  dataByteArray = encoding.StringToByteArray(data);
+            return CreatePacket(type, id, dataByteArray);
+
         }
         public static byte[] CreatePacket(SocketDataType type, string id = null, byte[] data = null)
         {

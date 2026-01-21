@@ -14,6 +14,8 @@ using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.GDI;
+using VRemoteDesktop.Services.SessionManagement;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
@@ -28,6 +30,7 @@ namespace VRemoteDesktop
         private IScreenCaptureServiceListener _screenCaptureService;
         private IKeyboardService _keyboardHookService;
         private VClientManager _vClientManager;
+        private SessionManager _sessionManagement;
         private GlobalHookService _globalHook;
         private ClientInfoManager _clientInfoManager;
         private RemoteDesktopService _remoteDesktopService;
@@ -143,7 +146,8 @@ namespace VRemoteDesktop
             _clientInfoManager = new ClientInfoManager();
             _screenCaptureService = new ScreenCaptureService(_capture);
             _globalHook = new GlobalHookService(_keyboardHookService, _screenCaptureService);
-            _remoteDesktopService = new RemoteDesktopService(_screenSender, _globalHook, _vClientManager, _clientInfoManager);
+            _sessionManagement = new SessionManager();  
+            _remoteDesktopService = new RemoteDesktopService(_screenSender, _globalHook, _sessionManagement, _clientInfoManager);
         }
         public void Run()
         {

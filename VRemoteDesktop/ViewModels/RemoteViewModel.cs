@@ -223,7 +223,7 @@ namespace VRemoteDesktop.ViewModels
 #if DEBUG
             var type = (e.Type == SocketDataType.ScreenSend) ? true : false;
 
-            var rectangle = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length, type);
+            var rectangle = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length);
 
             if (UpdateScreen != null)
                 UpdateScreen.Invoke(this, new OnScreenEventArgs(type, rectangle));

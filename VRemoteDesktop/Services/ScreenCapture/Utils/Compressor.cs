@@ -10,6 +10,28 @@ namespace VRemoteDesktop.Services.ScreenCapture.Utils
 {
     public static class Compressor
     {
+        public static int GetMaxOutputLength(int inputLength)
+        {
+            return LZ4Codec.MaximumOutputLength(inputLength);  
+        }
+        public static unsafe int CompressedLZ4(byte[] buffer, int bufferLength,  byte[] compressedBuffer, int compressedBufferLength)
+        {
+            int compressedLength = LZ4Codec.Encode(
+                buffer,
+                0,
+                bufferLength,
+                compressedBuffer,
+                0,
+                compressedBufferLength);
+
+            return compressedLength;
+        }
+        /// <summary>
+        /// Compress trên cùng 1 array
+        /// </summary>
+        /// <param name="data"></param>
+        /// <param name="writeOffset"></param>
+        /// <returns></returns>
         public static unsafe int CompressedLZ4(byte[] data, int writeOffset)
         {
             int startOffset = writeOffset + 1;

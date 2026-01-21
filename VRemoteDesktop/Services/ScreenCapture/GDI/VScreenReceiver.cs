@@ -23,7 +23,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         int Height { get; }
         int Stride { get; }
         PixelFormat PixelFormat { get; }
-        Rectangle DecompressedRawData(byte[] data, int offset, int length, bool isFullScreen = false);
+        Rectangle DecompressedRawData(byte[] data, int offset, int length);
     }   
     public class VScreenReceiver : VScreen, IVScreenReceiver, IDisposable
     {
@@ -128,19 +128,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, BYTE_PER_PIXEL), PixelFormat.Format24bppRgb, _bits);
         }
-        public Rectangle DecompressedRawData(byte[] data, int offset, int length, bool isFullScreen = false)
+        public Rectangle DecompressedRawData(byte[] data, int offset, int length)
         {
             int decompressLength = Compressor.DeCompressedLZ4(data, offset, length, _screenTask.Buffer);
-            if (isFullScreen)
-            {
-                return MergeFullScreenToBitmap(_screenTask.Buffer, decompressLength);
-            }
-            else
-            {
-                return ParsePacketToRegionsChange(_screenTask.Buffer, decompressLength);
-            }
-        }   
-        private unsafe Rectangle ParsePacketToRegionsChange(byte[] packet, int actualLength)
+            return MergeRegionToImage(_screenTask.Buffer, decompressLength);
+        }
+        private unsafe Rectangle MergeRegionToImage(byte[] packet, int actualLength)
         {
             Rectangle rect = Rectangle.Empty;
             fixed (byte* pPacket = packet)
@@ -180,27 +173,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
             //Test11(GetStride1(_width, BYTE_PER_PIXEL), _bits);
 #endif
             return rect;
-        }
-        private unsafe Rectangle MergeFullScreenToBitmap(byte[] packet, int actualLength)
-        {
-            byte* dst = (byte*)_bits;
-            int srcStride = _width * 3;
-            int dstStride = base.GetStride1(_width, BYTE_PER_PIXEL);
-
-            fixed (byte* pSrc = packet)
-            {       
-                for (int y = 0; y < _height; y++)
-                {
-                    IntPtr srcRow = (IntPtr)(pSrc + (y * srcStride));
-                    IntPtr dstRow = (IntPtr)(dst + (y * dstStride));
-
-                    CaptureApi.memcpy(dstRow, srcRow, (UIntPtr)srcStride);
-                }
-            }
-#if DEBUG
-            //Test11(dstStride, (IntPtr)dst, true);
-#endif
-            return new Rectangle(0, 0, _width, _height);
         }
 #if DEBUG
         private void Test11(int stride, IntPtr source, bool isFullScreen = false)

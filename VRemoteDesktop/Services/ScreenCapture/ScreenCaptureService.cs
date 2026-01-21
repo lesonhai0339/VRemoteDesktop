@@ -128,16 +128,16 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     }
 
                     ScreenType screenEnum = screens.Count == 1 && screens[0].IsFullScreen 
-                        ? ScreenType.FULLSCREEN 
-                        : ScreenType.REGIONSCREENS;
+                        ? ScreenType.FULL_SCREEN 
+                        : ScreenType.DIRTY_REGIONS;
 
                     switch (screenEnum)
                     {
-                        case ScreenType.FULLSCREEN:
+                        case ScreenType.FULL_SCREEN:
                             ScreenToPacketsWithoutChecksum(screens[0], totalSize);
                             //ScreenToPackets(screens[0], totalSize);
                             break;
-                        case ScreenType.REGIONSCREENS:
+                        case ScreenType.DIRTY_REGIONS:
                             ScreenRegionsChangedToPacketsWithoutChecksum(screens, totalSize);
                             //ScreenRegionsChangedToPackets(screens, totalSize);
                             break;

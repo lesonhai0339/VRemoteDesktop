@@ -9,23 +9,24 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 {
     public class CapturedFrame : IDisposable
     {
-        public VScreenSenderEventType Type { get; private set; }
+        public VScreenType Type { get; private set; }
         public byte[] CompressedData { get; private set; }
         public int CompressedDataOffset { get; private set; }
 
         public int CompressedDataLength { get; private set; }
-        public string FrameId { get; private set; }
+        public int FrameId { get; private set; }
+
         public int CurrentRefCount => _refCount;
 
         private int _refCount;
 
-        public CapturedFrame(VScreenSenderEventType type,  byte[] data, int compressedDataOffset, int compressedDataLength, int count = 0)
+        public CapturedFrame(VScreenType type,  byte[] compressedData, int compressedDataOffset, int compressedDataLength, int count = 0)
         {
             Type = type;
-            CompressedData = data;
+            CompressedData = compressedData;
             CompressedDataOffset = compressedDataOffset;
             CompressedDataLength = compressedDataLength;
-            FrameId = DateTime.Now.Ticks.ToString();
+            FrameId = Environment.TickCount;
             _refCount = count;
         }
         public void IncRef() { Interlocked.Increment(ref _refCount); }
