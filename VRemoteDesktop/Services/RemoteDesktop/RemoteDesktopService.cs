@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
@@ -57,10 +59,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 #if DEBUG
             _screenSender = screenSender;
             _screenSender.OnFrame += OnRegionEventHandler;
-            if (!_screenSender.IsCapturing)
-            {
-                _screenSender.Start();
-            }
 
 #endif
 
@@ -70,7 +68,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _sessionManager.SessionClosed += ClientSessionClosedEventHandler;
             StartKeyboardListener();  
         }
-
         private void OnRegionEventHandler(object sender, FrameEventArgs e)
         {
             try
@@ -356,8 +353,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private void StartScreenCapture()
         {
 #if DEBUG
-            _screenSender.Start();
-            return;
+            if (!_screenSender.IsCapturing)
+            {
+                _screenSender.Start();
+            }
 #endif
             _globalHook.StartScreenCapture();
         }
@@ -450,46 +449,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             RespondEvent?.Invoke(sender, (RemoteDesktopEventArgs)e);
         }
 
-        //Screen
-        private void SendScreen(VClient client, SocketDataType type, List<byte[]> data, int totalSize)
-        {
-            try
-            {
-                if (data.Count == 0 || totalSize == 0)
-                {
-                    Logger.Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
-                    return;
-                }
-                var header = client.HeaderGenerate(type: type, socketId: client.SocketId, dataSize: totalSize);
 
-                List<TaskObject> tasks = new List<TaskObject>();
-                tasks.Add(new TaskObject
-                {
-                    TaskType = type,
-                    Data = header,
-                    IsSendHeader = false,
-                    SessionId = client.SocketId
-                });
-
-                //data
-                for (int i = 0; i < data.Count; i++)
-                {
-                    var task = new TaskObject
-                    {
-                        TaskType = type,
-                        Data = data[i],
-                        IsSendHeader = false
-                    };
-
-                    tasks.Add(task);
-                }
-                client.AddWorkGroup(tasks, QueuePriority.High);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
-            }
-        }
         private void ClipboardReceived(object sender, EventArgs e)
         {
             SetClipboard(((RemoteDesktopEventArgs)e).Data);
@@ -675,6 +635,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (_clientInfo.IsAuthenticated(ev.Data, out ClientInfo partnerInfo, out string connectionId))
             {
                 var remoteControlClient = _sessionManager.New(connectionId, VClientType.Receiver, false);
+
+                //Init screen capture
+                _screenSender.InitializeSenderComponents();
+                StartScreenCapture();
+
+
                 remoteControlClient.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
                 remoteControlClient.UpdatePartnerInfo(partnerInfo);
 

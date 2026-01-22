@@ -42,7 +42,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
 
         private List<Rectangle> _tempRect;
-        public VRegions(int width, int height, int bytePerPixel, int regionSize = 16)
+        public VRegions(int width, int height, int bytePerPixel =3, int regionSize = 16)
         {
             _fullScreenReceived = 0;
             _width = width;

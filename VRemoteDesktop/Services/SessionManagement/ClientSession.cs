@@ -98,6 +98,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _cancelationTokenSource = new CancellationTokenSource();
 
             _clientSocket = new ClientSocket(id, _cancelationTokenSource.Token);
+
             _screenRegions = new VRegions(width, height, bytePerPixel);
             _bufferPool = VArrayPool.Rent(10 * 1024 * 1024);
 

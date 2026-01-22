@@ -29,13 +29,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
     {
         private readonly object _lock = new object();
         private const uint DIB_RGB_COLORS = 0;
-        private const int BYTE_PER_PIXEL = 3;
-        private const int REGION_SIZE = 16;
-
         private int _disposed;
 
-        private int _width;
-        private int _height;
+        private readonly int _width;
+        private readonly int _height;
+        private readonly int _regionSize;
+        private readonly int _bytePerPixel;
         private Rectangle[] _rectangles;
         private int count = 0;
 
@@ -49,10 +48,14 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private readonly ScreenTask _screenTask;
 
         private Bitmap _bitmap;
-        public VScreenReceiver(int width, int height, ScreenTask screenTask)
+        public VScreenReceiver(ScreenTask screenTask, int width, int height, int bytePerPixel = 3, int regionSize = 16)
         {
             _screenTask = screenTask;
-            InitializeReceiverComponents(width, height);
+            _width = width;
+            _height = height;
+            _regionSize = regionSize;
+            _bytePerPixel = bytePerPixel;
+            InitializeReceiverComponents();
         }
         #region Properties
         public IntPtr Bits
@@ -105,7 +108,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             get
             {
-                return base.GetStride1(_width, BYTE_PER_PIXEL);
+                return base.GetStride1(_width, _bytePerPixel);
             }
         }   
         public PixelFormat PixelFormat
@@ -116,17 +119,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
         }
         #endregion
-        private void InitializeReceiverComponents(int partnerWidth, int partnerHeight)
+        private void InitializeReceiverComponents()
         {
-            _width = partnerWidth;
-            _height = partnerHeight;
-
-            _bitmapInfo = base.InitBitmapInfo(Width, Height, BYTE_PER_PIXEL * 8, 0);
-
+            _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
             base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
             _rectangles = base.InitRectangle(_width, _height);
 
-            _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, BYTE_PER_PIXEL), PixelFormat.Format24bppRgb, _bits);
+            _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, _bytePerPixel), PixelFormat.Format24bppRgb, _bits);
         }
         public Rectangle DecompressedRawData(byte[] data, int offset, int length)
         {

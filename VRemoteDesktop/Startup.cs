@@ -138,7 +138,8 @@ namespace VRemoteDesktop
             //VArrayPool.Return(senderBuffer);
             //VArrayPool.Return(receiverBuffer);
             //return;
-            _screenSender = new VScreenSender();    
+            var bounds = Screen.PrimaryScreen.Bounds;
+            _screenSender = new VScreenSender(bounds.Width, bounds.Height);    
 
             _capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();

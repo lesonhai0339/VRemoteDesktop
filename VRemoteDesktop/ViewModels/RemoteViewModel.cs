@@ -60,7 +60,7 @@ namespace VRemoteDesktop.ViewModels
 #if DEBUG
             _buffer = VArrayPool.Rent(10 * 1024 * 1024);
             var receiverScreenTask = new ScreenTask(_buffer);
-            _screenReceiver = new VScreenReceiver(_clientSession.PartnerInfo.Width, _clientSession.PartnerInfo.Height, receiverScreenTask);
+            _screenReceiver = new VScreenReceiver(receiverScreenTask, _clientSession.PartnerInfo.Width, _clientSession.PartnerInfo.Height);
             Picture = new Bitmap(_screenReceiver.Width, _screenReceiver.Height, _screenReceiver.Stride, _screenReceiver.PixelFormat, _screenReceiver.ScreenHDC);
             Width = _screenReceiver.Width;
             Height = _screenReceiver.Height;

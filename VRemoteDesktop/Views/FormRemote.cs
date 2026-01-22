@@ -276,11 +276,11 @@ namespace VRemoteDesktop.Views
 
             if (_pendingClickArgs != null && !_isDrag && mouseType != MouseEventType.None)
             {
-               // _remoteViewModel.ProcessMouseEvent(
-               //    mouseType,
-               //    vPictureBox,
-               //    _pendingClickArgs
-               //);
+                _remoteViewModel.ProcessMouseEvent(
+                   mouseType,
+                   vPictureBox,
+                   _pendingClickArgs
+               );
             }
             _pendingClickArgs = null;
             _pendingSender = null;
@@ -330,13 +330,13 @@ namespace VRemoteDesktop.Views
                     }
                 }
 
-                //_remoteViewModel.ProcessMouseEvent(
-                //    mouseEvent,
-                //    vPictureBox,
-                //    e,
-                //    mouseMessage,
-                //    MouseAction.Down
-                //);
+                _remoteViewModel.ProcessMouseEvent(
+                    mouseEvent,
+                    vPictureBox,
+                    e,
+                    mouseMessage,
+                    MouseAction.Down
+                );
             }
             catch (Exception ex)
             {
@@ -346,11 +346,11 @@ namespace VRemoteDesktop.Views
 
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            //_remoteViewModel.ProcessMouseEvent(
-            //    MouseEventType.Wheel,
-            //    vPictureBox,
-            //    e
-            //);
+            _remoteViewModel.ProcessMouseEvent(
+                MouseEventType.Wheel,
+                vPictureBox,
+                e
+            );
         }
         #region Events
         private void InitializeGraphicsSettings()

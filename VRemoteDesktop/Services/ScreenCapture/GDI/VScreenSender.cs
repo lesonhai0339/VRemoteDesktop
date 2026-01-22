@@ -25,6 +25,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
 {
     public interface IVScreenSender
     {
+        bool InitializeSenderComponents();
+
         event EventHandler<FrameEventArgs> OnFrame;
         bool IsCapturing { get; }
         void AddSessionBuffer(string id, IntPtr buffer);
@@ -43,11 +45,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private const int RANGE = 5;
 
 
-        private int _disposed;
+        private int _disposed = 0;
         private int _isCapturing = 0;
+        private int _initialized = 0;
 
         private int _width;
         private int _height;
+        private int _bytePerPixel;    
         private readonly int _fps;
         private readonly double _waitTime;
 
@@ -58,7 +62,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
         private ConcurrentDictionary<string ,IntPtr> _clientSessionBitmap;
         private Rectangle[] _rectangles;
-        private CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private ManualResetEventSlim _completedEvent = new ManualResetEventSlim(false);
 
         private BITMAPINFO _bitmapInfo;
@@ -92,13 +96,16 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private IntPtr _screenDC;
 
         public event EventHandler<FrameEventArgs> OnFrame;
-        public VScreenSender(int fps = 10)
+        public VScreenSender(int width, int height, int bytePerPixel = 3, int fps = 10)
         {
-            _clientSessionBitmap = new ConcurrentDictionary<string, IntPtr>();
-            _cancellationTokenSource = new CancellationTokenSource();
+            var bounds = Screen.PrimaryScreen.Bounds;
+            _width = bounds.Width;
+            _height = bounds.Height;
+            _bytePerPixel = bytePerPixel;
             _fps = fps;
-            _waitTime = 1000 / _fps;
-            InitializeSenderComponents();
+            _waitTime = Math.Ceiling((double)1000 / _fps);
+
+            _clientSessionBitmap = new ConcurrentDictionary<string, IntPtr>();
         }
         public bool IsCapturing => _isCapturing == 1;
         public IntPtr SourceImage
@@ -129,19 +136,20 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             _cancellationTokenSource.Cancel();
         }
-        private void InitializeSenderComponents()
+        public bool InitializeSenderComponents()
         {
-            var bound = Screen.PrimaryScreen.Bounds;
-            _width = bound.Width;
-            _height = bound.Height;
+            if (Interlocked.CompareExchange(ref _initialized, 1, 0) != 0)
+                return false;
 
-            base.InitFileMapping(ref _fileMappingPtr);
+            int DIBSectionBuffer = base.GetStride1(_width, _bytePerPixel) * _height;
+            int totalBufferAllocated = DIBSectionBuffer * 3; //using triple buffer to swap
+            base.InitFileMapping(fileMappingPtr:  ref _fileMappingPtr, allocateSize: (uint)totalBufferAllocated);
 
-            uint pre = 0; //10MB
-            uint cur = 10 * 1024 * 1024; ; //10MB
-            uint next = 20 * 1024 * 1024; //10MB 
+            uint pre = (uint)(0 * DIBSectionBuffer);
+            uint cur = (uint)(1 * DIBSectionBuffer);
+            uint next = (uint)(2 * DIBSectionBuffer);  
 
-            _bitmapInfo = base.InitBitmapInfo(_width, _height, BYTE_PER_PIXEL * 8, 0);
+            _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
 
             base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, _fileMappingPtr, pre, IntPtr.Zero, _bitmapInfo);
             base.InitCaptureBuffer(ref _hBitmap1, ref _memDC1, ref _bits1, _fileMappingPtr, cur, IntPtr.Zero, _bitmapInfo);
@@ -154,6 +162,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             _screenDC = CaptureApi.GetDC(IntPtr.Zero);
             Capturing();
+            return true;
         }
         public bool Start()
         {
@@ -180,8 +189,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
             var flag = _completedEvent.Wait(3000);
 
             if (_screenDC != IntPtr.Zero)
+            {
                 CaptureApi.ReleaseDC(IntPtr.Zero, _screenDC);
-
+                _screenDC = IntPtr.Zero;
+            }
             Interlocked.Exchange(ref _isCapturing, 0);
             return flag;
         }
