@@ -23,6 +23,7 @@ using System.Threading.Tasks;
 using System.Diagnostics;
 using VRemoteDesktop.Layouts;
 using static VRemoteDesktop.Services.ScreenCapture.Interop.CaptureApi;
+using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 
 namespace VRemoteDesktop.ViewModels
 {
@@ -51,7 +52,7 @@ namespace VRemoteDesktop.ViewModels
         public Action<Bitmap> screenEvent;
         public Action<List<ScreenRegion>> screenRegionsChangedEvent;
         public event EventHandler<KeyboardEventArgs> keyboardEvent;
-        public event EventHandler<EventArgs> DisconnectedEvent; 
+        public event EventHandler<ClientSessionDisconnectedEventArgs> DisconnectedEvent; 
         public RemoteViewModel(ClientSession clientSession, IScreenCaptureExtensions screenCaptureExtensions, IMouseExtensions mouseExtension, RemoteDesktopService remoteDesktopService)
         {
             _disposed = false;
@@ -72,13 +73,12 @@ namespace VRemoteDesktop.ViewModels
             _remoteDesktopService = remoteDesktopService;
 
             _clientSession.OnScreenReceived += P2PScreenReceivedEventHandler;
-            _clientSession.OnDisposing += SocketDisposingEventHandler;
+            _clientSession.OnDisconnected += SocketDisconnectedEventHandler;
             _remoteDesktopService.KeyboardEvent += KeyboardReceivedEventHandler;
         }
         //private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
-        private void SocketDisposingEventHandler(object sender, EventArgs g)
+        private void SocketDisconnectedEventHandler(object sender, ClientSessionDisconnectedEventArgs e)
         {
-            var e = (SocketDisposeEventArgs)g;
             DisconnectedEvent?.Invoke(this, e);
         }
         #region Properties
@@ -287,7 +287,7 @@ namespace VRemoteDesktop.ViewModels
                 if (_clientSession != null)
                 {
                     _clientSession.OnScreenReceived -= P2PScreenReceivedEventHandler;
-                    _clientSession.OnDisposing -= SocketDisposingEventHandler;
+                    _clientSession.OnDisconnected -= SocketDisconnectedEventHandler;
                 }
                 if (_remoteDesktopService != null)
                     _remoteDesktopService.KeyboardEvent -= KeyboardReceivedEventHandler;

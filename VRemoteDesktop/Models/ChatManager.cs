@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.RemoteDesktop;
+using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 using VRemoteDesktop.Services.VTCPClient;
 
 namespace VRemoteDesktop.Models
@@ -53,7 +54,7 @@ namespace VRemoteDesktop.Models
             if (clientSession == null)
                 throw new ArgumentException("Client cannot be null");
 
-            clientSession.OnDisposing += SocketDisposingEventHandler;
+            clientSession.OnDisconnected += SocketDisconnectedEventHandler;
             return _curChat.TryAdd(id, new VChat<T>(
                         clientSession: clientSession,
                         messages: new List<T>())
@@ -70,7 +71,7 @@ namespace VRemoteDesktop.Models
 
             if(_curChat.TryGetValue(id, out var clientSession))
             {
-                clientSession.ClientSession.OnDisposing -= SocketDisposingEventHandler;
+                clientSession.ClientSession.OnDisconnected -= SocketDisconnectedEventHandler;
                 return _curChat.TryRemove(id, out _);
             }
             return false;
@@ -163,12 +164,11 @@ namespace VRemoteDesktop.Models
         }
         //private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
 
-        private void SocketDisposingEventHandler(object sender, EventArgs g)
+        private void SocketDisconnectedEventHandler(object sender, ClientSessionDisconnectedEventArgs g)
         {
-            var e = (SocketDisposeEventArgs)g;
-            if (sender is VClient client)
+            if (sender is ClientSession clientSession)
             {
-                ChatDisconnected?.Invoke(this, new ChatDisconnectedEventArgs(client.SocketId));
+                ChatDisconnected?.Invoke(this, new ChatDisconnectedEventArgs(clientSession.SessionId));
             }
         }
         public void Dispose()

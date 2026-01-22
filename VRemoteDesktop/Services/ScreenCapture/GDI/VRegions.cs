@@ -17,6 +17,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 {
     public class VRegions : VScreen
     {
+        private int _disposed = 0;
         private readonly object _lock = new object();
         private int _bytePerPixel;
         private int _width;
@@ -236,6 +237,23 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         }
         public override void Dispose(bool disposing)
         {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
+
+            //Clear DIBSection resources
+            if (_hBitmap != IntPtr.Zero)
+                CaptureApi.DeleteObject(_hBitmap);
+
+            if (_memDC != IntPtr.Zero)
+                CaptureApi.ReleaseDC(IntPtr.Zero, _memDC);
+
+            _bits = IntPtr.Zero;
+
+            if (disposing)
+            {
+               
+            }
         }
     }
 }

@@ -7,6 +7,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Services.VTCPClient.Events;
 
@@ -17,7 +18,7 @@ namespace VRemoteDesktop.Services.SessionManagement
         private bool _disposed = false;
         private readonly ConcurrentDictionary<string, ClientSession> _sessions;
         public EventHandler<RemoteDesktopEventArgs> SessionDataReceived;
-        public EventHandler<EventArgs> SessionClosed;
+        public EventHandler<ClientSessionDisconnectedEventArgs> SessionClosed;
         public SessionManager()
         {
             _sessions = new ConcurrentDictionary<string, ClientSession>();
@@ -47,21 +48,17 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
         }
 
-        private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
-        {
-            SessionClosed?.Invoke(sender, e);
-        }
-
-
         private void OnSessionDataReceivedEvetHandler(object sender, RemoteDesktopEventArgs e)
         {
             if (SessionDataReceived != null)
                 SessionDataReceived.Invoke(sender, new RemoteDesktopEventArgs(type: e.Type, data: e.Data));
         }
 
-        private void OnSessionDisconnectedEventHandler(object sender, EventArgs e)
+        private void OnSessionDisconnectedEventHandler(object sender, ClientSessionDisconnectedEventArgs e)
         {
-            throw new NotImplementedException();
+            var handler = SessionClosed;
+            if (handler != null)
+                handler.Invoke(sender, e);
         }
         public bool Remove(string id)
         {

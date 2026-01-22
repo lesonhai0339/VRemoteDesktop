@@ -67,7 +67,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
             _globalHook.KeyboardReceived += KeyboardEventHandler;
             _sessionManager.SessionDataReceived += EventReceived;
-            _sessionManager.SessionClosed += VClientClosedEventHandler;
+            _sessionManager.SessionClosed += ClientSessionClosedEventHandler;
             StartKeyboardListener();  
         }
 
@@ -763,6 +763,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             //}
             ////SendScreen(client, SocketDataType.ScreenSend, screen, length);
         }
+        /// <summary>
+        /// Error, Note
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        /// <exception cref="InvalidOperationException"></exception>
         private void ClientDisconnected(object sender, EventArgs e)
         {
             var clientSession = sender as ClientSession;
@@ -780,7 +786,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(ev.Type, false, ev.Data));
         }
-        private void VClientClosedEventHandler(object sender, EventArgs e)
+        private void ClientSessionClosedEventHandler(object sender, EventArgs e)
         {
             var clientSession = sender as ClientSession;
             if (clientSession != null)
@@ -796,6 +802,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                     _clientInfo.RemovePartner(clientSession.PartnerInfo?.Id);
                     _sessionManager.Remove(clientSession.SessionId);
+
+                    //Unregister received capture
+                    if(clientSession.SessionType == VClientType.Receiver)
+                    {
+                        _screenSender.RemoveSessionBuffer(clientSession.SessionId);
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -825,7 +837,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 if (_sessionManager != null)
                 {
                     _sessionManager.SessionDataReceived -= EventReceived;
-                    _sessionManager.SessionClosed -= VClientClosedEventHandler;
+                    _sessionManager.SessionClosed -= ClientSessionClosedEventHandler;
                 }
 
                 _globalHook?.Dispose();

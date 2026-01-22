@@ -179,9 +179,15 @@
     <Compile Include="Services\ScreenCapture\Utils\Compressor.cs" />
     <Compile Include="Services\SessionManagement\DTOs\QueueItem.cs" />
     <Compile Include="Services\SessionManagement\DTOs\ScreenDataDto.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionDisconnectedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketConnectedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDisconnectedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDisposingEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketSendCompletedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\SessionManager.cs" />
+    <Compile Include="Services\SessionManagement\ClientSocket.cs" />
     <Compile Include="Services\SystemService\GlobalHookService.cs" />
-    <Compile Include="Services\VTCPClient\Events\SocketDataReceivedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDataReceivedEventArgs.cs" />
     <Compile Include="Services\VTCPClient\TCPClient.cs" />
     <Compile Include="Services\VTCPClient\VClient.cs" />
     <Compile Include="Services\VTCPClient\VClientManager.cs" />

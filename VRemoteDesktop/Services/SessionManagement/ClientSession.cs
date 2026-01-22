@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -12,7 +14,10 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.GDI;
+using VRemoteDesktop.Services.SessionManagement;
 using VRemoteDesktop.Services.SessionManagement.DTOs;
+using VRemoteDesktop.Services.SessionManagement.Events;
+using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Services.VTCPClient.Events;
 using VRemoteDesktop.Utils;
@@ -29,7 +34,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private VClientType _sessionType;
         private bool _isHost;
         private bool _connected;
+
+        private int _sending = 0;
+        private long _lastSent = Stopwatch.GetTimestamp();
+
         private DateTimeOffset _lastPing;
+        private byte[] _bufferPool;
+        private long _lastSendTimestamp = Stopwatch.GetTimestamp();
 
 
         private ClientInfo _myInfo;
@@ -49,7 +60,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly ConcurrentQueue<QueueItem> _receiveQueue;
 
 
-        private readonly VClient _client;
+        private readonly ClientSocket _clientSocket;
         private readonly VRegions _screenRegions;
 
         private AutoResetEvent _sendWakeUp;
@@ -59,15 +70,16 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
 
         public event EventHandler<RemoteDesktopEventArgs> OnDataReceived;
-        public event EventHandler<EventArgs> OnDisconnected;
+        public event EventHandler<ClientSessionDisconnectedEventArgs> OnDisconnected;
 
         //still not implement, using after
         public event EventHandler<EventArgs> OnChatReceived;
         public event EventHandler<EventArgs> OnScreenReceived;
-        public event EventHandler<EventArgs> OnDisposing; 
-        public ClientSession(string id, VClientType type, bool isHost)
+        public ClientSession(string id, VClientType type, bool isHost, int width = 1920, int height = 1080, int bytePerPixel = 3)
         {
             if (string.IsNullOrEmpty(id)) throw new ArgumentNullException("id");
+            _lastPing = DateTimeOffset.UtcNow;
+
 
             _sessionId = id;
             _sessionType = type;
@@ -85,11 +97,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _receivedWakeUp = new AutoResetEvent(false);
             _cancelationTokenSource = new CancellationTokenSource();
 
-            _client = new VClient(id, type, isHost);
-            _screenRegions = new VRegions(1920, 1080, 3);
+            _clientSocket = new ClientSocket(id, _cancelationTokenSource.Token);
+            _screenRegions = new VRegions(width, height, bytePerPixel);
+            _bufferPool = VArrayPool.Rent(10 * 1024 * 1024);
 
 
-            //_pingTimer = new System.Threading.Timer(PingCallback, null, TimeSpan.Zero, TimeSpan.FromSeconds(10));
+            _pingTimer = new System.Threading.Timer(PingCallback, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
             _sendTask = Task.Factory.StartNew(
                     () => SenderWorker(_cancelationTokenSource.Token),
                     _cancelationTokenSource.Token,
@@ -101,10 +114,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     TaskCreationOptions.LongRunning,
                     TaskScheduler.Default);
 
-            _client.OnDataReceived += OnDataReceivedEventHandler;
+            _clientSocket.OnConnected += OnSocketConnectedEventHandler;
+            _clientSocket.OnDataReceived += OnDataReceivedEventHandler;
+            _clientSocket.OnSendCompleted += OnSendCompletedEventHandler;
+            _clientSocket.OnDisconnected += OnSocketDisconnectEventHandler ;
         }
-
-
 
         #region  Properties
         public IntPtr Image => _screenRegions.Buffer;
@@ -163,7 +177,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public bool IsHost => _isHost;
         public string SessionId => _sessionId;
         public VClientType SessionType => _sessionType;
-        public VClient Client => _client;
+        public ClientSocket Client => _clientSocket;
         public VRegions ScreenRegions => _screenRegions;
         #endregion
 
@@ -171,15 +185,19 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private void PingCallback(object obj)
         {
 
-            var elapsed = (DateTimeOffset.UtcNow - _lastPing).TotalSeconds;
-
-            if (elapsed > TIME_OUT)
+            if (IsHost)
             {
-                Dispose();
-                return;
+                var elapsed = (DateTimeOffset.UtcNow - _lastPing).TotalSeconds;
+
+                if (elapsed > TIME_OUT)
+                {
+                    Dispose();
+                    return;
+                }
+                //_client.SendPing();
+                AddWork(QueuePriority.High, new TaskObject(SocketDataType.Ping, _sessionId, new byte[0], true));
+                _lastPing = DateTimeOffset.UtcNow;
             }
-            //_client.SendPing();
-            _lastPing = DateTimeOffset.UtcNow;
         }
         private void SenderWorker(CancellationToken token)
         {
@@ -187,6 +205,21 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 try
                 {
+                    //if (Interlocked.CompareExchange(ref _sending, 0, 0) != 0)
+                    //{
+                    //    var current = Stopwatch.GetTimestamp();
+                    //    double elapsedSeconds = (double)(current - _lastSendTimestamp) / Stopwatch.Frequency;
+
+                    //    if (elapsedSeconds > 3.0)
+                    //    {
+                    //        Console.WriteLine("Regions Timeout, continue");
+                    //        Interlocked.Exchange(ref _sending, 0);
+                    //    }
+                    //    Console.WriteLine("send is busy, do nothing");
+                    //    Thread.Sleep(10);
+                    //    continue;
+                    //}
+
                     bool hasWork = false;
 
                     if (_highQueue.TryDequeue(out var highTask))
@@ -229,10 +262,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 case TaskObject taskObj:
                     if(taskObj.TaskType == SocketDataType.ScreenSend && taskObj.CapturedFrame != null)
                     {
-                        _client.SendScreen(taskObj.CapturedFrame);
+                        Send(taskObj.CapturedFrame);
                         return;
                     }
-                    _client.Send(taskObj.TaskType, taskObj.Data, taskObj.SessionId, taskObj.IsSendHeader);
+                    Send(taskObj.TaskType, taskObj.Data, taskObj.SessionId, taskObj.IsSendHeader);
                     break;
                 default:
                     break;
@@ -297,51 +330,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         break;
                         
                 }
+                Interlocked.Exchange(ref _sending, 0);
             }
 
         }
-        private void DirtyRegionSend()
-        {
-            var dirtyRegions = _screenRegions.GetData();
-            if (dirtyRegions == null) return;
-            try
-            {
-                byte[] buffer = VArrayPool.Rent((int)(dirtyRegions.Length * 1.2));
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, buffer, buffer.Length);
-                var type = SocketDataType.ScreenRegionsChangedSend;
-
-                var header = HeaderGenerate(type: type,
-                   id: this.SessionId,
-                   includeData: false,
-                   data: null,
-                   dataSize: length);
-
-                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.RegionChange, buffer, 0, length, 1);
-                Send(type, header, this.SessionId, false);
-
-                _client.SendScreen(frame);
-
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("DirtyRegionSend err: ", ex.Message);
-            }
-            finally
-            {
-                VArrayPool.Return(dirtyRegions.Buffer);
-            }
-        }
-        private void EnableRegionsSend()
-        {
-            Console.WriteLine("Enable regions changed send");
-            _screenRegions.BeginAccept();
-        }
-        private void ReadyToNextRegionSend()
-        {
-            Console.WriteLine("Finished previous dirty regions send, ready for next");
-            _screenRegions.SendCompleted();
-        }
-
 
         #endregion
 
@@ -373,17 +365,64 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public bool TryConnect(string ip, int port, int retry = 0, int timeout = 3000)
         {
-            return _client.TryConnect(ip, port, retry, timeout);
+            return _clientSocket.TryConnect(ip, port, retry, timeout);
         }
         public bool Listen()
         {
-            return _client.Listen();
+            return _clientSocket.Listen();
+        }
+        private void Send(CapturedFrame frame)
+        {
+            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
+                throw new ObjectDisposedException(this.GetType().Name);
+            try
+            {
+                Sendstate state = new Sendstate
+                {
+                    Data = frame.CompressedData,
+                    Remained = frame.CompressedDataLength,
+                    Sent = frame.CompressedDataOffset,
+                    Timeout = Environment.TickCount,
+                    CapturedFrame = frame
+                };
+                _clientSocket.Send(state);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+            }
         }
         public void Send(SocketDataType type, byte[] data, string id = null, bool sendHeader = true)
         {
-            _client.Send(type, data, id, sendHeader);
-        }
+            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
+                throw new ObjectDisposedException(this.GetType().Name);
 
+            try
+            {
+                if (type == SocketDataType.None)
+                    return;
+
+                if (sendHeader)
+                {
+                    data = HeaderGenerate(type: type, id: _sessionId, true, data);
+                }
+
+                Sendstate state = new Sendstate
+                {
+                    Data = data,
+                    Remained =  data.Length,
+                    Sent = 0,
+                    Timeout = Environment.TickCount,
+                    CapturedFrame = null,
+                };
+
+                _clientSocket.Send(state);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+            }
+        }
 
         #endregion
 
@@ -393,11 +432,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             try
             {
-                byte[] buffer = VArrayPool.Rent((int)(screen.Buffer.Length * 1.2));
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(screen.Buffer, screen.Length , buffer, buffer.Length);
+                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(screen.Buffer, screen.Length , _bufferPool, _bufferPool.Length);
                 var type = SocketDataType.ScreenSend;
 
-                ScreenToQueue(type, buffer, length);
+                ScreenToQueue(type, _bufferPool, length);
             }
             finally
             {
@@ -447,16 +485,53 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             EnableRegionsSend();
             try
             {
-                byte[] buffer = VArrayPool.Rent((int)(screenData.Length * 1.2));
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(screenData.Buffer, screenData.Length, buffer, buffer.Length);
+                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(screenData.Buffer, screenData.Length, _bufferPool, _bufferPool.Length);
                 var type = SocketDataType.ScreenSend;
-                ScreenToQueue(type, buffer, length);
+                ScreenToQueue(type, _bufferPool, length);
             }
             finally
             {
                 VArrayPool.Return(screenData.Buffer);
             }
 
+        }
+        private void DirtyRegionSend()
+        {
+            var dirtyRegions = _screenRegions.GetData();
+            if (dirtyRegions == null) return;
+            try
+            {
+                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, _bufferPool, _bufferPool.Length);
+                var type = SocketDataType.ScreenRegionsChangedSend;
+
+                var header = HeaderGenerate(type: type,
+                   id: this.SessionId,
+                   includeData: false,
+                   data: null,
+                   dataSize: length);
+
+                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.RegionChange, _bufferPool, 0, length, 1);
+                Send(type, header, this.SessionId, false);
+
+                Send(frame);
+
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("DirtyRegionSend err: ", ex.Message);
+            }
+            finally
+            {
+                VArrayPool.Return(dirtyRegions.Buffer);
+            }
+        }
+        private void EnableRegionsSend()
+        {
+            _screenRegions.BeginAccept();
+        }
+        private void ReadyToNextRegionSend()
+        {
+            _screenRegions.SendCompleted();
         }
         public void AddRegions(RegionFrame frames)
         {
@@ -592,9 +667,26 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #endregion
 
         #region Events
+        private void OnSocketConnectedEventHandler(object sender, SocketConnectedEventArgs e)
+        {
+            if (OnDataReceived != null)
+                OnDataReceived.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, e.Connected));
+        }
         private void OnDataReceivedEventHandler(object sender, SocketDataReceivedEventArgs e)
         {
             _receiveQueue.Enqueue(new QueueItem(e));
+        }
+        private void OnSendCompletedEventHandler(object sender, SocketSendCompletedEventArgs e)
+        {
+            //Console.WriteLine("Send Completed");
+        }
+        private void OnSocketDisconnectEventHandler(object sender, SocketDisconnectedEventArgs e)
+        {
+            var handler = OnDisconnected;
+            if (handler != null)
+                handler.Invoke(this, new ClientSessionDisconnectedEventArgs(_sessionId));
+
+            this.Dispose();
         }
         #endregion
 
@@ -608,24 +700,34 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
                 return;
 
-            Interlocked.Exchange(ref _disposed, 1);
-
-            if (disposing)
+            try
             {
-                if (_cancelationTokenSource != null)
-                    _cancelationTokenSource.Cancel();
-
-                if (_pingTimer != null)
+                if (disposing)
                 {
-                    _pingTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                    _pingTimer.Dispose();
+                    if (_clientSocket != null)
+                        _clientSocket.Dispose();
+
+                    if (_screenRegions != null)
+                        _screenRegions.Dispose();
+
+                    if (_cancelationTokenSource != null)
+                        _cancelationTokenSource.Cancel();
+
+                    if (_pingTimer != null)
+                    {
+                        _pingTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                        _pingTimer.Dispose();
+                    }
                 }
-
-                if (_client != null)
-                    _client.Dispose();
-
-                if (_screenRegions != null)
-                    _screenRegions.Dispose();
+            }
+            finally
+            {
+                var buf = _bufferPool;
+                if (buf != null)
+                {
+                    _bufferPool = null;
+                    VArrayPool.Return(buf); 
+                }
             }
         }
         ~ClientSession()
