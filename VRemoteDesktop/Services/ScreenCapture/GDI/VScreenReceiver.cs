@@ -168,19 +168,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     }
                 }
             }
-#if DEBUG
-            //Test11(GetStride1(_width, BYTE_PER_PIXEL), _bits);
-#endif
             return rect;
         }
-#if DEBUG
-        private void Test11(int stride, IntPtr source, bool isFullScreen = false)
-        {
-            string name = isFullScreen ? "FullScreen" : "RegionChange";
-            _bitmap.Save($"D:\\VinhHy\\Images\\08_01_2025\\{name}_{count}.png", ImageFormat.Png);
-            count++;
-        }
-#endif
         public override void Dispose(bool disposing)
         {
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)

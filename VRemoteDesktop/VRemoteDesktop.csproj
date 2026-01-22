@@ -104,10 +104,8 @@
     <Compile Include="Layouts\VDisplay.Designer.cs">
       <DependentUpon>VDisplay.cs</DependentUpon>
     </Compile>
-    <Compile Include="Services\ScreenCapture\DTOs\SceenWarpper.cs" />
     <Compile Include="Services\SessionManagement\ClientSession.cs" />
     <Content Include="Services\RemoteDesktop\RemoteDesktopService - Copy.txt" />
-    <Compile Include="Services\ScreenCapture\DTOs\FullScreenFrame.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\RegionFrame.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\ScreenTask.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
@@ -163,10 +161,8 @@
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
     <Compile Include="Services\ScreenCapture\Enums\VScreenType.cs" />
-    <Compile Include="Services\ScreenCapture\Events\FullScreenFrameEventArgs.cs" />
     <Compile Include="Services\ScreenCapture\Events\FrameEventArgs.cs" />
-    <Compile Include="Services\ScreenCapture\Events\VScreenSenderEventArgs.cs" />
-    <Compile Include="Services\ScreenCapture\GDI\CaptureFrame.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\CaptureFrame.cs" />
     <Compile Include="Services\ScreenCapture\GDI\VRegions.cs" />
     <Compile Include="Services\ScreenCapture\Interop\CaptureApi.cs" />
     <Compile Include="Services\ScreenCapture\ScreenCapture1.cs" />
