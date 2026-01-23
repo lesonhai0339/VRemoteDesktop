@@ -42,5 +42,9 @@ namespace VRemoteDesktop.Models
         RemoteControlConnectFailed = 0x92, //P2PConnectFailed
         RemoteControlAcceptedRequestToConnect = 0x93, //P2PAcceptConnect
         RemoteControlRefusedRequestToConnect = 0x94, //P2PRejectConnect
+
+
+        //New
+        GetPartnerInfo = 200
     }
 }

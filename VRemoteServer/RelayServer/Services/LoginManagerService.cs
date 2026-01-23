@@ -17,6 +17,7 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
+        void InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id);
         int NumberOfConnections { get; }
         void P2PConnectFailed(SocketConnection connection);
         void Send(SocketConnection connection, byte[] data);
@@ -28,8 +29,7 @@ namespace VRemoteServer.RelayServer.Services
         /// <param name="connection"></param>
         void Ping(SocketConnection connection);
         bool Add(SocketConnection connection, byte[] data, out ConnectionInfo connectionInfo);
-        void LoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo);
-        void LoginFailed(SocketConnection connection);
+        void LoginResponse(SocketConnection connection, ConnectionInfo connectionInfo, bool succeed);
         void RemoveLogin(SocketConnection connection);
         bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo);
         bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo);
@@ -59,6 +59,21 @@ namespace VRemoteServer.RelayServer.Services
         #region Methods
         public int NumberOfConnections => _loginConnectionManager.Count;
 
+
+        public void InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id)
+        {
+            string controlledData = $"{id}|{controller.Port}";
+            var controlledPacket = PacketFactory.CreatePacket(SocketDataType.RequestRemoteConnect, data: Encoding.ASCII.StringToByteArray(controlledData));
+            bool respond = SendWithRespond(controlled.SocketConnection, controlledPacket);
+
+            if (respond)
+            {
+                string controllerData = $"{id}|{controlled.PublicIP}|{controlled.Ip}|{controller.Port}";
+                byte[] controllerPacket = Encoding.ASCII.StringToByteArray(controllerData);
+                var byteArray = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoRespond, data: controllerPacket);
+                SendWithRespond(controller.SocketConnection, byteArray);
+            }
+        }
         public void InitServer()
         {
             _loginServer.Init();
@@ -90,7 +105,7 @@ namespace VRemoteServer.RelayServer.Services
 
         public bool GetFirst(string id, string password, out ConnectionInfo connectionInfo)
         {
-            connectionInfo = _loginConnectionManager.GetFirst(c => c.Id == id && c.Password == password);
+            connectionInfo = _loginConnectionManager.GetFirst(c => c.Id == id && (c.Password == password || c.DefaultPassword == password));
             return connectionInfo != null;
         }
 
@@ -180,11 +195,14 @@ namespace VRemoteServer.RelayServer.Services
             return false;
         }
 
-        public void LoginSucceeded(SocketConnection connection, ConnectionInfo connectionInfo)
+        public void LoginResponse(SocketConnection connection, ConnectionInfo connectionInfo, bool succeed)
         {
             try
             {
-                var packet = PacketFactory.CreatePacket(SocketDataType.Login, Encoding.ASCII, connectionInfo.ToNetworkString(), connectionInfo.Id);
+                //More simple
+                string response = $"{(succeed ? "1" : "0")}|{connectionInfo.PublicIP}";
+                var packet = PacketFactory.CreatePacket(SocketDataType.Login, Encoding.ASCII, response, connectionInfo.Id);
+                //var packet = PacketFactory.CreatePacket(SocketDataType.Login, Encoding.ASCII, connectionInfo.ToNetworkString(), connectionInfo.Id);
                 Send(connection, packet);
             }
             catch (Exception ex)
@@ -192,19 +210,6 @@ namespace VRemoteServer.RelayServer.Services
                 Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
             }
         }
-
-        public void LoginFailed(SocketConnection connection)
-        {
-            try
-            {
-                Send(connection, SocketDataType.LoginFailed);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
-            }
-        }
-
         public void Send(SocketConnection connection, SocketDataType type)
         {
             try

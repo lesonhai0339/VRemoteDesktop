@@ -7,6 +7,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.SessionManagement.Enums;
 using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Services.VTCPClient.Events;
@@ -25,7 +26,14 @@ namespace VRemoteDesktop.Services.SessionManagement
         }
         public ConcurrentDictionary<string, ClientSession> Connections => _sessions;
         #region Manager
-        public bool HasClientOfType(VClientType type)
+        public bool Find(string id)
+        {
+            return _sessions.Values.Any(session
+                => session.PartnerInfo != null 
+                && !string.IsNullOrEmpty(session.PartnerInfo.Id) 
+                && session.PartnerInfo.Id.Equals(id, StringComparison.OrdinalIgnoreCase));    
+        }
+        public bool HasClientOfType(ClientType type)
         {
             foreach (var connection in _sessions)
             {
@@ -93,28 +101,28 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
             throw new InvalidOperationException(string.Format("Connection with Id:{0} does not exists", id));
         }
-        public ClientSession New(string id, VClientType type, bool host)
+        public ClientSession New(string id, ClientType type)
         {
             if (_sessions.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            ClientSession session = new ClientSession(id, type, host);
+            ClientSession session = new ClientSession(id, type);
             Add(id, session);
             return session;
         }
-        public ClientSession AddNewAndListen(string id, VClientType type, bool host)
+        public ClientSession AddNewAndListen(string id, ClientType type, int port)
         {
             if (_sessions.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            ClientSession client = new ClientSession(id, type, host);
+            ClientSession client = new ClientSession(id, type);
             Add(id, client);
 
-            bool result = client.Listen();
+            bool result = client.Listen(port);
             if (!result)
             {
                 Remove(id);
@@ -124,9 +132,9 @@ namespace VRemoteDesktop.Services.SessionManagement
         }
         #endregion
         #region Dispatch
-        public void AddScreen(VClientType type, RegionFrame screen)
+        public void AddScreen(ClientType type, RegionFrame screen)
         {
-            if (type == VClientType.None) return;
+            if (type == ClientType.None) return;
             if (screen == null)
                 throw new ArgumentNullException("Full screen cannot be null");
 
@@ -140,9 +148,9 @@ namespace VRemoteDesktop.Services.SessionManagement
         {
             session.AddScreen(screen);
         }
-        public void AddDirtyRegions(VClientType sessionType, RegionFrame frame)
+        public void AddDirtyRegions(ClientType sessionType, RegionFrame frame)
         {
-            if (sessionType == VClientType.None) return;
+            if (sessionType == ClientType.None) return;
             if (frame == null) throw new ArgumentNullException("Dirty region cannot be null");
 
             var sessions = _sessions.Where(x => x.Value.SessionType == sessionType && x.Value.AcceptScreen).Select(x => x.Value).ToList();

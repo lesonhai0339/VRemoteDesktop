@@ -1,32 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
-using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
-using System.Threading.Tasks;
-using VRemoteServer.RelayServer.Helpers;
-using VRemoteServer.RelayServer.Networking;
+using VRemoteDesktop.Models;
 
-namespace VRemoteServer.RelayServer.DTOs
+namespace VRemoteDesktop.Services.Machine.DTOs
 {
     [DataContract]
-    public class ConnectionInfo: BaseClass
+    public class MachineInfo : BaseClass
     {
-        public ConnectionInfo() { }
-        public ConnectionInfo(string id, 
-            string password, 
+        public MachineInfo() { }
+        public MachineInfo(
+            string id,
+            string password,
             string defaultPassword,
-            string computerName, 
-            int width, 
-            int height, 
-            string majorVersion, 
-            string minorVersion, 
-            string ip, 
-            string publicIP, 
-            string port,
-            SocketConnection socketConnection)
+            string computerName,
+            int width,
+            int height,
+            string majorVersion,
+            string minorVersion,
+            string ip,
+            string publicIP,
+            string port)
         {
             Id = id;
             Password = password;
@@ -39,23 +35,7 @@ namespace VRemoteServer.RelayServer.DTOs
             Ip = ip;
             PublicIP = publicIP;
             Port = port;
-            SocketConnection = socketConnection;
         }
-        public void SetPublicIP(string publicIp)
-        {
-            if (string.IsNullOrEmpty(publicIp))
-                throw new ArgumentNullException(nameof(publicIp));
-
-            PublicIP = publicIp;
-        }
-        public void SetSocketConnection(SocketConnection sckConnection)
-        {
-            if (sckConnection == null)
-                throw new ArgumentNullException(nameof(sckConnection));
-
-            SocketConnection = sckConnection;
-        }
-
         [DataMember(Order = 0)] public string Id { get; private set; }
         [DataMember(Order = 1)] public string Password { get; private set; }
         [DataMember(Order = 2)] public string DefaultPassword { get; private set; }
@@ -67,6 +47,27 @@ namespace VRemoteServer.RelayServer.DTOs
         [DataMember(Order = 8)] public string Ip { get; private set; }
         [DataMember(Order = 9)] public string Port { get; private set; }
         [DataMember(Order = 10)] public string PublicIP { get; private set; }
-        [NotMapped] public SocketConnection SocketConnection { get; private set; }
+        public void UpdateLocalIp(string localIp)
+        {
+            if (!string.IsNullOrEmpty(localIp))
+                throw new ArgumentNullException("LocalIp cannot be null or empty");
+
+            Ip = localIp;
+        }
+
+        public void UpdatePublicIp(string publicIp)
+        {
+            if (!string.IsNullOrEmpty(publicIp))
+                throw new ArgumentNullException("PublicIp cannot be null or empty");
+
+            PublicIP = publicIp;    
+        }
+        public void UpdatePort(string port)
+        {
+            if (!string.IsNullOrEmpty(port))
+                throw new ArgumentNullException("Port cannot be null or empty");
+
+            Port = port;
+        }
     }
 }

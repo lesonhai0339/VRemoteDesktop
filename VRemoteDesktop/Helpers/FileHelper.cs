@@ -414,6 +414,26 @@ namespace VRemoteDesktop.Helpers
                 }
             }
         }
+        public static void WriteToFile(string data, string filePath, bool append = true)
+        {
+            string dir = Path.GetDirectoryName(filePath);
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            using(StreamWriter writer = new StreamWriter(filePath, append, Encoding.UTF8))
+            {
+                writer.WriteLine(data);
+            }
+        }
+        public static IEnumerable<string> ReadFromFile(string filePath)
+        {
+            if (!File.Exists(filePath))
+                return Enumerable.Empty<string>();
+
+            return File.ReadLines(filePath, Encoding.UTF8);
+        }
         public static bool CloseStream(string filePath)
         {
             if(string.IsNullOrWhiteSpace(filePath))

@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -109,6 +110,9 @@ namespace VRemoteServer.RelayServer.Services
                     case SocketDataType.Disconnect:
                         LoginUserDisconnected(connection);
                         break;
+                    case SocketDataType.GetPartnerInfo:
+                        GetPartnerInfo(connection, e.Data);
+                        break;
                     case SocketDataType.P2PConnect:
                         P2PLogin(sender, e.Data);
                         break;
@@ -118,6 +122,36 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
+        private void GetPartnerInfo(SocketConnection connection, byte[] data)
+        {
+            if (connection == null)
+                return;
+            try
+            {
+                string[] partnerInfo = Encoding.ASCII.ByteArrayToStringWithSeparator(data, DefaultValue.Common.SEPARATOR);
+                string partnerId = partnerInfo[0];
+                string partnerPassword = partnerInfo[1];
+                if(!string.IsNullOrEmpty(partnerId) && !string.IsNullOrEmpty(partnerPassword))
+                {
+                    if (_loginManager.GetFirst(partnerId, partnerPassword, out var partner))
+                    {
+                        if (_loginManager.GetConnectionsInfoBySocketConnection(connection, out var me))
+                        {
+                            if (_remoteControlManager.CreateRoomId(out string id))
+                            {
+                                _loginManager.InitRemoteConnection(me.First(), partner, id);
+                                return;
+                            }
+                        }
+                    }
+                } 
+                _loginManager.LoginResponse(connection, null, false);
+            }
+            catch (Exception ex)
+            {
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+            }
+        }
         private bool P2PLogin(object sender, byte[] data)
         {
             var connection = sender as SocketConnection;
@@ -180,11 +214,11 @@ namespace VRemoteServer.RelayServer.Services
             {
                 if (_loginManager.Add(connection, data, out ConnectionInfo connectionInfo))
                 {
-                    _loginManager.LoginSucceeded(connection, connectionInfo);
+                    _loginManager.LoginResponse(connection, connectionInfo, true);
                 }
                 else
                 {
-                    _loginManager.LoginFailed(connection);
+                    _loginManager.LoginResponse(connection, null, false);
                 }
             }
             catch (Exception ex)

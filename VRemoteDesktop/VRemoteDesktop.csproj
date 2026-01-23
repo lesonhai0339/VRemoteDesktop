@@ -45,6 +45,7 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Management" />
     <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.ServiceModel" />
     <Reference Include="System.Xml.Linq" />
@@ -98,12 +99,19 @@
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
     <Compile Include="Events\SocketDisposeEventArgs.cs" />
     <Compile Include="Events\UserChatControlEventArgs.cs" />
+    <Compile Include="Helpers\Crypto.cs" />
     <Compile Include="Layouts\VDisplay.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="Layouts\VDisplay.Designer.cs">
       <DependentUpon>VDisplay.cs</DependentUpon>
     </Compile>
+    <Compile Include="Services\Machine\DTOs\MachineInfo.cs" />
+    <Compile Include="Services\Machine\MachineProfile.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteService.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteService.ServerSocket.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteService.ClientSocket.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteService.System.cs" />
     <Compile Include="Services\SessionManagement\ClientSession.cs" />
     <Content Include="Services\RemoteDesktop\RemoteDesktopService - Copy.txt" />
     <Compile Include="Services\ScreenCapture\DTOs\RegionFrame.cs" />
@@ -175,6 +183,7 @@
     <Compile Include="Services\ScreenCapture\Utils\Compressor.cs" />
     <Compile Include="Services\SessionManagement\DTOs\QueueItem.cs" />
     <Compile Include="Services\SessionManagement\DTOs\ScreenDataDto.cs" />
+    <Compile Include="Services\SessionManagement\Enums\ClientType.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionDisconnectedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketConnectedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDisconnectedEventArgs.cs" />
@@ -254,6 +263,7 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="Services\RemoteDesktop\RemoteService.Hook.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="ChatData\" />

@@ -16,6 +16,7 @@ using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Services.SessionManagement;
 using VRemoteDesktop.Services.SessionManagement.DTOs;
+using VRemoteDesktop.Services.SessionManagement.Enums;
 using VRemoteDesktop.Services.SessionManagement.Events;
 using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 using VRemoteDesktop.Services.VTCPClient;
@@ -31,7 +32,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private const int TIME_OUT = 30;
         private int _disposed;
         private string _sessionId;
-        private VClientType _sessionType;
+        private ClientType _sessionType;
         private bool _isHost;
         private bool _connected;
 
@@ -75,7 +76,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         //still not implement, using after
         public event EventHandler<EventArgs> OnChatReceived;
         public event EventHandler<EventArgs> OnScreenReceived;
-        public ClientSession(string id, VClientType type, bool isHost, int width = 1920, int height = 1080, int bytePerPixel = 3)
+        public ClientSession(string id, ClientType type, int width = 1920, int height = 1080, int bytePerPixel = 3)
         {
             if (string.IsNullOrEmpty(id)) throw new ArgumentNullException("id");
             _lastPing = DateTimeOffset.UtcNow;
@@ -83,7 +84,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             _sessionId = id;
             _sessionType = type;
-            _isHost = isHost;
             _highQueue = new ConcurrentQueue<QueueItem>();
             _mediumQueue = new ConcurrentQueue<QueueItem>();
 
@@ -103,7 +103,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _bufferPool = VArrayPool.Rent(10 * 1024 * 1024);
 
 
-            _pingTimer = new System.Threading.Timer(PingCallback, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
             _sendTask = Task.Factory.StartNew(
                     () => SenderWorker(_cancelationTokenSource.Token),
                     _cancelationTokenSource.Token,
@@ -119,6 +118,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _clientSocket.OnDataReceived += OnDataReceivedEventHandler;
             _clientSocket.OnSendCompleted += OnSendCompletedEventHandler;
             _clientSocket.OnDisconnected += OnSocketDisconnectEventHandler ;
+
+
+            //use for server socket
+            if(_sessionType == ClientType.System)
+            {
+                _pingTimer = new System.Threading.Timer(PingCallback, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            }
         }
 
         #region  Properties
@@ -177,7 +183,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public bool IsHost => _isHost;
         public string SessionId => _sessionId;
-        public VClientType SessionType => _sessionType;
+        public ClientType SessionType => _sessionType;
         public ClientSocket Client => _clientSocket;
         public VRegions ScreenRegions => _screenRegions;
         #endregion
@@ -368,7 +374,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             return _clientSocket.TryConnect(ip, port, retry, timeout);
         }
-        public bool Listen()
+        public bool Listen(int port)
         {
             return _clientSocket.Listen();
         }
@@ -428,21 +434,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #endregion
 
         #region ScreenRegion
-        public void AddScreen(FullScreenFrame screen)
-        {
-
-            try
-            {
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(screen.Buffer, screen.Length , _bufferPool, _bufferPool.Length);
-                var type = SocketDataType.ScreenSend;
-
-                ScreenToQueue(type, _bufferPool, length);
-            }
-            finally
-            {
-                screen.DeRef();
-            }
-        }
         private void ScreenToQueue(SocketDataType type, byte[] buffer, int length)
         {
             var header = HeaderGenerate(type: type,

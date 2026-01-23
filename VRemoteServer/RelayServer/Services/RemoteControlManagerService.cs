@@ -1,5 +1,6 @@
 ﻿using Serilog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -18,6 +19,7 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface IRemoteControlManagerService
     {
+        bool CreateRoomId(out string id);
         SocketConnection GetPartner(SocketConnection me);
         bool GetPartner(SocketConnection me, out SocketConnection partner);
         bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
@@ -37,9 +39,14 @@ namespace VRemoteServer.RelayServer.Services
     }
     public class RemoteControlManagerService : IRemoteControlManagerService, IDisposable
     {
+        private const int MAX_RETRY = 3;
+        private const int TIMEOUT = 300;
         private bool _disposed;
+        private Task _timeoutTask;
+        private readonly ConcurrentDictionary<string , long> _acceptId = new();
         private readonly IRemoteControlServer _remoteControlServer;
         private readonly IRemoteControlManager _remoteConnectionManager;
+        private CancellationTokenSource _cancel = new();
         public event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
         public RemoteControlManagerService(IRemoteControlServer remoteControlServer, IRemoteControlManager remoteConnectionManager)
         {
@@ -50,6 +57,23 @@ namespace VRemoteServer.RelayServer.Services
             //Register events
             _remoteControlServer.ServerEvent += RemoteControlEventHandler;
             _remoteControlServer.ServerErrorEvent += ServerErrorEventHandler;
+            _timeoutTask = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!_cancel.IsCancellationRequested)
+                    {
+                        var now = Environment.TickCount64;
+                        var timeoutIds = _acceptId.Where(x => (now - x.Value) > TIMEOUT * 1000).Select(x => x.Key).ToList();
+                        foreach (string timeoutId in timeoutIds)
+                        {
+                            _acceptId.TryRemove(timeoutId, out _);
+                        }
+                        await Task.Delay(3000);
+                    }
+                }
+                catch { }
+            }, _cancel.Token);
 
         }
         #region Properties
@@ -97,6 +121,24 @@ namespace VRemoteServer.RelayServer.Services
         public bool RemoveRemoteConnection(string id)
             => _remoteConnectionManager.Remove(id);
 
+        public bool CreateRoomId(out string id)
+        {
+            int retry = 0;
+            string tempId = RandomString.RandomStringNumber(8);
+            while (_acceptId.ContainsKey(tempId) && retry < MAX_RETRY)
+            {
+                tempId = RandomString.RandomStringNumber(8);
+                retry++;
+            }
+            if (_acceptId.TryAdd(tempId, Environment.TickCount64))
+            {
+                id = tempId;
+                return true;
+            }
+
+            id = null;
+            return false;
+        }
         private void ParseRequestToConnectHeader(SocketConnection connection, int dataOffset, int dataLength)
         {
             try
@@ -191,6 +233,8 @@ namespace VRemoteServer.RelayServer.Services
             if (!disposing || _disposed) return;
             try
             {
+                _cancel.Cancel();
+
                 if(_remoteControlServer != null)
                 {
                     _remoteControlServer.ServerEvent -= RemoteControlEventHandler;
