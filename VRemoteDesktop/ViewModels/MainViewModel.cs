@@ -1,4 +1,4 @@
-﻿using System;
+﻿/*using System;
 using System.ComponentModel;
 using System.Threading;
 using System.Windows.Forms;
@@ -49,7 +49,7 @@ namespace VRemoteDesktop.ViewModels
                 MyPassword = myInfo.Password;
 
                 _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
-                _host = _remoteDesktopService.NewClient(_id, VClientType.None, true);
+                _host = _remoteDesktopService.NewClient(_id, Services.SessionManagement.Enums.ClientType.System);
             }
             catch
             {
@@ -110,7 +110,7 @@ namespace VRemoteDesktop.ViewModels
                 Log.ForContext("FileName", nameof(Connect)).Error("Error at Connect");
                 return;
             }
-            var client1 = _remoteDesktopService.NewClient(_id, VClientType.None, true);
+            var client1 = _remoteDesktopService.NewClient(_id, Services.SessionManagement.Enums.ClientType.System);
             if (client1 == null)
             {
                 ShowMessage("Xảy ra lỗi vui lòng đóng FormRemote và mở lại");
@@ -234,3 +234,4 @@ namespace VRemoteDesktop.ViewModels
         }
     }
 }
+*/

@@ -18,7 +18,7 @@ namespace VRemoteDesktop.Services.SessionManagement
     {
         private bool _disposed = false;
         private readonly ConcurrentDictionary<string, ClientSession> _sessions;
-        public EventHandler<RemoteDesktopEventArgs> SessionDataReceived;
+        public EventHandler<ClientSessionDataReceivedEventArgs> SessionDataReceived;
         public EventHandler<ClientSessionDisconnectedEventArgs> SessionClosed;
         public SessionManager()
         {
@@ -56,10 +56,10 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
         }
 
-        private void OnSessionDataReceivedEvetHandler(object sender, RemoteDesktopEventArgs e)
+        private void OnSessionDataReceivedEvetHandler(object sender, ClientSessionDataReceivedEventArgs e)
         {
             if (SessionDataReceived != null)
-                SessionDataReceived.Invoke(sender, new RemoteDesktopEventArgs(type: e.Type, data: e.Data));
+                SessionDataReceived.Invoke(sender, new ClientSessionDataReceivedEventArgs(e.SessionId, type: e.Type, data: e.Data, e.IsSuccess));
         }
 
         private void OnSessionDisconnectedEventHandler(object sender, ClientSessionDisconnectedEventArgs e)

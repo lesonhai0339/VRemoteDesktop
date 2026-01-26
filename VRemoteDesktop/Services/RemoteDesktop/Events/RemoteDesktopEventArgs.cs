@@ -3,19 +3,20 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Services.RemoteDesktop.Enums;
 
 namespace VRemoteDesktop.Events
 {
     public class RemoteDesktopEventArgs:  EventArgs
     {
-        public RemoteDesktopEventArgs(SocketDataType type, bool flag = true, byte[] data= null)
+        public RemoteDesktopEventArgs(ResponseType type, bool flag = true, byte[] data= null, string message = "")
         {
             Type = type;
-            Flag = flag;
             Data = data;
+            Message = message;
         }
-        public SocketDataType Type { get; set; }
-        public bool Flag { get; set; }
+        public ResponseType Type { get; set; }
         public byte[] Data { get; set; }
+        public string Message { get; set; }
     }
 }

@@ -5,11 +5,21 @@ using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
 using VRemoteDesktop.Utils;
+using Newtonsoft.Json;
+using System.Runtime.CompilerServices;
 
 namespace VRemoteDesktop.Models
 {
     public abstract class BaseClass
     {
+        public string ObjectToJsonString()
+        {
+            return JsonConvert.SerializeObject(this);
+        }
+        public T JsonStringToObject<T>(string json)
+        {
+            return JsonConvert.DeserializeObject<T>(json);
+        }
         public string ToNetworkString()
         {
             StringBuilder sb = new StringBuilder();

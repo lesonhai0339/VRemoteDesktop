@@ -169,7 +169,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             else
             {
-                KeyboardEvent?.Invoke(sender, e);
+                OnSessionKeyboard?.Invoke(sender, e);
             }
         }
         #endregion

@@ -45,6 +45,10 @@ namespace VRemoteDesktop.Models
 
 
         //New
-        GetPartnerInfo = 200
+        GetPartnerInfo = 200,
+        GetPartnerInfoSuccess = 201,
+        GetPartnerInfoFailed = 202,
+        RequestRemoteConnect = 203,
+        LoginResponse = 204,
     }
 }

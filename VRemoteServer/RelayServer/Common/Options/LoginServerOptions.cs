@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace VRemoteServer.RelayServer.DTOs
+namespace VRemoteServer.RelayServer.Common.Options
 {
     public class LoginServerOptions
     {

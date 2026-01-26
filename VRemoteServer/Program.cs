@@ -9,8 +9,8 @@ using VRemoteServer.RelayServer.Networking;
 using VRemoteServer.RelayServer.Services;
 using VRemoteServer.Utils;
 using Microsoft.Extensions.Configuration;
-using VRemoteServer.RelayServer.DTOs;
 using System.Threading;
+using VRemoteServer.RelayServer.Common.Options;
 
 
 namespace VRemoteServer

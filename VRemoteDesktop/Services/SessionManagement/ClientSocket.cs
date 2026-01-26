@@ -121,9 +121,9 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
             return false;
         }
-        public bool Listen()
+        public bool Listen(int port, int timeout)
         {
-            EndPoint endpoint = new IPEndPoint(IPAddress.Any, 2399);
+            EndPoint endpoint = new IPEndPoint(IPAddress.Any, port);
 
             if (Socket == null || !Socket.Connected)
             {
@@ -135,7 +135,7 @@ namespace VRemoteDesktop.Services.SessionManagement
             _socket.Bind(endpoint);
             _socket.Listen(1);
             _socket.BeginAccept(ListenCallback, _socket);
-            bool flag = _sckConnect.WaitOne(3000);
+            bool flag = _sckConnect.WaitOne(timeout);
             return flag;
         }
         private void ListenCallback(IAsyncResult ar)

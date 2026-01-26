@@ -31,7 +31,7 @@ namespace VRemoteDesktop.Services.Client
         private const string defaultPasswordFileName = "ps.txt";
 
         public MachineInfo _machineInfo;
-        public Rectangle Bounds => Bounds();
+        public Rectangle Bounds => GetBounds();
         public MachineProfile()
         {
             _machineInfo = InitializeMachineInfo();
@@ -47,7 +47,7 @@ namespace VRemoteDesktop.Services.Client
 
             string computerName = MachineName();
 
-            var bounds = Bounds();
+            var bounds = GetBounds();
             var width = bounds.Width;
             var height = bounds.Height;
 
@@ -124,7 +124,7 @@ namespace VRemoteDesktop.Services.Client
         {
             return Environment.MachineName;
         }
-        public Rectangle Bounds()
+        public Rectangle GetBounds()
         {
             return Screen.PrimaryScreen.Bounds;
         }

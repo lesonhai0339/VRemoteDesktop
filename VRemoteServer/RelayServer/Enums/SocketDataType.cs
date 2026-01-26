@@ -46,9 +46,10 @@ namespace VRemoteServer.RelayServer.Enums
         RemoteControlRefusedRequestToConnect = 0x94, //P2PRejectConnect
 
         GetPartnerInfo = 200,
-        GetPartnerInfoRespond = 201,
-        RequestRemoteConnect = 202,
-
+        GetPartnerInfoSuccess = 201,
+        GetPartnerInfoFailed = 202,
+        RequestRemoteConnect = 203,
+        LoginResponse = 204,
 
     }
 }

@@ -67,9 +67,8 @@ namespace VRemoteServer.RelayServer.Services
                 if (socketConnection == null)
                     return false;
 
-                connectionInfo = new ConnectionInfo();
-                bool parseRespond = connectionInfo.TryParseDataWithSeparator(data, Encoding.ASCII, DefaultValue.Common.SEPARATOR);
-                if (!parseRespond)
+                connectionInfo = new ConnectionInfo().JsonStringToObject<ConnectionInfo>(data, Encoding.ASCII);
+                if (connectionInfo == null)
                 {
                     return false;
                 }

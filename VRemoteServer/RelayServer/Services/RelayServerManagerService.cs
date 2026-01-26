@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
@@ -13,6 +14,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using VRemoteServer.Models;
 using VRemoteServer.RelayServer.DTOs;
+using VRemoteServer.RelayServer.DTOs.Requests;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
@@ -128,24 +130,26 @@ namespace VRemoteServer.RelayServer.Services
                 return;
             try
             {
-                string[] partnerInfo = Encoding.ASCII.ByteArrayToStringWithSeparator(data, DefaultValue.Common.SEPARATOR);
-                string partnerId = partnerInfo[0];
-                string partnerPassword = partnerInfo[1];
-                if(!string.IsNullOrEmpty(partnerId) && !string.IsNullOrEmpty(partnerPassword))
+                string dataString = Encoding.ASCII.GetString(data);
+                var partnerCredentials = JsonConvert.DeserializeObject<PartnerCredentials>(dataString);
+
+                if (partnerCredentials == null)
                 {
-                    if (_loginManager.GetFirst(partnerId, partnerPassword, out var partner))
+                    _loginManager.GetPartnerInfoFailed(connection, "Invalid data");
+                    return;
+                }
+                if (_loginManager.GetFirst(partnerCredentials.Id, partnerCredentials.Password, out var partner))
+                {
+                    if (_loginManager.GetConnectionsInfoBySocketConnection(connection, out var me))
                     {
-                        if (_loginManager.GetConnectionsInfoBySocketConnection(connection, out var me))
+                        if (_remoteControlManager.CreateRoomId(out string id))
                         {
-                            if (_remoteControlManager.CreateRoomId(out string id))
-                            {
-                                _loginManager.InitRemoteConnection(me.First(), partner, id);
-                                return;
-                            }
+                            _loginManager.InitRemoteConnection(me.First(), partner, id);
+                            return;
                         }
                     }
-                } 
-                _loginManager.LoginResponse(connection, null, false);
+                }
+                _loginManager.GetPartnerInfoFailed(connection, "Get partner info failed");
             }
             catch (Exception ex)
             {

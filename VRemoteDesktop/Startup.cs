@@ -9,6 +9,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading;
 using System.Windows.Forms;
+using VRemoteDesktop.Services.Client;
 using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.RemoteDesktop;
@@ -25,15 +26,21 @@ namespace VRemoteDesktop
     public class Startup
     {
         private byte[] _buffer;
-        private IVScreenSender _screenSender;
-        private IScreenCapture1 _capture;
-        private IScreenCaptureServiceListener _screenCaptureService;
+        //private IScreenCapture1 _capture;
+        //private IScreenCaptureServiceListener _screenCaptureService;
         private IKeyboardService _keyboardHookService;
-        private VClientManager _vClientManager;
+        //private VClientManager _vClientManager;
+        //private GlobalHookService _globalHook;
+        //private ClientInfoManager _clientInfoManager;
+        //private RemoteDesktopService _remoteDesktopService;
+
+
+        private IMachineProfile _machineProfile;
+        private IVScreenSender _screenSender;
         private SessionManager _sessionManagement;
-        private GlobalHookService _globalHook;
-        private ClientInfoManager _clientInfoManager;
-        private RemoteDesktopService _remoteDesktopService;
+        private RemoteService _remoteControlService;
+
+
         public Startup()
         {
             //RegisterFirewallAccess();
@@ -139,29 +146,33 @@ namespace VRemoteDesktop
             //VArrayPool.Return(receiverBuffer);
             //return;
             var bounds = Screen.PrimaryScreen.Bounds;
-            _screenSender = new VScreenSender(bounds.Width, bounds.Height);    
+            _screenSender = new VScreenSender(bounds.Width, bounds.Height);
+            _sessionManagement = new SessionManager();
 
-            _capture = new ScreenCapture1();
+            //_capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();
-            _vClientManager = new VClientManager();
-            _clientInfoManager = new ClientInfoManager();
-            _screenCaptureService = new ScreenCaptureService(_capture);
-            _globalHook = new GlobalHookService(_keyboardHookService, _screenCaptureService);
-            _sessionManagement = new SessionManager();  
-            _remoteDesktopService = new RemoteDesktopService(_screenSender, _globalHook, _sessionManagement, _clientInfoManager);
+            //_vClientManager = new VClientManager();
+            //_clientInfoManager = new ClientInfoManager();
+            //_screenCaptureService = new ScreenCaptureService(_capture);
+            //_globalHook = new GlobalHookService(_keyboardHookService, _screenCaptureService);
+            //_remoteDesktopService = new RemoteDesktopService(_screenSender, _globalHook, _sessionManagement, _clientInfoManager);
+
+
+            _machineProfile = new MachineProfile();
+            _remoteControlService = new RemoteService(_screenSender, _sessionManagement, _machineProfile, _keyboardHookService);
         }
         public void Run()
         {
             try
             {
                 Thread.CurrentThread.CurrentUICulture = new CultureInfo("vi");
-                FormMain frmMain = new FormMain(_remoteDesktopService);
+                FormMain frmMain = new FormMain(_remoteControlService);
                 Application.Run(frmMain);
             }
             finally
             {
                 VArrayPool.Return(_buffer);
-                _remoteDesktopService?.Dispose();
+                _remoteControlService?.Dispose();
             }
         }
     }

@@ -1,15 +1,31 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http.Json;
 using System.Reflection;
 using System.Runtime.Serialization;
 using System.Text;
+using System.Text.Json.Serialization;
 using VRemoteServer.RelayServer.Helpers;
 
 namespace VRemoteServer.RelayServer.DTOs
 {
     public abstract class BaseClass
     {
+        public string ObjectToJsonString()
+        {
+            return JsonConvert.SerializeObject(this);
+        }
+        public T JsonStringToObject<T>(byte[] raw, Encoding encoding)
+        {
+            return JsonStringToObject<T>(encoding.GetString(raw));
+        }
+        public T JsonStringToObject<T>(string json)
+        {
+            return JsonConvert.DeserializeObject<T>(json);
+        }
+
         public string ToNetworkString()
         {
             StringBuilder sb = new StringBuilder();

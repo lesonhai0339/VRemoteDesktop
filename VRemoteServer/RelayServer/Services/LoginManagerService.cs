@@ -1,12 +1,15 @@
-﻿using Serilog;
+﻿using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.DTOs;
+using VRemoteServer.RelayServer.DTOs.Responses;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
@@ -18,6 +21,7 @@ namespace VRemoteServer.RelayServer.Services
     public interface ILoginManagerService
     {
         void InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id);
+        void GetPartnerInfoFailed(SocketConnection connection, string message);
         int NumberOfConnections { get; }
         void P2PConnectFailed(SocketConnection connection);
         void Send(SocketConnection connection, byte[] data);
@@ -62,17 +66,24 @@ namespace VRemoteServer.RelayServer.Services
 
         public void InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id)
         {
-            string controlledData = $"{id}|{controller.Port}";
-            var controlledPacket = PacketFactory.CreatePacket(SocketDataType.RequestRemoteConnect, data: Encoding.ASCII.StringToByteArray(controlledData));
-            bool respond = SendWithRespond(controlled.SocketConnection, controlledPacket);
+            var controllerNetworkInfo = new PartnerNetworkinfo(sessionId: id, publicIP: controller.PublicIP, localIP: controller.Ip, port: controller.Port);
+            var controllerData = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controllerNetworkInfo));
+            var controllerPacket = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoSuccess, data: controllerData);
 
+            bool respond = SendWithRespond(controlled.SocketConnection, controllerPacket);
             if (respond)
             {
-                string controllerData = $"{id}|{controlled.PublicIP}|{controlled.Ip}|{controller.Port}";
-                byte[] controllerPacket = Encoding.ASCII.StringToByteArray(controllerData);
-                var byteArray = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoRespond, data: controllerPacket);
-                SendWithRespond(controller.SocketConnection, byteArray);
+                var controlledNetworkInfo = new PartnerNetworkinfo(sessionId: id, publicIP: controlled.PublicIP, localIP: controlled.Ip, port: controlled.Port);
+                var controlledData = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controlledNetworkInfo));
+
+                var controlledPacket = PacketFactory.CreatePacket(SocketDataType.RequestRemoteConnect, data: controlledData);
+                SendWithRespond(controller.SocketConnection, controlledPacket);
             }
+        }
+        public void GetPartnerInfoFailed(SocketConnection connection, string message)
+        {
+            var packet = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoFailed, data:  Encoding.ASCII.GetBytes(message));
+            SendWithRespond(connection, packet);
         }
         public void InitServer()
         {
@@ -97,7 +108,16 @@ namespace VRemoteServer.RelayServer.Services
             connection.UpdateTime();
             Send(connection, SocketDataType.Pong);
         }
+        public void LoginResponse(SocketConnection connection, ConnectionInfo connectionInfo, bool succeed)
+        {
+            string sessionId = succeed ? connectionInfo.Id : null;
 
+            LoginResponse response = new LoginResponse(succeed, (succeed ? connectionInfo.PublicIP : null));
+            var responseString = JsonConvert.SerializeObject(response);
+
+            var packet = PacketFactory.CreatePacket(SocketDataType.LoginResponse, sessionId, Encoding.ASCII.GetBytes(responseString));
+            SendWithRespond(connection, packet);
+        }
         public void P2PConnectFailed(SocketConnection connection)
         {
             Send(connection, SocketDataType.P2PInvalidConnectData);
@@ -195,21 +215,7 @@ namespace VRemoteServer.RelayServer.Services
             return false;
         }
 
-        public void LoginResponse(SocketConnection connection, ConnectionInfo connectionInfo, bool succeed)
-        {
-            try
-            {
-                //More simple
-                string response = $"{(succeed ? "1" : "0")}|{connectionInfo.PublicIP}";
-                var packet = PacketFactory.CreatePacket(SocketDataType.Login, Encoding.ASCII, response, connectionInfo.Id);
-                //var packet = PacketFactory.CreatePacket(SocketDataType.Login, Encoding.ASCII, connectionInfo.ToNetworkString(), connectionInfo.Id);
-                Send(connection, packet);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ProcessLoginFailed error");
-            }
-        }
+        
         public void Send(SocketConnection connection, SocketDataType type)
         {
             try

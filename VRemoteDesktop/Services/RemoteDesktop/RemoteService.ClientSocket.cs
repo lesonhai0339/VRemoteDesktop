@@ -1,11 +1,15 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using VRemoteDesktop.DTOs.Response;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
+using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.SessionManagement.Enums;
+using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
@@ -78,21 +82,77 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             //Stop capturing here, *****
         }
+        private void GetPartnerInfoSuccessCallback(byte[] data)
+        {
+            var dataString = Encoding.ASCII.GetString(data);
+            var partnerNetworkInfo = JsonConvert.DeserializeObject<PartnerNetworkInfo>(dataString);
+            if (partnerNetworkInfo == null)
+                //TODo
+                return;
+
+            var clientSession = NewController(partnerNetworkInfo.SessionId);
+            if (clientSession == null)
+                //TODO
+                return;
+
+            string connectIP = _machineProfile.SameNetwork(partnerNetworkInfo.PublicIP) 
+                ? partnerNetworkInfo.LocalIP 
+                : partnerNetworkInfo.PublicIP;
+
+            bool isSuccess = clientSession.TryConnect(connectIP, int.Parse(DEFAULT_REMOTE_PORT), 0, 3000);
+
+        }
+        private void CreateRemoteConnection(byte[] data)
+        {
+            var dataString = Encoding.ASCII.GetString(data);
+            var partnerNetworkInfo = JsonConvert.DeserializeObject<PartnerNetworkInfo>(dataString);
+            if (partnerNetworkInfo == null)
+                //TODo
+                return;
+
+            var clientSession = NewControlled(partnerNetworkInfo.SessionId);
+            if (clientSession == null)
+                //TODO
+                return;
+
+            bool isSuccess = clientSession.Listen(int.Parse(DEFAULT_REMOTE_PORT), 3000);
+
+        }
         #endregion
         #region Events
-        private void EventReceived(object sender, RemoteDesktopEventArgs e)
+
+
+        private void ClientSocketConnectEventHandler(ClientSession session, ClientSessionDataReceivedEventArgs e)
         {
-            if (_eventHandlers.TryGetValue(e.Type, out var handle))
+            throw new NotImplementedException();
+        }
+        private void ClientSessionClosedEventHandler(object sender, EventArgs e)
+        {
+            var clientSession = sender as ClientSession;
+            if (clientSession != null)
             {
                 try
                 {
-                    handle(sender, e);
+                    //clientSession.IsP2PConnected = false;
+
+                    if (clientSession.SessionType == ClientType.System)
+                    {
+                        OnSessionData?.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.Disconnect, false, new byte[0]));
+                    }
+
+                    _sessionManager.Remove(clientSession.SessionId);
+
+                    //Unregister received capture
+                    if (clientSession.SessionType == ClientType.Controlled)
+                    {
+                        _screenSender.RemoveSessionBuffer(clientSession.SessionId);
+                    }
                 }
                 catch (Exception ex)
                 {
-                    Logger.Log.ForContext("FileName", GetType().Name).Error(ex, string.Format("Error handling {0}: {1}", e.Type, ex.Message));
+                    Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "VClientClosedEventHandler error ");
                 }
-            };
+            }
         }
         #endregion
         #endregion

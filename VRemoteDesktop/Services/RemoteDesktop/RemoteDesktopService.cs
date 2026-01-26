@@ -1,4 +1,4 @@
-﻿using System;
+﻿/*using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
@@ -18,6 +18,7 @@ using VRemoteDesktop.Services.ScreenCapture.Enums;
 using VRemoteDesktop.Services.ScreenCapture.Events;
 using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Services.SessionManagement;
+using VRemoteDesktop.Services.SessionManagement.Enums;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
@@ -74,11 +75,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if(e.Type == ScreenType.FULL_SCREEN)
                 {
-                    _sessionManager.AddScreen(VClientType.Receiver, e.RegionFrame);
+                    _sessionManager.AddScreen(ClientType.Controlled, e.RegionFrame);
                 }
                 else if(e.Type == ScreenType.DIRTY_REGIONS)
                 {
-                    _sessionManager.AddDirtyRegions(VClientType.Receiver, e.RegionFrame);
+                    _sessionManager.AddDirtyRegions(ClientType.Controlled, e.RegionFrame);
                 }
             }
             catch (Exception ex)
@@ -243,16 +244,16 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 return null;
             }
         }
-        public ClientSession NewClient(string id, VClientType type, bool isHost)
+        public ClientSession NewClient(string id, ClientType type)
         {
             try
             {
                 if (string.IsNullOrWhiteSpace(id)) return null;
 
-                var session = _sessionManager.New(id, type, isHost);
+                var session = _sessionManager.New(id, type);
                 if (_sessionManager.Connections.Count > 0)
                 {
-                    if (_sessionManager.HasClientOfType(VClientType.Receiver))
+                    if (_sessionManager.HasClientOfType(ClientType.Controlled))
                         StartScreenCapture();
                 }
                 return session;
@@ -291,7 +292,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return false;
 
             string connectionId = StringHelper.RandomStringNumber(8);
-            var newConnection = NewClient(connectionId, VClientType.Sender, false);
+            var newConnection = NewClient(connectionId, ClientType.Controller);
 
             if (newConnection == null)
             {
@@ -383,7 +384,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             else
             {
-                if (!_sessionManager.HasClientOfType(VClientType.Receiver))
+                if (!_sessionManager.HasClientOfType(ClientType.Controlled))
                 {
                     lock (_lock)
                     {
@@ -404,7 +405,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             try
             {
             }
-            catch { /*Ignore*/ }
+            catch { *//*Ignore*//* }
         }
         private void KeyboardEventHandler(object sender, KeyboardEventArgs e)
         {
@@ -412,7 +413,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 foreach (var connection in _sessionManager.Connections)
                 {
-                    if (connection.Value.SessionType == VClientType.Receiver)
+                    if (connection.Value.SessionType == ClientType.Controlled)
                         connection.Value.AddWork(QueuePriority.High, new TaskObject
                         {
                             TaskType = type,
@@ -508,7 +509,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             string id = Encoding.ASCII.GetString(ev.Data);
 
             //Create a new VClient and listen for incoming connection, if success return VClient else remove VClient and return null
-            var remoteClient = _sessionManager.AddNewAndListen(id, VClientType.Receiver, false);
+            var remoteClient = _sessionManager.AddNewAndListen(id, ClientType.Controlled, int.Parse(DEFAULT_SERVER_PORT));
 
             //P2P handshake success, send accept connect
             if (remoteClient != null)
@@ -538,7 +539,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 string connectIp = _clientInfo.IsTheSameNetWork(networkInfo.PublicIP) ? networkInfo.LocalIP : networkInfo.PublicIP;
 
-                var remoteControlClient = _sessionManager.New(networkInfo.Id, VClientType.Sender, false);
+                var remoteControlClient = _sessionManager.New(networkInfo.Id, ClientType.Controlled);
                 if(int.TryParse(networkInfo.Port, out int port))
                 {
                     bool respond = remoteControlClient.TryConnect(ip: connectIp, port: port, retry: 3, timeout: 1000);
@@ -634,7 +635,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             if (_clientInfo.IsAuthenticated(ev.Data, out ClientInfo partnerInfo, out string connectionId))
             {
-                var remoteControlClient = _sessionManager.New(connectionId, VClientType.Receiver, false);
+                var remoteControlClient = _sessionManager.New(connectionId, ClientType.Controlled);
 
                 //Init screen capture
                 _screenSender.InitializeSenderComponents();
@@ -770,7 +771,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     _sessionManager.Remove(clientSession.SessionId);
 
                     //Unregister received capture
-                    if(clientSession.SessionType == VClientType.Receiver)
+                    if(clientSession.SessionType == ClientType.Controlled)
                     {
                         _screenSender.RemoveSessionBuffer(clientSession.SessionId);
                     }
@@ -813,4 +814,4 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
         }
     }
-}
+}*/

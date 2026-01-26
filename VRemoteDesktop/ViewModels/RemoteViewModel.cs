@@ -33,7 +33,7 @@ namespace VRemoteDesktop.ViewModels
         private readonly ClientSession _clientSession;
         private readonly IMouseExtensions _mouseExtension;
         private readonly IScreenCaptureExtensions _screenCaptureExtension;
-        private readonly RemoteDesktopService _remoteDesktopService;
+        private readonly RemoteService _remoteControlService;
 #if DEBUG
         private byte[] _buffer;
         private readonly IVScreenReceiver _screenReceiver;
@@ -53,7 +53,7 @@ namespace VRemoteDesktop.ViewModels
         public Action<List<ScreenRegion>> screenRegionsChangedEvent;
         public event EventHandler<KeyboardEventArgs> keyboardEvent;
         public event EventHandler<ClientSessionDisconnectedEventArgs> DisconnectedEvent; 
-        public RemoteViewModel(ClientSession clientSession, IScreenCaptureExtensions screenCaptureExtensions, IMouseExtensions mouseExtension, RemoteDesktopService remoteDesktopService)
+        public RemoteViewModel(ClientSession clientSession, IScreenCaptureExtensions screenCaptureExtensions, IMouseExtensions mouseExtension, RemoteService remoteControlService)
         {
             _disposed = false;
             _clientSession = clientSession;
@@ -70,11 +70,11 @@ namespace VRemoteDesktop.ViewModels
 #endif
             _mouseExtension = mouseExtension;
             _screenCaptureExtension = screenCaptureExtensions;
-            _remoteDesktopService = remoteDesktopService;
+            _remoteControlService = remoteControlService;
 
             _clientSession.OnScreenReceived += P2PScreenReceivedEventHandler;
             _clientSession.OnDisconnected += SocketDisconnectedEventHandler;
-            _remoteDesktopService.KeyboardEvent += KeyboardReceivedEventHandler;
+            _remoteControlService.OnSessionKeyboard += KeyboardReceivedEventHandler;
         }
         //private void SocketDisposingEventHandler(object sender, SocketDisposeEventArgs e)
         private void SocketDisconnectedEventHandler(object sender, ClientSessionDisconnectedEventArgs e)
@@ -86,12 +86,12 @@ namespace VRemoteDesktop.ViewModels
         #region Methods
         public void StartKeyboardListener(IntPtr handler)
         {
-            _remoteDesktopService.AddKeyboardListenerOnFormByHandle(handler);
+            _remoteControlService.AddKeyboardHook(handler);
         }
 
         public void StopKeyboardListener(IntPtr handler)
         {
-            _remoteDesktopService.RemoveKeyboardListenerOnFormByHandle(handler);
+            _remoteControlService.RemoveKeyboardHook(handler);
         }
 
         public RectangleF TransformSize(Size source, Size img, Rectangle rect)
@@ -102,7 +102,7 @@ namespace VRemoteDesktop.ViewModels
 
         public void GetClipboard(KeyboardEventArgs e)
         {
-            string clipboard = _remoteDesktopService.GetClipboardString();
+            string clipboard = _remoteControlService.GetClipboard();
             if (string.IsNullOrEmpty(clipboard)) return;
 
             _clientSession.AddWork(
@@ -289,8 +289,8 @@ namespace VRemoteDesktop.ViewModels
                     _clientSession.OnScreenReceived -= P2PScreenReceivedEventHandler;
                     _clientSession.OnDisconnected -= SocketDisconnectedEventHandler;
                 }
-                if (_remoteDesktopService != null)
-                    _remoteDesktopService.KeyboardEvent -= KeyboardReceivedEventHandler;
+                if (_remoteControlService != null)
+                    _remoteControlService.OnSessionKeyboard -= KeyboardReceivedEventHandler;
                 _disposed = true;
             }
         }

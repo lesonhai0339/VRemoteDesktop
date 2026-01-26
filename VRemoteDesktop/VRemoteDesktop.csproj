@@ -58,9 +58,12 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DTOs\Requests\PartnerCredentials.cs" />
+    <Compile Include="DTOs\Response\PartnerNetworkInfo.cs" />
     <Compile Include="Enums\ChatControlType.cs" />
     <Compile Include="Enums\ChatDataType.cs" />
     <Compile Include="Enums\ChatFileType.cs" />
+    <Compile Include="Enums\SessionResponseType.cs" />
     <Compile Include="Enums\ConnectionStatus.cs" />
     <Compile Include="Enums\FileStatus.cs" />
     <Compile Include="Enums\OnScreenEventArgs.cs" />
@@ -93,9 +96,14 @@
     <Compile Include="Events\FileEventArgs.cs" />
     <Compile Include="Events\KeyboardEventArgs.cs" />
     <Compile Include="Events\P2PChatEventArgs.cs" />
-    <Compile Include="Events\RemoteDesktopEventArgs.cs" />
+    <Compile Include="Presenters\DTOs\LoginResponse.cs" />
+    <Compile Include="Presenters\DTOs\PartnerInfoResponse.cs" />
+    <Compile Include="Presenters\Enums\LoginStatus.cs" />
+    <Compile Include="Services\RemoteDesktop\Enums\ResponseType.cs" />
+    <Compile Include="Services\RemoteDesktop\Events\RemoteDesktopEventArgs.cs" />
     <Compile Include="Events\P2PFileReceivedEventArgs.cs" />
     <Compile Include="Events\P2PScreenEventArgs.cs" />
+    <Compile Include="Events\RemoteServiceDataEventArgs.cs" />
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
     <Compile Include="Events\SocketDisposeEventArgs.cs" />
     <Compile Include="Events\UserChatControlEventArgs.cs" />
@@ -106,8 +114,13 @@
     <Compile Include="Layouts\VDisplay.Designer.cs">
       <DependentUpon>VDisplay.cs</DependentUpon>
     </Compile>
+    <Compile Include="Presenters\DTOs\ConnectStatus.cs" />
+    <Compile Include="Presenters\Events\MainDataEventArgs.cs" />
+    <Compile Include="Presenters\Events\MainErrorEventArgs.cs" />
+    <Compile Include="Presenters\MainPresenter.cs" />
     <Compile Include="Services\Machine\DTOs\MachineInfo.cs" />
     <Compile Include="Services\Machine\MachineProfile.cs" />
+    <Compile Include="Services\RemoteDesktop\DTOs\LoginResponse.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteService.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteService.ServerSocket.cs" />
     <Compile Include="Services\RemoteDesktop\RemoteService.ClientSocket.cs" />
@@ -135,29 +148,29 @@
       <SubType>Component</SubType>
     </Compile>
     <Compile Include="Layouts\MsgBox.cs" />
-    <Compile Include="Models\BaseClass.cs" />
-    <Compile Include="Models\ChatManager.cs" />
-    <Compile Include="Models\ChatRespond.cs" />
-    <Compile Include="Models\ChunkFileInfo.cs" />
-    <Compile Include="Models\EventRegistration.cs" />
-    <Compile Include="Models\MouseData.cs" />
-    <Compile Include="Models\P2PConnectInfo.cs" />
-    <Compile Include="Models\P2PNetworkInfo.cs" />
-    <Compile Include="Models\TaskGroup.cs" />
-    <Compile Include="Models\TaskObject.cs" />
-    <Compile Include="Models\BaseResponse.cs" />
-    <Compile Include="Models\ByteArrayBuilder.cs" />
-    <Compile Include="Models\ClientInfo.cs" />
-    <Compile Include="Models\DataReceive.cs" />
+    <Compile Include="DTOs\BaseClass.cs" />
+    <Compile Include="DTOs\ChatManager.cs" />
+    <Compile Include="DTOs\ChatRespond.cs" />
+    <Compile Include="DTOs\ChunkFileInfo.cs" />
+    <Compile Include="DTOs\EventRegistration.cs" />
+    <Compile Include="DTOs\MouseData.cs" />
+    <Compile Include="DTOs\P2PConnectInfo.cs" />
+    <Compile Include="DTOs\P2PNetworkInfo.cs" />
+    <Compile Include="DTOs\TaskGroup.cs" />
+    <Compile Include="DTOs\TaskObject.cs" />
+    <Compile Include="DTOs\BaseResponse.cs" />
+    <Compile Include="DTOs\ByteArrayBuilder.cs" />
+    <Compile Include="DTOs\ClientInfo.cs" />
+    <Compile Include="DTOs\DataReceive.cs" />
     <Compile Include="Enums\SocketDataType.cs" />
-    <Compile Include="Models\KeyboardReceived.cs" />
-    <Compile Include="Models\KeyboardState.cs" />
-    <Compile Include="Models\MouseReceived.cs" />
-    <Compile Include="Models\ScreenRegion.cs" />
-    <Compile Include="Models\StateObject.cs" />
-    <Compile Include="Models\Sendstate.cs" />
-    <Compile Include="Models\UIPropertyRegistration.cs" />
-    <Compile Include="Models\VFileInfo.cs" />
+    <Compile Include="DTOs\KeyboardReceived.cs" />
+    <Compile Include="DTOs\KeyboardState.cs" />
+    <Compile Include="DTOs\MouseReceived.cs" />
+    <Compile Include="DTOs\ScreenRegion.cs" />
+    <Compile Include="DTOs\StateObject.cs" />
+    <Compile Include="DTOs\Sendstate.cs" />
+    <Compile Include="DTOs\UIPropertyRegistration.cs" />
+    <Compile Include="DTOs\VFileInfo.cs" />
     <Compile Include="Services\Client\ClientInfoManager.cs" />
     <Compile Include="Services\FileService\SaveChat.cs" />
     <Compile Include="Services\FileService\VAttachmentManager.cs" />
@@ -184,6 +197,7 @@
     <Compile Include="Services\SessionManagement\DTOs\QueueItem.cs" />
     <Compile Include="Services\SessionManagement\DTOs\ScreenDataDto.cs" />
     <Compile Include="Services\SessionManagement\Enums\ClientType.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionDataReceivedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionDisconnectedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketConnectedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDisconnectedEventArgs.cs" />
@@ -291,6 +305,9 @@
   <ItemGroup>
     <PackageReference Include="lz4net">
       <Version>1.0.5.93</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>12.0.3</Version>
     </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

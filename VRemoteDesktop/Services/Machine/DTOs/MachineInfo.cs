@@ -4,6 +4,7 @@ using System.Linq;
 using System.Runtime.Serialization;
 using System.Text;
 using VRemoteDesktop.Models;
+using Newtonsoft.Json;
 
 namespace VRemoteDesktop.Services.Machine.DTOs
 {
@@ -49,7 +50,7 @@ namespace VRemoteDesktop.Services.Machine.DTOs
         [DataMember(Order = 10)] public string PublicIP { get; private set; }
         public void UpdateLocalIp(string localIp)
         {
-            if (!string.IsNullOrEmpty(localIp))
+            if (string.IsNullOrEmpty(localIp))
                 throw new ArgumentNullException("LocalIp cannot be null or empty");
 
             Ip = localIp;
@@ -57,14 +58,14 @@ namespace VRemoteDesktop.Services.Machine.DTOs
 
         public void UpdatePublicIp(string publicIp)
         {
-            if (!string.IsNullOrEmpty(publicIp))
+            if (string.IsNullOrEmpty(publicIp))
                 throw new ArgumentNullException("PublicIp cannot be null or empty");
 
             PublicIP = publicIp;    
         }
         public void UpdatePort(string port)
         {
-            if (!string.IsNullOrEmpty(port))
+            if (string.IsNullOrEmpty(port))
                 throw new ArgumentNullException("Port cannot be null or empty");
 
             Port = port;

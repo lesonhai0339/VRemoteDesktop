@@ -37,6 +37,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private Rectangle[] _writer;
         private Rectangle[] _reader;
         private int _totalColumns;
+        private int _totalRows;
         private int _regionSize;
         private bool _hasData = false;
 
@@ -52,9 +53,10 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
 
             _totalColumns = (_width + (_regionSize - 1)) / _regionSize;
-            _writer = new Rectangle[_totalColumns * height];
-            _reader = new Rectangle[_totalColumns * height];
-            _tempRect = new List<Rectangle>(_totalColumns * height);
+            _totalRows = (_height + (_regionSize - 1)) / _regionSize;
+            _writer = new Rectangle[_totalColumns * _totalRows];
+            _reader = new Rectangle[_totalColumns * _totalRows];
+            _tempRect = new List<Rectangle>(_totalColumns * _totalRows);
 
             _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
 

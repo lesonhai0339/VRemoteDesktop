@@ -70,7 +70,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private CancellationTokenSource _cancelationTokenSource;
 
 
-        public event EventHandler<RemoteDesktopEventArgs> OnDataReceived;
+        public event EventHandler<ClientSessionDataReceivedEventArgs> OnDataReceived;
         public event EventHandler<ClientSessionDisconnectedEventArgs> OnDisconnected;
 
         //still not implement, using after
@@ -322,7 +322,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     case SocketDataType.ScreenOk:
                         ReadyToNextRegionSend();
                         //EnableRegionsSend();
-                        OnDataReceived.Invoke(this, new RemoteDesktopEventArgs(type: e.Type, data: e.Data));
+                        OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));
                         break;
                     case SocketDataType.RegionsChangedOk:
                         ReadyToNextRegionSend();
@@ -333,7 +333,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         break;
                     default:
                         if (OnDataReceived != null)
-                            OnDataReceived.Invoke(this, new RemoteDesktopEventArgs(type: e.Type, data: e.Data));
+                            OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));
                         break;
                         
                 }
@@ -374,9 +374,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             return _clientSocket.TryConnect(ip, port, retry, timeout);
         }
-        public bool Listen(int port)
+        public bool Listen(int port, int timeout = 3000)
         {
-            return _clientSocket.Listen();
+            if (port <= 0) throw new ArgumentNullException("Port cannot be less than or equal zero");
+
+            return _clientSocket.Listen(port, timeout);
         }
         private void Send(CapturedFrame frame)
         {
@@ -662,7 +664,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private void OnSocketConnectedEventHandler(object sender, SocketConnectedEventArgs e)
         {
             if (OnDataReceived != null)
-                OnDataReceived.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, e.Connected));
+                OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, SocketDataType.Connect, null, e.Connected));
         }
         private void OnDataReceivedEventHandler(object sender, SocketDataReceivedEventArgs e)
         {

@@ -5,8 +5,8 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Common.Options;
 using VRemoteServer.RelayServer.Domains;
-using VRemoteServer.RelayServer.DTOs;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 
