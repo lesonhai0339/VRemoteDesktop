@@ -1,8 +1,11 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Drawing.Printing;
 using System.Linq;
 using System.Text;
+using System.Threading;
+using VRemoteDesktop.DTOs.Requests;
 using VRemoteDesktop.DTOs.Response;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
@@ -84,8 +87,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void GetPartnerInfoSuccessCallback(byte[] data)
         {
-            var dataString = Encoding.ASCII.GetString(data);
-            var partnerNetworkInfo = JsonConvert.DeserializeObject<PartnerNetworkInfo>(dataString);
+            var partnerNetworkInfo = JsonConvert.DeserializeObject<PartnerNetworkInfo>(Encoding.ASCII.GetString(data));
             if (partnerNetworkInfo == null)
                 //TODo
                 return;
@@ -99,9 +101,23 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 ? partnerNetworkInfo.LocalIP 
                 : partnerNetworkInfo.PublicIP;
 
-            bool isSuccess = clientSession.TryConnect(connectIP, int.Parse(DEFAULT_REMOTE_PORT), 0, 3000);
+            Console.WriteLine($"Trying to connect on {connectIP} - {int.Parse(DEFAULT_REMOTE_PORT)}");
+            bool isSuccess = clientSession.TryConnect(connectIP, int.Parse(DEFAULT_REMOTE_PORT), RETRY, TIMEOUT);
+            Console.WriteLine($"Connect response: {isSuccess}");
 
-        }
+            if (isSuccess)
+            {
+                EstablishPeer2PeerConnect(clientSession, partnerNetworkInfo);
+            }
+            else
+            {
+                EstablishRelayConnect(clientSession, partnerNetworkInfo);
+            }
+        }  /// <summary>
+           /// Received request to connect packet from server, new clientsession and listen on remote port. If p2p failed  connect trying to connect
+           /// to server and wait  controller send login Info
+           /// </summary>
+           /// <param name="data"></param>
         private void CreateRemoteConnection(byte[] data)
         {
             var dataString = Encoding.ASCII.GetString(data);
@@ -115,12 +131,89 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 //TODO
                 return;
 
-            bool isSuccess = clientSession.Listen(int.Parse(DEFAULT_REMOTE_PORT), 3000);
+            bool isSuccess = clientSession.Listen(int.Parse(DEFAULT_REMOTE_PORT), TIMEOUT + 1);
 
+            if (!isSuccess)
+            {
+                bool connectSuccess = clientSession.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_REMOTE_PORT), RETRY, TIMEOUT);
+                if (!connectSuccess)
+                {
+                    OnError?.Invoke(this, new EventArgs()); //Failed
+                }
+
+                var connectionInfo = new ConnectionCredentials(
+                   partnerId: partnerNetworkInfo.PartnerId,
+                   partnerPassword: partnerNetworkInfo.PartnerPassword,
+                   type: ControlType.Controlled,
+                   machineInfo: _machineProfile.MachineInfo);
+
+                var packet = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(connectionInfo));
+                clientSession.Send(SocketDataType.RemoteLogin, packet);
+            }
+        }
+        private void EstablishRelayConnect(ClientSession clientSession, PartnerNetworkInfo partnerInfo)
+        {
+            bool isSuccess = clientSession.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_REMOTE_PORT), RETRY, TIMEOUT);
+            if (!isSuccess)
+            {
+                OnError?.Invoke(this, new EventArgs()); //Connect to TURN server failed, throw back to UI
+            }
+
+            //Connect success
+            EstablishPeer2PeerConnect(clientSession, partnerInfo);
+        }
+        private void EstablishPeer2PeerConnect(ClientSession clientSession, PartnerNetworkInfo partnerInfo)
+        {
+            var connectionInfo = new ConnectionCredentials(
+                partnerId: partnerInfo.PartnerId,
+                partnerPassword: partnerInfo.PartnerPassword,
+                type: ControlType.Controller,
+                machineInfo: _machineProfile.MachineInfo);
+
+            var packet = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(connectionInfo));
+            clientSession.Send(SocketDataType.RemoteLogin, packet);
         }
         #endregion
         #region Events
+        private void RemoteLoginCallback(object sender, byte[] data)
+        {
+            try
+            {
+                var clientSession = sender as ClientSession;
+                if (clientSession == null)
+                {
+                    clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
+                    return;
+                }
 
+                var connectionInfo = JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(data));
+                if (connectionInfo == null || string.IsNullOrEmpty(connectionInfo.PartnerId) || string.IsNullOrEmpty(connectionInfo.PartnerPassword))
+                {
+                    clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
+                    return;
+                }
+
+                if (_machineProfile.Authentication(connectionInfo.PartnerId, connectionInfo.PartnerPassword))
+                {
+                    clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
+                    return;
+                }
+
+
+                clientSession.UpdatePartnerInfo(connectionInfo.MachineInfo);
+
+                var myInfo = new RemoteLoginResponse(loggedIn: true, clientSession.SessionId, _machineProfile.MachineInfo);
+
+                var packet = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(myInfo));
+
+                clientSession.Send(SocketDataType.RemoteLoginSuccess, packet);
+
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("FileName", "ClientSession").Error(ex, "RemoteLogin err ");
+            }
+        }
 
         private void ClientSocketConnectEventHandler(ClientSession session, ClientSessionDataReceivedEventArgs e)
         {

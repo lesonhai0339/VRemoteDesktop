@@ -30,9 +30,10 @@ namespace VRemoteServer.RelayServer.Domains
         bool Remove(Predicate<T> predicate);
         T TakeAndRemove(string id);
         bool TakeAndRemove(string id, out T obj);
+        IEnumerable<T> GetByObject(object obj);
         void Dispose();
     }
-    public class BaseManagement<T> : IBaseManagement<T>, IDisposable where T: class
+    public abstract class BaseManagement<T> : IBaseManagement<T>, IDisposable where T: class
     {
         private bool _disposed;
         protected readonly ConcurrentDictionary<string, T> _keyValuePairs;
@@ -133,6 +134,8 @@ namespace VRemoteServer.RelayServer.Domains
 
         public virtual bool TakeAndRemove(string id, out T obj)
            => _keyValuePairs.TryRemove(id, out obj) ? true : false;
+
+        public abstract IEnumerable<T> GetByObject(object obj);
 
         #endregion
 

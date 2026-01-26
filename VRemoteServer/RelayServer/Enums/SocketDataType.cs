@@ -45,11 +45,16 @@ namespace VRemoteServer.RelayServer.Enums
         RemoteControlAcceptedRequestToConnect = 0x93, //P2PAcceptConnect
         RemoteControlRefusedRequestToConnect = 0x94, //P2PRejectConnect
 
+
+
         GetPartnerInfo = 200,
         GetPartnerInfoSuccess = 201,
         GetPartnerInfoFailed = 202,
         RequestRemoteConnect = 203,
         LoginResponse = 204,
+        RemoteLogin = 205,
+        RemoteLoginSuccess = 206,
+        RemoteLoginFailed = 207
 
     }
 }

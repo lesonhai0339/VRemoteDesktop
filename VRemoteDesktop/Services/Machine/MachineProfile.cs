@@ -22,6 +22,7 @@ namespace VRemoteDesktop.Services.Client
         void UpdatePort(string port);
         void UpdateLocalIp(string localIp);
         bool SameNetwork(string publicIp);
+        bool Authentication(string id, string password);
         Rectangle Bounds { get; }
     }
     public class MachineProfile : IMachineProfile, IDisposable
@@ -76,10 +77,10 @@ namespace VRemoteDesktop.Services.Client
         {
             return _machineInfo.PublicIP.Equals(publicIp, StringComparison.OrdinalIgnoreCase);
         }
-        public bool Authentication(string id, string password, string defaultPassword)
+        public bool Authentication(string id, string password)
         {
             return id.Equals(_machineInfo.Id) &&
-                (password.Equals(_machineInfo.Password) || defaultPassword.Equals(_machineInfo.DefaultPassword));
+                (password.Equals(_machineInfo.Password) || password.Equals(_machineInfo.DefaultPassword));
         }
         public MachineInfo MachineInfo => _machineInfo;
         public void UpdatePublicIp(string publicIp)

@@ -58,11 +58,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DTOs\Requests\ConnectionCredentials.cs" />
     <Compile Include="DTOs\Requests\PartnerCredentials.cs" />
     <Compile Include="DTOs\Response\PartnerNetworkInfo.cs" />
+    <Compile Include="DTOs\Response\RemoteLoginResponse.cs" />
     <Compile Include="Enums\ChatControlType.cs" />
     <Compile Include="Enums\ChatDataType.cs" />
     <Compile Include="Enums\ChatFileType.cs" />
+    <Compile Include="Enums\ControlType.cs" />
     <Compile Include="Enums\SessionResponseType.cs" />
     <Compile Include="Enums\ConnectionStatus.cs" />
     <Compile Include="Enums\FileStatus.cs" />

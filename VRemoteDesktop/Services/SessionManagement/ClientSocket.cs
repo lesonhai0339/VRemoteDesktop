@@ -178,6 +178,8 @@ namespace VRemoteDesktop.Services.SessionManagement
         {
             try
             {
+                var ep = this._socket.RemoteEndPoint as IPEndPoint;
+                Console.WriteLine($"Remote IP: {ep.Address} - Port: {ep.Port}");
                 Socket.EndConnect(ar);
                 if (!Socket.Connected)
                 {

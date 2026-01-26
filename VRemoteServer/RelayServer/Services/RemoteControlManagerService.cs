@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using Newtonsoft.Json;
+using Serilog;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,6 +10,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using VRemoteServer.RelayServer.DTOs;
+using VRemoteServer.RelayServer.DTOs.Requests;
+using VRemoteServer.RelayServer.DTOs.Responses;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
@@ -96,6 +99,10 @@ namespace VRemoteServer.RelayServer.Services
         {
             _remoteControlServer.Cancel();
         }
+        public void NewRemoteControl(string connectionId, SocketConnection connection)
+        {
+
+        }
 
         public bool InitRemoteConnection(string id, SocketConnection controller)
             => _remoteConnectionManager.AddController(id, controller);
@@ -156,15 +163,18 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
-        private void RemoteControlRequestToConnect(SocketConnection connection, string socketId, int dataOffset, int dataLength)
+        private void RemoteControlRequestToConnect(SocketConnection connection, string connectionId, int dataOffset, int dataLength)
         {
             try
             {
                 byte[] data = new byte[dataLength];
                 Buffer.BlockCopy(connection.Reader.Buffer, dataOffset, data, 0, dataLength);
-                string[] info = Encoding.ASCII.ByteArrayToStringWithSeparator(data, PACKET_HEADER_LENGTH, data.Length - PACKET_HEADER_LENGTH, DefaultValue.Common.SEPARATOR);
-
-                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.RemoteControlRequestToConnect, socketId: socketId, partnerId: info[1], data: data));
+                var remoteInfo = JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(data, PACKET_HEADER_LENGTH, data.Length - PACKET_HEADER_LENGTH));
+                if(remoteInfo == null)
+                {
+                    //Send back invalid connection info
+                }
+                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.Login, connectionId: connectionId, data: remoteInfo));
             }
             catch (Exception ex)
             {
@@ -202,7 +212,11 @@ namespace VRemoteServer.RelayServer.Services
         {
             if(sender is SocketConnection connection)
             {
-               RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.RemoteControlDisconnect));
+                var remoteControlConnections = _remoteConnectionManager.GetByObject(connection);
+                foreach(var remoteControlConnection in remoteControlConnections)
+                {
+                    RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.RemoteControlDisconnect, remoteControlConnection.ConnectionId));
+                }
             }
         }
 
@@ -217,7 +231,7 @@ namespace VRemoteServer.RelayServer.Services
                 }
                 else
                 {
-                    RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: e.Type, socketId: e.Id, data: e.Data, dataOffset: e.Offset, dataLength: e.Length));
+                    RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: e.Type, connectionId: e.Id, new SocketPacket(e.Data, e.Offset, e.Length)));
                 }
             }
         }

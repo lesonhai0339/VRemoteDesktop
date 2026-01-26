@@ -12,6 +12,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Services.SessionManagement;
@@ -43,9 +44,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private byte[] _bufferPool;
         private long _lastSendTimestamp = Stopwatch.GetTimestamp();
 
-
-        private ClientInfo _myInfo;
-        private ClientInfo _partnerInfo;
+        private MachineInfo _partnerInfo;
 
 
         private System.Threading.Timer _pingTimer;
@@ -147,24 +146,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 }
             }
         }
-        public ClientInfo MyInfo
-        {
-            get
-            {
-                lock (_lock)
-                {
-                    return _myInfo;
-                }
-            }
-            set
-            {
-                lock (_lock)
-                {
-                    _myInfo = value;
-                }
-            }
-        }
-        public ClientInfo PartnerInfo
+        public MachineInfo PartnerInfo
         {
             get
             {
@@ -534,7 +516,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #endregion
 
         #region Methods
-        public void UpdatePartnerInfo(ClientInfo partnerInfo)
+        public void UpdatePartnerInfo(MachineInfo partnerInfo)
         {
             if (partnerInfo == null) throw new ArgumentNullException("partner info");
             _partnerInfo = partnerInfo;

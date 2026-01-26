@@ -20,6 +20,7 @@ namespace VRemoteServer.RelayServer.Networking
         private string _ip;
         private int _disposed;
         private Socket _socket;
+        private string _connectionId;
         private SocketAsyncEventArgs _readSocketAsyncEventArgs;
         private SocketAsyncEventArgs _sendSocketAsyncEventArgs;
         private DateTimeOffset _lastSendTime { get; set; }

@@ -20,7 +20,7 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
-        void InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id);
+        Task InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id);
         void GetPartnerInfoFailed(SocketConnection connection, string message);
         int NumberOfConnections { get; }
         void P2PConnectFailed(SocketConnection connection);
@@ -45,6 +45,7 @@ namespace VRemoteServer.RelayServer.Services
     }
     public class LoginManagerService : ILoginManagerService, IDisposable
     {
+        private const int DELAY_TIME = 1500; 
         private bool _disposed;
         private readonly ILoginServer _loginServer;
         private readonly ILoginManager _loginConnectionManager;
@@ -64,19 +65,37 @@ namespace VRemoteServer.RelayServer.Services
         public int NumberOfConnections => _loginConnectionManager.Count;
 
 
-        public void InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id)
+        public async Task InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id)
         {
-            var controllerNetworkInfo = new PartnerNetworkinfo(sessionId: id, publicIP: controller.PublicIP, localIP: controller.Ip, port: controller.Port);
-            var controllerData = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controllerNetworkInfo));
-            var controllerPacket = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoSuccess, data: controllerData);
+            //Send controller network info to controlled
+            var controllerInfo = new PartnerNetworkInfo(
+                sessionId: id, 
+                partnerId: controller.Id,   
+                partnerPassword: string.Empty,   
+                publicIP: controller.PublicIP, 
+                localIP: controller.Ip, 
+                port: controller.Port);
 
+            var controllerInfoByteArray = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controllerInfo));
+            var controllerPacket = PacketFactory.CreatePacket(SocketDataType.RequestRemoteConnect, data: controllerInfoByteArray);
+       
             bool respond = SendWithRespond(controlled.SocketConnection, controllerPacket);
             if (respond)
             {
-                var controlledNetworkInfo = new PartnerNetworkinfo(sessionId: id, publicIP: controlled.PublicIP, localIP: controlled.Ip, port: controlled.Port);
-                var controlledData = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controlledNetworkInfo));
+                await Task.Delay(DELAY_TIME);
 
-                var controlledPacket = PacketFactory.CreatePacket(SocketDataType.RequestRemoteConnect, data: controlledData);
+                //Send controlled network info to controller
+                var controlledInfo = new PartnerNetworkInfo(
+                    sessionId: id, 
+                    partnerId: controlled.Id,
+                    partnerPassword: controlled.Password,
+                    publicIP: controlled.PublicIP, 
+                    localIP: controlled.Ip, 
+                    port: controlled.Port);
+
+                var controlledInfoByteArray = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controlledInfo));
+                var controlledPacket = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoSuccess, data: controlledInfoByteArray);
+
                 SendWithRespond(controller.SocketConnection, controlledPacket);
             }
         }

@@ -15,6 +15,7 @@ using System.Threading.Tasks;
 using VRemoteServer.Models;
 using VRemoteServer.RelayServer.DTOs;
 using VRemoteServer.RelayServer.DTOs.Requests;
+using VRemoteServer.RelayServer.DTOs.Responses;
 using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
@@ -113,7 +114,17 @@ namespace VRemoteServer.RelayServer.Services
                         LoginUserDisconnected(connection);
                         break;
                     case SocketDataType.GetPartnerInfo:
-                        GetPartnerInfo(connection, e.Data);
+                        _= Task.Run(async () =>
+                        {
+                            try
+                            {
+                                await GetPartnerInfo(connection, e.Data);
+                            }
+                            catch(Exception ex)
+                            {
+                                Log.Error(ex, "GetPartnerInfo err:");
+                            }
+                        });
                         break;
                     case SocketDataType.P2PConnect:
                         P2PLogin(sender, e.Data);
@@ -124,7 +135,7 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
-        private void GetPartnerInfo(SocketConnection connection, byte[] data)
+        private async Task GetPartnerInfo(SocketConnection connection, byte[] data)
         {
             if (connection == null)
                 return;
@@ -144,7 +155,7 @@ namespace VRemoteServer.RelayServer.Services
                     {
                         if (_remoteControlManager.CreateRoomId(out string id))
                         {
-                            _loginManager.InitRemoteConnection(me.First(), partner, id);
+                            await _loginManager.InitRemoteConnection(me.First(), partner, id);
                             return;
                         }
                     }
@@ -253,17 +264,20 @@ namespace VRemoteServer.RelayServer.Services
             {
                 switch (e.Type)
                 {
+                    case SocketDataType.RemoteLogin:
+                        RemoteLoginHandler(e.ConnectionId, sender, e.Data);
+                        break;
                     case SocketDataType.RemoteControlRequestToConnect:
-                        RequestToRemoteDesktopControl(sender, e.SocketId, e.PartnerId, e.Data);
+                        RequestToRemoteDesktopControl(e.ConnectionId, sender, e.Data);
                         break;
                     case SocketDataType.RemoteControlAcceptedRequestToConnect:
-                        AcceptedRequestToRemoteDesktopControl(sender, e.SocketId, e.DataOffset, e.DataLength);
+                        AcceptedRequestToRemoteDesktopControl(e.ConnectionId, sender, e.Data);
                         break;
                     case SocketDataType.RemoteControlDisconnect:
                         RemoteDesktopControlDisconnected(sender);
                         break;
                     default:
-                        RemoteDesktopControlDataForward(sender, e.SocketId, e.Data, e.DataOffset, e.DataLength);
+                        RemoteDesktopControlDataForward(e.ConnectionId, sender, e.Data);
                         break;
                 }
             }
@@ -273,53 +287,70 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
-        private bool RequestToRemoteDesktopControl(object sender, string connectionId, string partnerId, byte[] data)
+        private void RemoteLoginHandler(string connectionId,    object sender, object data)
+        {
+            if(sender is SocketConnection connection)
+            {
+                if (data is ConnectionCredentials credentials)
+                {
+                    //TODO
+                }
+            }   
+        }
+
+        private bool RequestToRemoteDesktopControl(string connectionId, object sender, object data)
         {
             if (sender is SocketConnection controller)
             {
-                try
+                if(data is SocketPacket packet)
                 {
-                    if (_loginManager.TryGetLoggedConnection(partnerId, out var validConnection))
+                    try
                     {
-                        if (_remoteControlManager.InitRemoteConnection(connectionId, controller))
+                        if (_loginManager.TryGetLoggedConnection(connectionId, out var validConnection))
                         {
-                            _remoteControlManager.Send(validConnection.SocketConnection, data);
-                            return true;
+                            if (_remoteControlManager.InitRemoteConnection(connectionId, controller))
+                            {
+                                _remoteControlManager.Send(validConnection.SocketConnection, packet.Offset, packet.Length);
+                                return true;
+                            }
                         }
+                        _remoteControlManager.P2PConnectFailed(controller, connectionId);
+                        return false;
                     }
-                    _remoteControlManager.P2PConnectFailed(controller, connectionId);
-                    return false;
-                }
-                catch (Exception ex)
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+                    catch (Exception ex)
+                    {
+                        Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
+                    }
                 }
             }
             return false;
         }
 
-        private bool AcceptedRequestToRemoteDesktopControl(object sender, string remoteConnectionId, int offset, int length)
+        private bool AcceptedRequestToRemoteDesktopControl(string connectionId, object sender, object data)
         {
             if (sender is SocketConnection controlled)
             {
-                try
+                if(data is SocketPacket packet)
                 {
-                    if (_remoteControlManager.EstablishedRemoteConnection(remoteConnectionId, controlled, out var remoteConnection))
+                    try
                     {
-                        _remoteControlManager.Send(remoteConnection.Controller, offset, length);
-                        return true;
+                        if (_remoteControlManager.EstablishedRemoteConnection(connectionId, controlled, out var remoteConnection))
+                        {
+                            _remoteControlManager.Send(remoteConnection.Controller, packet.Offset , packet.Length);
+                            return true;
+                        }
+                        else
+                        {
+                            _remoteControlManager.RemoveRemoteConnection(connectionId);
+                        }
+                        byte[] failed = PacketFactory.CreatePacket(SocketDataType.RemoteControlConnectFailed, connectionId);
+                        _remoteControlManager.Send(controlled, failed);
+                        return false;
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        _remoteControlManager.RemoveRemoteConnection(remoteConnectionId);
+                        Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
                     }
-                    byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlConnectFailed, remoteConnectionId);
-                    _remoteControlManager.Send(controlled, packet);
-                    return false;
-                }
-                catch (Exception ex)
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
                 }
             }
             return false;
@@ -350,37 +381,30 @@ namespace VRemoteServer.RelayServer.Services
             return true;
         }
 
-        private bool RemoteDesktopControlDataForward(object sender, string remoteConnectionId, byte[] data, int offset, int length)
+        private bool RemoteDesktopControlDataForward(string connectionId, object sender, object data)
         {
             if (sender is SocketConnection socketSender)
             {
-                try
+                if(data is SocketPacket packet)
                 {
-                    if (_remoteControlManager.GetPartner(remoteConnectionId, socketSender, out SocketConnection socketReceive))
+                    try
                     {
-                        if (data != null)
+                        if (_remoteControlManager.GetPartner(connectionId, socketSender, out SocketConnection socketReceive))
                         {
-                            _remoteControlManager.Send(socketReceive, data);
+                            _remoteControlManager.Send(socketReceive, packet.Offset, packet.Length);
                         }
                         else
                         {
-                            if (offset < 0 || length < 0)
-                                return false;
-                            _remoteControlManager.Send(socketReceive, offset, length);
+                            byte[] failed = PacketFactory.CreatePacket(SocketDataType.RemoteControlDataSendFailed, connectionId);
+                            _remoteControlManager.Send(socketSender, failed);
                         }
-                        return true;
+                        return false;
                     }
-                    else
+                    catch (Exception ex)
                     {
-                        byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlDataSendFailed, remoteConnectionId);
-                        _remoteControlManager.Send(socketSender, packet);
+                        Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
                     }
-                    return false;
-                }
-                catch (Exception ex)
-                {
-                    Log.ForContext("FileName", this.GetType().Name).Error(ex, $"ProcessRemoteRequestToConnect error");
-                }
+                }      
             }
             return false;
         }

@@ -20,13 +20,20 @@ namespace VRemoteDesktop.Services.RemoteDesktop
     public partial class RemoteService : IDisposable
     {
         private readonly object _lock = new object();
+        private const int RETRY = 0;
+        private const int TIMEOUT = 3000;
         private const int SESSION_ID_LENGTH = 8;
         private const string SEPARATOR = "|";
         private const string SUCCESS = "1";
         private const string FAILED = "0";
+#if DEBUG
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
-        private readonly string DEFAULT_LOGIN_PORT = AppSettingHelper.GetValue("LoginPort");
-        private readonly string DEFAULT_REMOTE_PORT = AppSettingHelper.GetValue("RemotePort");
+        private readonly string DEFAULT_LOGIN_PORT = "2399";
+        private readonly string DEFAULT_REMOTE_PORT = "2401";
+#endif
+        //private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
+        //private readonly string DEFAULT_LOGIN_PORT = AppSettingHelper.GetValue("LoginPort");
+        //private readonly string DEFAULT_REMOTE_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
         private bool _isCapturing = false;
 
@@ -44,6 +51,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         public event EventHandler<KeyboardEventArgs> OnSessionKeyboard;
         public event EventHandler<RemoteDesktopEventArgs> OnSessionData;
+        public event EventHandler<EventArgs> OnError;
         public RemoteService(IVScreenSender screenSender, SessionManager sessionManager, IMachineProfile machineProfile, IKeyboardService keyboardService)
         {
             _disposed = false;
@@ -150,6 +158,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     case SocketDataType.GetPartnerInfoFailed:
                         GetPartnerInfoFailedCallback(e.Data);
                         break;
+                    case SocketDataType.RemoteLogin:
+                        RemoteLoginCallback(sender, e.Data);
+                        break;
                     default:
                         break;
                 }
@@ -161,7 +172,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
         }
 
-    
+
+
+
 
 
 

@@ -93,5 +93,16 @@ namespace VRemoteServer.RelayServer.Services
                 return false;
             }
         }
+
+        public override IEnumerable<RemoteConnection> GetByObject(object obj)
+        {
+            if(obj is SocketConnection connection)
+            {
+                return base._keyValuePairs.Values.Where(x 
+                    => ReferenceEquals(x.Controller, connection) 
+                    || ReferenceEquals(x.Controlled, connection));
+            }
+            return null;
+        }
     }
 }
