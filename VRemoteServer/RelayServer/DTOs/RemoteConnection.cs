@@ -3,21 +3,24 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Networking;
 
 namespace VRemoteServer.RelayServer.DTOs
 {
     public class RemoteConnection
     {
-        public RemoteConnection(string connectionId, SocketConnection controller)
+        public RemoteConnection(string connectionId ,ControlType type, SocketConnection connection)
         {
             ConnectionId = connectionId;
-            Controller = controller;
-        }
-        public RemoteConnection(SocketConnection controller, SocketConnection controlled)
-        {
-            Controller = controller;
-            Controlled = controlled;
+            if(type == ControlType.Controller)
+            {
+                Controller = connection;
+            }
+            else
+            {
+                Controlled = connection;
+            }
         }
         public RemoteConnection(string connectionId, SocketConnection controller, SocketConnection controlled)
         {
@@ -28,5 +31,9 @@ namespace VRemoteServer.RelayServer.DTOs
         public string ConnectionId { get; set; }
         public SocketConnection Controller { get; set; }
         public SocketConnection Controlled { get; set; }
+        public bool ReadyToRemote()
+        {
+            return Controller != null && Controller != null;
+        }
     }
 }

@@ -7,7 +7,7 @@ using VRemoteServer.RelayServer.Enums;
 
 namespace VRemoteServer.RelayServer.DTOs.Requests
 {
-    internal class ConnectionCredentials
+    public class ConnectionCredentials
     {
         public ConnectionCredentials(string partnerId, string partnerPassword, ControlType type, MachineInfo machineInfo)
         {

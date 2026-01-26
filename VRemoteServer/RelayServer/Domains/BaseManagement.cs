@@ -31,6 +31,7 @@ namespace VRemoteServer.RelayServer.Domains
         T TakeAndRemove(string id);
         bool TakeAndRemove(string id, out T obj);
         IEnumerable<T> GetByObject(object obj);
+        T AddOrUpdate(string id, T obj);
         void Dispose();
     }
     public abstract class BaseManagement<T> : IBaseManagement<T>, IDisposable where T: class
@@ -55,6 +56,12 @@ namespace VRemoteServer.RelayServer.Domains
         public virtual T Get(string id, T obj)
             => _keyValuePairs.GetOrAdd(id, obj);
 
+        public virtual T AddOrUpdate(string id, T obj)
+        {
+            return _keyValuePairs.AddOrUpdate(id, 
+                addValueFactory: _ => obj, 
+                updateValueFactory: (_, __) =>  obj);
+        }
         public virtual T Get(Predicate<T> predicate)
         {
             foreach(var v in _keyValuePairs.Values)

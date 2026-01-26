@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Serilog;
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
@@ -20,6 +21,7 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface ILoginManagerService
     {
+        void TaskCompleted(SocketConnection connection, byte[] data);
         Task InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id);
         void GetPartnerInfoFailed(SocketConnection connection, string message);
         int NumberOfConnections { get; }
@@ -47,10 +49,17 @@ namespace VRemoteServer.RelayServer.Services
     {
         private const int DELAY_TIME = 1500; 
         private bool _disposed;
+
+
+        private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _tasks = new();
+
+
         private readonly ILoginServer _loginServer;
         private readonly ILoginManager _loginConnectionManager;
 
         public event EventHandler<LoginEventArgs> LoginManagerEvent;
+
+        private CancellationTokenSource _cancel = new();
         public LoginManagerService(ILoginServer loginServer, ILoginManager loginConnectionManager)
         {
             _disposed = false;
@@ -67,6 +76,11 @@ namespace VRemoteServer.RelayServer.Services
 
         public async Task InitRemoteConnection(ConnectionInfo controller, ConnectionInfo controlled, string id)
         {
+            TaskCompletionSource<bool> task = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (!_tasks.TryAdd(id, task))
+                //Failed
+                return;
+
             //Send controller network info to controlled
             var controllerInfo = new PartnerNetworkInfo(
                 sessionId: id, 
@@ -80,23 +94,48 @@ namespace VRemoteServer.RelayServer.Services
             var controllerPacket = PacketFactory.CreatePacket(SocketDataType.RequestRemoteConnect, data: controllerInfoByteArray);
        
             bool respond = SendWithRespond(controlled.SocketConnection, controllerPacket);
-            if (respond)
+            if (!respond)
             {
-                await Task.Delay(DELAY_TIME);
+                _tasks.TryRemove(id, out _);
+                return;
+            }
 
-                //Send controlled network info to controller
-                var controlledInfo = new PartnerNetworkInfo(
-                    sessionId: id, 
-                    partnerId: controlled.Id,
-                    partnerPassword: controlled.Password,
-                    publicIP: controlled.PublicIP, 
-                    localIP: controlled.Ip, 
-                    port: controlled.Port);
+            bool isSuccess = false;
+            try
+            {
+                isSuccess = await task.Task.WaitAsync(TimeSpan.FromSeconds(3));
+            }
+            catch { }
+            finally
+            {
 
-                var controlledInfoByteArray = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controlledInfo));
-                var controlledPacket = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoSuccess, data: controlledInfoByteArray);
+                _tasks.TryRemove(id, out _);
+            }
 
-                SendWithRespond(controller.SocketConnection, controlledPacket);
+            if (!isSuccess)
+                //Failed
+                return;
+
+            //Send controlled network info to controller
+            var controlledInfo = new PartnerNetworkInfo(
+                sessionId: id,
+                partnerId: controlled.Id,
+                partnerPassword: controlled.Password,
+                publicIP: controlled.PublicIP,
+                localIP: controlled.Ip,
+                port: controlled.Port);
+
+            var controlledInfoByteArray = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controlledInfo));
+            var controlledPacket = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoSuccess, data: controlledInfoByteArray);
+
+            SendWithRespond(controller.SocketConnection, controlledPacket);
+        }
+        public void TaskCompleted(SocketConnection connection, byte[] data)
+        {
+            var connectionId = Encoding.ASCII.GetString(data);
+            if (_tasks.TryGetValue(connectionId, out var task))
+            {
+                task.TrySetResult(true);
             }
         }
         public void GetPartnerInfoFailed(SocketConnection connection, string message)
@@ -298,6 +337,7 @@ namespace VRemoteServer.RelayServer.Services
             if (!disposing || _disposed) return;
             try
             {
+                _cancel.Cancel();
                 try
                 {
                     if (_loginServer != null)

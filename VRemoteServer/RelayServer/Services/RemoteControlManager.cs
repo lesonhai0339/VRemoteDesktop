@@ -28,7 +28,7 @@ namespace VRemoteServer.RelayServer.Services
     {
         public bool AddController(string id, SocketConnection controller)
         {
-            RemoteConnection remoteConnection = new RemoteConnection(id, controller);
+            RemoteConnection remoteConnection = new RemoteConnection(id, Enums.ControlType.Controller, controller);
             if (base.Add(id, remoteConnection))
             {
                 return true;

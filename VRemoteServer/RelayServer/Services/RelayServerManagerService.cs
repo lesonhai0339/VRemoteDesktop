@@ -100,38 +100,56 @@ namespace VRemoteServer.RelayServer.Services
         #region Login Server
         private void LoginManagerEventHandler(object sender, LoginEventArgs e)
         {
-            if (sender is SocketConnection connection)
+            try
             {
-                switch (e.Type)
+                if (sender is SocketConnection connection)
                 {
-                    case SocketDataType.Ping:
-                        Ping(connection);
-                        break;
-                    case SocketDataType.Login:
-                        Login(connection, e.Data);
-                        break;
-                    case SocketDataType.Disconnect:
-                        LoginUserDisconnected(connection);
-                        break;
-                    case SocketDataType.GetPartnerInfo:
-                        _= Task.Run(async () =>
-                        {
-                            try
+                    switch (e.Type)
+                    {
+                        case SocketDataType.Ping:
+                            Ping(connection);
+                            break;
+                        case SocketDataType.Login:
+                            Login(connection, e.Data);
+                            break;
+                        case SocketDataType.Disconnect:
+                            LoginUserDisconnected(connection);
+                            break;
+                        case SocketDataType.GetPartnerInfo:
+                            _ = Task.Run(async () =>
                             {
-                                await GetPartnerInfo(connection, e.Data);
-                            }
-                            catch(Exception ex)
-                            {
-                                Log.Error(ex, "GetPartnerInfo err:");
-                            }
-                        });
-                        break;
-                    case SocketDataType.P2PConnect:
-                        P2PLogin(sender, e.Data);
-                        break;
-                    default:
-                        break;
+                                try
+                                {
+                                    await GetPartnerInfo(connection, e.Data);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Error(ex, "GetPartnerInfo err:");
+                                }
+                            });
+                            break;
+                        case SocketDataType.P2PConnect:
+                            P2PLogin(sender, e.Data);
+                            break;
+                        case SocketDataType.P2PReady:
+                            P2PReadyHandler(sender, e.Data);
+                            break;
+                        default:
+                            break;
+                    }
                 }
+            }
+            catch(Exception ex)
+            {
+                Log.Error(ex, "Login server err ");
+            }
+        }
+
+        private void P2PReadyHandler(object sender, byte[] data)
+        {
+            if(sender is SocketConnection connection)
+            {
+                _loginManager.TaskCompleted(connection, data);
             }
         }
 
@@ -287,13 +305,13 @@ namespace VRemoteServer.RelayServer.Services
             }
         }
 
-        private void RemoteLoginHandler(string connectionId,    object sender, object data)
+        private void RemoteLoginHandler(string connectionId, object sender, object data)
         {
             if(sender is SocketConnection connection)
             {
                 if (data is ConnectionCredentials credentials)
                 {
-                    //TODO
+                    _remoteControlManager.AddOrUpdateRemoteControl(connectionId, connection, credentials);
                 }
             }   
         }

@@ -32,6 +32,7 @@ namespace VRemoteServer.RelayServer.Services
         bool InitRemoteConnection(string id, SocketConnection controller);
         bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
         void P2PConnectFailed(SocketConnection connection, string connectionId);
+        void AddOrUpdateRemoteControl(string connectionId, SocketConnection connection, ConnectionCredentials credentials);
         void InitServer();
         Task StartServer(IPEndPoint ep);
         void CancelServer();
@@ -45,8 +46,11 @@ namespace VRemoteServer.RelayServer.Services
         private const int MAX_RETRY = 3;
         private const int TIMEOUT = 300;
         private bool _disposed;
+
         private Task _timeoutTask;
+
         private readonly ConcurrentDictionary<string , long> _acceptId = new();
+
         private readonly IRemoteControlServer _remoteControlServer;
         private readonly IRemoteControlManager _remoteConnectionManager;
         private CancellationTokenSource _cancel = new();
@@ -77,7 +81,6 @@ namespace VRemoteServer.RelayServer.Services
                 }
                 catch { }
             }, _cancel.Token);
-
         }
         #region Properties
         #endregion
@@ -99,11 +102,48 @@ namespace VRemoteServer.RelayServer.Services
         {
             _remoteControlServer.Cancel();
         }
-        public void NewRemoteControl(string connectionId, SocketConnection connection)
+        public void AddOrUpdateRemoteControl(string connectionId, SocketConnection connection, ConnectionCredentials credentials)
         {
 
-        }
+            try
+            {
+                var existed = _remoteConnectionManager.GetFirst(x => x.ConnectionId.Equals(connectionId));
+                if (existed != null)
+                {
+                    if(credentials.Type == ControlType.Controller && existed.Controller == null && existed.Controlled != null)
+                    {
+                        existed.Controller = connection;
+                    }
+                    else if(credentials.Type == ControlType.Controlled && existed.Controlled == null && existed.Controller != null)
+                    {
+                        existed.Controlled = connection;
+                    }
 
+                    if (existed.ReadyToRemote())
+                    {
+                        var packet = PacketFactory.CreatePacket(SocketDataType.ReadyToRemote, existed.ConnectionId);
+                        Send(existed.Controller, packet);
+                        Send(existed.Controlled, packet);
+                    }
+                }
+                else
+                {
+                    if (!_acceptId.ContainsKey(connectionId))
+                        throw new TimeoutException("Id Exceed time");
+
+                    var remoteConnection = new RemoteConnection(connectionId, credentials.Type, connection);
+                    _remoteConnectionManager.AddOrUpdate(connectionId, remoteConnection);
+                }
+            }
+            catch
+            {
+                throw;
+            }
+            finally
+            {
+                _acceptId.TryRemove(connectionId, out _);
+            }
+        }
         public bool InitRemoteConnection(string id, SocketConnection controller)
             => _remoteConnectionManager.AddController(id, controller);
 

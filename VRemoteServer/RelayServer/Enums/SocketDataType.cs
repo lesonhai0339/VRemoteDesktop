@@ -54,7 +54,9 @@ namespace VRemoteServer.RelayServer.Enums
         LoginResponse = 204,
         RemoteLogin = 205,
         RemoteLoginSuccess = 206,
-        RemoteLoginFailed = 207
+        RemoteLoginFailed = 207,
+        ReadyToRemote = 208,
+        P2PReady = 209
 
     }
 }

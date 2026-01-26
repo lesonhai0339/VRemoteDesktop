@@ -150,7 +150,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         LoginEventHandler(sender, e);
                         break;
                     case SocketDataType.RequestRemoteConnect:
-                        CreateRemoteConnection(e.Data);
+                        CreateRemoteConnection(sender, e.Data);
                         break;
                     case SocketDataType.GetPartnerInfoSuccess:
                         GetPartnerInfoSuccessCallback(e.Data);
@@ -169,6 +169,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", GetType().Name).Error(ex, string.Format("Error handling {0}: {1}", e.Type, ex.Message));
+            }
+        }
+
+        private void SendAck(object sender, byte[] data, SocketDataType type)
+        {
+            var clientSession = sender as ClientSession;
+            if (clientSession != null)
+            {
+                clientSession.Send(type, data);
             }
         }
 

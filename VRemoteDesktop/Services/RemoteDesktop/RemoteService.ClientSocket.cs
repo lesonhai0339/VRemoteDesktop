@@ -118,13 +118,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
            /// to server and wait  controller send login Info
            /// </summary>
            /// <param name="data"></param>
-        private void CreateRemoteConnection(byte[] data)
+        private void CreateRemoteConnection(object sender, byte[] data)
         {
             var dataString = Encoding.ASCII.GetString(data);
             var partnerNetworkInfo = JsonConvert.DeserializeObject<PartnerNetworkInfo>(dataString);
             if (partnerNetworkInfo == null)
                 //TODo
                 return;
+
+            SendAck(sender, Encoding.ASCII.GetBytes(partnerNetworkInfo.SessionId), SocketDataType.P2PReady);
 
             var clientSession = NewControlled(partnerNetworkInfo.SessionId);
             if (clientSession == null)
