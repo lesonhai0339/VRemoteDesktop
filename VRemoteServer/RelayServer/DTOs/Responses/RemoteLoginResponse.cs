@@ -12,7 +12,6 @@ namespace VRemoteServer.RelayServer.DTOs.Responses
         public RemoteLoginResponse(bool loggedIn, string connectionId, MachineInfo machineInfo)
         {
             LoggedIn = loggedIn;
-            Type = type;
             ConnectionId = connectionId;
             MachineInfo = machineInfo;
         }

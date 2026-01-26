@@ -167,14 +167,12 @@ namespace VRemoteServer.RelayServer.Services
         {
             try
             {
-                byte[] data = new byte[dataLength];
-                Buffer.BlockCopy(connection.Reader.Buffer, dataOffset, data, 0, dataLength);
-                var remoteInfo = JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(data, PACKET_HEADER_LENGTH, data.Length - PACKET_HEADER_LENGTH));
+                var remoteInfo = JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(connection.Reader.Buffer, dataOffset + PACKET_HEADER_LENGTH, dataLength - PACKET_HEADER_LENGTH));
                 if(remoteInfo == null)
                 {
                     //Send back invalid connection info
                 }
-                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.Login, connectionId: connectionId, data: remoteInfo));
+                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.RemoteLogin, connectionId: connectionId, data: remoteInfo));
             }
             catch (Exception ex)
             {
@@ -225,7 +223,7 @@ namespace VRemoteServer.RelayServer.Services
             if (sender is SocketConnection connection)
             {
                 connection.UpdateTime();
-                if(e.Type == SocketDataType.RemoteControlRequestToConnect)
+                if(e.Type == SocketDataType.RemoteLogin)
                 {
                     ParseRequestToConnectHeader(connection, e.Offset, e.Length);
                 }

@@ -135,7 +135,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             if (!isSuccess)
             {
-                bool connectSuccess = clientSession.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_REMOTE_PORT), RETRY, TIMEOUT);
+                bool connectSuccess = clientSession.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_REMOTE_PORT) -1, RETRY, TIMEOUT);
                 if (!connectSuccess)
                 {
                     OnError?.Invoke(this, new EventArgs()); //Failed
@@ -153,12 +153,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void EstablishRelayConnect(ClientSession clientSession, PartnerNetworkInfo partnerInfo)
         {
-            bool isSuccess = clientSession.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_REMOTE_PORT), RETRY, TIMEOUT);
+            bool isSuccess = clientSession.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_REMOTE_PORT) -1, RETRY, TIMEOUT);
             if (!isSuccess)
             {
                 OnError?.Invoke(this, new EventArgs()); //Connect to TURN server failed, throw back to UI
             }
-
+            Console.WriteLine("Connect to relay server success");
             //Connect success
             EstablishPeer2PeerConnect(clientSession, partnerInfo);
         }
