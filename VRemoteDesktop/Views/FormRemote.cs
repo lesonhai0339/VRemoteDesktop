@@ -31,15 +31,11 @@ namespace VRemoteDesktop.Views
 
         private readonly ClientSession _clientSession;
         private readonly RemotePresenter _remotePresenter;
-        //private readonly RemoteViewModel _remoteViewModel;
         private readonly RemoteService _remoteControlService;
 
         private readonly IMouseExtensions _mouseExtension;
-        private readonly IScreenCaptureExtensions _screenCaptureExtension;
 
         private bool _isDrag;
-        private Bitmap _curScreen;
-        private Graphics _screenGraphics;
 
         private DateTime _lastMouseMoveTime = DateTime.MinValue;
         private ManualResetEvent _isP2PDisconnectCallback;
@@ -65,12 +61,8 @@ namespace VRemoteDesktop.Views
 
             _clientSession = clientSession;
             _mouseExtension = new MouseExtensions();
-            _screenCaptureExtension = new ScreenCaptureExtensions();
             _remoteControlService = remoteControlService;
             _remotePresenter = new RemotePresenter(_clientSession, _remoteControlService, _mouseExtension);
-            //_remoteViewModel = new RemoteViewModel(_clientSession, _screenCaptureExtension, _mouseExtension, _remoteControlService);
-            //_remoteViewModel.screenEvent += ScreenEventHandler;
-            //_remoteViewModel.screenRegionsChangedEvent += ScreenRegionsChangedEventHandler;
 
 #if DEBUG
             _remotePresenter.UpdateScreen += UpdateScreenEventHandler;
@@ -208,14 +200,6 @@ namespace VRemoteDesktop.Views
             //Stop keyboard listener on form
             StopFormKeyboardListener();
             //Unregister events
-            //if(_remoteViewModel != null)
-            //{
-            //    _remoteViewModel.UpdateScreen -= UpdateScreenEventHandler;
-            //    _remoteViewModel.screenEvent -= ScreenEventHandler;
-            //    _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
-            //    _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;
-            //    _remoteViewModel.DisconnectedEvent -= DisconnectedEventHandler;
-            //}
             if (_remotePresenter != null)
             {
                 _remotePresenter.UpdateScreen -= UpdateScreenEventHandler;
@@ -223,27 +207,21 @@ namespace VRemoteDesktop.Views
                 _remotePresenter.OnDisconnect -= DisconnectedEventHandler;
             }
             //Form
-            _curScreen?.Dispose();
-            _screenGraphics?.Dispose();
             _pendingSender?.Dispose();
             _isP2PDisconnectCallback?.Dispose();
             _clickTimer?.Dispose();
 
             //DI
             _mouseExtension?.Dispose();
-            _screenCaptureExtension?.Dispose();
-            //_remoteViewModel?.Dispose();
             _remotePresenter?.Dispose();
         }
         private void StartFormKeyboardListener()
         {
-           // _remoteViewModel.StartKeyboardListener(this.Handle);
             _remotePresenter.AddKeyboardHook(this.Handle);
         }
         private void StopFormKeyboardListener()
         {
             _remotePresenter.RemoteKeyboardHook(this.Handle);
-            //_remoteViewModel.StopKeyboardListener(this.Handle);
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {
@@ -355,95 +333,6 @@ namespace VRemoteDesktop.Views
             );
         }
         #region Events
-        private void InitializeGraphicsSettings()
-        {
-            //config graphics
-            if (_screenGraphics != null)
-            {
-                _screenGraphics.CompositingMode = CompositingMode.SourceCopy;
-                _screenGraphics.CompositingQuality = CompositingQuality.HighSpeed;
-                _screenGraphics.InterpolationMode = InterpolationMode.NearestNeighbor;
-                _screenGraphics.SmoothingMode = SmoothingMode.None;
-                _screenGraphics.PixelOffsetMode = PixelOffsetMode.HighSpeed;
-            }
-        }
-        private void InvalidateRegion(Rectangle rectangle)
-        {
-            try
-            {
-                //RectangleF rectF = _remoteViewModel.TransformSize(vPictureBox.Size, vPictureBox.Image.Size, rectangle);
-                //Rectangle rect = Rectangle.Round(rectF);
-                //vPictureBox.Invalidate(rect);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("", this.GetType().Name).Error(ex, "InvalidateRegion error ");
-            }
-        }
-        public void ScreenEventHandler(Bitmap image)
-        {
-            if (this.InvokeRequired)
-            {
-                //Cannot using beginInvoke because need sure this call before chunks event
-                this.Invoke(new Action(() => {
-                    try
-                    {
-                        ScreenEventHandler(image);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("", this.GetType().Name).Error(ex, "ScreenEventHandler error ");
-                    }
-                }));
-                return;
-            }
-            // UI thread code
-            try
-            {
-                //lock (_screenLock)
-                //{
-                //    // Dispose old image to prevent memory leak
-                //    var oldImage = vPictureBox.Image;
-                //    _screenGraphics?.Dispose();
-                //    _curScreen?.Dispose();
-
-                //    _curScreen = new Bitmap(image);
-                //    _screenGraphics = Graphics.FromImage(_curScreen);
-
-                //    vPictureBox.Image = _curScreen;
-                //    oldImage?.Dispose();
-                //    image?.Dispose();
-                //}
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("", this.GetType().Name).Error(ex, "ScreenEventHandler error ");
-            }
-        }
-        private void ScreenRegionsChangedEventHandler(List<ScreenRegion> regions)
-        {
-            Rectangle rect = _screenCaptureExtension.MergeRegions(_screenGraphics, regions);
-            if (rect == null)
-                return;
-            if (this.InvokeRequired)
-            {
-                this.BeginInvoke(new Action(() =>
-                {
-                    try
-                    {
-                        InvalidateRegion(rect);
-                    }
-                    catch (Exception ex)
-                    {
-                        Log.ForContext("", this.GetType().Name).Error(ex, "ScreenRegionsChangedEventHandler error ");
-                    }
-                }));
-            }
-            else
-            {
-                InvalidateRegion(rect);
-            }
-        }
         private void KeyboardReceivedEventHandler(object sender, KeyboardEventArgs e)
         {
             if (this.InvokeRequired)

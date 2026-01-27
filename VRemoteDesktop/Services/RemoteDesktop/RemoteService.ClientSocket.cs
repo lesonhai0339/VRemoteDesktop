@@ -263,7 +263,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 if (handler != null)
                 {
                     //Invoke to frmMain to create fromRemote and add client session to frmChat
-                    handler.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.NewRemoteConnection, clientSession.SessionId));
+                    handler.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.AddRemoteController, clientSession.SessionId));
                 }
             }
         }
@@ -274,11 +274,18 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if (_sessionManager.FindClientSession(clientSession.SessionId))
                 {
+                    var handler = OnSessionData;
+                    if (handler != null)
+                    {
+                        handler.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.AddRemoteControlled, clientSession.SessionId));
+                    }
+
                     //Register client session with screen capture, get full screen and send to controller
                     _screenSender.AddSessionBuffer(clientSession.SessionId, clientSession.Image);
                     _screenSender.GetFullScreen(clientSession.Image);
 
                     StartCapture();
+
                 }
             }
         }

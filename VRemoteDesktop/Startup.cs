@@ -25,16 +25,7 @@ namespace VRemoteDesktop
 {
     public class Startup
     {
-        private byte[] _buffer;
-        //private IScreenCapture1 _capture;
-        //private IScreenCaptureServiceListener _screenCaptureService;
         private IKeyboardService _keyboardHookService;
-        //private VClientManager _vClientManager;
-        //private GlobalHookService _globalHook;
-        //private ClientInfoManager _clientInfoManager;
-        //private RemoteDesktopService _remoteDesktopService;
-
-
         private IMachineProfile _machineProfile;
         private IVScreenSender _screenSender;
         private SessionManager _sessionManagement;
@@ -109,54 +100,11 @@ namespace VRemoteDesktop
         }
         private void Initialize()
         {
-            //sender rent buffer
-            //var senderBuffer = VArrayPool.Rent(10 * 1024 * 1024);
-            //var senderScreenTask = new ScreenTask(senderBuffer);
-            //var sender = new VScreenSender(senderScreenTask);
-
-            //var receiverBuffer = VArrayPool.Rent(10 * 1024 * 1024);
-            //var receiverScreenTask = new ScreenTask(receiverBuffer);
-            //var receiver = new VScreenReceiver(1920, 1080, receiverScreenTask);
-            //sender.OnScreenCaptured += (s, e) =>
-            //{
-            //    try
-            //    {
-            //        receiver.DecompressedRawData(e.ScreenTask.Buffer, e.CompressedOffset, e.CompressedLength, (e.Type == Services.ScreenCapture.Enums.VScreenSenderEventType.FullScreen) ? true : false);
-            //    }
-            //    catch(Exception ex)
-            //    {
-            //        Console.WriteLine(ex.Message);
-            //    }
-            //    finally
-            //    {
-            //        e.ScreenTask.Complete();
-            //    }
-            //};
-
-            //sender.GetFullScreen();
-            //sender.Start();
-            //Console.ReadLine(); 
-            //int count = 0;
-            //while (count < 300)
-            //{
-            //    Console.WriteLine("\n----------------------------\n");
-            //    Thread.Sleep(1000);
-            //}
-            //VArrayPool.Return(senderBuffer);
-            //VArrayPool.Return(receiverBuffer);
-            //return;
             var bounds = Screen.PrimaryScreen.Bounds;
             _screenSender = new VScreenSender(bounds.Width, bounds.Height);
             _sessionManagement = new SessionManager();
 
-            //_capture = new ScreenCapture1();
             _keyboardHookService = new KeyboardService();
-            //_vClientManager = new VClientManager();
-            //_clientInfoManager = new ClientInfoManager();
-            //_screenCaptureService = new ScreenCaptureService(_capture);
-            //_globalHook = new GlobalHookService(_keyboardHookService, _screenCaptureService);
-            //_remoteDesktopService = new RemoteDesktopService(_screenSender, _globalHook, _sessionManagement, _clientInfoManager);
-
 
             _machineProfile = new MachineProfile();
             _remoteControlService = new RemoteService(_screenSender, _sessionManagement, _machineProfile, _keyboardHookService);
@@ -171,7 +119,6 @@ namespace VRemoteDesktop
             }
             finally
             {
-                VArrayPool.Return(_buffer);
                 _remoteControlService?.Dispose();
             }
         }

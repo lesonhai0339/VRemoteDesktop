@@ -12,6 +12,7 @@ using VRemoteDesktop.Presenters.Events;
 using VRemoteDesktop.Services.Client;
 using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.RemoteDesktop;
+using VRemoteDesktop.Services.RemoteDesktop.Enums;
 
 namespace VRemoteDesktop.Presenters
 {
@@ -171,22 +172,25 @@ namespace VRemoteDesktop.Presenters
                 case Services.RemoteDesktop.Enums.ResponseType.GetPartnerInfoFailed:
                     GetPartnerInfoFailedCallback();
                     break;
-                case Services.RemoteDesktop.Enums.ResponseType.NewRemoteConnection:
-                    NewRemoteConnectionCallback(sender);
+                case Services.RemoteDesktop.Enums.ResponseType.AddRemoteController:
+                case Services.RemoteDesktop.Enums.ResponseType.AddRemoteControlled:
+                    NewRemoteConnectionCallback(sender, e.Type);
                     break;
+
                 default:
                     break;
             }
         }
 
-        private void NewRemoteConnectionCallback(object sender)
+        private void NewRemoteConnectionCallback(object sender, ResponseType type)
         {
             var clientSession = sender as ClientSession;
             if(clientSession != null)
             {
                 if(OnData != null)
                 {
-                    OnData.Invoke(this, new MainDataEventArgs(new NewRemoteConnection(clientSession)));
+                    var isController = type == ResponseType.AddRemoteController ? true : false;
+                    OnData.Invoke(this, new MainDataEventArgs(new NewRemoteConnection(isController, clientSession)));
                 }
             }
         }

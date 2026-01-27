@@ -8,10 +8,12 @@ namespace VRemoteDesktop.Presenters.DTOs
 {
     public class NewRemoteConnection
     {
-        public NewRemoteConnection(ClientSession clientSession)
+        public NewRemoteConnection(bool isController, ClientSession clientSession)
         {
+            IsController = IsController;
             ClientSession = clientSession;
         }
+        public bool IsController { get; set; }
         public ClientSession ClientSession { get; set; }
     }
 }
