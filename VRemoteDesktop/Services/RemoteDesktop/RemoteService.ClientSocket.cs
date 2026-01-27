@@ -202,7 +202,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     return;
                 }
 
-                if (_machineProfile.Authentication(connectionInfo.PartnerId, connectionInfo.PartnerPassword))
+                if (!_machineProfile.Authentication(connectionInfo.PartnerId, connectionInfo.PartnerPassword))
                 {
                     clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
                     return;

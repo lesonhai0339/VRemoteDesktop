@@ -190,9 +190,9 @@ namespace VRemoteDesktop.Presenters
             var clientSession = sender as ClientSession;
             if(clientSession != null)
             {
-                if(OnData != null)
+                if(OnData != null) 
                 {
-                    var isController = type == ResponseType.AddRemoteController ? true : false;
+                    var isController =  (type == ResponseType.AddRemoteController) ? true :  false;
                     OnData.Invoke(this, new MainDataEventArgs(new NewRemoteConnection(isController, clientSession)));
                 }
             }
