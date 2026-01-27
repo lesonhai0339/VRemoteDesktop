@@ -16,6 +16,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop.Enums
         GetPartnerInfoSuccess,  
         AddRemoteController,
         AddRemoteControlled,
-        RemoteDisconnect
+        RemoteDisconnect,
+        P2PFailed
     }
 }

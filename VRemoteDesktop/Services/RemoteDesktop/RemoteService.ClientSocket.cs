@@ -214,8 +214,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                 clientSession.Send(SocketDataType.RemoteLoginSuccess, packet);
 
+                ReadyToRemoteControlledHandler(sender, null);
+
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", "ClientSession").Error(ex, "RemoteLogin err ");
             }
