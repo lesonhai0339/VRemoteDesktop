@@ -514,7 +514,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                    data: null,
                    dataSize: length);
 
-                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.RegionChange, _bufferPool, 0, length, 1);
+                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, _bufferPool, 0, length, 1);
                 Send(type, header, this.SessionId, false);
 
                 Send(frame);

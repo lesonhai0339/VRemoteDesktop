@@ -173,6 +173,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     case SocketDataType.RemoteControlDisconnect:
                         RemoteControlDisconnectHandler(sender, e);
                         break;
+                    case SocketDataType.MouseSend:
+                        MouseReceived(sender, e);
+                        break;
+                    case SocketDataType.KeyboardSend:
+                        KeyboardReceivedEventHandler(sender, e);
+                        break;
+                    case SocketDataType.ClipboardSend:
+                        break;
                     default:
                         break;
                 }

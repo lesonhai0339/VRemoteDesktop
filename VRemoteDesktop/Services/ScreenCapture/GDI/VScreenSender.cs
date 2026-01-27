@@ -212,7 +212,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     if (OnFrame != null)
                     {
                         RegionFrame frame = new RegionFrame(new Rectangle[] { new Rectangle(0, 0, _width, _height) });
-                        OnFrame(this, new FrameEventArgs(VRemoteDesktop.Enums.ScreenType.FULL_SCREEN, frame));
+                        OnFrame(this, new FrameEventArgs(VScreenType.FullScreen, frame));
                     }
                 }
             }
@@ -254,7 +254,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
                 if (OnFrame != null)
                 {
-                    OnFrame.Invoke(this, new FrameEventArgs(VRemoteDesktop.Enums.ScreenType.DIRTY_REGIONS, new RegionFrame(dirtyRegions)));
+                    OnFrame.Invoke(this, new FrameEventArgs(VScreenType.DirtyRegions, new RegionFrame(dirtyRegions)));
                 }
             }
         }

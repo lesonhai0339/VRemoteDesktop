@@ -8,6 +8,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.Enums
     public enum VScreenType
     {
         FullScreen,
-        RegionChange
+        DirtyRegions
     }
 }

@@ -4,17 +4,18 @@ using System.Linq;
 using System.Text;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.Enums;
 
 namespace VRemoteDesktop.Services.ScreenCapture.Events
 {
     public class FrameEventArgs : EventArgs
     {
-        public FrameEventArgs(ScreenType type, RegionFrame regionFrame)
+        public FrameEventArgs(VScreenType type, RegionFrame regionFrame)
         {
             Type = type;
             RegionFrame = regionFrame;
         }
-        public ScreenType Type { get; set; }
+        public VScreenType Type { get; set; }
         public RegionFrame RegionFrame { get; set; }
     }
 }

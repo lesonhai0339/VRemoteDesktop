@@ -177,7 +177,6 @@ namespace VRemoteDesktop.Presenters
                 default:
                     break;
             }
-            throw new NotImplementedException();
         }
 
         private void NewRemoteConnectionCallback(object sender)

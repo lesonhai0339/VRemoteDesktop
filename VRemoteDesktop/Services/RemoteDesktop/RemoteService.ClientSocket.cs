@@ -31,13 +31,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             var session = _sessionManager.New(id: sessionId,type: ClientType.Controlled, width: width, height: height);
 
-            //Note*** do something later
-            //if (_sessionManager.Connections.Count > 0)
-            //{
-            //    if (_sessionManager.HasClientOfType(ClientType.Controlled))
-            //        StartScreenCapture();
-            //}
-
+            if (_sessionManager.HasClientOfType(ClientType.Controlled))
+            {
+                InitCapturingBuffer();
+            }
 
             return session;
         }

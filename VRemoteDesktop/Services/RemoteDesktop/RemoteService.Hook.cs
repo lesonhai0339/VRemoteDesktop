@@ -11,6 +11,8 @@ using static VRemoteDesktop.Utils.Logger;
 using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.ScreenCapture.Events;
 using VRemoteDesktop.Utils;
+using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
+using VRemoteDesktop.Services.ScreenCapture.Enums;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
 {
@@ -19,7 +21,18 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #region Hook
 
         #region Screen
-        #region Methods
+        private void InitCapturingBuffer()
+        {
+            try
+            {
+                _screenSender.InitializeSenderComponents();
+            }
+            catch(Exception ex)
+            {
+                //Important error
+                Log.ForContext("FileName", "RemoteService_Hook").Error(ex, "InitCapturingBuffer err ");
+            }
+        }
         private void StartScreenCapture()
         {
             if (!_screenSender.IsCapturing)
@@ -31,8 +44,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             _screenSender.Stop();
         }
-        #endregion
-        #region Events
         private void FullScreenSendCompleted(object sender, EventArgs e)
         {
             var clientSession = sender as ClientSession;
@@ -45,11 +56,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                if (e.Type == ScreenType.FULL_SCREEN)
+                if (e.Type == VScreenType.FullScreen)
                 {
                     _sessionManager.AddScreen(SessionManagement.Enums.ClientType.Controlled, e.RegionFrame);
                 }
-                else if (e.Type == ScreenType.DIRTY_REGIONS)
+                else if (e.Type == VScreenType.DirtyRegions)
                 {
                     _sessionManager.AddDirtyRegions(SessionManagement.Enums.ClientType.Controlled, e.RegionFrame);
                 }
@@ -59,7 +70,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 Logger.Log.ForContext("FileName", "OnDirtyRegionError").Error(ex.Message);
             }
         }
-        #endregion
         #endregion
 
         #region Mouse
@@ -76,17 +86,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
         }
 
-        #region Events
-        private void MouseReceived(object sender, RemoteDesktopEventArgs e)
+        private void MouseReceived(object sender, ClientSessionDataReceivedEventArgs e)
         {
             var bounds = _machineProfile.Bounds;
             MouseReceivedEventHandler(bounds.Width, bounds.Height, e.Data);
         }
         #endregion
-        #endregion
 
         #region Keyboard
-        #region Methods
         public void StartKeyboardListener(uint handle = 0)
         {
             if (handle == 0)
@@ -111,45 +118,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             _keyboardService.RemoveHook(handle);
         }
-        public bool CheckClipboard(KeyboardEventArgs e, out byte[] clipboardBytes, out SocketDataType type)
+      
+        public void KeyboardReceivedEventHandler(object sender, ClientSessionDataReceivedEventArgs e)
         {
-            clipboardBytes = null;
-            type = SocketDataType.None;
-            if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
-            {
-                type = SocketDataType.ClipboardSend;
-                clipboardBytes = Encoding.UTF8.GetBytes(GetClipboard());
-                return true;
-            }
-            return false;
-        }
-        public void KeyboardReceivedEventHandler(byte[] data)
-        {
-            var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(data);
+            var keyEvent = VirtualKeyboard.BytesToCustomKeyboardEvent(e.Data);
             if (keyEvent == null)
                 return;
             VirtualKeyboard.ProcessKeyboardReceived(keyEvent.Key, keyEvent.Type);
         }
-        public string GetClipboard()
-        {
-            return VirtualClipboard.GetClipboardString();
-        }
-        public bool SetClipboard(byte[] data)
-        {
-            string text = Encoding.UTF8.GetString(data);
-
-            byte[] unicodeData = Encoding.Unicode.GetBytes(text + '\0');
-
-            return VirtualClipboard.SetClipboard(unicodeData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
-        }
-        public bool SetClipboard(byte[] data, int index, int length)
-        {
-            byte[] clipboardData = new byte[length];
-            Buffer.BlockCopy(data, index, clipboardData, 0, length);
-            return VirtualClipboard.SetClipboard(clipboardData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
-        }
-        #endregion
-        #region Events
         private void KeyPressedEventHandler(object sender, KeyboardEventArgs e)
         {
             if (CheckClipboard(e, out var data, out var type))
@@ -173,10 +149,43 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
         }
         #endregion
+
+        #region Clipboard
+        private void ClipboardReceived(object sender, ClientSessionDataReceivedEventArgs e)
+        {
+            SetClipboard(e.Data);
+        }
+        public string GetClipboard()
+        {
+            return VirtualClipboard.GetClipboardString();
+        }
+        public bool CheckClipboard(KeyboardEventArgs e, out byte[] clipboardBytes, out SocketDataType type)
+        {
+            clipboardBytes = null;
+            type = SocketDataType.None;
+            if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
+            {
+                type = SocketDataType.ClipboardSend;
+                clipboardBytes = Encoding.UTF8.GetBytes(GetClipboard());
+                return true;
+            }
+            return false;
+        }
+        public bool SetClipboard(byte[] data)
+        {
+            string text = Encoding.UTF8.GetString(data);
+
+            byte[] unicodeData = Encoding.Unicode.GetBytes(text + '\0');
+
+            return VirtualClipboard.SetClipboard(unicodeData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
+        }
+        public bool SetClipboard(byte[] data, int index, int length)
+        {
+            byte[] clipboardData = new byte[length];
+            Buffer.BlockCopy(data, index, clipboardData, 0, length);
+            return VirtualClipboard.SetClipboard(clipboardData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
+        }
         #endregion
-
-
-
         #endregion
     }
 }

@@ -11,6 +11,7 @@ using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Presenters;
 using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture;
@@ -29,7 +30,8 @@ namespace VRemoteDesktop.Views
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
         private readonly ClientSession _clientSession;
-        private readonly RemoteViewModel _remoteViewModel;
+        private readonly RemotePresenter _remotePresenter;
+        //private readonly RemoteViewModel _remoteViewModel;
         private readonly RemoteService _remoteControlService;
 
         private readonly IMouseExtensions _mouseExtension;
@@ -65,15 +67,16 @@ namespace VRemoteDesktop.Views
             _mouseExtension = new MouseExtensions();
             _screenCaptureExtension = new ScreenCaptureExtensions();
             _remoteControlService = remoteControlService;
-            _remoteViewModel = new RemoteViewModel(_clientSession, _screenCaptureExtension, _mouseExtension, _remoteControlService);
+            _remotePresenter = new RemotePresenter(_clientSession, _remoteControlService, _mouseExtension);
+            //_remoteViewModel = new RemoteViewModel(_clientSession, _screenCaptureExtension, _mouseExtension, _remoteControlService);
+            //_remoteViewModel.screenEvent += ScreenEventHandler;
+            //_remoteViewModel.screenRegionsChangedEvent += ScreenRegionsChangedEventHandler;
 
 #if DEBUG
-            _remoteViewModel.UpdateScreen += UpdateScreenEventHandler;
+            _remotePresenter.UpdateScreen += UpdateScreenEventHandler;
 #endif
-            _remoteViewModel.screenEvent += ScreenEventHandler;
-            _remoteViewModel.screenRegionsChangedEvent += ScreenRegionsChangedEventHandler;
-            _remoteViewModel.keyboardEvent += KeyboardReceivedEventHandler;
-            _remoteViewModel.DisconnectedEvent += DisconnectedEventHandler;
+            _remotePresenter.OnKeyboard += KeyboardReceivedEventHandler;
+            _remotePresenter.OnDisconnect += DisconnectedEventHandler;
 
             _isDrag = false;
             _isP2PDisconnectCallback = new ManualResetEvent(false);
@@ -89,7 +92,8 @@ namespace VRemoteDesktop.Views
             vPictureBox.BackColor = Color.Black;
 #if DEBUG
             //vPictureBox.Setup(_vClient.Partner.Width, _vClient.Partner.Height, _remoteViewModel.Stride, _remoteViewModel.Bits, _remoteViewModel.BitmapInfo);
-            vPictureBox.Image = _remoteViewModel.Picture;
+            //vPictureBox.Image = _remoteViewModel.Picture;
+            vPictureBox.Image = _remotePresenter.Picture;
             vPictureBox.Paint += VPictureBox_Paint;
 #endif
 
@@ -149,15 +153,6 @@ namespace VRemoteDesktop.Views
 
             vPictureBox.Invalidate();
             vPictureBox.Update();
-
-            _remoteViewModel.AddWork(
-                QueuePriority.High,
-                new TaskObject(
-                    type: (e.IsFullScreen) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, 
-                    _clientSession.SessionId, 
-                    isSendHeader: true, 
-                    data: new byte[0]
-                ));
         }
 #endif
 
@@ -213,15 +208,19 @@ namespace VRemoteDesktop.Views
             //Stop keyboard listener on form
             StopFormKeyboardListener();
             //Unregister events
-            if(_remoteViewModel != null)
+            //if(_remoteViewModel != null)
+            //{
+            //    _remoteViewModel.UpdateScreen -= UpdateScreenEventHandler;
+            //    _remoteViewModel.screenEvent -= ScreenEventHandler;
+            //    _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
+            //    _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;
+            //    _remoteViewModel.DisconnectedEvent -= DisconnectedEventHandler;
+            //}
+            if (_remotePresenter != null)
             {
-#if DEBUG
-                _remoteViewModel.UpdateScreen -= UpdateScreenEventHandler;
-#endif
-                _remoteViewModel.screenEvent -= ScreenEventHandler;
-                _remoteViewModel.screenRegionsChangedEvent -= ScreenRegionsChangedEventHandler;
-                _remoteViewModel.keyboardEvent -= KeyboardReceivedEventHandler;
-                _remoteViewModel.DisconnectedEvent -= DisconnectedEventHandler;
+                _remotePresenter.UpdateScreen -= UpdateScreenEventHandler;
+                _remotePresenter.OnKeyboard -= KeyboardReceivedEventHandler;
+                _remotePresenter.OnDisconnect -= DisconnectedEventHandler;
             }
             //Form
             _curScreen?.Dispose();
@@ -233,15 +232,18 @@ namespace VRemoteDesktop.Views
             //DI
             _mouseExtension?.Dispose();
             _screenCaptureExtension?.Dispose();
-            _remoteViewModel?.Dispose();
+            //_remoteViewModel?.Dispose();
+            _remotePresenter?.Dispose();
         }
         private void StartFormKeyboardListener()
         {
-            _remoteViewModel.StartKeyboardListener(this.Handle);
+           // _remoteViewModel.StartKeyboardListener(this.Handle);
+            _remotePresenter.AddKeyboardHook(this.Handle);
         }
         private void StopFormKeyboardListener()
         {
-            _remoteViewModel.StopKeyboardListener(this.Handle);
+            _remotePresenter.RemoteKeyboardHook(this.Handle);
+            //_remoteViewModel.StopKeyboardListener(this.Handle);
         }
         private void MouseDownEventHandler(object sender, MouseEventArgs e)
         {
@@ -276,7 +278,7 @@ namespace VRemoteDesktop.Views
 
             if (_pendingClickArgs != null && !_isDrag && mouseType != MouseEventType.None)
             {
-                _remoteViewModel.ProcessMouseEvent(
+                _remotePresenter.ProcessMouseEvent(
                    mouseType,
                    vPictureBox,
                    _pendingClickArgs
@@ -330,7 +332,7 @@ namespace VRemoteDesktop.Views
                     }
                 }
 
-                _remoteViewModel.ProcessMouseEvent(
+                _remotePresenter.ProcessMouseEvent(
                     mouseEvent,
                     vPictureBox,
                     e,
@@ -346,7 +348,7 @@ namespace VRemoteDesktop.Views
 
         private void MouseWheelEventHandler(object sender, MouseEventArgs e)
         {
-            _remoteViewModel.ProcessMouseEvent(
+            _remotePresenter.ProcessMouseEvent(
                 MouseEventType.Wheel,
                 vPictureBox,
                 e
@@ -451,18 +453,18 @@ namespace VRemoteDesktop.Views
             }
             try
             {
-                 if (e.Combination == KeyCombination.Copy)
-            {
-                _remoteViewModel.GetClipboard(e);
-            }
-            else
-            {
-                if (e.Handle != this.Handle && Form.ActiveForm != this)
+                if (e.Combination == KeyCombination.Copy)
                 {
-                    return;
+                    _remotePresenter.GetClipboard(e);
                 }
-                _remoteViewModel.ProcessKeyboard(e);
-            }
+                else
+                {
+                    if (e.Handle != this.Handle && Form.ActiveForm != this)
+                    {
+                        return;
+                    }
+                    _remotePresenter.ProcessKeyboard(e);
+                }
             }
             catch(Exception ex)
             {
