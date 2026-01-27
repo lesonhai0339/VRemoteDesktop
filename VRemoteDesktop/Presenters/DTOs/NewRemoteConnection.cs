@@ -10,7 +10,7 @@ namespace VRemoteDesktop.Presenters.DTOs
     {
         public NewRemoteConnection(bool isController, ClientSession clientSession)
         {
-            IsController = IsController;
+            IsController = isController;
             ClientSession = clientSession;
         }
         public bool IsController { get; set; }

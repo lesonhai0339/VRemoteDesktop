@@ -60,7 +60,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly ConcurrentQueue<QueueItem> _mediumQueue; //Screen, DirtyRegions
 
         private readonly HashSet<string> _cancelFile;
-        private readonly ConcurrentQueue<ChunkFileInfo> _lowQueue; //File
+        private readonly ConcurrentQueue<QueueItem> _lowQueue; //File
 
         private readonly ConcurrentQueue<QueueItem> _receiveQueue;
 
@@ -103,7 +103,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
 
             _cancelFile = new HashSet<string>();
-            _lowQueue = new ConcurrentQueue<ChunkFileInfo>();
+            _lowQueue = new ConcurrentQueue<QueueItem>();
 
             _receiveQueue = new ConcurrentQueue<QueueItem>();
 
@@ -220,23 +220,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 try
                 {
-                    //if (Interlocked.CompareExchange(ref _sending, 0, 0) != 0)
-                    //{
-                    //    var current = Stopwatch.GetTimestamp();
-                    //    double elapsedSeconds = (double)(current - _lastSendTimestamp) / Stopwatch.Frequency;
-
-                    //    if (elapsedSeconds > 3.0)
-                    //    {
-                    //        Console.WriteLine("Regions Timeout, continue");
-                    //        Interlocked.Exchange(ref _sending, 0);
-                    //    }
-                    //    Console.WriteLine("send is busy, do nothing");
-                    //    Thread.Sleep(10);
-                    //    continue;
-                    //}
-
                     bool hasWork = false;
-
                     if (_highQueue.TryDequeue(out var highTask))
                     {
                         HighQueueHandler(highTask);
@@ -249,7 +233,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     }
                     else if (_lowQueue.TryDequeue(out var lowTask))
                     {
-                        if (_cancelFile.Contains(lowTask.FileId)) continue;
+                        LowQueueHandler(lowTask);
                         hasWork = true;
                     }
 
@@ -286,7 +270,17 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
             }
         }
+        private void LowQueueHandler(QueueItem lowTask)
+        {
+            var taskObj = lowTask.Data as TaskObject;
+            if(taskObj != null)
+            {
+                if (_cancelFile.Contains(taskObj.ChunkFileInfo.FileId))
+                    return;
 
+                ProcessFileTransfer(taskObj);
+            }
+        }
         private void ReceivedWorker(CancellationToken token)
         {
             while (!token.IsCancellationRequested)
@@ -375,7 +369,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if (task.ChunkFileInfo == null) return;
 
-                _lowQueue.Enqueue(task.ChunkFileInfo);
+                _lowQueue.Enqueue(new QueueItem(task));
             }
             //Add queue
             _sendWakeUp.Set();
@@ -612,61 +606,71 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (task.ChunkFileInfo == null)
             {
                 //Send metadata
-                //Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
+                Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
+                return;
             }
-            else
+            //Send file data
+            try
             {
-                //Send file data
-                try
+                FileHelper.OpenStream(task.ChunkFileInfo.FilePath);
+                int headerSize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
+
+                byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
+
+                if (!Enum.IsDefined(typeof(ChatDataType), (int)task.Data[0]))
                 {
-                    FileHelper.OpenStream(task.ChunkFileInfo.FilePath);
-                    int headerSize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
-
-                    byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
-
-                    if (!Enum.IsDefined(typeof(ChatDataType), (int)task.Data[0]))
-                    {
-                        return;
-                    }
-                    int offset = 0;
-                    //Data type
-                    ChatDataType type = (ChatDataType)task.Data[0];
-                    chunkFileData[offset] = (byte)type;
-                    offset += RandomLength.DATA_TYPE_LENGTH;
-
-                    //Chunk offset
-                    Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, offset, ByteConstants.INT32_LENGTH);
-                    offset += ByteConstants.INT32_LENGTH;
-
-                    //File Id
-                    Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, offset, RandomLength.FILE_ID_LENGTH);
-                    offset += RandomLength.FILE_ID_LENGTH;
-
-                    //File data
-                    int chunkRead = FileHelper.CopyFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
-                    if (chunkRead != chunkFileData.Length - headerSize)
-                    {
-                        RemoveFile(task.ChunkFileInfo.FileId);
-                        return;
-                    }
-                    //Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
-
-                    if ((task.ChunkFileInfo.Offset + task.ChunkFileInfo.ChunkSize) >= task.ChunkFileInfo.FileLength)
-                    {
-                        bool result = FileHelper.CloseStream(task.ChunkFileInfo.FilePath);
-                        if (!result)
-                            Logger.Log.ForContext("FileName", this.GetType().Name).Error("Close stream failed");
-                    }
+                    return;
                 }
-                catch (Exception ex)
+                int offset = 0;
+                //Data type
+                ChatDataType type = (ChatDataType)task.Data[0];
+                chunkFileData[offset] = (byte)type;
+                offset += RandomLength.DATA_TYPE_LENGTH;
+
+                //Chunk offset
+                Buffer.BlockCopy(BitConverter.GetBytes(task.ChunkFileInfo.Offset), 0, chunkFileData, offset, ByteConstants.INT32_LENGTH);
+                offset += ByteConstants.INT32_LENGTH;
+
+                //File Id
+                Buffer.BlockCopy(Encoding.ASCII.GetBytes(task.ChunkFileInfo.FileId), 0, chunkFileData, offset, RandomLength.FILE_ID_LENGTH);
+                offset += RandomLength.FILE_ID_LENGTH;
+
+                //File data
+                int chunkRead = FileHelper.CopyFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
+                if (chunkRead != chunkFileData.Length - headerSize)
                 {
-                    Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Send chunk file on socket id " + this._sessionId + "error ");
+                    RemoveFile(task.ChunkFileInfo.FileId);
+                    return;
                 }
+                Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
+
+                if ((task.ChunkFileInfo.Offset + task.ChunkFileInfo.ChunkSize) >= task.ChunkFileInfo.FileLength)
+                {
+                    bool result = FileHelper.CloseStream(task.ChunkFileInfo.FilePath);
+                    if (!result)
+                        Logger.Log.ForContext("FileName", this.GetType().Name).Error("Close stream failed");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Send chunk file on socket id " + this._sessionId + "error ");
             }
         }
         public void RemoveFile(string fileId)
         {
             _cancelFile.Add(fileId);
+        }
+        private void SendDisconnectedNotification()
+        {
+            try
+            {
+                var header = HeaderGenerate(SocketDataType.Disconnect, this._sessionId, true, Encoding.ASCII.GetBytes(_sessionType.ToString()));
+                _clientSocket.Send(header);
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("", "ClientSession").Error(ex, "SendDisconnectedNotification err");
+            }
         }
         #endregion
 
@@ -689,8 +693,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var handler = OnDisconnected;
             if (handler != null)
                 handler.Invoke(this, new ClientSessionDisconnectedEventArgs(_sessionId));
-
-            this.Dispose();
         }
         #endregion
 
@@ -708,6 +710,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if (disposing)
                 {
+                    SendDisconnectedNotification();
+
                     if (_clientSocket != null)
                         _clientSocket.Dispose();
 

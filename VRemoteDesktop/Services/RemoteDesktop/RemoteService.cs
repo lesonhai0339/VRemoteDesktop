@@ -30,7 +30,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 #if DEBUG
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
         private readonly string DEFAULT_LOGIN_PORT = "2399";
-        private readonly string DEFAULT_REMOTE_PORT = "2401";
+        private readonly string DEFAULT_REMOTE_PORT = "2400";
 #endif
         //private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
         //private readonly string DEFAULT_LOGIN_PORT = AppSettingHelper.GetValue("LoginPort");

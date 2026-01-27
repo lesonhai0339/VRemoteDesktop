@@ -224,8 +224,11 @@ namespace VRemoteDesktop.Services.SessionManagement
                 int num = Socket.EndReceive(ar);
                 if (num == 0)
                 {
+                    var handlerErr = OnDisconnected;
+                    if (handlerErr != null)
+                        handlerErr.Invoke(this, new SocketDisconnectedEventArgs(_sessionId));
                     //Socket disconnect, dispose this class
-                    this.Dispose();
+                    //this.Dispose();
                     return;
                 }
 
@@ -332,6 +335,17 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
 
             _socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
+        }
+        public void Send(byte[] data)
+        {
+            if (_socket == null)
+                return;
+
+            if (!_socket.Connected)
+            {
+                throw new InvalidOperationException("Socket with id: " + _sessionId + " no available");
+            }
+            _socket.Send(data, SocketFlags.None);
         }
         private void SendCallback(IAsyncResult ar)
         {
