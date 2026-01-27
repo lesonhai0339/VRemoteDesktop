@@ -32,7 +32,7 @@ namespace VRemoteServer.RelayServer.Services
         bool InitRemoteConnection(string id, SocketConnection controller);
         bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
         void P2PConnectFailed(SocketConnection connection, string connectionId);
-        void AddOrUpdateRemoteControl(string connectionId, SocketConnection connection, ConnectionCredentials credentials);
+        void AddOrUpdateRemoteControl(string connectionId, SocketConnection connection, SocketPacket packet);
         void InitServer();
         Task StartServer(IPEndPoint ep);
         void CancelServer();
@@ -102,11 +102,18 @@ namespace VRemoteServer.RelayServer.Services
         {
             _remoteControlServer.Cancel();
         }
-        public void AddOrUpdateRemoteControl(string connectionId, SocketConnection connection, ConnectionCredentials credentials)
+        public void AddOrUpdateRemoteControl(string connectionId, SocketConnection connection, SocketPacket packet)
         {
 
             try
             {
+                var credentials = ParseRequestToConnectHeader(connection, packet.Offset, packet.Length);
+                if(credentials == null)
+                {
+                    Send(connection, SocketDataType.RemoteLoginFailed);
+                    return; 
+                }
+
                 var existed = _remoteConnectionManager.GetFirst(x => x.ConnectionId.Equals(connectionId));
                 if (existed != null)
                 {
@@ -121,9 +128,8 @@ namespace VRemoteServer.RelayServer.Services
 
                     if (existed.ReadyToRemote())
                     {
-                        var packet = PacketFactory.CreatePacket(SocketDataType.ReadyToRemote, existed.ConnectionId);
-                        Send(existed.Controller, packet);
-                        Send(existed.Controlled, packet);
+                        Send(existed.Controller, SocketDataType.ReadyToRemoteController);
+                        Send(existed.Controlled, SocketDataType.ReadyToRemoteControlled);
                     }
                 }
                 else
@@ -142,6 +148,22 @@ namespace VRemoteServer.RelayServer.Services
             finally
             {
                 _acceptId.TryRemove(connectionId, out _);
+            }
+        }
+        private ConnectionCredentials ParseRequestToConnectHeader(SocketConnection connection, int dataOffset, int dataLength)
+        {
+            try
+            {
+                var (length, type, connectionId) = PacketFactory.GetHeaderDataFromPacket(connection.Reader.Buffer, dataOffset, dataLength);
+                if (length < 0 || type == SocketDataType.None || string.IsNullOrEmpty(connectionId))
+                {
+                    return null;
+                }
+                return JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(connection.Reader.Buffer, dataOffset + PACKET_HEADER_LENGTH, dataLength - PACKET_HEADER_LENGTH));
+            }
+            catch
+            {
+                return null;
             }
         }
         public bool InitRemoteConnection(string id, SocketConnection controller)
@@ -186,40 +208,6 @@ namespace VRemoteServer.RelayServer.Services
             id = null;
             return false;
         }
-        private void ParseRequestToConnectHeader(SocketConnection connection, int dataOffset, int dataLength)
-        {
-            try
-            {
-                var (length, type, connectionId) = PacketFactory.GetHeaderDataFromPacket(connection.Reader.Buffer, dataOffset, dataLength);
-                if (length < 0 || type == SocketDataType.None || string.IsNullOrEmpty(connectionId))
-                {
-                    return;
-                }
-                RemoteControlRequestToConnect(connection, connectionId, dataOffset, dataLength);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, "ParsePacketToData error");
-            }
-        }
-
-        private void RemoteControlRequestToConnect(SocketConnection connection, string connectionId, int dataOffset, int dataLength)
-        {
-            try
-            {
-                var remoteInfo = JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(connection.Reader.Buffer, dataOffset + PACKET_HEADER_LENGTH, dataLength - PACKET_HEADER_LENGTH));
-                if(remoteInfo == null)
-                {
-                    //Send back invalid connection info
-                }
-                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: SocketDataType.RemoteLogin, connectionId: connectionId, data: remoteInfo));
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("FileName", this.GetType().Name).Error(ex, $"RemoteControlRequestToConnect error");
-            }
-        }
-
         public void P2PConnectFailed(SocketConnection connection, string connectionId)
         {
             byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlConnectFailed, connectionId);
@@ -234,7 +222,15 @@ namespace VRemoteServer.RelayServer.Services
             }
             catch { }
         }
-
+        public void Send(SocketConnection connection, SocketDataType type)
+        {
+            try
+            {
+                var packet = PacketFactory.CreatePacket(type);
+                _remoteControlServer.Send(connection, packet);
+            }
+            catch { }
+        }
         public void Send(SocketConnection connection, int offset, int length)
         {
             try
@@ -263,14 +259,7 @@ namespace VRemoteServer.RelayServer.Services
             if (sender is SocketConnection connection)
             {
                 connection.UpdateTime();
-                if(e.Type == SocketDataType.RemoteLogin)
-                {
-                    ParseRequestToConnectHeader(connection, e.Offset, e.Length);
-                }
-                else
-                {
-                    RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: e.Type, connectionId: e.Id, new SocketPacket(e.Data, e.Offset, e.Length)));
-                }
+                RemoteControlManagerEvent?.Invoke(connection, new RemoteControlManagerEventArgs(type: e.Type, connectionId: e.Id, new SocketPacket(e.Data, e.Offset, e.Length)));
             }
         }
 

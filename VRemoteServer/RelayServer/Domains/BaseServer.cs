@@ -146,7 +146,7 @@ namespace VRemoteServer.RelayServer.Domains
             }
             finally
             {
-                listenSocket.Close();
+                listenSocket?.Close();
             }
         }
 
@@ -374,7 +374,7 @@ namespace VRemoteServer.RelayServer.Domains
         private void ProcessAccept(SocketAsyncEventArgs e)
         {
             Socket acceptSocket = e.AcceptSocket;
-            string ip = (acceptSocket.RemoteEndPoint as IPEndPoint).Address.ToString();
+            string ip = (acceptSocket?.RemoteEndPoint as IPEndPoint)?.Address.ToString();
 
             if (string.IsNullOrEmpty(ip))
             {

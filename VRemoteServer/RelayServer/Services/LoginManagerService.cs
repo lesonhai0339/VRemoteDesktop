@@ -47,7 +47,7 @@ namespace VRemoteServer.RelayServer.Services
     }
     public class LoginManagerService : ILoginManagerService, IDisposable
     {
-        private const int DELAY_TIME = 1500; 
+        private const int TIMEOUT = 5; 
         private bool _disposed;
 
 
@@ -78,8 +78,11 @@ namespace VRemoteServer.RelayServer.Services
         {
             TaskCompletionSource<bool> task = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
             if (!_tasks.TryAdd(id, task))
-                //Failed
+            {
+                //Notify to controller that cannot establish connection
+                Send(controller.SocketConnection, SocketDataType.GetPartnerInfoFailed);
                 return;
+            }
 
             //Send controller network info to controlled
             var controllerInfo = new PartnerNetworkInfo(
@@ -88,33 +91,40 @@ namespace VRemoteServer.RelayServer.Services
                 partnerPassword: string.Empty,   
                 publicIP: controller.PublicIP, 
                 localIP: controller.Ip, 
-                port: controller.Port);
+                port: controller.Port,
+                width: controller.Width,
+                height: controller.Height);
 
             var controllerInfoByteArray = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controllerInfo));
             var controllerPacket = PacketFactory.CreatePacket(SocketDataType.RequestRemoteConnect, data: controllerInfoByteArray);
        
-            bool respond = SendWithRespond(controlled.SocketConnection, controllerPacket);
-            if (!respond)
+            bool queue = SendWithRespond(controlled.SocketConnection, controllerPacket);
+            if (!queue)
             {
+                //Add to send queue failed, remove task and notify to controller
                 _tasks.TryRemove(id, out _);
+                Send(controller.SocketConnection, SocketDataType.GetPartnerInfoFailed);
                 return;
             }
 
             bool isSuccess = false;
             try
             {
-                isSuccess = await task.Task.WaitAsync(TimeSpan.FromSeconds(3));
+                //Waiting controlled received request connect packet and send ack
+                isSuccess = await task.Task.WaitAsync(TimeSpan.FromSeconds(TIMEOUT));
             }
-            catch { }
+            catch { /*Timeout, disposed,...*/ }
             finally
             {
-
                 _tasks.TryRemove(id, out _);
             }
 
             if (!isSuccess)
-                //Failed
+            {
+                //Timeout
+                Send(controller.SocketConnection, SocketDataType.GetPartnerInfoFailed);
                 return;
+            }
 
             //Send controlled network info to controller
             var controlledInfo = new PartnerNetworkInfo(
@@ -123,7 +133,9 @@ namespace VRemoteServer.RelayServer.Services
                 partnerPassword: controlled.Password,
                 publicIP: controlled.PublicIP,
                 localIP: controlled.Ip,
-                port: controlled.Port);
+                port: controlled.Port,
+                width: controlled.Width,
+                height: controlled.Height);
 
             var controlledInfoByteArray = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controlledInfo));
             var controlledPacket = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoSuccess, data: controlledInfoByteArray);

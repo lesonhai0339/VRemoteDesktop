@@ -35,12 +35,7 @@ namespace VRemoteDesktop.Services.SessionManagement
         }
         public bool HasClientOfType(ClientType type)
         {
-            foreach (var connection in _sessions)
-            {
-                if (connection.Value.SessionType == type)
-                    return true;
-            }
-            return false;
+            return _sessions.Values.Any(x => x.SessionType == type);
         }
         public void Add(string id, ClientSession session)
         {
@@ -101,34 +96,34 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
             throw new InvalidOperationException(string.Format("Connection with Id:{0} does not exists", id));
         }
-        public ClientSession New(string id, ClientType type)
+        public ClientSession New(string id, ClientType type, int myWidth, int myHeight, int partnerWidth, int partnerHeight)
         {
             if (_sessions.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            ClientSession session = new ClientSession(id, type);
+            ClientSession session = new ClientSession(id, type, myWidth, myHeight, partnerWidth, partnerHeight);
             Add(id, session);
             return session;
         }
-        public ClientSession AddNewAndListen(string id, ClientType type, int port)
+        public ClientSession AddNewAndListen(string id, ClientType type, int port, int myWidth, int myHeight, int partnerWidth, int partnerHeight)
         {
             if (_sessions.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            ClientSession client = new ClientSession(id, type);
-            Add(id, client);
+            ClientSession session = new ClientSession(id, type, myWidth, myHeight, partnerWidth, partnerHeight);
+            Add(id, session);
 
-            bool result = client.Listen(port);
+            bool result = session.Listen(port);
             if (!result)
             {
                 Remove(id);
                 throw new InvalidOperationException(string.Format("Cannot start listening for client with Id:{0}", id));
             }
-            return client;
+            return session;
         }
         #endregion
         #region Dispatch
@@ -138,7 +133,7 @@ namespace VRemoteDesktop.Services.SessionManagement
             if (screen == null)
                 throw new ArgumentNullException("Full screen cannot be null");
 
-            var sessions = _sessions.Where(x => x.Value.SessionType == type && x.Value.FullScreenReceived()).Select(x => x.Value).ToList();
+            var sessions = _sessions.Where(x => x.Value.SessionType == type && x.Value.AcceptFullScreen()).Select(x => x.Value).ToList();
             foreach(var session in sessions)
             {
                 AddScreen(session, screen);

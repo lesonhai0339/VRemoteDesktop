@@ -52,10 +52,10 @@ namespace VRemoteDesktop.Models
         LoginResponse = 204,
         RemoteLogin = 205,
         RemoteLoginSuccess = 206,
-        RemoteLoginFailed =  207,
-        ReadyToRemote = 208,
-        P2PReady = 209
-
+        RemoteLoginFailed = 207,
+        ReadyToRemoteController = 208,
+        ReadyToRemoteControlled = 209,
+        P2PReady = 210
 
     }
 }

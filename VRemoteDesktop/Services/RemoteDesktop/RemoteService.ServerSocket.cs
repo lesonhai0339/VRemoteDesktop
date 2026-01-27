@@ -26,7 +26,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (string.IsNullOrEmpty(sessionId))
                 sessionId = StringHelper.RandomString(SESSION_ID_LENGTH);
 
-            return _sessionManager.New(sessionId, SessionManagement.Enums.ClientType.System);
+            return _sessionManager.New(sessionId, 
+                SessionManagement.Enums.ClientType.System, 
+                _machineProfile.Bounds.Width, 
+                _machineProfile.Bounds.Height,
+                0,
+                0);
         }
         public  bool ConnectToServer(ClientSession serverSocket, string ip, int port)
         {
@@ -75,24 +80,28 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #region Events
         private void LoginEventHandler(object sender, ClientSessionDataReceivedEventArgs e)
         {
-            try
+            var clientSession = sender as ClientSession;
+            if(clientSession != null)
             {
-                string dataString = Encoding.ASCII.GetString(e.Data);
-                var loginResponse = JsonConvert.DeserializeObject<LoginResponse>(dataString);
-                if (loginResponse != null && loginResponse.IsSuccess)
+                try
                 {
-                    UpdatePublicIp(loginResponse.PublicIP);
-                    OnSessionData?.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.LoginSuccess));
+                    string dataString = Encoding.ASCII.GetString(e.Data);
+                    var loginResponse = JsonConvert.DeserializeObject<LoginResponse>(dataString);
+                    if (loginResponse != null && loginResponse.IsSuccess)
+                    {
+                        UpdatePublicIp(loginResponse.PublicIP);
+                        OnSessionData?.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.LoginSuccess, clientSession.SessionId));
+                    }
+                    else
+                    {
+                        OnSessionData?.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.LoginFailed , clientSession.SessionId));
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    OnSessionData?.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.LoginFailed));
+                    throw;
                 }
-            }
-            catch(Exception ex)
-            {
-                throw;
-            }
+            }          
         }
        
         private void ConnectCallback(object sender, ClientSessionDataReceivedEventArgs e)
@@ -114,12 +123,16 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var response = e.IsSuccess ? ResponseType.ConnectSuccess : ResponseType.ConnectFailed;
             var handler = OnSessionData;
             if (handler != null)
-                handler.Invoke(session, new RemoteDesktopEventArgs(response));
+                handler.Invoke(session, new RemoteDesktopEventArgs(response, session.SessionId));
         }
-        private void GetPartnerInfoFailedCallback(byte[] data)
+        private void GetPartnerInfoFailedCallback(object sender, byte[] data)
         {
-            var msg = Encoding.ASCII.GetString(data);
-            OnSessionData?.Invoke(this, new RemoteDesktopEventArgs(ResponseType.GetPartnerInfoFailed, message: msg));
+            var clientSession = sender as ClientSession;
+            if(clientSession != null)
+            {
+                var msg = Encoding.ASCII.GetString(data);
+                OnSessionData?.Invoke(this, new RemoteDesktopEventArgs(ResponseType.GetPartnerInfoFailed, clientSession.SessionId ,  message: msg));
+            }
         }
         #endregion
         #endregion

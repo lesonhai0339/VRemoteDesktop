@@ -171,10 +171,25 @@ namespace VRemoteDesktop.Presenters
                 case Services.RemoteDesktop.Enums.ResponseType.GetPartnerInfoFailed:
                     GetPartnerInfoFailedCallback();
                     break;
+                case Services.RemoteDesktop.Enums.ResponseType.NewRemoteConnection:
+                    NewRemoteConnectionCallback(sender);
+                    break;
                 default:
                     break;
             }
             throw new NotImplementedException();
+        }
+
+        private void NewRemoteConnectionCallback(object sender)
+        {
+            var clientSession = sender as ClientSession;
+            if(clientSession != null)
+            {
+                if(OnData != null)
+                {
+                    OnData.Invoke(this, new MainDataEventArgs(new NewRemoteConnection(clientSession)));
+                }
+            }
         }
 
         private void GetPartnerInfoFailedCallback()

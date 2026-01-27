@@ -34,8 +34,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private int _disposed;
         private string _sessionId;
         private ClientType _sessionType;
-        private bool _isHost;
         private bool _connected;
+
+
+        private readonly int _myWidth;
+        private readonly int _myHeight;
+        private readonly int _partnerWidth;
+        private readonly int _partnerHeight;
+        private readonly int _bytePerPixel;
 
         private int _sending = 0;
         private long _lastSent = Stopwatch.GetTimestamp();
@@ -74,10 +80,27 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         //still not implement, using after
         public event EventHandler<EventArgs> OnChatReceived;
-        public event EventHandler<EventArgs> OnScreenReceived;
-        public ClientSession(string id, ClientType type, int width = 1920, int height = 1080, int bytePerPixel = 3)
+        public event EventHandler<ClientSessionScreenReceivedEventArgs> OnScreenReceived;
+        public ClientSession(string id, ClientType type, int myWidth, int myHeight, int partnerWidth, int partnerHeight, int bytePerPixel = 3)
         {
-            if (string.IsNullOrEmpty(id)) throw new ArgumentNullException("id");
+            if (string.IsNullOrEmpty(id)) 
+                throw new ArgumentNullException("id");
+            if (myWidth <= 0)
+                throw new ArgumentOutOfRangeException("My width cannot less than or equal zero");
+            if (myHeight <= 0)
+                throw new ArgumentOutOfRangeException("My height cannot less than or equal zero");
+            if (partnerWidth <= 0)
+                throw new ArgumentOutOfRangeException("Partner width cannot less than or equal zero");
+            if (partnerHeight <= 0)
+                throw new ArgumentOutOfRangeException("Partner height cannot less than or equal zero");
+
+            _myWidth = myWidth;
+            _myHeight = myHeight;
+            _partnerWidth = partnerWidth;
+            _partnerHeight = partnerHeight;
+
+            _bytePerPixel = bytePerPixel;
+
             _lastPing = DateTimeOffset.UtcNow;
 
 
@@ -98,8 +121,18 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             _clientSocket = new ClientSocket(id, _cancelationTokenSource.Token);
 
-            _screenRegions = new VRegions(width, height, bytePerPixel);
-            _bufferPool = VArrayPool.Rent(10 * 1024 * 1024);
+            if(_sessionType == ClientType.Controlled)
+            {
+                _screenRegions = new VRegions(_myWidth, _myHeight, _bytePerPixel);
+                _bufferPool = VArrayPool.Rent((int)((_screenRegions.GetStride1(_myWidth, _bytePerPixel) * _myHeight) * 1.2));
+            }
+            else
+            {
+                _screenRegions = new VRegions(0, 0, _bytePerPixel);
+                _bufferPool = VArrayPool.Rent((int)((_screenRegions.GetStride1(_partnerWidth, _bytePerPixel) * _partnerHeight) * 1.2));
+            }
+
+
 
 
             _sendTask = Task.Factory.StartNew(
@@ -127,6 +160,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
 
         #region  Properties
+        public int MyWidth => _myWidth;
+        public int MyHeight => _myHeight;
+        public int PartnerWidth => _partnerWidth;
+        public int PartnerHeight => _partnerHeight;
+        public int BytePerPixel => _bytePerPixel;
         public IntPtr Image => _screenRegions.Buffer;
         public bool AcceptScreen => _screenRegions.CanWork;
         public bool Connected
@@ -163,7 +201,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 }
             }
         }
-        public bool IsHost => _isHost;
         public string SessionId => _sessionId;
         public ClientType SessionType => _sessionType;
         public ClientSocket Client => _clientSocket;
@@ -171,22 +208,23 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #endregion
 
         #region Workers
+        public int GetStride(int width, int bytePerPixel)
+        {
+            return _screenRegions.GetStride1(width, bytePerPixel);
+        }
         private void PingCallback(object obj)
         {
 
-            if (IsHost)
-            {
-                var elapsed = (DateTimeOffset.UtcNow - _lastPing).TotalSeconds;
+            var elapsed = (DateTimeOffset.UtcNow - _lastPing).TotalSeconds;
 
-                if (elapsed > TIME_OUT)
-                {
-                    Dispose();
-                    return;
-                }
-                //_client.SendPing();
-                AddWork(QueuePriority.High, new TaskObject(SocketDataType.Ping, _sessionId, new byte[0], true));
-                _lastPing = DateTimeOffset.UtcNow;
+            if (elapsed > TIME_OUT)
+            {
+                Dispose();
+                return;
             }
+            //_client.SendPing();
+            AddWork(QueuePriority.High, new TaskObject(SocketDataType.Ping, _sessionId, new byte[0], true));
+            _lastPing = DateTimeOffset.UtcNow;
         }
         private void SenderWorker(CancellationToken token)
         {
@@ -310,8 +348,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         ReadyToNextRegionSend();
                         break;
                     case SocketDataType.ScreenSend:
+                        OnScreenReceived?.Invoke(this, new ClientSessionScreenReceivedEventArgs(SessionManagement.Events.ClientSession.ScreenType.FullScreen, e.Data));
+                        break;
                     case SocketDataType.ScreenRegionsChangedSend:
-                        OnScreenReceived?.Invoke(this, new P2PScreenEventArgs(e.Type, e.Data));
+                        OnScreenReceived?.Invoke(this, new ClientSessionScreenReceivedEventArgs(SessionManagement.Events.ClientSession.ScreenType.DirtyRegions, e.Data));
                         break;
                     default:
                         if (OnDataReceived != null)
@@ -442,9 +482,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             };
             AddWork(QueuePriority.High, headerPacket, payloadPacket);
         }
-        public bool FullScreenReceived()
+        public bool AcceptFullScreen()
         {
-            return _screenRegions.FullScreenReceived();
+            return _screenRegions.AcceptFullScreen();
         }
         public void AddScreen(RegionFrame screen)
         {

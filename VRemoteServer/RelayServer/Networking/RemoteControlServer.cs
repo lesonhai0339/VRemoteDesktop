@@ -32,6 +32,7 @@ namespace VRemoteServer.RelayServer.Networking
         }
         public override (SocketAsyncEventArgs read, SocketAsyncEventArgs send) GetReadAndSendSocketAsyncEventArgsFromDomain(SocketConnection domain)
         {
+            if (domain == null) return (null, null);
             return (domain.Reader, domain.Sender);
         }
 

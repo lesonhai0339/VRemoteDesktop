@@ -196,6 +196,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
             Interlocked.Exchange(ref _isCapturing, 0);
             return flag;
         }
+        /// <summary>
+        /// Copy raw image(bytes) from frontIdx to raw bytes image(ppvBits in CreateDIBSection) and call event
+        /// </summary>
+        /// <param name="image"></param>
         public void GetFullScreen(IntPtr image)
         {
             int offset = 0;

@@ -24,6 +24,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         int Stride { get; }
         PixelFormat PixelFormat { get; }
         Rectangle DecompressedRawData(byte[] data, int offset, int length);
+        void Dispose();
     }   
     public class VScreenReceiver : VScreen, IVScreenReceiver, IDisposable
     {

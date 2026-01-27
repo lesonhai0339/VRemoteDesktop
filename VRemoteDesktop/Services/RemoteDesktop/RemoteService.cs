@@ -70,9 +70,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _sessionManager.SessionClosed += ClientSessionClosedEventHandler;
             StartKeyboardListener();
         }
-        
+
 
         #region Properties
+        public string Separator => SEPARATOR;
         public bool Disposed => _disposed;
         #endregion
         #region Methods
@@ -156,10 +157,21 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         GetPartnerInfoSuccessCallback(e.Data);
                         break;
                     case SocketDataType.GetPartnerInfoFailed:
-                        GetPartnerInfoFailedCallback(e.Data);
+                        GetPartnerInfoFailedCallback(sender,  e.Data);
                         break;
                     case SocketDataType.RemoteLogin:
                         RemoteLoginCallback(sender, e.Data);
+                        break;
+                    case SocketDataType.ReadyToRemoteController:
+                        ReadyToRemoteControllerHandler(sender, e);
+                        break;
+                    case SocketDataType.ReadyToRemoteControlled:
+                        ReadyToRemoteControlledHandler(sender, e);
+                        break;
+                    case SocketDataType.Disconnect:
+                        break;
+                    case SocketDataType.RemoteControlDisconnect:
+                        RemoteControlDisconnectHandler(sender, e);
                         break;
                     default:
                         break;
@@ -172,6 +184,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
         }
 
+ 
+
         private void SendAck(object sender, byte[] data, SocketDataType type)
         {
             var clientSession = sender as ClientSession;
@@ -180,8 +194,22 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 clientSession.Send(type, data);
             }
         }
-
-
+        private void StartCapture()
+        {
+            var existed = _sessionManager.HasClientOfType(ClientType.Controlled);
+            if (existed)
+            {
+                StartScreenCapture();
+            }
+        }
+        private void StopCapture()
+        {
+            var existed = _sessionManager.HasClientOfType(ClientType.Controlled);
+            if (!existed)
+            {
+                StopCapture();
+            }
+        }
 
 
 

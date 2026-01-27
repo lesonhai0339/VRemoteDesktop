@@ -128,11 +128,13 @@ namespace VRemoteServer.RelayServer.Services
                                 }
                             });
                             break;
-                        case SocketDataType.P2PConnect:
-                            P2PLogin(sender, e.Data);
-                            break;
+  
                         case SocketDataType.P2PReady:
                             P2PReadyHandler(sender, e.Data);
+                            break;
+                            //Can drop
+                        case SocketDataType.P2PConnect:
+                            P2PLogin(sender, e.Data);
                             break;
                         default:
                             break;
@@ -285,14 +287,16 @@ namespace VRemoteServer.RelayServer.Services
                     case SocketDataType.RemoteLogin:
                         RemoteLoginHandler(e.ConnectionId, sender, e.Data);
                         break;
+                    case SocketDataType.RemoteControlDisconnect:
+                        RemoteDesktopControlDisconnected(sender);
+                        break;
+
+                    //Can drop
                     case SocketDataType.RemoteControlRequestToConnect:
                         RequestToRemoteDesktopControl(e.ConnectionId, sender, e.Data);
                         break;
                     case SocketDataType.RemoteControlAcceptedRequestToConnect:
                         AcceptedRequestToRemoteDesktopControl(e.ConnectionId, sender, e.Data);
-                        break;
-                    case SocketDataType.RemoteControlDisconnect:
-                        RemoteDesktopControlDisconnected(sender);
                         break;
                     default:
                         RemoteDesktopControlDataForward(e.ConnectionId, sender, e.Data);
@@ -309,9 +313,9 @@ namespace VRemoteServer.RelayServer.Services
         {
             if(sender is SocketConnection connection)
             {
-                if (data is ConnectionCredentials credentials)
+                if (data is SocketPacket packet)
                 {
-                    _remoteControlManager.AddOrUpdateRemoteControl(connectionId, connection, credentials);
+                    _remoteControlManager.AddOrUpdateRemoteControl(connectionId, connection, packet);
                 }
             }   
         }

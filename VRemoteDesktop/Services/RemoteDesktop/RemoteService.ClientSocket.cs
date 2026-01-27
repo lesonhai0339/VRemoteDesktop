@@ -24,12 +24,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #region Properties
         #endregion
         #region Methods
-        public ClientSession NewControlled(string sessionId)
+        public ClientSession NewControlled(string sessionId, int myWidth, int myHeight, int partnerWidth, int partnerHeight)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 sessionId = StringHelper.RandomStringNumber(SESSION_ID_LENGTH);
 
-            var session = _sessionManager.New(sessionId, ClientType.Controlled);
+            var session = _sessionManager.New(sessionId, ClientType.Controlled, myWidth, myHeight, partnerWidth, partnerHeight);
 
             //Note*** do something later
             //if (_sessionManager.Connections.Count > 0)
@@ -41,12 +41,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             return session;
         }
-        public ClientSession NewController(string sessionId)
+        public ClientSession NewController(string sessionId, int myWidth, int myHeight, int partnerWidth, int partnerHeight)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 sessionId = StringHelper.RandomStringNumber(SESSION_ID_LENGTH);
 
-            var session = _sessionManager.New(sessionId, ClientType.Controller);
+            var session = _sessionManager.New(sessionId, ClientType.Controlled, myWidth, myHeight, partnerWidth, partnerHeight);
 
             return session;
         }
@@ -92,7 +92,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 //TODo
                 return;
 
-            var clientSession = NewController(partnerNetworkInfo.SessionId);
+            var clientSession = NewController(partnerNetworkInfo.SessionId, 
+                _machineProfile.Bounds.Width,
+                _machineProfile.Bounds.Height,
+                partnerNetworkInfo.Width,
+                partnerNetworkInfo.Height);
             if (clientSession == null)
                 //TODO
                 return;
@@ -128,7 +132,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             SendAck(sender, Encoding.ASCII.GetBytes(partnerNetworkInfo.SessionId), SocketDataType.P2PReady);
 
-            var clientSession = NewControlled(partnerNetworkInfo.SessionId);
+            var clientSession = NewControlled(partnerNetworkInfo.SessionId, 
+                _machineProfile.Bounds.Width,
+                _machineProfile.Bounds.Height,
+                partnerNetworkInfo.Width, 
+                partnerNetworkInfo.Height);
             if (clientSession == null)
                 //TODO
                 return;
@@ -232,7 +240,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                     if (clientSession.SessionType == ClientType.System)
                     {
-                        OnSessionData?.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.Disconnect, false, new byte[0]));
+                        OnSessionData?.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.Disconnect, clientSession.SessionId, false, new byte[0]));
                     }
 
                     _sessionManager.Remove(clientSession.SessionId);
@@ -247,6 +255,50 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "VClientClosedEventHandler error ");
                 }
+            }
+        }
+        private void ReadyToRemoteControllerHandler(object sender, ClientSessionDataReceivedEventArgs e)
+        {
+            Console.WriteLine("Ready to remote controller");
+            var clientSession = sender as ClientSession;
+            if(clientSession != null)
+            {
+                var handler = OnSessionData;
+                if (handler != null)
+                {
+                    //Invoke to frmMain to create fromRemote and add client session to frmChat
+                    handler.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.NewRemoteConnection, clientSession.SessionId));
+                }
+            }
+        }
+        private void ReadyToRemoteControlledHandler(object sender, ClientSessionDataReceivedEventArgs e)
+        {
+            var clientSession = sender as ClientSession;
+            if(clientSession != null)
+            {
+                var see = _sessionManager.Find(clientSession.SessionId);
+                Console.WriteLine($"Found session with id {clientSession.SessionId} -  {see} - type: {clientSession.SessionType}");
+
+                //Register client session with screen capture, get full screen and send to controller
+                _screenSender.AddSessionBuffer(clientSession.SessionId, clientSession.Image);
+                _screenSender.GetFullScreen(clientSession.Image);
+
+                StartCapture();
+            }
+        }
+        private void RemoteControlDisconnectHandler(object sender, ClientSessionDataReceivedEventArgs e)
+        {
+            var clientSession = sender as ClientSession;
+            if (clientSession != null)
+            {
+                _sessionManager.Remove(clientSession.SessionId);
+
+                if(OnSessionData != null)
+                {
+                    OnSessionData.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.RemoteDisconnect, clientSession.SessionId));
+                }
+
+                StopCapture();
             }
         }
         #endregion

@@ -93,7 +93,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
             return ((rect.Y / regionSize) * _totalColumns) + (rect.X / regionSize);
         }
-        public bool FullScreenReceived()
+        public bool AcceptFullScreen()
         {
             if(Interlocked.CompareExchange(ref _fullScreenReceived, 1, 0) == 0)
             {

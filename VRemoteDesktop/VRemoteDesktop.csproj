@@ -100,8 +100,10 @@
     <Compile Include="Events\KeyboardEventArgs.cs" />
     <Compile Include="Events\P2PChatEventArgs.cs" />
     <Compile Include="Presenters\DTOs\LoginResponse.cs" />
+    <Compile Include="Presenters\DTOs\NewRemoteConnection.cs" />
     <Compile Include="Presenters\DTOs\PartnerInfoResponse.cs" />
     <Compile Include="Presenters\Enums\LoginStatus.cs" />
+    <Compile Include="Presenters\RemotePresenter.cs" />
     <Compile Include="Services\RemoteDesktop\Enums\ResponseType.cs" />
     <Compile Include="Services\RemoteDesktop\Events\RemoteDesktopEventArgs.cs" />
     <Compile Include="Events\P2PFileReceivedEventArgs.cs" />
@@ -202,6 +204,7 @@
     <Compile Include="Services\SessionManagement\Enums\ClientType.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionDataReceivedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionDisconnectedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionScreenReceivedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketConnectedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDisconnectedEventArgs.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDisposingEventArgs.cs" />

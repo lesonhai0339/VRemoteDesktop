@@ -8,7 +8,7 @@ namespace VRemoteServer.RelayServer.DTOs.Responses
 {
     public class PartnerNetworkInfo
     {
-        public PartnerNetworkInfo(string sessionId, string partnerId, string partnerPassword, string publicIP, string localIP, string port)
+        public PartnerNetworkInfo(string sessionId, string partnerId, string partnerPassword, string publicIP, string localIP, string port, int width, int height)
         {
             SessionId = sessionId;
             PartnerId = partnerId;
@@ -16,6 +16,8 @@ namespace VRemoteServer.RelayServer.DTOs.Responses
             PublicIP = publicIP;
             LocalIP = localIP;
             Port = port;
+            Width = width;
+            Height = height;
         }
         public string SessionId { get; set; }
         public string PartnerId { get; set; }
@@ -23,5 +25,7 @@ namespace VRemoteServer.RelayServer.DTOs.Responses
         public string PublicIP { get; set; }
         public string LocalIP { get; set; }
         public string Port { get; set; }
+        public int Width { get; set; }
+        public int Height { get; set; }
     }
 }

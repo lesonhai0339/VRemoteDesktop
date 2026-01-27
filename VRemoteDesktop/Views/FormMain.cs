@@ -20,6 +20,7 @@ using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
+using VRemoteDesktop.Utils;
 using VRemoteDesktop.ViewModels;
 using VRemoteDesktop.Views;
 using VRemoteServer.Models;
@@ -34,11 +35,13 @@ namespace VRemoteDesktop
         private bool isShow;
         private LoginStatus _status;
 
+        private readonly RemoteService _remoteService;
         private readonly MainPresenter _mainPresenter;
         private readonly ComponentResourceManager resources = new ComponentResourceManager(typeof(FormMain));
-        public FormMain(RemoteService remoteControlService)
+        public FormMain(RemoteService remoteService)
         {
             InitializeComponent();
+            _remoteService = remoteService;
             //_remoteDesktopService = remoteDesktopService;
             //ViewModel = new MainViewModel(_remoteDesktopService);
             //SetupBinding();
@@ -47,7 +50,7 @@ namespace VRemoteDesktop
 
 
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
-            _mainPresenter = new MainPresenter(remoteControlService );
+            _mainPresenter = new MainPresenter(_remoteService);
             _mainPresenter.OnData += OnDataEventHandler;
             _mainPresenter.OnError += OnErrorEventHandler;
 
@@ -81,10 +84,32 @@ namespace VRemoteDesktop
                 case PartnerInfoResponse response:
                     GetPartnerInfoResponse(response.Message);
                     break;
+                case NewRemoteConnection newCon:
+                    AddNewRemoteConnection(newCon);
+                    break;
                 default:
                     break;
             }
         }
+
+        private void AddNewRemoteConnection(NewRemoteConnection newCon)
+        {
+            try
+            {
+                //Add to RemoteFrm
+                OpenRemoteForm(newCon.ClientSession);
+
+                //Add to ChatFrm
+                AddChat(newCon.ClientSession);
+
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("FileName", "frmMain").Error(ex, "AddNewRemoteConnection err ");
+                MessageBox.Show("Thiết lập kết nối thất bại", "Xảy ra lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
         private void GetPartnerInfoResponse(string message)
         {
             MessageBox.Show(message, "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -287,40 +312,40 @@ namespace VRemoteDesktop
         //        }
         //    }
         //}
-        //private void OpenRemoteForm(ClientSession clientSession)
-        //{
-        //    //if (this.InvokeRequired)
-        //    //{
-        //    //    this.Invoke(new Action<ClientSession>(OpenRemoteForm), clientSession);
-        //    //    return;
-        //    //}
+        private void OpenRemoteForm(ClientSession clientSession)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<ClientSession>(OpenRemoteForm), clientSession);
+                return;
+            }
 
-        //    //FormRemote remoteForm = new FormRemote(clientSession, _remoteDesktopService);
+            FormRemote remoteForm = new FormRemote(clientSession, _remoteService);
 
-        //    //remoteForm.Show();
-        //    //AddChat(clientSession);
-        //}
-        //private void AddChat(ClientSession clientSession)
-        //{
-        //    if (this.InvokeRequired)
-        //    {
-        //        this.Invoke(new Action<ClientSession>(AddChat), clientSession);
-        //        return;
-        //    }
+            remoteForm.Show();
+            AddChat(clientSession);
+        }
+        private void AddChat(ClientSession clientSession)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<ClientSession>(AddChat), clientSession);
+                return;
+            }
 
-        //    if (clientSession == null) return;
+            if (clientSession == null) return;
 
-        //    if (!isShow)
-        //    {
-        //        if(chatForm == null)
-        //        {
-        //            RegisterChatForm();
-        //        }
-        //        //need to cal event from ChatForm to this to set isShow = false when Chat form disposed
-        //        chatForm.Show();
-        //        isShow = true;
-        //    }
-        //    chatForm.AddConnection(clientSession.SessionId, clientSession);
-        //}
+            if (!isShow)
+            {
+                if (chatForm == null)
+                {
+                    RegisterChatForm();
+                }
+                //need to cal event from ChatForm to this to set isShow = false when Chat form disposed
+                chatForm.Show();
+                isShow = true;
+            }
+            chatForm.AddConnection(clientSession.SessionId, clientSession);
+        }
     }
 }
