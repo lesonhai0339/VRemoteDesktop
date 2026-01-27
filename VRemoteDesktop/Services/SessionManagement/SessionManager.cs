@@ -26,12 +26,16 @@ namespace VRemoteDesktop.Services.SessionManagement
         }
         public ConcurrentDictionary<string, ClientSession> Connections => _sessions;
         #region Manager
+        public bool FindClientSession(string sessionId)
+        {
+            return _sessions.ContainsKey(sessionId);
+        }
         public bool Find(string id)
         {
             return _sessions.Values.Any(session
                 => session.PartnerInfo != null 
-                && !string.IsNullOrEmpty(session.PartnerInfo.Id) 
-                && session.PartnerInfo.Id.Equals(id, StringComparison.OrdinalIgnoreCase));    
+                && !string.IsNullOrEmpty(session.PartnerInfo.SessionId) 
+                && session.PartnerInfo.SessionId.Equals(id, StringComparison.OrdinalIgnoreCase));    
         }
         public bool HasClientOfType(ClientType type)
         {
@@ -96,25 +100,25 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
             throw new InvalidOperationException(string.Format("Connection with Id:{0} does not exists", id));
         }
-        public ClientSession New(string id, ClientType type, int myWidth, int myHeight, int partnerWidth, int partnerHeight)
+        public ClientSession New(string id, ClientType type, int width, int height)
         {
             if (_sessions.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            ClientSession session = new ClientSession(id, type, myWidth, myHeight, partnerWidth, partnerHeight);
+            ClientSession session = new ClientSession(id, type, width, height);
             Add(id, session);
             return session;
         }
-        public ClientSession AddNewAndListen(string id, ClientType type, int port, int myWidth, int myHeight, int partnerWidth, int partnerHeight)
+        public ClientSession AddNewAndListen(string id, ClientType type, int port, int width, int height)
         {
             if (_sessions.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            ClientSession session = new ClientSession(id, type, myWidth, myHeight, partnerWidth, partnerHeight);
+            ClientSession session = new ClientSession(id, type, width, height);
             Add(id, session);
 
             bool result = session.Listen(port);

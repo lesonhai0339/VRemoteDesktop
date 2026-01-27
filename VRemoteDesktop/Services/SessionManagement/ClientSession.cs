@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using VRemoteDesktop.DTOs.Response;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
@@ -37,10 +38,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private bool _connected;
 
 
-        private readonly int _myWidth;
-        private readonly int _myHeight;
-        private readonly int _partnerWidth;
-        private readonly int _partnerHeight;
+        private readonly int _width;
+        private readonly int _height;
         private readonly int _bytePerPixel;
 
         private int _sending = 0;
@@ -50,7 +49,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private byte[] _bufferPool;
         private long _lastSendTimestamp = Stopwatch.GetTimestamp();
 
-        private MachineInfo _partnerInfo;
+        private PartnerNetworkInfo _partnerInfo;
 
 
         private System.Threading.Timer _pingTimer;
@@ -81,24 +80,17 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         //still not implement, using after
         public event EventHandler<EventArgs> OnChatReceived;
         public event EventHandler<ClientSessionScreenReceivedEventArgs> OnScreenReceived;
-        public ClientSession(string id, ClientType type, int myWidth, int myHeight, int partnerWidth, int partnerHeight, int bytePerPixel = 3)
+        public ClientSession(string id, ClientType type, int width, int height, int bytePerPixel = 3)
         {
             if (string.IsNullOrEmpty(id)) 
                 throw new ArgumentNullException("id");
-            if (myWidth <= 0)
-                throw new ArgumentOutOfRangeException("My width cannot less than or equal zero");
-            if (myHeight <= 0)
-                throw new ArgumentOutOfRangeException("My height cannot less than or equal zero");
-            if (partnerWidth <= 0)
-                throw new ArgumentOutOfRangeException("Partner width cannot less than or equal zero");
-            if (partnerHeight <= 0)
-                throw new ArgumentOutOfRangeException("Partner height cannot less than or equal zero");
+            if (width <= 0)
+                throw new ArgumentOutOfRangeException("Width cannot less than or equal zero");
+            if (height <= 0)
+                throw new ArgumentOutOfRangeException("Height cannot less than or equal zero");
 
-            _myWidth = myWidth;
-            _myHeight = myHeight;
-            _partnerWidth = partnerWidth;
-            _partnerHeight = partnerHeight;
-
+            _width = width;
+            _height = height;
             _bytePerPixel = bytePerPixel;
 
             _lastPing = DateTimeOffset.UtcNow;
@@ -123,13 +115,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             if(_sessionType == ClientType.Controlled)
             {
-                _screenRegions = new VRegions(_myWidth, _myHeight, _bytePerPixel);
-                _bufferPool = VArrayPool.Rent((int)((_screenRegions.GetStride1(_myWidth, _bytePerPixel) * _myHeight) * 1.2));
+                _screenRegions = new VRegions(_width, _height, _bytePerPixel);
+                _bufferPool = VArrayPool.Rent((int)((_screenRegions.GetStride1(_width, _bytePerPixel) * _height) * 1.2));
             }
             else
             {
-                _screenRegions = new VRegions(0, 0, _bytePerPixel);
-                _bufferPool = VArrayPool.Rent((int)((_screenRegions.GetStride1(_partnerWidth, _bytePerPixel) * _partnerHeight) * 1.2));
+                _screenRegions = null;
+                _bufferPool = VArrayPool.Rent(5 * 1024 * 1024);
             }
 
 
@@ -160,10 +152,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
 
         #region  Properties
-        public int MyWidth => _myWidth;
-        public int MyHeight => _myHeight;
-        public int PartnerWidth => _partnerWidth;
-        public int PartnerHeight => _partnerHeight;
         public int BytePerPixel => _bytePerPixel;
         public IntPtr Image => _screenRegions.Buffer;
         public bool AcceptScreen => _screenRegions.CanWork;
@@ -184,7 +172,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 }
             }
         }
-        public MachineInfo PartnerInfo
+        public PartnerNetworkInfo PartnerInfo
         {
             get
             {
@@ -254,7 +242,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         HighQueueHandler(highTask);
                         hasWork = true;
                     }
-                    else if (_screenRegions.HasData  && _screenRegions.ReadyToSend())
+                    else if (_screenRegions != null && _screenRegions.HasData  && _screenRegions.ReadyToSend())
                     {
                         DirtyRegionSend();
                         hasWork = true;
@@ -556,7 +544,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #endregion
 
         #region Methods
-        public void UpdatePartnerInfo(MachineInfo partnerInfo)
+        public void UpdatePartnerInfo(PartnerNetworkInfo partnerInfo)
         {
             if (partnerInfo == null) throw new ArgumentNullException("partner info");
             _partnerInfo = partnerInfo;

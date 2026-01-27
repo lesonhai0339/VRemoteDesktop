@@ -161,8 +161,7 @@ namespace VRemoteServer.RelayServer.Services
                 return;
             try
             {
-                string dataString = Encoding.ASCII.GetString(data);
-                var partnerCredentials = JsonConvert.DeserializeObject<PartnerCredentials>(dataString);
+                var partnerCredentials = JsonConvert.DeserializeObject<PartnerCredentials>(Encoding.ASCII.GetString(data));
 
                 if (partnerCredentials == null)
                 {

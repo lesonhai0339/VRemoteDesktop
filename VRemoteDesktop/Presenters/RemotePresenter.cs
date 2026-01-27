@@ -46,9 +46,9 @@ namespace VRemoteDesktop.Presenters
             _mouseExtension = mouseExtensions;
 
 
-            _buffer = VArrayPool.Rent(_clientSession.GetStride(_clientSession.PartnerWidth, _clientSession.BytePerPixel) * _clientSession.PartnerHeight);
+            _buffer = VArrayPool.Rent(_clientSession.GetStride(_clientSession.PartnerInfo.Width, _clientSession.BytePerPixel) * _clientSession.PartnerInfo.Height);
             var screenTask = new ScreenTask(_buffer);
-            _screenReceived = new VScreenReceiver(screenTask, _clientSession.PartnerWidth, _clientSession.PartnerHeight, _clientSession.BytePerPixel);
+            _screenReceived = new VScreenReceiver(screenTask, _clientSession.PartnerInfo.Width, _clientSession.PartnerInfo.Height, _clientSession.BytePerPixel);
             Picture = new Bitmap(_screenReceived.Width, _screenReceived.Height, _screenReceived.Stride, _screenReceived.PixelFormat, _screenReceived.ScreenHDC);
 
 

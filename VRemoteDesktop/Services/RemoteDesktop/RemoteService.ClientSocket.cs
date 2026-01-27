@@ -24,12 +24,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #region Properties
         #endregion
         #region Methods
-        public ClientSession NewControlled(string sessionId, int myWidth, int myHeight, int partnerWidth, int partnerHeight)
+        public ClientSession NewControlled(string sessionId, int width, int height)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 sessionId = StringHelper.RandomStringNumber(SESSION_ID_LENGTH);
 
-            var session = _sessionManager.New(sessionId, ClientType.Controlled, myWidth, myHeight, partnerWidth, partnerHeight);
+            var session = _sessionManager.New(id: sessionId,type: ClientType.Controlled, width: width, height: height);
 
             //Note*** do something later
             //if (_sessionManager.Connections.Count > 0)
@@ -41,12 +41,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             return session;
         }
-        public ClientSession NewController(string sessionId, int myWidth, int myHeight, int partnerWidth, int partnerHeight)
+        public ClientSession NewController(string sessionId, int width, int height)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 sessionId = StringHelper.RandomStringNumber(SESSION_ID_LENGTH);
 
-            var session = _sessionManager.New(sessionId, ClientType.Controlled, myWidth, myHeight, partnerWidth, partnerHeight);
+            var session = _sessionManager.New(id: sessionId, type: ClientType.Controlled, width: width, height: height);
 
             return session;
         }
@@ -94,12 +94,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             var clientSession = NewController(partnerNetworkInfo.SessionId, 
                 _machineProfile.Bounds.Width,
-                _machineProfile.Bounds.Height,
-                partnerNetworkInfo.Width,
-                partnerNetworkInfo.Height);
+                _machineProfile.Bounds.Height);
+
             if (clientSession == null)
                 //TODO
                 return;
+
+            clientSession.UpdatePartnerInfo(partnerNetworkInfo);
 
             string connectIP = _machineProfile.SameNetwork(partnerNetworkInfo.PublicIP) 
                 ? partnerNetworkInfo.LocalIP 
@@ -134,12 +135,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             var clientSession = NewControlled(partnerNetworkInfo.SessionId, 
                 _machineProfile.Bounds.Width,
-                _machineProfile.Bounds.Height,
-                partnerNetworkInfo.Width, 
-                partnerNetworkInfo.Height);
+                _machineProfile.Bounds.Height);
             if (clientSession == null)
                 //TODO
                 return;
+
+            clientSession.UpdatePartnerInfo(partnerNetworkInfo);
+
 
             bool isSuccess = clientSession.Listen(int.Parse(DEFAULT_REMOTE_PORT), TIMEOUT + 1);
 
@@ -209,9 +211,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     return;
                 }
 
-
-                clientSession.UpdatePartnerInfo(connectionInfo.MachineInfo);
-
                 var myInfo = new RemoteLoginResponse(loggedIn: true, clientSession.SessionId, _machineProfile.MachineInfo);
 
                 var packet = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(myInfo));
@@ -276,14 +275,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var clientSession = sender as ClientSession;
             if(clientSession != null)
             {
-                var see = _sessionManager.Find(clientSession.SessionId);
-                Console.WriteLine($"Found session with id {clientSession.SessionId} -  {see} - type: {clientSession.SessionType}");
+                if (_sessionManager.FindClientSession(clientSession.SessionId))
+                {
+                    //Register client session with screen capture, get full screen and send to controller
+                    _screenSender.AddSessionBuffer(clientSession.SessionId, clientSession.Image);
+                    _screenSender.GetFullScreen(clientSession.Image);
 
-                //Register client session with screen capture, get full screen and send to controller
-                _screenSender.AddSessionBuffer(clientSession.SessionId, clientSession.Image);
-                _screenSender.GetFullScreen(clientSession.Image);
-
-                StartCapture();
+                    StartCapture();
+                }
             }
         }
         private void RemoteControlDisconnectHandler(object sender, ClientSessionDataReceivedEventArgs e)

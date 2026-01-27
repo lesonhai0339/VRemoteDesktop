@@ -29,9 +29,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             return _sessionManager.New(sessionId, 
                 SessionManagement.Enums.ClientType.System, 
                 _machineProfile.Bounds.Width, 
-                _machineProfile.Bounds.Height,
-                0,
-                0);
+                _machineProfile.Bounds.Height);
         }
         public  bool ConnectToServer(ClientSession serverSocket, string ip, int port)
         {

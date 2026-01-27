@@ -59,8 +59,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             _tempRect = new List<Rectangle>(_totalColumns * _totalRows);
 
             _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
-
             base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
+
         }
         public  IntPtr Buffer => _bits;
         public bool HasData

@@ -93,7 +93,10 @@ namespace VRemoteServer.RelayServer.Services
                 localIP: controller.Ip, 
                 port: controller.Port,
                 width: controller.Width,
-                height: controller.Height);
+                height: controller.Height,
+                computerName: controller.ComputerName,
+                major: controller.MajorVersion,
+                minor: controller.MinorVersion);
 
             var controllerInfoByteArray = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controllerInfo));
             var controllerPacket = PacketFactory.CreatePacket(SocketDataType.RequestRemoteConnect, data: controllerInfoByteArray);
@@ -135,7 +138,10 @@ namespace VRemoteServer.RelayServer.Services
                 localIP: controlled.Ip,
                 port: controlled.Port,
                 width: controlled.Width,
-                height: controlled.Height);
+                height: controlled.Height,
+                computerName: controlled.ComputerName,
+                major: controlled.MajorVersion,
+                minor: controlled.MinorVersion);
 
             var controlledInfoByteArray = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(controlledInfo));
             var controlledPacket = PacketFactory.CreatePacket(SocketDataType.GetPartnerInfoSuccess, data: controlledInfoByteArray);

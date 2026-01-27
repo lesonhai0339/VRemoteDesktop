@@ -7,7 +7,7 @@ namespace VRemoteDesktop.DTOs.Response
 {
     public class PartnerNetworkInfo
     {
-        public PartnerNetworkInfo(string sessionId, string partnerId, string partnerPassword, string publicIP, string localIP, string port, int width, int height)
+        public PartnerNetworkInfo(string sessionId, string partnerId, string partnerPassword, string publicIP, string localIP, string port, int width, int height, string computerName, string major, string minor)
         {
             SessionId = sessionId;
             PartnerId = partnerId;
@@ -17,6 +17,9 @@ namespace VRemoteDesktop.DTOs.Response
             Port = port;
             Width = width;
             Height = height;
+            ComputerName = computerName;
+            MajorVersion = major;
+            MinorVersion = minor;
         }
         public string SessionId { get; set; }
         public string PartnerId { get; set; }
@@ -26,5 +29,8 @@ namespace VRemoteDesktop.DTOs.Response
         public string Port { get; set; }
         public int Width { get; set; }
         public int Height { get; set; }
+        public string ComputerName { get; set; }
+        public string MajorVersion { get; set; }
+        public string MinorVersion { get; set; }
     }
 }

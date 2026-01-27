@@ -80,7 +80,7 @@ namespace VRemoteDesktop.Views
 
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
             base.AutoScaleDimensions = new SizeF(6f, 13f);
-            this.Text = _clientSession.PartnerInfo.Id + " - "+ _clientSession.PartnerInfo.ComputerName;
+            this.Text = _clientSession.PartnerInfo.PartnerId + " - "+ _clientSession.PartnerInfo.ComputerName;
 
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
