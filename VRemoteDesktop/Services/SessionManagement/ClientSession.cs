@@ -24,7 +24,6 @@ using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Services.VTCPClient.Events;
 using VRemoteDesktop.Utils;
-using VRemoteServer.Models;
 
 namespace VRemoteDesktop.Services.RemoteDesktop
 {
@@ -57,7 +56,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private Task _receiveTask;
 
         private readonly ConcurrentQueue<QueueItem> _highQueue; //Keyboard, mouse, clipboard,...
-        private readonly ConcurrentQueue<QueueItem> _mediumQueue; //Screen, DirtyRegions
 
         private readonly HashSet<string> _cancelFile;
         private readonly ConcurrentQueue<QueueItem> _lowQueue; //File
@@ -78,7 +76,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public event EventHandler<ClientSessionDisconnectedEventArgs> OnDisconnected;
 
         //still not implement, using after
-        public event EventHandler<EventArgs> OnChatReceived;
+        public event EventHandler<ClientSessionDataReceivedEventArgs> OnChatReceived;
         public event EventHandler<ClientSessionScreenReceivedEventArgs> OnScreenReceived;
         public ClientSession(string id, ClientType type, int width, int height, int bytePerPixel = 3)
         {
@@ -99,7 +97,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _sessionId = id;
             _sessionType = type;
             _highQueue = new ConcurrentQueue<QueueItem>();
-            _mediumQueue = new ConcurrentQueue<QueueItem>();
 
 
             _cancelFile = new HashSet<string>();
@@ -123,8 +120,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 _screenRegions = null;
                 _bufferPool = VArrayPool.Rent(5 * 1024 * 1024);
             }
-
-
 
 
             _sendTask = Task.Factory.StartNew(

@@ -1,49 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Drawing.Drawing2D;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
-using VRemoteDesktop.Models;
 using VRemoteDesktop.Presenters;
-using VRemoteDesktop.Services.Mouse;
 using VRemoteDesktop.Services.RemoteDesktop;
-using VRemoteDesktop.Services.ScreenCapture;
-using VRemoteDesktop.Services.SystemService;
-using VRemoteDesktop.Services.VTCPClient;
-using VRemoteDesktop.ViewModels;
-using VRemoteServer.Models;
 using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Views
 {
     public partial class FormRemote : Form
     {
-        private readonly object _screenLock = new object();
-        private readonly object _lockObject = new object();
         private const int MOUSE_MOVE_THROTTLE_MS = 20;
 
-        private readonly ClientSession _clientSession;
-        private readonly RemotePresenter _remotePresenter;
-        private readonly RemoteService _remoteControlService;
-
-        private readonly IMouseExtensions _mouseExtension;
-
         private bool _isDrag;
-
-        private DateTime _lastMouseMoveTime = DateTime.MinValue;
-        private ManualResetEvent _isP2PDisconnectCallback;
-
-        private System.Windows.Forms.Timer _clickTimer;
-        private MouseEventArgs _pendingClickArgs;
-        private Control _pendingSender;
         private int _clickCount;
+        private Control _pendingSender;
+        private MouseEventArgs _pendingClickArgs;
+        private System.Windows.Forms.Timer _clickTimer;
+        private DateTime _lastMouseMoveTime = DateTime.MinValue;
+
+        private readonly RemotePresenter _remotePresenter;
         public FormRemote(ClientSession clientSession, RemoteService remoteControlService)
         {
             InitializeComponent();
@@ -59,36 +37,28 @@ namespace VRemoteDesktop.Views
             //    workingArea.Top + (workingArea.Height - newHeight) / 2
             //);
 
-            _clientSession = clientSession;
-            _mouseExtension = new MouseExtensions();
-            _remoteControlService = remoteControlService;
-            _remotePresenter = new RemotePresenter(_clientSession, _remoteControlService, _mouseExtension);
+            _isDrag = false;
 
-#if DEBUG
+            //UI
+            this.FormBorderStyle = FormBorderStyle.Fixed3D;
+            base.AutoScaleDimensions = new SizeF(6f, 13f);
+            this.Text = _remotePresenter.Id + " - " + _remotePresenter.Name;
+
+            //DI
+            _remotePresenter = new RemotePresenter(clientSession, remoteControlService);
             _remotePresenter.UpdateScreen += UpdateScreenEventHandler;
-#endif
             _remotePresenter.OnKeyboard += KeyboardReceivedEventHandler;
             _remotePresenter.OnDisconnect += DisconnectedEventHandler;
 
-            _isDrag = false;
-            _isP2PDisconnectCallback = new ManualResetEvent(false);
-
-            this.FormBorderStyle = FormBorderStyle.Fixed3D;
-            base.AutoScaleDimensions = new SizeF(6f, 13f);
-            this.Text = _clientSession.PartnerInfo.PartnerId + " - "+ _clientSession.PartnerInfo.ComputerName;
-
             // PictureBox
             vPictureBox.Dock = DockStyle.Fill;
-            vPictureBox.Size = new Size(_clientSession.PartnerInfo.Width, _clientSession.PartnerInfo.Height);
+            vPictureBox.Size = new Size(_remotePresenter.ClientWidth, _remotePresenter.ClientHeight);
             vPictureBox.SizeMode = PictureBoxSizeMode.Zoom;
             vPictureBox.BackColor = Color.Black;
-#if DEBUG
             //vPictureBox.Setup(_vClient.Partner.Width, _vClient.Partner.Height, _remoteViewModel.Stride, _remoteViewModel.Bits, _remoteViewModel.BitmapInfo);
             //vPictureBox.Image = _remoteViewModel.Picture;
             vPictureBox.Image = _remotePresenter.Picture;
             vPictureBox.Paint += VPictureBox_Paint;
-#endif
-
             vPictureBox.MouseWheel += MouseWheelEventHandler;
             vPictureBox.MouseMove += MouseMoveEvent;
             vPictureBox.MouseDown += MouseDownEventHandler;
@@ -111,7 +81,6 @@ namespace VRemoteDesktop.Views
         protected override void OnPaintBackground(PaintEventArgs e)
         {
         }
-#if DEBUG
         private void UpdateScreenEventHandler(object sender, OnScreenEventArgs e)
         {
             if (this.InvokeRequired)
@@ -127,8 +96,8 @@ namespace VRemoteDesktop.Views
 
             //Rectangle mergedRect = new Rectangle(dstX, dstY, dstWidth, dstHeight);
 
-            var scaleWidth = (double)vPictureBox.ClientSize.Width / _clientSession.PartnerInfo.Width;
-            var scaleHeight = (double)vPictureBox.ClientSize.Height / _clientSession.PartnerInfo.Height;
+            var scaleWidth = (double)vPictureBox.ClientSize.Width / _remotePresenter.ClientWidth;
+            var scaleHeight = (double)vPictureBox.ClientSize.Height / _remotePresenter.ClientHeight;
             var scale = Math.Min(scaleWidth, scaleHeight);
 
 
@@ -146,8 +115,6 @@ namespace VRemoteDesktop.Views
             vPictureBox.Invalidate();
             vPictureBox.Update();
         }
-#endif
-
         private void DisconnectedEventHandler(object sender, EventArgs e)
         {
             UpdateDisconnectUI();
@@ -160,19 +127,19 @@ namespace VRemoteDesktop.Views
                 return;
             }
 
-            //Bitmap bmp = new Bitmap(_curScreen.Width, _curScreen.Height);
+            Bitmap bmp = new Bitmap(_remotePresenter.ClientWidth, _remotePresenter.ClientHeight);
 
-            //using (Graphics g = Graphics.FromImage(bmp))
-            //{
-            //    g.Clear(Color.Black);
-            //}
+            using (Graphics g = Graphics.FromImage(bmp))
+            {
+                g.Clear(Color.Black);
+            }
 
-            //if (vPictureBox.Image != null)
-            //{
-            //    vPictureBox.Image.Dispose();
-            //}
+            if (vPictureBox.Image != null)
+            {
+                vPictureBox.Image.Dispose();
+            }
 
-            //vPictureBox.Image = bmp;
+            vPictureBox.Image = bmp;
             var result = MessageBox.Show(
                 "Mất kết nối đến đối tác",
                 "Thông báo",
@@ -197,8 +164,9 @@ namespace VRemoteDesktop.Views
         }
         private void FormRemote_FormClosing(object sender, FormClosingEventArgs e)
         {
-            //Stop keyboard listener on form
+            //Stop keyboard listener on this form
             StopFormKeyboardListener();
+
             //Unregister events
             if (_remotePresenter != null)
             {
@@ -206,14 +174,13 @@ namespace VRemoteDesktop.Views
                 _remotePresenter.OnKeyboard -= KeyboardReceivedEventHandler;
                 _remotePresenter.OnDisconnect -= DisconnectedEventHandler;
             }
-            //Form
-            _pendingSender?.Dispose();
-            _isP2PDisconnectCallback?.Dispose();
-            _clickTimer?.Dispose();
 
-            //DI
-            _mouseExtension?.Dispose();
-            _remotePresenter?.Dispose();
+            //Form
+            if (_pendingSender != null)
+                _pendingSender.Dispose();
+
+            if(_clickTimer  != null)
+                _clickTimer.Dispose();
         }
         private void StartFormKeyboardListener()
         {

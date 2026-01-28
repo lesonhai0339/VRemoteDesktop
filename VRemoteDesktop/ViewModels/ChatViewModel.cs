@@ -8,6 +8,8 @@ using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.FileService;
+using VRemoteDesktop.Services.FileService.DTOs;
+using VRemoteDesktop.Services.FileService.Enums;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
@@ -38,12 +40,12 @@ namespace VRemoteDesktop.ViewModels
             {
                 { ChatDataType.Message, ProcessMessage },
                 { ChatDataType.RequestSendFile, ProcessRequestSendFile },
-                { ChatDataType.AcceptedSendFile, ProcessAcceptSendFile },
-                { ChatDataType.DeclinedSendFile, ProcessDeclineSendFile },
+                { ChatDataType.AcceptSendFile, ProcessAcceptSendFile },
+                { ChatDataType.RejectSendFile, ProcessDeclineSendFile },
                 { ChatDataType.FileData, ProcessFileDataReceived },
-                { ChatDataType.StopReceivedFileData, ProcessPartnerStopReceiveFile },
+                { ChatDataType.CancelFileData, ProcessPartnerStopReceiveFile },
             };
-            _saveChat = new SaveChat(); 
+            _saveChat = new VSaveChat(); 
             _chatAttachmentService = new VChatAttachmentService();
             _chatAttachmentService.FileDataReceivedEvent += FileDataReceivedEventHandler;
 
@@ -272,7 +274,7 @@ namespace VRemoteDesktop.ViewModels
                 }   
 
                 byte[] data = Helpers.ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
-                Send(connection, SocketDataType.ChatSend, ChatDataType.AcceptedSendFile, data);
+                Send(connection, SocketDataType.ChatSend, ChatDataType.AcceptSendFile, data);
                 return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("Accept send file on connection with id {0} success", _currentConnectionActivate),
                     data: true);
@@ -305,7 +307,7 @@ namespace VRemoteDesktop.ViewModels
                      systemMessage: string.Format("Cannot find connection on current id {0}", _currentConnectionActivate));
                 }
                 byte[] data = ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
-                Send(connection, SocketDataType.ChatSend, ChatDataType.DeclinedSendFile, data);  
+                Send(connection, SocketDataType.ChatSend, ChatDataType.RejectSendFile, data);  
                 _chatAttachmentService.RemoveFileInfo(fileId);
                 return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("DeclinedFile send file on connection with id {0} success", _currentConnectionActivate),
@@ -338,7 +340,7 @@ namespace VRemoteDesktop.ViewModels
                      systemMessage: string.Format("Cannot find connection on current id {0}", _currentConnectionActivate));
                 }
                 byte[] data = ByteArrayHelper.ConvertStringToByteArray(fileId, EncodingType.ASCII).GetResult();
-                Send(connection, SocketDataType.ChatSend, ChatDataType.StopReceivedFileData, data);
+                Send(connection, SocketDataType.ChatSend, ChatDataType.CancelFileData, data);
                 _chatAttachmentService.CleanUpFileInfo(fileId);
                 return ChatRespondHelper.Success<bool>(
                     systemMessage: string.Format("DeclinedFile send file on connection with id {0} success", _currentConnectionActivate),
@@ -591,10 +593,10 @@ namespace VRemoteDesktop.ViewModels
         //Event event handler from ChatManager, this event is used to remove chat connection UI when disconnected
         private void ChatDisconnectedEventHandler(object sender, ChatDisconnectedEventArgs e)
         {
-            var result = RemoveConnection(e.SocketId);
+            var result = RemoveConnection(e.SessionId);
             if (result.IsSuccess)
             {
-                RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(e.SocketId ,ChatControlType.Connection, e.SocketId));
+                RemovedEvent?.Invoke(this, new ChatControlRemoveEventArgs(e.SessionId, ChatControlType.Connection, e.SessionId));
             }
         }
 
@@ -613,24 +615,24 @@ namespace VRemoteDesktop.ViewModels
         //private void P2PChatReceivedEventHandler(object sender, P2PChatEventArgs e)
         private void P2PChatReceivedEventHandler(object sender, EventArgs g)
         {
-            var e = (P2PChatEventArgs)g;
-            try
-            {
-                if (sender is ClientSession clientSession)
-                {
-                    //First byte always ChatDataType, see more at Send(..) method above
-                    ChatDataType type = e.Data[0] is byte b ? (ChatDataType)b : ChatDataType.None;
-                    byte[] data = new byte[e.Data.Length - 1];
-                    Buffer.BlockCopy(e.Data, 1, data, 0, data.Length);
+            //var e = (P2PChatEventArgs)g;
+            //try
+            //{
+            //    if (sender is ClientSession clientSession)
+            //    {
+            //        //First byte always ChatDataType, see more at Send(..) method above
+            //        ChatDataType type = e.Data[0] is byte b ? (ChatDataType)b : ChatDataType.None;
+            //        byte[] data = new byte[e.Data.Length - 1];
+            //        Buffer.BlockCopy(e.Data, 1, data, 0, data.Length);
 
-                    if (_handlers.TryGetValue(type, out var handler))
-                        handler(clientSession, data);
-                }
-            }
-            catch(Exception ex)
-            {
-                ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
-            }
+            //        if (_handlers.TryGetValue(type, out var handler))
+            //            handler(clientSession, data);
+            //    }
+            //}
+            //catch(Exception ex)
+            //{
+            //    ErrorEvent?.Invoke(this, new ChatErrorEventArgs(ChatErrorLevel.Critical, ex));
+            //}
         }
 
         //Handler partner request send file

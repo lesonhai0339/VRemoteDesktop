@@ -13,10 +13,12 @@ namespace VRemoteDesktop.Services.FileService
 {
     public class VAttachmentManager: IDisposable
     {
-        private bool _disposed = false;
-        private readonly object _lock= new object();
+        private readonly object _lock = new object();
+        private int _disposed = 0;
+
         private ConcurrentDictionary<string, VFileInfo> _files;
         private System.Threading.Timer _timer;
+
         public event EventHandler<ChatFileRemovedEventArgs> FileRemoved;
         public VAttachmentManager()
         {
@@ -40,23 +42,6 @@ namespace VRemoteDesktop.Services.FileService
                 }
             }
         }
-
-        //public string New(string fileName, string fileExtension, long fileSize , bool isSender)
-        //{
-        //    if (string.IsNullOrWhiteSpace(fileName))
-        //        throw new ArgumentNullException("Filename cannot be null or empty");
-        //    if (string.IsNullOrWhiteSpace(fileExtension))
-        //        throw new ArgumentNullException("FileExtension cannot be null or empty");
-        //    if (fileSize <= 0)
-        //        throw new ArgumentOutOfRangeException("File size cannot equal 0 or negative");
-        //    VFileInfo fileInfo = new VFileInfo(id: null, filePath: null, fileExtension, fileName, fileSize, isSender, null);
-        //    bool flag = _files.TryAdd(fileInfo.Id, fileInfo);
-
-        //    if(!flag)
-        //        throw new Exception("Cannot add new file info");
-
-        //    return fileInfo.Id;
-        //}
         public bool Add(VFileInfo file)
         {
             if (file == null)
@@ -120,12 +105,13 @@ namespace VRemoteDesktop.Services.FileService
         }
         protected virtual void Dispose(bool disposing)
         {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
             if (disposing)
             {
-                if (_disposed) return;
                 _files.Clear();
                 _timer?.Dispose();
-                _disposed = true;
             }
         }
     }

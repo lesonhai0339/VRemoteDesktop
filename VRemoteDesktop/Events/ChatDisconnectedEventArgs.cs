@@ -7,11 +7,11 @@ namespace VRemoteDesktop.Events
 {
     public class ChatDisconnectedEventArgs:  EventArgs
     {
-        public ChatDisconnectedEventArgs(string socketId)
+        public ChatDisconnectedEventArgs(string sessionId)
         {
-            SocketId = socketId;
+            SessionId = sessionId;
         }
 
-        public string SocketId { get; set; }
+        public string SessionId { get; set; }
     }
 }

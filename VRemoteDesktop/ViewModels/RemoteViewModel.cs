@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.ComponentModel;
-using VRemoteServer.Models;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.VTCPClient;
@@ -234,32 +233,32 @@ namespace VRemoteDesktop.ViewModels
         //public void P2PScreenReceivedEventHandler(object sender, P2PScreenEventArgs e)
         public void P2PScreenReceivedEventHandler(object sender, EventArgs g)
         {
-#if DEBUG
-            var e = (P2PScreenEventArgs)g;
-            var type = (e.Type == SocketDataType.ScreenSend) ? true : false;
+//#if DEBUG
+//            var e = (P2PScreenEventArgs)g;
+//            var type = (e.Type == SocketDataType.ScreenSend) ? true : false;
 
-            var rectangle = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length);
+//            var rectangle = _screenReceiver.DecompressedRawData(e.Data, 0, e.Data.Length);
 
-            if (UpdateScreen != null)
-                UpdateScreen.Invoke(this, new OnScreenEventArgs(type, rectangle));
+//            if (UpdateScreen != null)
+//                UpdateScreen.Invoke(this, new OnScreenEventArgs(type, rectangle));
 
-            _clientSession.AddWork(
-                QueuePriority.High,
-                new TaskObject(
-                    type: (type) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, 
-                    _clientSession.SessionId, 
-                    isSendHeader: true, 
-                    data: new byte[0]));
-            return;
-#endif
-            if (e.Type == SocketDataType.ScreenSend)
-            {
-                ProcessScreenReceived(e.Data);
-            }
-            if (e.Type == SocketDataType.ScreenRegionsChangedSend)
-            {
-                ProcessScreenRegionsChangedReceived(e.Data);
-            }
+//            _clientSession.AddWork(
+//                QueuePriority.High,
+//                new TaskObject(
+//                    type: (type) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk, 
+//                    _clientSession.SessionId, 
+//                    isSendHeader: true, 
+//                    data: new byte[0]));
+//            return;
+//#endif
+//            if (e.Type == SocketDataType.ScreenSend)
+//            {
+//                ProcessScreenReceived(e.Data);
+//            }
+//            if (e.Type == SocketDataType.ScreenRegionsChangedSend)
+//            {
+//                ProcessScreenRegionsChangedReceived(e.Data);
+//            }
         }
 
         private void KeyboardReceivedEventHandler(object sender, KeyboardEventArgs e)

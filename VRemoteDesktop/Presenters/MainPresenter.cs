@@ -176,6 +176,9 @@ namespace VRemoteDesktop.Presenters
                 case Services.RemoteDesktop.Enums.ResponseType.AddRemoteControlled:
                     NewRemoteConnectionCallback(sender, e.Type);
                     break;
+                case ResponseType.Disconnect:
+                    UpdateStatus(LoginStatus.Disconnected);
+                    break;
                 case ResponseType.P2PFailed:
                     if (OnError != null)
                         OnError.Invoke(this, new MainErrorEventArgs(new UnauthorizedAccessException("Thiết lập kết nối vói máy khách thất bại")));

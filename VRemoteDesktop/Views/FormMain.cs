@@ -1,38 +1,23 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Windows.Forms;
-using VRemoteDesktop.Enums;
-using VRemoteDesktop.Events;
-using VRemoteDesktop.Layouts;
-using VRemoteDesktop.Models;
 using VRemoteDesktop.Presenters;
 using VRemoteDesktop.Presenters.DTOs;
 using VRemoteDesktop.Presenters.Enums;
 using VRemoteDesktop.Presenters.Events;
-using VRemoteDesktop.Services.ConnectionManager;
 using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.RemoteDesktop;
-using VRemoteDesktop.Services.SystemService;
-using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
-using VRemoteDesktop.ViewModels;
 using VRemoteDesktop.Views;
-using VRemoteServer.Models;
 
 namespace VRemoteDesktop
 {
     public partial class FormMain : Form
     {
         private readonly object _lock = new object();
-        //private MainViewModel _viewModel;
-        private FormChat chatForm;
         private bool isShow;
+        private FormChat chatForm;
         private LoginStatus _status;
 
         private readonly RemoteService _remoteService;
@@ -41,15 +26,13 @@ namespace VRemoteDesktop
         public FormMain(RemoteService remoteService)
         {
             InitializeComponent();
-            _remoteService = remoteService;
-            //_remoteDesktopService = remoteDesktopService;
-            //ViewModel = new MainViewModel(_remoteDesktopService);
-            //SetupBinding();
-            RegisterChatForm();
             isShow = false;
 
-
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
+
+            RegisterChatForm();
+
+            _remoteService = remoteService;
             _mainPresenter = new MainPresenter(_remoteService);
             _mainPresenter.OnData += OnDataEventHandler;
             _mainPresenter.OnError += OnErrorEventHandler;
@@ -131,7 +114,7 @@ namespace VRemoteDesktop
         }
         private void RegisterChatForm()
         {
-            chatForm = new FormChat();
+            chatForm = new FormChat(_remoteService);
             chatForm.FormClosed += ChatForm_ClosedEventHandler;
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
@@ -180,6 +163,12 @@ namespace VRemoteDesktop
         }
         private void btnConnect_Click(object sender, EventArgs e)
         {
+            if(_status != LoginStatus.Connected)
+            {
+
+                MessageBox.Show("Không thể kết nối đến máy chủ", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             string partnerId = txtPartnerId.Text.Replace(" ", "");
             string partnerPassword = txtPartnerPassword.Text.Replace(" ","");
 
@@ -234,7 +223,7 @@ namespace VRemoteDesktop
                 chatForm.Show();
                 isShow = true;
             }
-            chatForm.AddConnection(clientSession.SessionId, clientSession);
+            chatForm.AddChatSession(clientSession.SessionId, clientSession);
         }
     }
 }

@@ -132,12 +132,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 foreach (var connection in _sessionManager.Connections)
                 {
-                    if (connection.Value.SessionType == SessionManagement.Enums.ClientType.Controlled)
-                        connection.Value.AddWork(QueuePriority.High, new TaskObject
+                    if (connection.SessionType == SessionManagement.Enums.ClientType.Controlled)
+                        connection.AddWork(QueuePriority.High, new TaskObject
                         {
                             TaskType = type,
                             Data = data,
-                            SessionId = connection.Value.SessionId,
+                            SessionId = connection.SessionId,
                             IsSendHeader = true,
                             ChunkFileInfo = null
                         });

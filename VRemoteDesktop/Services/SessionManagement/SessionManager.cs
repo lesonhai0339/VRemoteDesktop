@@ -2,7 +2,9 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel.Channels;
 using System.Text;
+using System.Threading;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.RemoteDesktop;
@@ -14,28 +16,46 @@ using VRemoteDesktop.Services.VTCPClient.Events;
 
 namespace VRemoteDesktop.Services.SessionManagement
 {
-    public class SessionManager: IDisposable
+    public interface ISessionManager
     {
-        private bool _disposed = false;
+        ClientSession[] Connections { get; }
+        bool Contains(string sessionId);
+        bool Contains(Func<ClientSession, bool> predicate);
+        bool HasClientOfType(ClientType type);
+        void Add(string id, ClientSession session);
+        bool Remove(string id);
+        bool Remove(ClientSession session);
+        ClientSession GetByKey(string id);
+        ClientSession New(string id, ClientType type, int width, int height);
+        ClientSession AddNewAndListen(string id, ClientType type, int port, int width, int height);
+
+        void AddScreen(ClientType type, RegionFrame screen);
+        void AddDirtyRegions(ClientType sessionType, RegionFrame frame);
+
+        event EventHandler<ClientSessionDataReceivedEventArgs> SessionDataReceived;
+        event EventHandler<ClientSessionDisconnectedEventArgs> SessionClosed;
+
+        void Dispose();
+    }
+    public class SessionManager: ISessionManager, IDisposable
+    {
+        private int _disposed = 0;
         private readonly ConcurrentDictionary<string, ClientSession> _sessions;
-        public EventHandler<ClientSessionDataReceivedEventArgs> SessionDataReceived;
-        public EventHandler<ClientSessionDisconnectedEventArgs> SessionClosed;
+        public event EventHandler<ClientSessionDataReceivedEventArgs> SessionDataReceived;
+        public event EventHandler<ClientSessionDisconnectedEventArgs> SessionClosed;
         public SessionManager()
         {
             _sessions = new ConcurrentDictionary<string, ClientSession>();
         }
-        public ConcurrentDictionary<string, ClientSession> Connections => _sessions;
+        public ClientSession[] Connections => _sessions.Values.ToArray();
         #region Manager
-        public bool FindClientSession(string sessionId)
+        public bool Contains(string sessionId)
         {
             return _sessions.ContainsKey(sessionId);
         }
-        public bool Find(string id)
+        public bool Contains(Func<ClientSession, bool> predicate)
         {
-            return _sessions.Values.Any(session
-                => session.PartnerInfo != null 
-                && !string.IsNullOrEmpty(session.PartnerInfo.SessionId) 
-                && session.PartnerInfo.SessionId.Equals(id, StringComparison.OrdinalIgnoreCase));    
+            return _sessions.Values.Any(predicate);    
         }
         public bool HasClientOfType(ClientType type)
         {
@@ -54,19 +74,6 @@ namespace VRemoteDesktop.Services.SessionManagement
                 session.OnDisconnected += OnSessionDisconnectedEventHandler;
             }
         }
-
-        private void OnSessionDataReceivedEvetHandler(object sender, ClientSessionDataReceivedEventArgs e)
-        {
-            if (SessionDataReceived != null)
-                SessionDataReceived.Invoke(sender, new ClientSessionDataReceivedEventArgs(e.SessionId, type: e.Type, data: e.Data, e.IsSuccess));
-        }
-
-        private void OnSessionDisconnectedEventHandler(object sender, ClientSessionDisconnectedEventArgs e)
-        {
-            var handler = SessionClosed;
-            if (handler != null)
-                handler.Invoke(sender, e);
-        }
         public bool Remove(string id)
         {
             if (_sessions.TryRemove(id, out var client))
@@ -78,7 +85,6 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
             throw new InvalidOperationException(string.Format("Cannot remove connection with Id:{0}", id));
         }
-
         public bool Remove(ClientSession session)
         {
             if (session != null)
@@ -163,6 +169,19 @@ namespace VRemoteDesktop.Services.SessionManagement
             session.AddRegions(frame);
         }
         #endregion
+        #region Events
+        private void OnSessionDataReceivedEvetHandler(object sender, ClientSessionDataReceivedEventArgs e)
+        {
+            if (SessionDataReceived != null)
+                SessionDataReceived.Invoke(sender, new ClientSessionDataReceivedEventArgs(e.SessionId, type: e.Type, data: e.Data, e.IsSuccess));
+        }
+        private void OnSessionDisconnectedEventHandler(object sender, ClientSessionDisconnectedEventArgs e)
+        {
+            var handler = SessionClosed;
+            if (handler != null)
+                handler.Invoke(sender, e);
+        }
+        #endregion
         public void Dispose()
         {
             Dispose(true);
@@ -170,16 +189,25 @@ namespace VRemoteDesktop.Services.SessionManagement
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
+            try
             {
-                if (_disposed) return;
-                foreach (var connection in _sessions)
+                if (disposing)
                 {
-                    connection.Value?.Dispose();
+                    foreach (var key in _sessions.Keys)
+                    {
+                        try
+                        {
+                            Remove(key);
+                        }
+                        catch { /*Err*/ }
+                    }
+                    _sessions.Clear();
                 }
-                _sessions.Clear();
-                _disposed = true;
             }
+            catch { }
         }
     }
 }

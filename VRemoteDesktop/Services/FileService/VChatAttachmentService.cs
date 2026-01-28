@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using System.Threading;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Models;
@@ -28,7 +29,7 @@ namespace VRemoteDesktop.Services.FileService
     }
     internal class VChatAttachmentService: IVChatAttachmentService, IDisposable
     {
-        private volatile bool _disposed = false;    
+        private int _disposed = 0;    
         private VAttachmentManager _attachmentManager;
         private ConcurrentDictionary<string, FileStream> _curStreams;
         public event EventHandler<FileEventArgs> FileDataReceivedEvent;
@@ -279,59 +280,6 @@ namespace VRemoteDesktop.Services.FileService
 
             Helpers.FileHelper.WriteToFile(stream, offset, data, flush);
         }
-        
-        ///// <summary>
-        ///// Split file data to chunks with header and send to specific client
-        ///// </summary>
-        ///// <param name="client">socket connection will be receive file data</param>
-        ///// <param name="fileId">file id</param>
-        //[Obsolete("This method require load whole file data to memory")]
-        //private void BeginSendFileOld(VClient client, string fileId)
-        //{
-        //    try
-        //    {
-        //        var info = _attachmentManager.Get(fileId);
-        //        if (info == null)
-        //            throw new InvalidOperationException("Does not exists file with id: " + fileId);
-
-        //        FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(info.FilePath);
-        //        if (fileInfo == null)
-        //            throw new InvalidOperationException("Does not exists file: " + info.FilePath);
-
-        //        int fileSize = (int)fileInfo.Length;
-        //        int handledSize = 0;
-
-        //        byte[] chunkData = new byte[DefaultFileInfo.DEFAULT_CHUNK_FILE_SIZE];
-        //        while (handledSize < fileSize)
-        //        {
-        //            int offset = handledSize;
-        //            int bytesRead = Helpers.FileHelper.GetChunkFileDataByOffset(fileInfo.FullName, offset, ref chunkData, DefaultFileInfo.DEFAULT_CHUNK_FILE_SIZE);
-
-        //            byte[] dataSend = new byte[bytesRead + 20]; //4 byte for offset + 16 byte for file id
-        //            Buffer.BlockCopy(BitConverter.GetBytes(offset), 0, dataSend, 0, 4);
-        //            Buffer.BlockCopy(Encoding.ASCII.GetBytes(fileId), 0, dataSend, 4, fileId.Length);
-        //            Buffer.BlockCopy(chunkData, 0, dataSend, fileId.Length + 4, bytesRead);
-
-        //            client.AddWork(
-        //                new TaskObject
-        //                {
-        //                    TaskType = SocketDataType.ChatSend,
-        //                    Data = dataSend,
-        //                    SessionId = client.SocketId,
-        //                    IsSendHeader = true
-        //                }, QueuePriority.Low);
-        //            //Notify sending progress
-        //            handledSize += bytesRead;
-        //        }
-        //        chunkData = null;
-        //        //After sending all data, remove file info
-        //        _attachmentManager.Remove(fileId);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        throw;
-        //    }
-        //}
         /// <summary>
         /// Split file to chunks and send chunk metadata to specific client(client will take data from file by chunk metadata and send, this will decrease memory usage instead load whole file data to memory)
         /// </summary>
@@ -378,10 +326,11 @@ namespace VRemoteDesktop.Services.FileService
         }
         protected virtual void Dispose(bool disposing)
         {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
             if (disposing)
             {
-                if (_disposed) return;
-
                 if (_attachmentManager != null)
                     _attachmentManager.FileRemoved -= FileRemovedEventHandler;
 
@@ -392,7 +341,6 @@ namespace VRemoteDesktop.Services.FileService
                 }
                 _curStreams.Clear();
                 _attachmentManager.Dispose();
-                _disposed = true;
             }
         }
     }

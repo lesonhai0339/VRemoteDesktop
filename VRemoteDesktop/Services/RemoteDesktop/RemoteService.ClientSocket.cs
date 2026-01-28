@@ -19,10 +19,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public partial class RemoteService
     {
-        #region ClientSession
-        #region Client
-        #region Properties
-        #endregion
         #region Methods
         public ClientSession NewControlled(string sessionId, int width, int height)
         {
@@ -54,11 +50,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var session = _sessionManager.GetByKey(id);
             return session;
         }
-        public bool FindClient(string id)
+        public bool FindClient(string sessionId)
         {
-            if (string.IsNullOrWhiteSpace(id))
+            if (string.IsNullOrWhiteSpace(sessionId))
                 throw new ArgumentNullException("Session Id cannot be null or empty");
-            return _sessionManager.Find(id);
+            return _sessionManager.Contains(sessionId);
         }
         public void Listen(string sessionId, int port)
         {
@@ -147,7 +143,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 bool connectSuccess = clientSession.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_REMOTE_PORT), RETRY, TIMEOUT);
                 if (!connectSuccess)
                 {
-                    OnError?.Invoke(this, new EventArgs()); //Failed
+                    OnError?.Invoke(this, new Events.RemoteDesktopErrorEventArgs(clientSession.SessionId, "Connect to server failed")); //Failed
                 }
 
                 var connectionInfo = new ConnectionCredentials(
@@ -165,7 +161,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             bool isSuccess = clientSession.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_REMOTE_PORT), RETRY, TIMEOUT);
             if (!isSuccess)
             {
-                OnError?.Invoke(this, new EventArgs()); //Connect to TURN server failed, throw back to UI
+                OnError?.Invoke(this, new Events.RemoteDesktopErrorEventArgs(clientSession.SessionId, "Connect to server failed")); //Connect to TURN server failed, throw back to UI
             }
             Console.WriteLine("Connect to relay server success");
             //Connect success
@@ -236,10 +232,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     //clientSession.IsP2PConnected = false;
 
-                    if (clientSession.SessionType == ClientType.System)
-                    {
+                    if (clientSession.SessionType == ClientType.System && OnSessionData != null)
                         OnSessionData?.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.Disconnect, clientSession.SessionId, false, new byte[0]));
-                    }
+
+                    if (OnSessionDisconnected != null)
+                        OnSessionDisconnected.Invoke(sender, new Events.RemoteDesktopSessionDisconnectEventArgs(clientSession.SessionId));
 
                     _sessionManager.Remove(clientSession.SessionId);
 
@@ -274,7 +271,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var clientSession = sender as ClientSession;
             if(clientSession != null)
             {
-                if (_sessionManager.FindClientSession(clientSession.SessionId))
+                if (_sessionManager.Contains(clientSession.SessionId))
                 {
                     var handler = OnSessionData;
                     if (handler != null)
@@ -306,8 +303,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 StopCapture();
             }
         }
-        #endregion
-        #endregion
         #endregion
     }
 }

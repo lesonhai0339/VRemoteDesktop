@@ -19,11 +19,11 @@
 
   <ItemGroup>
     <Folder Include="Logs\" />
-    <Folder Include="RelayServer\Log\" />
+    <Folder Include="Server\Log\" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Update="appsettings.json">
+    <None Update="Configs\appsettings.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -82,7 +82,7 @@ namespace VRemoteDesktop.Layouts
             this._messagePanel.Controls.Add(attachment);
             this._messagePanel.ScrollControlIntoView(attachment);
         }
-        private void ProcessAttachmentRespondFromPartner(object sender , P2PFileReceivedEventArgs e)
+        private void ProcessAttachmentRespondFromPartner(object sender , FileReceivedEventArgs e)
         {
             if (sender is Button btn && btn.Parent is FileAttachmentPanel attachment)
             {

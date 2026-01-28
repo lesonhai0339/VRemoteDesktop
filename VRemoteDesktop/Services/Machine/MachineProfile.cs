@@ -12,6 +12,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Services.Machine.DTOs;
+using System.Threading;
 
 namespace VRemoteDesktop.Services.Client
 {
@@ -24,17 +25,20 @@ namespace VRemoteDesktop.Services.Client
         bool SameNetwork(string publicIp);
         bool Authentication(string id, string password);
         Rectangle Bounds { get; }
+        void Dispose();
     }
     public class MachineProfile : IMachineProfile, IDisposable
     {
-        private const int defaultPort = 2399;
+        private int _disposed = 0;
         private const string defaultFolder = "Vinhhy_Remote";
         private const string defaultPasswordFileName = "ps.txt";
 
+        private readonly string _port;
         public MachineInfo _machineInfo;
         public Rectangle Bounds => GetBounds();
-        public MachineProfile()
+        public MachineProfile(string port)
         {
+            _port = port;
             _machineInfo = InitializeMachineInfo();
         }
         private MachineInfo InitializeMachineInfo()
@@ -69,7 +73,7 @@ namespace VRemoteDesktop.Services.Client
                 minorVersion: minor.ToString(),
                 ip: ip.ToString(),
                 publicIP: "",
-                port: defaultPort.ToString() 
+                port: _port
             );
             return machineInfo;
         }
@@ -296,7 +300,20 @@ namespace VRemoteDesktop.Services.Client
         }
         public void Dispose()
         {
-            throw new NotImplementedException();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0) return;
+            try
+            {
+                if (disposing)
+                {
+
+                }
+            }
+            catch { }
         }
     }
 }

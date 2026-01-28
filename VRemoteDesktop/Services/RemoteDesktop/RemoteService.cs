@@ -10,6 +10,7 @@ using VRemoteDesktop.Services.Client;
 using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.RemoteDesktop.Enums;
+using VRemoteDesktop.Services.RemoteDesktop.Events;
 using VRemoteDesktop.Services.ScreenCapture;
 using VRemoteDesktop.Services.SessionManagement;
 using VRemoteDesktop.Services.SessionManagement.Enums;
@@ -21,63 +22,57 @@ namespace VRemoteDesktop.Services.RemoteDesktop
     public partial class RemoteService : IDisposable
     {
         private readonly object _lock = new object();
+        private const int BYTE_PER_PIXEL = 3;
+        private const int FPS = 10;
         private const int RETRY = 0;
         private const int TIMEOUT = 3000;
         private const int SESSION_ID_LENGTH = 8;
         private const string SEPARATOR = "|";
         private const string SUCCESS = "1";
         private const string FAILED = "0";
-#if DEBUG
+
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
-        private readonly string DEFAULT_LOGIN_PORT = "2399";
-        private readonly string DEFAULT_REMOTE_PORT = "2400";
-#endif
-        //private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
-        //private readonly string DEFAULT_LOGIN_PORT = AppSettingHelper.GetValue("LoginPort");
-        //private readonly string DEFAULT_REMOTE_PORT = AppSettingHelper.GetValue("RemotePort");
-        private volatile bool _disposed;
+        private readonly string DEFAULT_LOGIN_PORT = AppSettingHelper.GetValue("LoginPort");
+        private readonly string DEFAULT_REMOTE_PORT = AppSettingHelper.GetValue("RemotePort");
+
+        private int _disposed = 0;
         private bool _isCapturing = false;
 
-#if DEBUG
+        private readonly IMachineProfile _machineProfile;
         private readonly IVScreenSender _screenSender;
         private readonly IKeyboardService _keyboardService;
-
-#endif
-        private readonly IMachineProfile _machineProfile;
-        private readonly SessionManager _sessionManager;
-        private ManualResetEvent _reset;
+        private readonly ISessionManager _sessionManager;
 
         private Dictionary<SocketDataType, Action<object, EventArgs>> _eventHandlers;
 
-
+        public event EventHandler<RemoteDesktopErrorEventArgs> OnError;
         public event EventHandler<KeyboardEventArgs> OnSessionKeyboard;
         public event EventHandler<RemoteDesktopEventArgs> OnSessionData;
-        public event EventHandler<EventArgs> OnError;
-        public RemoteService(IVScreenSender screenSender, SessionManager sessionManager, IMachineProfile machineProfile, IKeyboardService keyboardService)
+        public event EventHandler<RemoteDesktopSessionDisconnectEventArgs> OnSessionDisconnected;
+        public RemoteService()
         {
-            _disposed = false;
-            _machineProfile = machineProfile;
-            _reset = new ManualResetEvent(false);
+            _machineProfile = new MachineProfile(DEFAULT_LOGIN_PORT);
 
-            _keyboardService = keyboardService;
-            _sessionManager = sessionManager;
-
-            _screenSender = screenSender;
+            _screenSender = new VScreenSender(_machineProfile.Bounds.Width, _machineProfile.Bounds.Height, BYTE_PER_PIXEL, FPS);
             _screenSender.OnFrame += OnRegionEventHandler;
 
-
+            _keyboardService = new KeyboardService();
             _keyboardService.KeyPressed += KeyPressedEventHandler;
+            StartKeyboardListener();
+
+            _sessionManager = new SessionManager();
             _sessionManager.SessionDataReceived += ClientSessionDataReceivedEventHandler;
             _sessionManager.SessionClosed += ClientSessionClosedEventHandler;
-            StartKeyboardListener();
         }
 
 
+        #region Properties
         public string Separator => SEPARATOR;
-        public bool Disposed => _disposed;
-        
+        #endregion
+
+        #region Methods
         public bool GetServerIP(out string serverIp)
-        {            
+        {
             //Implement after. Now return default server ip
             serverIp = DEFAULT_SERVER_IP;
             return true;
@@ -115,7 +110,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private void ErrorCallback(ResponseType type, string message)
         {
             var handler = OnSessionData;
-            if(handler != null)
+            if (handler != null)
             {
                 handler.Invoke(this, new RemoteDesktopEventArgs(type: type, message: message));
             }
@@ -139,7 +134,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         GetPartnerInfoSuccessCallback(e.Data);
                         break;
                     case SocketDataType.GetPartnerInfoFailed:
-                        GetPartnerInfoFailedCallback(sender,  e.Data);
+                        GetPartnerInfoFailedCallback(sender, e.Data);
                         break;
                     case SocketDataType.RemoteLogin:
                         RemoteLoginCallback(sender, e.Data);
@@ -177,6 +172,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 Logger.Log.ForContext("FileName", GetType().Name).Error(ex, string.Format("Error handling {0}: {1}", e.Type, ex.Message));
             }
         }
+        #endregion
         public void Dispose()
         {
             Dispose(true);
@@ -184,26 +180,32 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         protected virtual void Dispose(bool disposing)
         {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
             if (disposing)
             {
+                if(_screenSender != null)
+                {
+                    _screenSender.OnFrame -= OnRegionEventHandler;
+                    _screenSender.Cancel();
+                    _screenSender.Dispose();
+                }
 
-                if (_disposed) return;
-
-                StopKeyboardListener();
                 if (_keyboardService != null)
                 {
                     _keyboardService.KeyPressed -= KeyPressedEventHandler;
+                    StopKeyboardListener();
+                    _keyboardService.Dispose();
                 }
                 if (_sessionManager != null)
                 {
                     _sessionManager.SessionDataReceived -= ClientSessionDataReceivedEventHandler;
                     _sessionManager.SessionClosed -= ClientSessionClosedEventHandler;
+                    _sessionManager.Dispose();
                 }
-
-                _keyboardService?.Dispose();
-                _sessionManager?.Dispose();
-                _reset?.Dispose();
-                _disposed = true;
+                if (_machineProfile != null)
+                    _machineProfile.Dispose();
             }
         }
     }

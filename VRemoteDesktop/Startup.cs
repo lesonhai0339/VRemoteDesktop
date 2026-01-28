@@ -1,37 +1,16 @@
 ﻿using NetFwTypeLib;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
 using System.Threading;
 using System.Windows.Forms;
-using VRemoteDesktop.Services.Client;
-using VRemoteDesktop.Services.ConnectionManager;
-using VRemoteDesktop.Services.Keyboard;
 using VRemoteDesktop.Services.RemoteDesktop;
-using VRemoteDesktop.Services.ScreenCapture;
-using VRemoteDesktop.Services.ScreenCapture.DTOs;
-using VRemoteDesktop.Services.ScreenCapture.GDI;
-using VRemoteDesktop.Services.SessionManagement;
-using VRemoteDesktop.Services.SystemService;
-using VRemoteDesktop.Services.VTCPClient;
-using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop
 {
     public class Startup
     {
-        private IKeyboardService _keyboardHookService;
-        private IMachineProfile _machineProfile;
-        private IVScreenSender _screenSender;
-        private SessionManager _sessionManagement;
         private RemoteService _remoteControlService;
-
-
         public Startup()
         {
             //RegisterFirewallAccess();
@@ -100,14 +79,7 @@ namespace VRemoteDesktop
         }
         private void Initialize()
         {
-            var bounds = Screen.PrimaryScreen.Bounds;
-            _screenSender = new VScreenSender(bounds.Width, bounds.Height);
-            _sessionManagement = new SessionManager();
-
-            _keyboardHookService = new KeyboardService();
-
-            _machineProfile = new MachineProfile();
-            _remoteControlService = new RemoteService(_screenSender, _sessionManagement, _machineProfile, _keyboardHookService);
+            _remoteControlService = new RemoteService();
         }
         public void Run()
         {
@@ -119,7 +91,8 @@ namespace VRemoteDesktop
             }
             finally
             {
-                _remoteControlService?.Dispose();
+                if (_remoteControlService != null)
+                    _remoteControlService.Dispose();
             }
         }
     }

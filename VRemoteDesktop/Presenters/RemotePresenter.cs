@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Drawing;
-using System.Linq;
 using System.Text;
 using System.Threading;
 using VRemoteDesktop.Events;
@@ -14,6 +12,7 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Models;
 using static VRemoteDesktop.Utils.Logger;
 using System.Windows.Forms;
+using VRemoteDesktop.Services.RemoteDesktop.Events;
 
 namespace VRemoteDesktop.Presenters
 {
@@ -21,6 +20,8 @@ namespace VRemoteDesktop.Presenters
     {
         private int _disposed = 0;
 
+        private readonly string _partnerId;
+        private readonly string _partnerName;   
         private readonly int _width;
         private readonly int _height;
         private readonly int _stride;
@@ -37,26 +38,35 @@ namespace VRemoteDesktop.Presenters
 
         public event EventHandler<KeyboardEventArgs> OnKeyboard;
         public event EventHandler<OnScreenEventArgs> UpdateScreen;
-        public event EventHandler<ClientSessionDisconnectedEventArgs> OnDisconnect;
+        public event EventHandler<RemoteDesktopSessionDisconnectEventArgs> OnDisconnect;
 
-        public RemotePresenter(ClientSession clientSession, RemoteService remoteService, IMouseExtensions mouseExtensions)
+        public RemotePresenter(ClientSession clientSession, RemoteService remoteService)
         {
             _clientSession = clientSession;
             _remoteService = remoteService;
-            _mouseExtension = mouseExtensions;
+            _mouseExtension = new MouseExtensions();
 
+            _partnerId = clientSession.PartnerInfo.PartnerId;
+            _partnerName = clientSession.PartnerInfo.ComputerName;
+            _width = _clientSession.PartnerInfo.Width;
+            _height = _clientSession.PartnerInfo.Height;
+            _stride = clientSession.GetStride(_width , clientSession.BytePerPixel);
 
-            _buffer = VArrayPool.Rent(_clientSession.GetStride(_clientSession.PartnerInfo.Width, _clientSession.BytePerPixel) * _clientSession.PartnerInfo.Height);
+            _buffer = VArrayPool.Rent(_stride * _height);
             var screenTask = new ScreenTask(_buffer);
-            _screenReceived = new VScreenReceiver(screenTask, _clientSession.PartnerInfo.Width, _clientSession.PartnerInfo.Height, _clientSession.BytePerPixel);
+            _screenReceived = new VScreenReceiver(screenTask, _width, _height, _clientSession.BytePerPixel);
             Picture = new Bitmap(_screenReceived.Width, _screenReceived.Height, _screenReceived.Stride, _screenReceived.PixelFormat, _screenReceived.ScreenHDC);
 
 
             _remoteService.OnSessionKeyboard += OnSessionKeyboardEventHandler;
+            _remoteService.OnSessionDisconnected += OnSessionDisconnectedEventHandler;
             _clientSession.OnScreenReceived += OnScreenReceivedEventHandler;
-            _clientSession.OnDisconnected += OnSessionDisconnectedEventHandler;
         }
         #region Properties
+        public int ClientWidth => _width;
+        public int ClientHeight => _height;
+        public string Id => _partnerId;
+        public string Name => _partnerName;
         #endregion
         #region Methods
         public void AddKeyboardHook(IntPtr handle)
@@ -72,7 +82,6 @@ namespace VRemoteDesktop.Presenters
             RectangleF displayRect = _mouseExtension.TransformImageToDisplay(source, img, rect);
             return displayRect;
         }
-
         public void GetClipboard(KeyboardEventArgs e)
         {
             string clipboard = _remoteService.GetClipboard();
@@ -140,8 +149,6 @@ namespace VRemoteDesktop.Presenters
         }
         #endregion
         #region Events
-
-
         private void OnScreenReceivedEventHandler(object sender, ClientSessionScreenReceivedEventArgs e)
         {
             var isFullScreen = (e.Type == Services.SessionManagement.Events.ClientSession.ScreenType.FullScreen) ? true : false;
@@ -158,7 +165,6 @@ namespace VRemoteDesktop.Presenters
                     _clientSession.SessionId,
                     isSendHeader: true,
                     data: new byte[0]));
-            return;
         }
 
         private void OnSessionKeyboardEventHandler(object sender, KeyboardEventArgs e)
@@ -168,7 +174,7 @@ namespace VRemoteDesktop.Presenters
                 OnKeyboard.Invoke(sender, e);
             }
         }
-        private void OnSessionDisconnectedEventHandler(object sender, ClientSessionDisconnectedEventArgs e)
+        private void OnSessionDisconnectedEventHandler(object sender, RemoteDesktopSessionDisconnectEventArgs e)
         {
             if(OnDisconnect != null)
             {
@@ -195,13 +201,20 @@ namespace VRemoteDesktop.Presenters
                     _screenReceived.Dispose();
 
                 if(_remoteService != null)
+                {
+                    _remoteService.OnSessionDisconnected -= OnSessionDisconnectedEventHandler;
                     _remoteService.OnSessionKeyboard -= OnSessionKeyboardEventHandler;
-
-                if(_clientSession != null)
+                }
+                if (_clientSession != null)
                 {
                     _clientSession.OnScreenReceived -= OnScreenReceivedEventHandler;
-                    _clientSession.OnDisconnected -= OnSessionDisconnectedEventHandler;
                 }
+
+                if (_mouseExtension != null)
+                    _mouseExtension.Dispose();
+
+                if (Picture != null)
+                    Picture.Dispose();
 
             }
         }

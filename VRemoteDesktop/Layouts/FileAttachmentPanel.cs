@@ -27,7 +27,7 @@ namespace VRemoteDesktop.Layouts
         private VFileInfo _fileInfo;
         private ChatProgressBar _progressBar;
 
-        public event EventHandler<P2PFileReceivedEventArgs> AcceptSaveFile;
+        public event EventHandler<FileReceivedEventArgs> AcceptSaveFile;
         public FileAttachmentPanel(string id, string socketId)
         {
             _id = id;
@@ -272,7 +272,7 @@ namespace VRemoteDesktop.Layouts
                 type = ChatFileType.Reject;
             }
 
-            AcceptSaveFile?.Invoke(sender, new P2PFileReceivedEventArgs(type, savePath));
+            AcceptSaveFile?.Invoke(sender, new FileReceivedEventArgs(type, savePath));
         }
         protected override void Dispose(bool disposing)
         {

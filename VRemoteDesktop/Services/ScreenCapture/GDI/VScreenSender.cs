@@ -35,6 +35,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         bool Stop();
         void GetFullScreen(IntPtr image);
         void Cancel();
+        void Dispose();
     }
     public class VScreenSender : VScreen, IVScreenSender, IDisposable
     {
