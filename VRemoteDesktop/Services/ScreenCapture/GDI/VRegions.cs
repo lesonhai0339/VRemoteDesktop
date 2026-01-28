@@ -111,7 +111,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
             if (elapsedSeconds > 3.0)
             {
-                Console.WriteLine("Regions Timeout, continue");
                 Interlocked.Exchange(ref _readyToSend, 0);
             }
             bool acquired = Interlocked.CompareExchange(ref _readyToSend, 1, 0) == 0;
@@ -242,7 +241,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
                 return;
 
-
             //Clear DIBSection resources
             if (_hBitmap != IntPtr.Zero)
                 CaptureApi.DeleteObject(_hBitmap);
@@ -251,10 +249,18 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                 CaptureApi.ReleaseDC(IntPtr.Zero, _memDC);
 
             _bits = IntPtr.Zero;
+            _hBitmap = IntPtr.Zero;
+            _memDC = IntPtr.Zero;
 
             if (disposing)
             {
-               
+                Array.Clear(_writer, 0 , _writer.Length);
+                Array.Clear(_reader, 0, _reader.Length);
+                _tempRect.Clear();
+
+                _tempRect = null;
+                _writer = null;
+                _reader = null;
             }
         }
     }
