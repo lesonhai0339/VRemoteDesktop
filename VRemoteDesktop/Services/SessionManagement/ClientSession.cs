@@ -330,6 +330,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     case SocketDataType.ScreenRegionsChangedSend:
                         OnScreenReceived?.Invoke(this, new ClientSessionScreenReceivedEventArgs(SessionManagement.Events.ClientSession.ScreenType.DirtyRegions, e.Data));
                         break;
+                    case SocketDataType.ChatSend:
+                        OnChatReceived?.Invoke(this, new ClientSessionDataReceivedEventArgs(this._sessionId, e.Type, e.Data));
+                        break;
                     default:
                         if (OnDataReceived != null)
                             OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));

@@ -24,12 +24,12 @@ namespace VRemoteDesktop.Presenters
     {
         private readonly object _lock = new object();
         private const int LOAD_LIMIT = 5;
-        private const int FILE_ID_LENGTH = 16;   
+        private const int FILE_ID_LENGTH = 16;
+        private const string SEPARATOR = "|";
         private int _disposed = 0;
 
         private string _clientSessionActive;
 
-        private readonly RemoteService _remoteService;
         private readonly IChatManager<object> _chatManager;
         private readonly ISaveChat _saveChat;
         private readonly IVChatAttachmentService _chatAttachment;
@@ -41,10 +41,8 @@ namespace VRemoteDesktop.Presenters
         public event EventHandler<ChatUpdateChatHistoryEventArgs> UpdateChatHistoryEvent;
         public event EventHandler<ChatErrorEventArgs> ErrorEvent;
 
-        public ChatPresenter(RemoteService remoteService)
+        public ChatPresenter()
         {
-            _remoteService = remoteService;
-
             _clientSessionActive = string.Empty;
             _saveChat = new VSaveChat();
 
@@ -306,7 +304,7 @@ namespace VRemoteDesktop.Presenters
                     return false;
 
                 string info = StringHelper.StringBuilderWithSeparator(
-                   separator: _remoteService.Separator,
+                   separator: SEPARATOR,
                    fileInfo.Id,
                    fileInfo.Filename,
                    fileInfo.FileExtension,

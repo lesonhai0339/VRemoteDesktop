@@ -36,8 +36,8 @@ namespace VRemoteDesktop.Views
             //    workingArea.Left + (workingArea.Width - newWidth) / 2,
             //    workingArea.Top + (workingArea.Height - newHeight) / 2
             //);
-
             _isDrag = false;
+            _remotePresenter = new RemotePresenter(clientSession, remoteControlService);
 
             //UI
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
@@ -45,7 +45,6 @@ namespace VRemoteDesktop.Views
             this.Text = _remotePresenter.Id + " - " + _remotePresenter.Name;
 
             //DI
-            _remotePresenter = new RemotePresenter(clientSession, remoteControlService);
             _remotePresenter.UpdateScreen += UpdateScreenEventHandler;
             _remotePresenter.OnKeyboard += KeyboardReceivedEventHandler;
             _remotePresenter.OnDisconnect += DisconnectedEventHandler;

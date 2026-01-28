@@ -59,7 +59,7 @@ namespace VRemoteDesktop.Services.SessionManagement
         }
         public bool HasClientOfType(ClientType type)
         {
-            return _sessions.Values.Any(x => x.SessionType == type);
+            return _sessions.Values.Any(x => x != null && x.SessionType == type);
         }
         public void Add(string id, ClientSession session)
         {

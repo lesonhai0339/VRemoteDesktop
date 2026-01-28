@@ -54,7 +54,7 @@ namespace VRemoteDesktop.Services.FileService.DTOs
             foreach (var prop in props)
             {
                 sb.Append(prop.PropertyType == typeof(DateTime)
-                    ? ((DateTime)prop.GetValue(this, null)).ToString("|")
+                    ? ((DateTime)prop.GetValue(this, null)).ToString()
                     : prop.GetValue(this, null).ToString()
                     ?? string.Empty)
                 .Append("|");

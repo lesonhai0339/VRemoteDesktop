@@ -114,7 +114,7 @@ namespace VRemoteDesktop
         }
         private void RegisterChatForm()
         {
-            chatForm = new FormChat(_remoteService);
+            chatForm = new FormChat();
             chatForm.FormClosed += ChatForm_ClosedEventHandler;
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)

@@ -40,11 +40,11 @@ namespace VRemoteDesktop.Views
         private readonly ChatPresenter _chatPresenter;
         private Dictionary<string, ConnectionChatDataPanel> _userChatControls;
 
-        public FormChat(RemoteService remoteService)
+        public FormChat()
         {
             InitializeComponent();
 
-            _chatPresenter = new ChatPresenter(remoteService);
+            _chatPresenter = new ChatPresenter();
             _userChatControls = new Dictionary<string, ConnectionChatDataPanel>();
 
             _chatPresenter.ProgressBarUpdateEvent += BarUpdateEventHandler;
