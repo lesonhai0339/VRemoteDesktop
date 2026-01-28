@@ -30,6 +30,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
     public class ClientSession : IDisposable
     {
         private readonly object _lock = new object();
+        private const long DELAY_TIME_PER_CHUNK_FILE = 20 * TimeSpan.TicksPerMillisecond;
         private const int TIME_OUT = 30;
         private int _disposed;
         private string _sessionId;
@@ -42,18 +43,17 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly int _bytePerPixel;
 
         private int _sending = 0;
-        private long _lastSent = Stopwatch.GetTimestamp();
+        private byte[] _bufferPool;
 
         private DateTimeOffset _lastPing;
-        private byte[] _bufferPool;
-        private long _lastSendTimestamp = Stopwatch.GetTimestamp();
+
+        private long _lastFileSend = Stopwatch.GetTimestamp();
 
         private PartnerNetworkInfo _partnerInfo;
 
-
-        private System.Threading.Timer _pingTimer;
         private Task _sendTask;
         private Task _receiveTask;
+        private System.Threading.Timer _pingTimer;
 
         private readonly ConcurrentQueue<QueueItem> _highQueue; //Keyboard, mouse, clipboard,...
 
@@ -67,17 +67,18 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly VRegions _screenRegions;
 
         private AutoResetEvent _sendWakeUp;
-        private AutoResetEvent _receivedWakeUp;
 
         private CancellationTokenSource _cancelationTokenSource;
 
-
         public event EventHandler<ClientSessionDataReceivedEventArgs> OnDataReceived;
         public event EventHandler<ClientSessionDisconnectedEventArgs> OnDisconnected;
-
-        //still not implement, using after
         public event EventHandler<ClientSessionDataReceivedEventArgs> OnChatReceived;
         public event EventHandler<ClientSessionScreenReceivedEventArgs> OnScreenReceived;
+
+#if DEBUG
+        private int regionCount = 0;
+        private Stopwatch regionTime = new Stopwatch();
+#endif
         public ClientSession(string id, ClientType type, int width, int height, int bytePerPixel = 3)
         {
             if (string.IsNullOrEmpty(id)) 
@@ -98,14 +99,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _sessionType = type;
             _highQueue = new ConcurrentQueue<QueueItem>();
 
-
             _cancelFile = new HashSet<string>();
             _lowQueue = new ConcurrentQueue<QueueItem>();
 
             _receiveQueue = new ConcurrentQueue<QueueItem>();
 
             _sendWakeUp = new AutoResetEvent(false);
-            _receivedWakeUp = new AutoResetEvent(false);
             _cancelationTokenSource = new CancellationTokenSource();
 
             _clientSocket = new ClientSocket(id, _cancelationTokenSource.Token);
@@ -188,6 +187,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public ClientType SessionType => _sessionType;
         public ClientSocket Client => _clientSocket;
         public VRegions ScreenRegions => _screenRegions;
+        private bool IsDisposed => Interlocked.CompareExchange(ref _disposed, 0, 0) != 0;
+
         #endregion
 
         #region Workers
@@ -226,12 +227,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         DirtyRegionSend();
                         hasWork = true;
                     }
-                    else if (_lowQueue.TryDequeue(out var lowTask))
+                    else if (_lowQueue.Count >0)
                     {
-                        LowQueueHandler(lowTask);
+                        LowQueueHandler();
                         hasWork = true;
                     }
-
                     if (!hasWork)
                     {
                         //Wait
@@ -265,15 +265,26 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     break;
             }
         }
-        private void LowQueueHandler(QueueItem lowTask)
+        private void LowQueueHandler()
         {
-            var taskObj = lowTask.Data as TaskObject;
-            if(taskObj != null)
+            var now = Stopwatch.GetTimestamp();
+            if ((now - _lastFileSend) > DELAY_TIME_PER_CHUNK_FILE)
             {
-                if (_cancelFile.Contains(taskObj.ChunkFileInfo.FileId))
-                    return;
+                lock (_lock)
+                {
+                    if (_lowQueue.TryDequeue(out var queueItem))
+                    {
+                        _lastFileSend = now;
+                        var taskObj = queueItem.Data as TaskObject;
+                        if (taskObj != null)
+                        {
+                            if (_cancelFile.Contains(taskObj.ChunkFileInfo.FileId))
+                                return;
 
-                ProcessFileTransfer(taskObj);
+                            ProcessFileTransfer(taskObj);
+                        }
+                    }
+                }
             }
         }
         private void ReceivedWorker(CancellationToken token)
@@ -355,9 +366,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             taskObjects.ForEach(x => AddWork(priority, x));
         }
-        public void AddWork(QueuePriority priority,TaskObject task)
+        public void AddWork(QueuePriority priority, TaskObject task)
         {
             if (task == null) return;
+            if(IsDisposed) return;   
 
             if(priority == QueuePriority.High)
             {
@@ -384,7 +396,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void Send(CapturedFrame frame)
         {
-            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
+            if (IsDisposed)
                 throw new ObjectDisposedException(this.GetType().Name);
             try
             {
@@ -405,7 +417,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         public void Send(SocketDataType type, byte[] data, string id = null, bool sendHeader = true)
         {
-            if (Interlocked.CompareExchange(ref _disposed, 0, 0) == 1)
+            if (IsDisposed)
                 throw new ObjectDisposedException(this.GetType().Name);
 
             try
@@ -493,6 +505,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void DirtyRegionSend()
         {
+            regionTime.Restart();
             var dirtyRegions = _screenRegions.GetData();
             if (dirtyRegions == null) return;
             try
@@ -507,6 +520,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                    dataSize: length);
 
                 var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, _bufferPool, 0, length, 1);
+
+                Console.WriteLine(length);
+
                 Send(type, header, this.SessionId, false);
 
                 Send(frame);
@@ -519,6 +535,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             finally
             {
                 VArrayPool.Return(dirtyRegions.Buffer);
+                regionTime.Stop();
+                Console.WriteLine($"Regions count {regionCount} - Time {regionTime.Elapsed.TotalMilliseconds}\n");
+                regionCount++;
             }
         }
         private void EnableRegionsSend()
@@ -536,6 +555,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         #endregion
 
         #region Methods
+        public void Close()
+        {
+            var handler = OnDisconnected;
+            if (handler != null)
+                handler.Invoke(this, new ClientSessionDisconnectedEventArgs(_sessionId));
+        }
         public void UpdatePartnerInfo(PartnerNetworkInfo partnerInfo)
         {
             if (partnerInfo == null) throw new ArgumentNullException("partner info");
@@ -708,7 +733,29 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 if (disposing)
                 {
-                    SendDisconnectedNotification();
+                    if (_cancelationTokenSource != null)
+                        _cancelationTokenSource.Cancel();
+
+                    try
+                    {
+                        Task.WaitAll(
+                            new[] { _sendTask, _receiveTask }.Where(t => t != null).ToArray(),
+                            TimeSpan.FromSeconds(3)
+                        );
+                    }
+                    catch (AggregateException) { }
+                    catch (TaskCanceledException) { }
+
+                    _cancelFile.Clear();
+                    while (_highQueue.TryDequeue(out _)) { }
+                    while (_lowQueue.TryDequeue(out _)) { }
+                    while (_receiveQueue.TryDequeue(out _)) { }
+
+                    try
+                    {
+                        SendDisconnectedNotification();
+                    }
+                    catch { }
 
                     if (_clientSocket != null)
                         _clientSocket.Dispose();
@@ -716,14 +763,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     if (_screenRegions != null)
                         _screenRegions.Dispose();
 
-                    if (_cancelationTokenSource != null)
-                        _cancelationTokenSource.Cancel();
-
                     if (_pingTimer != null)
                     {
                         _pingTimer.Change(Timeout.Infinite, Timeout.Infinite);
                         _pingTimer.Dispose();
                     }
+
+                    _cancelationTokenSource.Dispose();
                 }
             }
             finally

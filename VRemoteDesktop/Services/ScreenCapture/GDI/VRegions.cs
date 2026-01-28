@@ -43,6 +43,9 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
 
         private List<Rectangle> _tempRect;
+        //Note: loại bỏ việc chờ gói ack từ đối tác(làm chậm) và tạo thêm 1 DIBSection để thay phiên nhận data từ VScreenSender(đảm bảo trong lúc Getdata() dử liệu không bị thay đổi vì VScreenSender
+        //ghi data và DIBSection thứ 2. Tạo 1 class quản lý việc swap giữa 2 DIBSection này thay vì chỉ truyền pointer vào VScreenSender. Với cách này có thể đảm bảo tính toàn vẹn dữ liệu 
+        //mà vẫn có tốc độ cao.
         public VRegions(int width, int height, int bytePerPixel =3, int regionSize = 16)
         {
             _fullScreenReceived = 0;

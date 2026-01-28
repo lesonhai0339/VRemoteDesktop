@@ -19,7 +19,6 @@ namespace VRemoteDesktop.Services.SessionManagement
 {
     public class ClientSocket : IDisposable
     {
-        private object _lockObject = new object();
         private int _disposed = 0;
 
         private string _sessionId;
@@ -96,13 +95,15 @@ namespace VRemoteDesktop.Services.SessionManagement
                 {
                     remoteEP = new IPEndPoint(validIp, port);
 
-                    if (Socket == null || !Socket.Connected)
+                    if (_socket == null || !_socket.Connected)
                     {
-                        Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                        Socket.NoDelay = true;
+                        _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
                     }
-                    Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
-                    Socket.BeginConnect(remoteEP, new AsyncCallback(ConnectCallback), Socket);
+                    _socket.SendBufferSize = 65536;
+                    _socket.ReceiveBufferSize = 65536;
+                    _socket.NoDelay = true;
+                    _socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
+                    _socket.BeginConnect(remoteEP, new AsyncCallback(ConnectCallback), _socket);
                     bool respond = _sckConnect.WaitOne(timeout);
                     return respond;
                 }

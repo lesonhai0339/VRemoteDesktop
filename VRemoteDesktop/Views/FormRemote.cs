@@ -84,7 +84,7 @@ namespace VRemoteDesktop.Views
         {
             if (this.InvokeRequired)
             {
-                this.BeginInvoke(new Action<object, OnScreenEventArgs>(UpdateScreenEventHandler), sender, e);
+                this.Invoke(new Action<object, OnScreenEventArgs>(UpdateScreenEventHandler), sender, e);
                 return;
             }
             //int dstX = (int)((e.Rectangle.X * vPictureBox.ImageScale) + vPictureBox.ImageOffsetX);
@@ -95,21 +95,21 @@ namespace VRemoteDesktop.Views
 
             //Rectangle mergedRect = new Rectangle(dstX, dstY, dstWidth, dstHeight);
 
-            var scaleWidth = (double)vPictureBox.ClientSize.Width / _remotePresenter.ClientWidth;
-            var scaleHeight = (double)vPictureBox.ClientSize.Height / _remotePresenter.ClientHeight;
-            var scale = Math.Min(scaleWidth, scaleHeight);
+            //var scaleWidth = (double)vPictureBox.ClientSize.Width / _remotePresenter.ClientWidth;
+            //var scaleHeight = (double)vPictureBox.ClientSize.Height / _remotePresenter.ClientHeight;
+            //var scale = Math.Min(scaleWidth, scaleHeight);
 
 
-            int dstWidth = (int)Math.Ceiling(e.Rectangle.Width * scale);
-            int dstHeight = (int)Math.Ceiling(e.Rectangle.Height * scale);
+            //int dstWidth = (int)Math.Ceiling(e.Rectangle.Width * scale);
+            //int dstHeight = (int)Math.Ceiling(e.Rectangle.Height * scale);
 
-            int offsetX = (int)((vPictureBox.ClientSize.Width - dstWidth) / 2);
-            int offsetY = (int)((vPictureBox.ClientSize.Height - dstHeight) / 2);
+            //int offsetX = (int)((vPictureBox.ClientSize.Width - dstWidth) / 2);
+            //int offsetY = (int)((vPictureBox.ClientSize.Height - dstHeight) / 2);
 
-            int dstX = (int)((e.Rectangle.X * scale) + offsetX);
-            int dstY = (int)((e.Rectangle.Y * scale) + offsetY);
+            //int dstX = (int)((e.Rectangle.X * scale) + offsetX);
+            //int dstY = (int)((e.Rectangle.Y * scale) + offsetY);
 
-            Rectangle mergedRect = new Rectangle(dstX, dstY, dstWidth, dstHeight);
+            //Rectangle mergedRect = new Rectangle(dstX, dstY, dstWidth, dstHeight);
 
             vPictureBox.Invalidate();
             vPictureBox.Update();
@@ -172,6 +172,7 @@ namespace VRemoteDesktop.Views
                 _remotePresenter.UpdateScreen -= UpdateScreenEventHandler;
                 _remotePresenter.OnKeyboard -= KeyboardReceivedEventHandler;
                 _remotePresenter.OnDisconnect -= DisconnectedEventHandler;
+                _remotePresenter.Dispose();
             }
 
             //Form

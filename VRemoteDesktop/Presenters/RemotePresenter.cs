@@ -197,6 +197,11 @@ namespace VRemoteDesktop.Presenters
 
             if (disposing)
             {
+                if (_clientSession != null)
+                {
+                    _clientSession.OnScreenReceived -= OnScreenReceivedEventHandler;
+                    _clientSession.Close();
+                }
                 if (_screenReceived != null)
                     _screenReceived.Dispose();
 
@@ -204,10 +209,6 @@ namespace VRemoteDesktop.Presenters
                 {
                     _remoteService.OnSessionDisconnected -= OnSessionDisconnectedEventHandler;
                     _remoteService.OnSessionKeyboard -= OnSessionKeyboardEventHandler;
-                }
-                if (_clientSession != null)
-                {
-                    _clientSession.OnScreenReceived -= OnScreenReceivedEventHandler;
                 }
 
                 if (_mouseExtension != null)
