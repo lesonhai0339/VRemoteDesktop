@@ -63,7 +63,7 @@ namespace VRemoteDesktop.Services.Client
             var ip = LocalIpAddress();
 
             var machineInfo = new MachineInfo(
-                id: machineId,
+                id:machineId,
                 password: tempPassword,
                 defaultPassword: defaultPassword,
                 computerName: computerName,

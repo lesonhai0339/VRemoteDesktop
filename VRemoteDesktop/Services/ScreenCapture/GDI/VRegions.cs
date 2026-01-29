@@ -20,6 +20,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private int _disposed = 0;
         private readonly object _lock = new object();
         private const int INFLIGHT_LIMIT = 10;  //accept maximum 10 inflight packet
+        private const long DELAY_TIME = 50; //50ms
+
         private int _inflight = 0;
         private int _bytePerPixel;
         private int _width;
@@ -41,7 +43,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
         private BITMAPINFO _bitmapInfo;
         private VBufferSwapper _bufferSwapper;
-
 
         private long _lastSendTimestamp = Stopwatch.GetTimestamp();
 
@@ -121,12 +122,19 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             if (Interlocked.CompareExchange(ref _fullScreenReceived, 1, 1) != 1)
                 return false;
 
+            var now = Stopwatch.GetTimestamp();
+            var elapsedMs = (now - _lastSendTimestamp) * 1000 / Stopwatch.Frequency;
+            if (elapsedMs < DELAY_TIME)
+                return false;
+
             lock (_lock)
             {
+               
                 Console.WriteLine($"Inflight count: {_inflight}");
                 if(_inflight < INFLIGHT_LIMIT)
                 {
-                    _inflight ++;
+                    _lastSendTimestamp = now;
+                    _inflight++;
                     return true;
                 }
                 else
