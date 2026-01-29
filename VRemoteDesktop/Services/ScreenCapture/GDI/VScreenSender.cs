@@ -29,11 +29,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
         event EventHandler<FrameEventArgs> OnFrame;
         bool IsCapturing { get; }
-        void AddSessionBuffer(string id, IntPtr buffer);
+        void AddSessionBuffer(string id, VBufferSwapper swapper);
         void RemoveSessionBuffer(string id);
         bool Start();
         bool Stop();
-        void GetFullScreen(IntPtr image);
+        void GetFullScreen(VBufferSwapper swapper);
         void Cancel();
         void Dispose();
     }
@@ -61,7 +61,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private Task _captureTask;
 
 
-        private ConcurrentDictionary<string ,IntPtr> _clientSessionBitmap;
+        private ConcurrentDictionary<string ,VBufferSwapper> _clientSessionBufferSwapper;
         private Rectangle[] _rectangles;
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private ManualResetEventSlim _completedEvent = new ManualResetEventSlim(false);
@@ -106,7 +106,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             _fps = fps;
             _waitTime = Math.Ceiling((double)1000 / _fps);
 
-            _clientSessionBitmap = new ConcurrentDictionary<string, IntPtr>();
+            _clientSessionBufferSwapper = new ConcurrentDictionary<string, VBufferSwapper>();
         }
         public bool IsCapturing => _isCapturing == 1;
         public IntPtr SourceImage
@@ -119,18 +119,18 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
         }
-        public void AddSessionBuffer(string id, IntPtr buffer)
+        public void AddSessionBuffer(string id, VBufferSwapper swapper)
         {
             lock (_lock)
             {
-                _clientSessionBitmap.TryAdd(id, buffer);
+                _clientSessionBufferSwapper.TryAdd(id, swapper);
             }
         }
         public void RemoveSessionBuffer(string id)
         {
             lock (_lock)
             {
-                _clientSessionBitmap.TryRemove(id,out _);
+                _clientSessionBufferSwapper.TryRemove(id,out _);
             }
         }
         public void Cancel()
@@ -201,14 +201,19 @@ namespace VRemoteDesktop.Services.ScreenCapture
         /// Copy raw image(bytes) from frontIdx to raw bytes image(ppvBits in CreateDIBSection) and call event
         /// </summary>
         /// <param name="image"></param>
-        public void GetFullScreen(IntPtr image)
+        public void GetFullScreen(VBufferSwapper bufferSwapper)
         {
-            int offset = 0;
-
+            int writerOffset = 0;
+            int readerOffset = 0;
             try
             {
-                base.CopyFullScreenSourceToDest(ref offset, image, _allBits[frontIdx], _width, 0, 0, _width, _height);
-                if (offset > 0)
+                var writerAndReader = bufferSwapper.GetWriteAndReader();
+                if (writerAndReader.IsEmpty) 
+                    return;
+
+                base.CopyFullScreenSourceToDest(ref writerOffset, writerAndReader.Writer, _allBits[frontIdx], _width, 0, 0, _width, _height);
+                base.CopyFullScreenSourceToDest(ref readerOffset, writerAndReader.Reader, _allBits[frontIdx], _width, 0, 0, _width, _height);
+                if (writerOffset > 0)
                 {
                     if (OnFrame != null)
                     {
@@ -236,15 +241,19 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             if (dirtyRegions.Length > 0)
             {
-                foreach (var key in _clientSessionBitmap.Keys.ToArray())
+                foreach (var key in _clientSessionBufferSwapper.Keys.ToArray())
                 {
-                    if(_clientSessionBitmap.TryGetValue(key, out var buffer))
+                    if(_clientSessionBufferSwapper.TryGetValue(key, out var bufferSwapper))
                     {
+                        IntPtr writer = bufferSwapper.GetWriteBuffer();
+                        if (writer == IntPtr.Zero)
+                            return;
+
                         foreach (var rect in dirtyRegions)
                         {
                             base.CopySourceToDest(
                                 _allBits[frontIdx],
-                                buffer,
+                                writer,
                                 rect.X,
                                 rect.Y,
                                 rect.Width,
@@ -356,6 +365,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             if (disposing)
             {
                 Cancel();
+                _clientSessionBufferSwapper.Clear();
             }
         }
     }

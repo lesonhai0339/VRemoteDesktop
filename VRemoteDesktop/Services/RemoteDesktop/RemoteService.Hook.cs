@@ -49,7 +49,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var clientSession = sender as ClientSession;
             if (clientSession != null)
             {
-                _screenSender.AddSessionBuffer(clientSession.SessionId, clientSession.Image);
+                _screenSender.AddSessionBuffer(clientSession.SessionId, clientSession.BufferSwapper);
             }
         }
         private void OnRegionEventHandler(object sender, FrameEventArgs e)

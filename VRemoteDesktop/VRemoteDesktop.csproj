@@ -70,6 +70,8 @@
     <Compile Include="Enums\SessionResponseType.cs" />
     <Compile Include="Enums\ConnectionStatus.cs" />
     <Compile Include="Services\FileService\Enums\FileStatus.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\VBufferSwapper.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\WriterReaderSwapper.cs" />
     <Compile Include="Services\ScreenCapture\Events\OnScreenEventArgs.cs" />
     <Compile Include="Enums\ProgressBarEnum.cs" />
     <Compile Include="Services\SessionManagement\Enums\QueuePriority.cs" />

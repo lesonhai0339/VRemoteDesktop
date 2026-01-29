@@ -19,6 +19,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
     {
         private int _disposed = 0;
         private readonly object _lock = new object();
+        private const int INFLIGHT_LIMIT = 10;  //accept maximum 10 inflight packet
+        private int _inflight = 0;
         private int _bytePerPixel;
         private int _width;
         private int _height;
@@ -27,10 +29,19 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private int _fullScreenReceived;
         private bool _acceptRegionChanged = false;
 
-        private IntPtr _hBitmap;
-        private IntPtr _bits;   
-        private IntPtr _memDC;
+        //Writer buffer
+        private IntPtr _writer_hBitmap;
+        private IntPtr _writer_bits;   
+        private IntPtr _writer_memDC;
+
+        //Reader buffer
+        private IntPtr _reader_hBitmap;
+        private IntPtr _reader_bits;
+        private IntPtr _reader_memDC;
+
         private BITMAPINFO _bitmapInfo;
+        private VBufferSwapper _bufferSwapper;
+
 
         private long _lastSendTimestamp = Stopwatch.GetTimestamp();
 
@@ -43,9 +54,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
 
         private List<Rectangle> _tempRect;
-        //Note: loại bỏ việc chờ gói ack từ đối tác(làm chậm) và tạo thêm 1 DIBSection để thay phiên nhận data từ VScreenSender(đảm bảo trong lúc Getdata() dử liệu không bị thay đổi vì VScreenSender
-        //ghi data và DIBSection thứ 2. Tạo 1 class quản lý việc swap giữa 2 DIBSection này thay vì chỉ truyền pointer vào VScreenSender. Với cách này có thể đảm bảo tính toàn vẹn dữ liệu 
-        //mà vẫn có tốc độ cao.
         public VRegions(int width, int height, int bytePerPixel =3, int regionSize = 16)
         {
             _fullScreenReceived = 0;
@@ -62,10 +70,11 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             _tempRect = new List<Rectangle>(_totalColumns * _totalRows);
 
             _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
-            base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
-
+            base.InitCaptureBuffer(ref _writer_hBitmap, ref _writer_memDC, ref _writer_bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
+            base.InitCaptureBuffer(ref _reader_hBitmap, ref _reader_memDC, ref _reader_bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
+            _bufferSwapper = new VBufferSwapper(_writer_bits, _reader_bits);
         }
-        public  IntPtr Buffer => _bits;
+        public  VBufferSwapper BufferSwapper => _bufferSwapper;
         public bool HasData
         {
             get
@@ -109,21 +118,53 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         }
         public bool ReadyToSend()
         {
-            long current = Stopwatch.GetTimestamp();
-            double elapsedSeconds = (double)(current - _lastSendTimestamp) / Stopwatch.Frequency;
+            if (Interlocked.CompareExchange(ref _fullScreenReceived, 1, 1) != 1)
+                return false;
 
-            if (elapsedSeconds > 3.0)
+            lock (_lock)
             {
-                Interlocked.Exchange(ref _readyToSend, 0);
+                Console.WriteLine($"Inflight count: {_inflight}");
+                if(_inflight < INFLIGHT_LIMIT)
+                {
+                    _inflight ++;
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
             }
-            bool acquired = Interlocked.CompareExchange(ref _readyToSend, 1, 0) == 0;
-
-            if (acquired)
-            {
-                _lastSendTimestamp = current;
-            }
-            return acquired;
+            //return Interlocked.Increment(ref _inflight) < INFLIGHT_LIMIT;
         }
+        public void SendCompleted()
+        {
+            lock (_lock)
+            {
+                _inflight--;
+            }
+            //Interlocked.Decrement(ref _inflight);
+        }
+        /*  public bool ReadyToSend()
+          {
+              long current = Stopwatch.GetTimestamp();
+              double elapsedSeconds = (double)(current - _lastSendTimestamp) / Stopwatch.Frequency;
+
+              if (elapsedSeconds > 3.0)
+              {
+                  Interlocked.Exchange(ref _readyToSend, 0);
+              }
+              bool acquired = Interlocked.CompareExchange(ref _readyToSend, 1, 0) == 0;
+
+              if (acquired)
+              {
+                  _lastSendTimestamp = current;
+              }
+              return acquired;
+          }
+          public void SendCompleted()
+          {
+              Interlocked.Exchange(ref _readyToSend, 0);
+          }*/
         public bool SetBusy()
         {
             if(Interlocked.CompareExchange(ref _readyToSend, 1, 0 )== 0)
@@ -136,10 +177,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             }
         }
 
-        public void SendCompleted()
-        {
-            Interlocked.Exchange(ref _readyToSend, 0);
-        }
+       
         public void BeginAccept()
         {
             if(Interlocked.CompareExchange(ref _fullScreenReceived, 1, 1) == 1)
@@ -169,40 +207,55 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         }
         public ScreenDataDto GetData()
         {
-            //if (Interlocked.CompareExchange(ref _readyToSend, 0, 0) != 0)
-            //    return null;
-
-            lock (_lock)
+            var data = _bufferSwapper.GetDataBuffer();
+            if (data == IntPtr.Zero)
+                return null;
+            try
             {
-                if (!_hasData)
-                    return null;
-                _hasData = false;
-                var temp = _writer;
-                _writer = _reader;
-                _reader = temp;
+                lock (_lock)
+                {
+                    if (!_hasData)
+                        return null;
+                    _hasData = false;
+
+
+                    var temp = _writer;
+                    _writer = _reader;
+                    _reader = temp;
+                }
+
+                MergeDirtyRegions(_reader, 0.9);
+
+                if (_tempRect.Count == 0) return null;
+
+                int rentLength = GetScreenDataLength(_tempRect, _bytePerPixel);
+                byte[] buffer = VArrayPool.Rent(rentLength);
+                int offset = 0;
+                foreach (var region in _tempRect)
+                {
+                    base.GetRegionsData(
+                        ref offset,
+                        buffer,
+                        data,
+                        _width,
+                        region.X,
+                        region.Y,
+                        region.Width,
+                        region.Height,
+                        _bytePerPixel);
+                }
+
+                return new ScreenDataDto(buffer, 0, offset + 1);
             }
-
-            MergeDirtyRegions(_reader, 0.9);
-
-            if (_tempRect.Count == 0) return null;
-
-            int rentLength = GetScreenDataLength(_tempRect, _bytePerPixel);
-            byte[] buffer = VArrayPool.Rent(rentLength);
-            int offset = 0;
-            foreach(var region in _tempRect)
+            catch {
+                //Error release _inflight
+                SendCompleted();
+                return null;
+            }
+            finally
             {
-                base.GetRegionsData(
-                    ref offset,
-                    buffer,
-                    _bits,
-                    _width,
-                    region.X,
-                    region.Y,
-                    region.Width,
-                    region.Height,
-                    _bytePerPixel);
-            }
-            return new ScreenDataDto(buffer, 0, offset + 1);
+                _bufferSwapper.Free();
+            }       
         }
         public void MergeDirtyRegions(Rectangle[] regions, double threshold = 0.8)
         {
@@ -244,16 +297,28 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
                 return;
 
-            //Clear DIBSection resources
-            if (_hBitmap != IntPtr.Zero)
-                CaptureApi.DeleteObject(_hBitmap);
+            //Clear writer DIBSection resources
+            if (_writer_hBitmap != IntPtr.Zero)
+                CaptureApi.DeleteObject(_writer_hBitmap);
 
-            if (_memDC != IntPtr.Zero)
-                CaptureApi.ReleaseDC(IntPtr.Zero, _memDC);
+            if (_writer_memDC != IntPtr.Zero)
+                CaptureApi.ReleaseDC(IntPtr.Zero, _writer_memDC);
 
-            _bits = IntPtr.Zero;
-            _hBitmap = IntPtr.Zero;
-            _memDC = IntPtr.Zero;
+            _writer_bits = IntPtr.Zero;
+            _writer_hBitmap = IntPtr.Zero;
+            _writer_memDC = IntPtr.Zero;
+
+
+            //Clear reader DIBSection resources
+            if (_reader_hBitmap != IntPtr.Zero)
+                CaptureApi.DeleteObject(_reader_hBitmap);
+
+            if (_reader_memDC != IntPtr.Zero)
+                CaptureApi.ReleaseDC(IntPtr.Zero, _reader_memDC);
+
+            _reader_bits = IntPtr.Zero;
+            _reader_hBitmap = IntPtr.Zero;
+            _reader_memDC = IntPtr.Zero;
 
             if (disposing)
             {

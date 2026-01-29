@@ -12,6 +12,7 @@ namespace VRemoteDesktop.Models
         public byte[] Data { get;set; }
         public int Remained { get; set; }
         public int Sent { get; set; }
-        public CapturedFrame CapturedFrame { get; set; }
+        public bool RentBuffer { get; set; }
+        //public CapturedFrame CapturedFrame { get; set; }
     }
 }

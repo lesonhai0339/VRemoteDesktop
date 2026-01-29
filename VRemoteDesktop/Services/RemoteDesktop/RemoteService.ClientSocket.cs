@@ -280,8 +280,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     }
 
                     //Register client session with screen capture, get full screen and send to controller
-                    _screenSender.AddSessionBuffer(clientSession.SessionId, clientSession.Image);
-                    _screenSender.GetFullScreen(clientSession.Image);
+                    _screenSender.AddSessionBuffer(clientSession.SessionId, clientSession.BufferSwapper);
+                    _screenSender.GetFullScreen(clientSession.BufferSwapper);
 
                     StartCapture();
 

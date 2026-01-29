@@ -1,4 +1,5 @@
-﻿using System;
+﻿using LZ4;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -16,6 +17,7 @@ using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.GDI;
+using VRemoteDesktop.Services.ScreenCapture.Utils;
 using VRemoteDesktop.Services.SessionManagement;
 using VRemoteDesktop.Services.SessionManagement.DTOs;
 using VRemoteDesktop.Services.SessionManagement.Enums;
@@ -75,10 +77,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public event EventHandler<ClientSessionDataReceivedEventArgs> OnChatReceived;
         public event EventHandler<ClientSessionScreenReceivedEventArgs> OnScreenReceived;
 
-#if DEBUG
-        private int regionCount = 0;
-        private Stopwatch regionTime = new Stopwatch();
-#endif
         public ClientSession(string id, ClientType type, int width, int height, int bytePerPixel = 3)
         {
             if (string.IsNullOrEmpty(id)) 
@@ -147,7 +145,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         #region  Properties
         public int BytePerPixel => _bytePerPixel;
-        public IntPtr Image => _screenRegions.Buffer;
+        public VBufferSwapper BufferSwapper => _screenRegions.BufferSwapper;
         public bool AcceptScreen => _screenRegions.CanWork;
         public bool Connected
         {
@@ -328,18 +326,18 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 switch (e.Type)
                 {
                     case SocketDataType.ScreenOk:
-                        ReadyToNextRegionSend();
-                        //EnableRegionsSend();
+                        //ReadyToNextRegionSend();
+                        EnableRegionsSend();
                         OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));
                         break;
                     case SocketDataType.RegionsChangedOk:
                         ReadyToNextRegionSend();
                         break;
                     case SocketDataType.ScreenSend:
-                        OnScreenReceived?.Invoke(this, new ClientSessionScreenReceivedEventArgs(SessionManagement.Events.ClientSession.ScreenType.FullScreen, e.Data));
+                        FullScreenHandler(e);
                         break;
                     case SocketDataType.ScreenRegionsChangedSend:
-                        OnScreenReceived?.Invoke(this, new ClientSessionScreenReceivedEventArgs(SessionManagement.Events.ClientSession.ScreenType.DirtyRegions, e.Data));
+                        DirtyRegionHandler(e);
                         break;
                     case SocketDataType.ChatSend:
                         OnChatReceived?.Invoke(this, new ClientSessionDataReceivedEventArgs(this._sessionId, e.Type, e.Data));
@@ -354,7 +352,20 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
 
         }
+        private void FullScreenHandler(SocketDataReceivedEventArgs e)
+        {
+            AddWork(QueuePriority.High,
+                new TaskObject(SocketDataType.ScreenOk, this._sessionId, new byte[0], true));
 
+            OnScreenReceived?.Invoke(this, new ClientSessionScreenReceivedEventArgs(SessionManagement.Events.ClientSession.ScreenType.FullScreen, e.Data));
+        }
+        private void DirtyRegionHandler(SocketDataReceivedEventArgs e)
+        {
+            AddWork(QueuePriority.High,
+                new TaskObject(SocketDataType.RegionsChangedOk, this._sessionId, new byte[0], true));
+
+            OnScreenReceived?.Invoke(this, new ClientSessionScreenReceivedEventArgs(SessionManagement.Events.ClientSession.ScreenType.DirtyRegions, e.Data));
+        }
         #endregion
 
         #region VClient
@@ -406,7 +417,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     Remained = frame.CompressedDataLength,
                     Sent = frame.CompressedDataOffset,
                     Timeout = Environment.TickCount,
-                    CapturedFrame = frame
+                    RentBuffer = true
                 };
                 _clientSocket.Send(state);
             }
@@ -436,7 +447,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     Remained =  data.Length,
                     Sent = 0,
                     Timeout = Environment.TickCount,
-                    CapturedFrame = null,
+                    RentBuffer = false,
                 };
 
                 _clientSocket.Send(state);
@@ -469,7 +480,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 TaskType = type,
                 SessionId = this.SessionId,
-                CapturedFrame = new CapturedFrame(ScreenCapture.Enums.VScreenType.FullScreen, buffer, 0, length, 1),
+                CapturedFrame = new CapturedFrame(ScreenCapture.Enums.VScreenType.FullScreen, buffer, 0, length),
                 IsSendHeader = false
             };
             AddWork(QueuePriority.High, headerPacket, payloadPacket);
@@ -490,7 +501,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 return;
 
             //Enable nhan dirty regions ngay sau khi xu ly xong full screen, khong doi goi "ScreenOK" moi enable vi the se mat frame
-            EnableRegionsSend();
+            //EnableRegionsSend();
             try
             {
                 int length = ScreenCapture.Utils.Compressor.CompressedLZ4(screenData.Buffer, screenData.Length, _bufferPool, _bufferPool.Length);
@@ -505,12 +516,21 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void DirtyRegionSend()
         {
-            regionTime.Restart();
             var dirtyRegions = _screenRegions.GetData();
-            if (dirtyRegions == null) return;
+            if (dirtyRegions == null)
+            {
+                _screenRegions.SendCompleted();
+                return;
+            }
+
             try
             {
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, _bufferPool, _bufferPool.Length);
+                int rentLength = Compressor.GetMaxOutputLength(dirtyRegions.Buffer.Length);
+                var rentBuffer = VArrayPool.Rent(rentLength);
+
+                Console.WriteLine($"Rent {rentBuffer.Length}");
+
+                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, rentBuffer, rentBuffer.Length);
                 var type = SocketDataType.ScreenRegionsChangedSend;
 
                 var header = HeaderGenerate(type: type,
@@ -519,7 +539,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                    data: null,
                    dataSize: length);
 
-                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, _bufferPool, 0, length, 1);
+                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, rentBuffer, 0, length);
 
                 Console.WriteLine(length);
 
@@ -535,11 +555,46 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             finally
             {
                 VArrayPool.Return(dirtyRegions.Buffer);
-                regionTime.Stop();
-                Console.WriteLine($"Regions count {regionCount} - Time {regionTime.Elapsed.TotalMilliseconds}\n");
-                regionCount++;
             }
         }
+        //private void DirtyRegionSend()
+        //{
+        //    regionTime.Restart();
+        //    var dirtyRegions = _screenRegions.GetData();
+        //    if (dirtyRegions == null)
+        //        return;
+        //    try
+        //    {
+        //        int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, _bufferPool, _bufferPool.Length);
+        //        var type = SocketDataType.ScreenRegionsChangedSend;
+
+        //        var header = HeaderGenerate(type: type,
+        //           id: this.SessionId,
+        //           includeData: false,
+        //           data: null,
+        //           dataSize: length);
+
+        //        var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, _bufferPool, 0, length, 1);
+
+        //        Console.WriteLine(length);
+
+        //        Send(type, header, this.SessionId, false);
+
+        //        Send(frame);
+
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Console.WriteLine("DirtyRegionSend err: ", ex.Message);
+        //    }
+        //    finally
+        //    {
+        //        VArrayPool.Return(dirtyRegions.Buffer);
+        //        regionTime.Stop();
+        //        Console.WriteLine($"Regions count {regionCount} - Time {regionTime.Elapsed.TotalMilliseconds}\n{new string('-', 10)}");
+        //        regionCount++;
+        //    }
+        //}
         private void EnableRegionsSend()
         {
             _screenRegions.BeginAccept();
@@ -707,9 +762,24 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             _receiveQueue.Enqueue(new QueueItem(e));
         }
+        //private void OnSendCompletedEventHandler(object sender, SocketSendCompletedEventArgs e)
+        //{
+        //    //Console.WriteLine("Send Completed");
+        //}
         private void OnSendCompletedEventHandler(object sender, SocketSendCompletedEventArgs e)
         {
-            //Console.WriteLine("Send Completed");
+            if(e.State.RentBuffer)
+            {
+                try
+                {
+                    Console.WriteLine($"Return {e.State.Data.Length}\n");
+                    VArrayPool.Return(e.State.Data);
+                }
+                catch(Exception ex)
+                {
+                    Console.WriteLine($"OnSendCompletedEventHandler err: {ex.Message}");
+                }
+            }
         }
         private void OnSocketDisconnectEventHandler(object sender, SocketDisconnectedEventArgs e)
         {

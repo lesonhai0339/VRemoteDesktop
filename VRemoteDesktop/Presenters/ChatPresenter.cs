@@ -464,20 +464,34 @@ namespace VRemoteDesktop.Presenters
         #region Events
         private void ChatDisconnectedEventHandler(object sender, ChatDisconnectedEventArgs e)
         {
-            RemoveChat(e.SessionId);
-            if (RemovedEvent != null)
+            try
             {
-                RemovedEvent.Invoke(this, new ChatControlRemoveEventArgs(e.SessionId, ChatControlType.Connection, e.SessionId));
+                RemoveChat(e.SessionId);
+                if (RemovedEvent != null)
+                {
+                    RemovedEvent.Invoke(this, new ChatControlRemoveEventArgs(e.SessionId, ChatControlType.Connection, e.SessionId));
+                }
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("", "ChatPresenter").Error(ex, "ChatDisconnectedEventHandler err ");
             }
         }
         private void FileDataReceivedEventHandler(object sender, FileEventArgs e)
         {
-            if (e.Status == FileStatus.CheckSumFailed)
+            try
             {
-                _chatAttachment.CleanUpFileInfo(e.FileId);
-                return;
+                if (e.Status == FileStatus.CheckSumFailed)
+                {
+                    _chatAttachment.CleanUpFileInfo(e.FileId);
+                    return;
+                }
+                ProgressBarUpdateEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(e.ConnectionId, e.FileId, e.Size, e.Status));
             }
-            ProgressBarUpdateEvent?.Invoke(this, new ChatControlProgressBarUpdateUIEventArgs(e.ConnectionId, e.FileId, e.Size, e.Status));
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("", "ChatPresenter").Error(ex, "FileDataReceivedEventHandler err ");
+            }
         }
         private void ChatReceivedEventHandler(object sender, ClientSessionDataReceivedEventArgs e)
         {

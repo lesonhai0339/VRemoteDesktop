@@ -157,14 +157,6 @@ namespace VRemoteDesktop.Presenters
 
             if (UpdateScreen != null)
                 UpdateScreen.Invoke(this, new OnScreenEventArgs(isFullScreen, rectangle));
-
-            _clientSession.AddWork(
-                QueuePriority.High,
-                new TaskObject(
-                    type: (isFullScreen) ? SocketDataType.ScreenOk : SocketDataType.RegionsChangedOk,
-                    _clientSession.SessionId,
-                    isSendHeader: true,
-                    data: new byte[0]));
         }
 
         private void OnSessionKeyboardEventHandler(object sender, KeyboardEventArgs e)
