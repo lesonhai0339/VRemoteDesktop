@@ -54,7 +54,7 @@ namespace VRemoteDesktop.Presenters
 
             _buffer = VArrayPool.Rent(_stride * _height);
             var screenTask = new ScreenTask(_buffer);
-            _screenReceived = new VScreenReceiver(screenTask, _width, _height, _clientSession.BytePerPixel);
+            _screenReceived = new VScreenReceiver(screenTask, _width, _height, _clientSession.BytePerPixel, pixelFormat: _clientSession.PixelFormat);
             Picture = new Bitmap(_screenReceived.Width, _screenReceived.Height, _screenReceived.Stride, _screenReceived.PixelFormat, _screenReceived.ScreenHDC);
 
 

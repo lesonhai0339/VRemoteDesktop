@@ -28,7 +28,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private int _height;
 
         private int _readyToSend;
-        private int _fullScreenReceived;
+        private int _fullScreenReceived =0;
+        private int _acceptFullScreen = 0;
         private bool _acceptRegionChanged = false;
 
         //Writer buffer
@@ -55,9 +56,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
 
         private List<Rectangle> _tempRect;
-        public VRegions(int width, int height, int bytePerPixel =3, int regionSize = 16)
+        public VRegions(int width, int height, int bytePerPixel, int regionSize = 16)
         {
-            _fullScreenReceived = 0;
             _width = width;
             _height = height;
             _bytePerPixel = bytePerPixel;
@@ -108,7 +108,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         }
         public bool AcceptFullScreen()
         {
-            if(Interlocked.CompareExchange(ref _fullScreenReceived, 1, 0) == 0)
+            if(Interlocked.CompareExchange(ref _acceptFullScreen, 1, 0) == 0)
             {
                 return true;
             }
@@ -139,16 +139,31 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                 }
                 else
                 {
+                    if (elapsedMs > 3 * 1000)
+                    {
+                        Console.WriteLine("Timeout reset inflight");
+                        //reset if exceed timeout
+                        _lastSendTimestamp = now;
+                        _inflight--;
+                        return true;
+                    }
                     return false;
                 }
             }
             //return Interlocked.Increment(ref _inflight) < INFLIGHT_LIMIT;
         }
+        public void FullScreenCompleted()
+        {
+            Interlocked.Exchange(ref _fullScreenReceived, 1);
+        }
         public void SendCompleted()
         {
             lock (_lock)
             {
-                _inflight--;
+                if(_inflight > 0)
+                {
+                    _inflight--;
+                }
             }
             //Interlocked.Decrement(ref _inflight);
         }
@@ -188,13 +203,10 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
        
         public void BeginAccept()
         {
-            if(Interlocked.CompareExchange(ref _fullScreenReceived, 1, 1) == 1)
+            lock (_lock)
             {
-                lock (_lock)
-                {
-                    _acceptRegionChanged = true;
-                }
-            }        
+                _acceptRegionChanged = true;
+            }
         }
         public void Add(RegionFrame regions)
         {

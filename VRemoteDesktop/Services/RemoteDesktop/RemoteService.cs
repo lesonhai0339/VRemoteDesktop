@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -22,8 +23,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
     public partial class RemoteService : IDisposable
     {
         private readonly object _lock = new object();
-        private const int BYTE_PER_PIXEL = 3;
+
+
+
+        private const int BYTE_PER_PIXEL = 2;
+        private const PixelFormat PIXEL_FORMAT = PixelFormat.Format16bppRgb555;
         private const int FPS = 10;
+
+
+
         private const int RETRY = 0;
         private const int TIMEOUT = 3000;
         private const int SESSION_ID_LENGTH = 8;
@@ -171,6 +179,19 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 Logger.Log.ForContext("FileName", GetType().Name).Error(ex, string.Format("Error handling {0}: {1}", e.Type, ex.Message));
             }
+        }
+        class ImageInfo
+        {
+            public const int FPS = 10;
+            public const int SRCCOPY = 0x00CC0020;
+            public const uint DIB_RGB_COLORS = 0;
+            public const uint pageProtect = 0x40;
+            public const int REGION_SIZE = 16;
+
+            //Format16bppRgb555 = 2, Format24bppRgb = 3, Format32bppRgb = 4
+            public const int BYTE_PER_PIXEL = 2;
+            //Can accept Format16bppRgb555, Format24bppRgb, Format32bppRgb. 
+            public const PixelFormat PIXEL_FORMAT = PixelFormat.Format16bppRgb555;
         }
         #endregion
         public void Dispose()

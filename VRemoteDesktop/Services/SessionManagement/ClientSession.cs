@@ -3,6 +3,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.Net.Sockets;
 using System.Text;
@@ -43,6 +44,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private readonly int _width;
         private readonly int _height;
         private readonly int _bytePerPixel;
+        private readonly PixelFormat _pixelFormat;
 
         private int _sending = 0;
         private byte[] _bufferPool;
@@ -77,7 +79,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public event EventHandler<ClientSessionDataReceivedEventArgs> OnChatReceived;
         public event EventHandler<ClientSessionScreenReceivedEventArgs> OnScreenReceived;
 
-        public ClientSession(string id, ClientType type, int width, int height, int bytePerPixel = 3)
+
+        //for test
+        private Stopwatch _stopwatch = new Stopwatch();
+        public ClientSession(string id, ClientType type, int width, int height, int bytePerPixel, PixelFormat pixelFormat)
         {
             if (string.IsNullOrEmpty(id)) 
                 throw new ArgumentNullException("id");
@@ -85,10 +90,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 throw new ArgumentOutOfRangeException("Width cannot less than or equal zero");
             if (height <= 0)
                 throw new ArgumentOutOfRangeException("Height cannot less than or equal zero");
+            if (bytePerPixel <= 0)
+                throw new ArgumentOutOfRangeException("bytePerPixel cannot less than or equal zero");
 
             _width = width;
             _height = height;
             _bytePerPixel = bytePerPixel;
+            _pixelFormat = pixelFormat;
 
             _lastPing = DateTimeOffset.UtcNow;
 
@@ -144,6 +152,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
 
         #region  Properties
+        public PixelFormat PixelFormat => _pixelFormat; 
         public int BytePerPixel => _bytePerPixel;
         public VBufferSwapper BufferSwapper => _screenRegions.BufferSwapper;
         public bool AcceptScreen => _screenRegions.CanWork;
@@ -327,7 +336,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     case SocketDataType.ScreenOk:
                         //ReadyToNextRegionSend();
-                        EnableRegionsSend();
+                        FullScreenSendCompleted();
                         OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));
                         break;
                     case SocketDataType.RegionsChangedOk:
@@ -501,7 +510,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 return;
 
             //Enable nhan dirty regions ngay sau khi xu ly xong full screen, khong doi goi "ScreenOK" moi enable vi the se mat frame
-            //EnableRegionsSend();
+            EnableRegionsSend();
             try
             {
                 int length = ScreenCapture.Utils.Compressor.CompressedLZ4(screenData.Buffer, screenData.Length, _bufferPool, _bufferPool.Length);
@@ -516,6 +525,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void DirtyRegionSend()
         {
+            _stopwatch.Restart();
             var dirtyRegions = _screenRegions.GetData();
             if (dirtyRegions == null)
             {
@@ -528,8 +538,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 int rentLength = Compressor.GetMaxOutputLength(dirtyRegions.Buffer.Length);
                 var rentBuffer = VArrayPool.Rent(rentLength);
 
-                Console.WriteLine($"Rent {rentBuffer.Length}");
-
                 int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, rentBuffer, rentBuffer.Length);
                 var type = SocketDataType.ScreenRegionsChangedSend;
 
@@ -541,11 +549,14 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                 var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, rentBuffer, 0, length);
 
-                Console.WriteLine(length);
+                //Console.WriteLine($"Before Compress: regionBuffer: {dirtyRegions.Buffer.Length} - regionActual: {dirtyRegions.Length} - compressBuffer: {rentBuffer.Length} - GetMaxOutputLength: {rentLength} | After compress: compressedLength: {length}");
 
                 Send(type, header, this.SessionId, false);
 
                 Send(frame);
+
+                _stopwatch.Stop();
+                Logger.Log.ForContext("", "DirtyRegionChanged").Info($"Dirty regions changed: {_stopwatch.Elapsed.TotalMilliseconds} ms, Before Compress: regionBuffer: {dirtyRegions.Buffer.Length} - regionActual: {dirtyRegions.Length} - compressBuffer: {rentBuffer.Length} - GetMaxOutputLength: {rentLength} | After compress: compressedLength: {length}");
 
             }
             catch (Exception ex)
@@ -555,6 +566,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             finally
             {
                 VArrayPool.Return(dirtyRegions.Buffer);
+
+
+                //_stopwatch.Stop();
+                //Logger.Log.ForContext("", "DirtyRegionChanged").Info($"Dirty regions changed: {_stopwatch.Elapsed.TotalMilliseconds} ms, efore Compress: regionBuffer: {dirtyRegions.Buffer.Length} - regionActual: {dirtyRegions.Length} - compressBuffer: {rentBuffer.Length} - GetMaxOutputLength: {rentLength} | After compress: compressedLength: {length}");
             }
         }
         //private void DirtyRegionSend()
@@ -595,6 +610,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         //        regionCount++;
         //    }
         //}
+        private void FullScreenSendCompleted()
+        {
+            _screenRegions.FullScreenCompleted();
+        }
         private void EnableRegionsSend()
         {
             _screenRegions.BeginAccept();
@@ -772,7 +791,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 try
                 {
-                    Console.WriteLine($"Return {e.State.Data.Length}\n");
+                    //Console.WriteLine($"Return {e.State.Data.Length}\n");
                     VArrayPool.Return(e.State.Data);
                 }
                 catch(Exception ex)

@@ -41,8 +41,6 @@ namespace VRemoteDesktop.Services.ScreenCapture
     {
         private object _lock = new object();
         private const uint DIB_RGB_COLORS = 0;
-        private const int BYTE_PER_PIXEL = 3;
-        private const int REGION_SIZE = 16;
         private const int RANGE = 5;
 
 
@@ -97,7 +95,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private IntPtr _screenDC;
 
         public event EventHandler<FrameEventArgs> OnFrame;
-        public VScreenSender(int width, int height, int bytePerPixel = 3, int fps = 10)
+        public VScreenSender(int width, int height, int bytePerPixel, int fps = 10)
         {
             var bounds = Screen.PrimaryScreen.Bounds;
             _width = bounds.Width;
@@ -211,8 +209,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 if (writerAndReader.IsEmpty) 
                     return;
 
-                base.CopyFullScreenSourceToDest(ref writerOffset, writerAndReader.Writer, _allBits[frontIdx], _width, 0, 0, _width, _height);
-                base.CopyFullScreenSourceToDest(ref readerOffset, writerAndReader.Reader, _allBits[frontIdx], _width, 0, 0, _width, _height);
+                base.CopyFullScreenSourceToDest(ref writerOffset, writerAndReader.Writer, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
+                base.CopyFullScreenSourceToDest(ref readerOffset, writerAndReader.Reader, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
                 if (writerOffset > 0)
                 {
                     if (OnFrame != null)
@@ -237,7 +235,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         x.X,
                         x.Y,
                         x.Width,
-                        x.Height)).ToArray();
+                        x.Height,
+                        _bytePerPixel)).ToArray();
 
             if (dirtyRegions.Length > 0)
             {
@@ -258,7 +257,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
                                 rect.Y,
                                 rect.Width,
                                 rect.Height,
-                                _width, 3);
+                                _width, 
+                                _bytePerPixel);
                         }
                     }     
                 }

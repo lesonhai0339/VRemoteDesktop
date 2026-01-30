@@ -63,7 +63,7 @@ namespace VRemoteDesktop.Services.Client
             var ip = LocalIpAddress();
 
             var machineInfo = new MachineInfo(
-                id:machineId,
+                id: machineId,
                 password: tempPassword,
                 defaultPassword: defaultPassword,
                 computerName: computerName,
@@ -209,10 +209,10 @@ namespace VRemoteDesktop.Services.Client
                                                             try
                                                             {
 
-                                                                foreach (PropertyData p in mo2.Properties)
-                                                                {
-                                                                    Console.WriteLine(p.Name + ": " + p.Value);
-                                                                }
+                                                                //foreach (PropertyData p in mo2.Properties)
+                                                                //{
+                                                                //    Console.WriteLine(p.Name + ": " + p.Value);
+                                                                //}
                                                                 return mo2["SerialNumber"].ToString().Trim();
                                                             }
                                                             catch (Exception ex)

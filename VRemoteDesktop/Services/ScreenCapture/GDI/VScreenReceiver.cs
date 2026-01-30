@@ -49,13 +49,15 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private readonly ScreenTask _screenTask;
 
         private Bitmap _bitmap;
-        public VScreenReceiver(ScreenTask screenTask, int width, int height, int bytePerPixel = 3, int regionSize = 16)
+        private readonly PixelFormat _pixelFormat;
+        public VScreenReceiver(ScreenTask screenTask, int width, int height, int bytePerPixel, PixelFormat pixelFormat, int regionSize = 16)
         {
             _screenTask = screenTask;
             _width = width;
             _height = height;
             _regionSize = regionSize;
             _bytePerPixel = bytePerPixel;
+            _pixelFormat = pixelFormat;
             InitializeReceiverComponents();
         }
         #region Properties
@@ -116,7 +118,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             get
             {
-                return PixelFormat.Format24bppRgb;
+                return _pixelFormat;
             }
         }
         #endregion
@@ -126,7 +128,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
             _rectangles = base.InitRectangle(_width, _height);
 
-            _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, _bytePerPixel), PixelFormat.Format24bppRgb, _bits);
+            _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, _bytePerPixel), _pixelFormat, _bits);
         }
         public Rectangle DecompressedRawData(byte[] data, int offset, int length)
         {
@@ -157,7 +159,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
                     offset += 16;
 
-                    offset += base.MergeRegionToSource(srcPtr, x, y, w, h, _bits, _width, _height);
+                    offset += base.MergeRegionToSource(srcPtr, x, y, w, h, _bits, _width, _height, _bytePerPixel);
 
                     if (rect.IsEmpty)
                     {

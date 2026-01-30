@@ -47,10 +47,19 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             return ((width * bytePerPixel) + 3) & ~3;
         }
+        /// <summary>
+        /// <para>compression 0: BI_RGB, compression 1: BI_BITFIELDS.</para>
+        /// <para>See more <see href="https://learn.microsoft.com/en-us/windows/win32/api/wingdi/ns-wingdi-bitmapinfoheader"/></para>
+        /// </summary>
+        /// <param name="width"></param>
+        /// <param name="height"></param>
+        /// <param name="bitPerPixel"></param>
+        /// <param name="compression"></param>
+        /// <returns></returns>
         public virtual BITMAPINFO InitBitmapInfo(
             int width,
             int height,
-            ushort bitPerPixel = 24,
+            ushort bitPerPixel ,
             uint compression = 0)
         {
             var bmi = new BITMAPINFO();
@@ -146,7 +155,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 0x00CC0020); // SRCCOPY
             //CaptureApi.GdiFlush();
         }
-        public unsafe virtual void CopySourceToDest(IntPtr source, IntPtr dest, int x, int y, int width, int height, int fullWidth, int bytePerPixel = 3)
+        public unsafe virtual void CopySourceToDest(IntPtr source, IntPtr dest, int x, int y, int width, int height, int fullWidth, int bytePerPixel)
         {
             int stride = GetStride1(fullWidth, bytePerPixel);
             int rowWidthInBytes = width * bytePerPixel;
@@ -273,7 +282,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             int regionY,
             int regionWidth,
             int regionHeight,
-            int bytePerPixel = 3)
+            int bytePerPixel)
         {
             //Get the base pointer
             byte* basePtr = (byte*)destination + offset;
@@ -319,7 +328,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
          int regionY,
          int regionWidth,
          int regionHeight,
-         int bytePerPixel = 3)
+         int bytePerPixel)
         {
             fixed (byte* bst = destination)
             {
@@ -372,7 +381,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
        int regionY,
        int regionWidth,
        int regionHeight,
-       int bytePerPixel = 3)
+       int bytePerPixel)
        {
             byte* dst = (byte*)destination + offset;
             //calculate stride of big screen and regions
@@ -408,7 +417,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
        int regionY,
        int regionWidth,
        int regionHeight,
-       int bytePerPixel = 3)
+       int bytePerPixel)
         {
             fixed (byte* bst = destination)
             {
@@ -453,7 +462,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
           int regionY,
           int regionWidth,
           int regionHeight,
-          int bytePerPixel = 3)
+          int bytePerPixel)
         {
             byte* dst = (byte*)destination + offset;
 
@@ -485,7 +494,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             int regionY,
             int regionWidth,
             int regionHeight,
-            int bytePerPixel = 3)
+            int bytePerPixel)
         {
             byte* dst = (byte*)destination + offset;
 
@@ -521,7 +530,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
            int regionY,
            int regionWidth,
            int regionHeight,
-           int bytePerPixel = 3)
+           int bytePerPixel)
         {
             fixed(byte* dstPtr = destination)
             {
@@ -555,7 +564,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 offset += (int)(dstStride * regionHeight);
             }
         }
-        public virtual unsafe bool IsRegionChange(
+        public virtual unsafe bool IsRegionChange3ByterPerPixel(
             IntPtr oldScreen,
             IntPtr newScreen,
             int srcWidth,
@@ -596,6 +605,45 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             return false;
         }
+        public virtual unsafe bool IsRegionChange2ByterPerPixel(
+           IntPtr oldScreen,
+           IntPtr newScreen,
+           int srcWidth,
+           int regionX,
+           int regionY,
+           int regionWidth,
+           int regionHeight,
+           int bytePerPixel = 2)
+        {
+            int stride = GetStride(srcWidth, bytePerPixel);
+            unsafe
+            {
+                byte* oBase = (byte*)oldScreen;
+                byte* nBase = (byte*)newScreen;
+
+                for (int row = 0; row < regionHeight; row++)
+                {
+                    //get the start off row
+                    int sy = (row + regionY) * stride;
+                    int sx = regionX * bytePerPixel;
+
+                    ushort* pOld = (ushort*)(oBase + sy + sx);
+                    ushort* pNew = (ushort*)(nBase + sy + sx);
+
+                    for (int col = 0; col < regionWidth; col++)
+                    {
+                        if (*pOld != *pNew)
+                        {
+                            return true;
+                        }
+
+                        pOld ++;
+                        pNew ++;
+                    }
+                }
+            }
+            return false;
+        }
         public virtual unsafe bool IsRegionChangeUseLong(
            IntPtr oldScreen,
            IntPtr newScreen,
@@ -604,7 +652,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
            int regionY,
            int regionWidth,
            int regionHeight,
-           int bytePerPixel = 3)
+           int bytePerPixel)
         {
             int stride = GetStride(srcWidth, bytePerPixel);
             unsafe
@@ -640,6 +688,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             return false;
         }
+
         public virtual unsafe bool IsRegionChangeInRange(
             int range,
             IntPtr oldScreen,
@@ -649,7 +698,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             int regionY,
             int regionWidth,
             int regionHeight,
-            int bytePerPixel = 3)
+            int bytePerPixel)
         {
             int stride = GetStride(srcWidth, bytePerPixel);
             unsafe
@@ -680,7 +729,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             return false;
         }
-        public unsafe void ParsePacketToRegionsChange(byte[] packet, IntPtr dstPtr, int dstWidth, int dstHeight, int bytePerPixel = 3)
+        public unsafe void ParsePacketToRegionsChange(byte[] packet, IntPtr dstPtr, int dstWidth, int dstHeight, int bytePerPixel)
         {
             fixed (byte* pPacket = packet)
             {
@@ -708,13 +757,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
             }
         }
-        public virtual int MergeRegionToSource(IntPtr source, int x, int y, int width, int height, IntPtr destination, int dstWidth, int dstHeight, int bytePerPixel =3)
+        public virtual int MergeRegionToSource(IntPtr source, int x, int y, int width, int height, IntPtr destination, int dstWidth, int dstHeight, int bytePerPixel)
         {
             if (x < 0 || y < 0 || x + width > dstWidth || y + height > dstHeight)
                 return 0;
 
             int srcStride = width * bytePerPixel; //No padding in source buffer
-            int dstStride = GetStride(dstWidth, bytePerPixel);
+            int dstStride = GetStride1(dstWidth, bytePerPixel);
             unsafe
             {
                 byte* srcBase = (byte*)source;

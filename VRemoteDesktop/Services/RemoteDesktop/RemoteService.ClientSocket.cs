@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Drawing.Imaging;
 using System.Drawing.Printing;
 using System.Linq;
 using System.Text;
@@ -25,7 +26,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (string.IsNullOrWhiteSpace(sessionId))
                 sessionId = StringHelper.RandomStringNumber(SESSION_ID_LENGTH);
 
-            var session = _sessionManager.New(id: sessionId,type: ClientType.Controlled, width: width, height: height);
+            var session = _sessionManager.New(id: sessionId,type: ClientType.Controlled, width: width, height: height, bytePerPixel: BYTE_PER_PIXEL, pixelFormat: PIXEL_FORMAT);
 
             if (_sessionManager.HasClientOfType(ClientType.Controlled))
             {
@@ -34,12 +35,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             return session;
         }
-        public ClientSession NewController(string sessionId, int width, int height)
+        public ClientSession NewController(string sessionId, int width, int height, PixelFormat pixelFormat)
         {
             if (string.IsNullOrWhiteSpace(sessionId))
                 sessionId = StringHelper.RandomStringNumber(SESSION_ID_LENGTH);
 
-            var session = _sessionManager.New(id: sessionId, type: ClientType.Controlled, width: width, height: height);
+            var session = _sessionManager.New(id: sessionId, type: ClientType.Controlled, width: width, height: height, bytePerPixel: BYTE_PER_PIXEL, pixelFormat: pixelFormat);
 
             return session;
         }
@@ -87,7 +88,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             var clientSession = NewController(partnerNetworkInfo.SessionId, 
                 _machineProfile.Bounds.Width,
-                _machineProfile.Bounds.Height);
+                _machineProfile.Bounds.Height,
+                PIXEL_FORMAT);
 
             if (clientSession == null)
                 //TODO

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Drawing.Imaging;
 using System.Linq;
 using System.ServiceModel.Channels;
 using System.Text;
@@ -26,8 +27,8 @@ namespace VRemoteDesktop.Services.SessionManagement
         bool Remove(string id);
         bool Remove(ClientSession session);
         ClientSession GetByKey(string id);
-        ClientSession New(string id, ClientType type, int width, int height);
-        ClientSession AddNewAndListen(string id, ClientType type, int port, int width, int height);
+        ClientSession New(string id, ClientType type, int width, int height, int bytePerPixel, PixelFormat pixelFormat);
+        ClientSession AddNewAndListen(string id, ClientType type, int port, int width, int height, int bytePerPixel, PixelFormat pixelFormat);
 
         void AddScreen(ClientType type, RegionFrame screen);
         void AddDirtyRegions(ClientType sessionType, RegionFrame frame);
@@ -106,25 +107,25 @@ namespace VRemoteDesktop.Services.SessionManagement
             }
             throw new InvalidOperationException(string.Format("Connection with Id:{0} does not exists", id));
         }
-        public ClientSession New(string id, ClientType type, int width, int height)
+        public ClientSession New(string id, ClientType type, int width, int height, int bytePerPixel, PixelFormat pixelFormat)
         {
             if (_sessions.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            ClientSession session = new ClientSession(id, type, width, height);
+            ClientSession session = new ClientSession(id, type, width, height, bytePerPixel, pixelFormat);
             Add(id, session);
             return session;
         }
-        public ClientSession AddNewAndListen(string id, ClientType type, int port, int width, int height)
+        public ClientSession AddNewAndListen(string id, ClientType type, int port, int width, int height, int bytePerPixel, PixelFormat pixelFormat)
         {
             if (_sessions.TryGetValue(id, out var existed))
             {
                 return existed;
             }
 
-            ClientSession session = new ClientSession(id, type, width, height);
+            ClientSession session = new ClientSession(id, type, width, height, bytePerPixel, pixelFormat);
             Add(id, session);
 
             bool result = session.Listen(port);
