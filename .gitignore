@@ -150,8 +150,5 @@ _NCrunch*
 /Client/
 /Server/
 /dll/
-/VRemoteDesktop/Configs/App.config
-/VRemoteServer/app.config
-/VRemoteClient/VRemoteClient.csproj
-/VRemote_Service/VRemote_Service.csproj
+/VRemoteDesktop/Configs/App1.config
 /VRemoteDesktop/Configs/App.config
