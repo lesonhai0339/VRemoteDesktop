@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
@@ -15,6 +16,7 @@ using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
 using VRemoteServer.RelayServer.Networking;
+using VRemoteServer.Server.Options;
 using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
 
 namespace VRemoteServer.RelayServer.Services
@@ -47,9 +49,9 @@ namespace VRemoteServer.RelayServer.Services
     }
     public class LoginManagerService : ILoginManagerService, IDisposable
     {
-        private const int TIMEOUT = 5; 
-        private bool _disposed;
+        private int _disposed = 0;
 
+        private int _timeout;
 
         private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _tasks = new();
 
@@ -60,9 +62,9 @@ namespace VRemoteServer.RelayServer.Services
         public event EventHandler<LoginEventArgs> LoginManagerEvent;
 
         private CancellationTokenSource _cancel = new();
-        public LoginManagerService(ILoginServer loginServer, ILoginManager loginConnectionManager)
+        public LoginManagerService(ILoginServer loginServer, ILoginManager loginConnectionManager, IOptions<ServerOptions> options)
         {
-            _disposed = false;
+            _timeout = options.Value.Timeout;
             _loginServer = loginServer;
             _loginConnectionManager = loginConnectionManager;
 
@@ -352,12 +354,19 @@ namespace VRemoteServer.RelayServer.Services
         }
         public virtual void Dispose(bool disposing)
         {
-            if (!disposing || _disposed) return;
-            try
+
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
+            if (disposing)
             {
-                _cancel.Cancel();
                 try
                 {
+                    _cancel?.Cancel();
+
+                    _cancel?.Dispose();
+                    _cancel = null;
+
                     if (_loginServer != null)
                     {
                         _loginServer.ServerEvent -= LoginEventHandler;
@@ -368,11 +377,7 @@ namespace VRemoteServer.RelayServer.Services
                     _loginConnectionManager?.Dispose();
                 }
                 catch { }
-            }
-            finally
-            {
-                _disposed = true;
-            }
+            }        
         }
     }
 }

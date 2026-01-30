@@ -1,4 +1,5 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Extensions.Options;
+using Newtonsoft.Json;
 using Serilog;
 using System;
 using System.Collections.Concurrent;
@@ -16,7 +17,7 @@ using VRemoteServer.RelayServer.Enums;
 using VRemoteServer.RelayServer.Events;
 using VRemoteServer.RelayServer.Helpers;
 using VRemoteServer.RelayServer.Networking;
-using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
+using VRemoteServer.Server.Options;
 
 namespace VRemoteServer.RelayServer.Services
 {
@@ -28,7 +29,7 @@ namespace VRemoteServer.RelayServer.Services
         bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
         IEnumerable<SocketConnection> GetPartners(SocketConnection me);
         IEnumerable<RemoteConnection> GetRemoteConnectionsBySocketConnection(SocketConnection connection);
-        bool RemoveRemoteConnection(string id);
+        void RemoveRemoteConnection(string id, SocketConnection connection);
         bool InitRemoteConnection(string id, SocketConnection controller);
         bool EstablishedRemoteConnection(string id, SocketConnection controlled, out RemoteConnection remoteConnection);
         void P2PConnectFailed(SocketConnection connection, string connectionId);
@@ -41,12 +42,13 @@ namespace VRemoteServer.RelayServer.Services
         event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
         void Dispose();
     }
-    public class RemoteControlManagerService : IRemoteControlManagerService, IDisposable
+    public class RemoteControlManagerService : IRemoteControlManagerService, IDisposable ,IAsyncDisposable
     {
-        private const int MAX_RETRY = 3;
-        private const int TIMEOUT = 300;
-        private bool _disposed;
+        private int _disposed =0;
 
+        private int _retry;
+        private int _timeout;
+        private int _headerLength;
         private Task _timeoutTask;
 
         private readonly ConcurrentDictionary<string , long> _acceptId = new();
@@ -55,9 +57,12 @@ namespace VRemoteServer.RelayServer.Services
         private readonly IRemoteControlManager _remoteConnectionManager;
         private CancellationTokenSource _cancel = new();
         public event EventHandler<RemoteControlManagerEventArgs> RemoteControlManagerEvent;
-        public RemoteControlManagerService(IRemoteControlServer remoteControlServer, IRemoteControlManager remoteConnectionManager)
+        public RemoteControlManagerService(IRemoteControlServer remoteControlServer, IRemoteControlManager remoteConnectionManager, IOptions<ServerOptions> options)
         {
-            _disposed = false;
+            _retry = options.Value.RetryTime;
+            _timeout = options.Value.MaxTimeout;
+            _headerLength = options.Value.HeaderLength;
+
             _remoteControlServer = remoteControlServer;
             _remoteConnectionManager = remoteConnectionManager;
 
@@ -71,7 +76,7 @@ namespace VRemoteServer.RelayServer.Services
                     while (!_cancel.IsCancellationRequested)
                     {
                         var now = Environment.TickCount64;
-                        var timeoutIds = _acceptId.Where(x => (now - x.Value) > TIMEOUT * 1000).Select(x => x.Key).ToList();
+                        var timeoutIds = _acceptId.Where(x => (now - x.Value) > _timeout * 1000).Select(x => x.Key).ToList();
                         foreach (string timeoutId in timeoutIds)
                         {
                             _acceptId.TryRemove(timeoutId, out _);
@@ -159,7 +164,7 @@ namespace VRemoteServer.RelayServer.Services
                 {
                     return null;
                 }
-                return JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(connection.Reader.Buffer, dataOffset + PACKET_HEADER_LENGTH, dataLength - PACKET_HEADER_LENGTH));
+                return JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(connection.Reader.Buffer, dataOffset + _headerLength, dataLength - _headerLength));
             }
             catch
             {
@@ -187,14 +192,24 @@ namespace VRemoteServer.RelayServer.Services
         public IEnumerable<RemoteConnection> GetRemoteConnectionsBySocketConnection(SocketConnection connection)
             => _remoteConnectionManager.GetRemoteConnectionBySocketConnection(connection);
 
-        public bool RemoveRemoteConnection(string id)
-            => _remoteConnectionManager.Remove(id);
+        public void RemoveRemoteConnection(string id, SocketConnection connection)
+        {
+            var existed = _remoteConnectionManager.GetFirst(x => x.ConnectionId.Equals(id));
+            if(existed != null) 
+            {
+                var partner = _remoteConnectionManager.GetPartner(connection);
+                if(partner != null)
+                {
+                    Send(partner, SocketDataType.RemoteControlDisconnect);
+                }
+            }
+        }
 
         public bool CreateRoomId(out string id)
         {
             int retry = 0;
             string tempId = RandomString.RandomStringNumber(8);
-            while (_acceptId.ContainsKey(tempId) && retry < MAX_RETRY)
+            while (_acceptId.ContainsKey(tempId) && retry < _retry)
             {
                 tempId = RandomString.RandomStringNumber(8);
                 retry++;
@@ -266,17 +281,30 @@ namespace VRemoteServer.RelayServer.Services
         #endregion
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
+            DisposeAsync().AsTask().GetAwaiter().GetResult();
         }
-        public virtual void Dispose(bool disposing)
+        public async ValueTask DisposeAsync()
         {
-            if (!disposing || _disposed) return;
+            if (Interlocked.Exchange(ref _disposed, 1) == 1)
+                return;
+
             try
             {
                 _cancel.Cancel();
+                if (_timeoutTask != null)
+                {
+                    try
+                    {
+                        await _timeoutTask;
+                    }
+                    catch { }
+                }
+                _timeoutTask = null;
 
-                if(_remoteControlServer != null)
+                _cancel?.Dispose();
+                _cancel = null;
+
+                if (_remoteControlServer != null)
                 {
                     _remoteControlServer.ServerEvent -= RemoteControlEventHandler;
                     _remoteControlServer.ServerErrorEvent -= ServerErrorEventHandler;
@@ -286,9 +314,9 @@ namespace VRemoteServer.RelayServer.Services
                 _remoteControlServer?.Dispose();
                 _remoteConnectionManager?.Dispose();
             }
-            finally
+            catch (Exception ex) 
             {
-                _disposed = true;
+                Log.Error(ex, "RemoteControlService err ");
             }
         }
     }

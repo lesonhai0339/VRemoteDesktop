@@ -351,6 +351,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     case SocketDataType.ChatSend:
                         OnChatReceived?.Invoke(this, new ClientSessionDataReceivedEventArgs(this._sessionId, e.Type, e.Data));
                         break;
+                    case SocketDataType.Disconnect:
+                    case SocketDataType.RemoteControlDisconnect:
+                        Close();
+                        break;
                     default:
                         if (OnDataReceived != null)
                             OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));
@@ -525,7 +529,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void DirtyRegionSend()
         {
-            _stopwatch.Restart();
+            //_stopwatch.Restart();
             var dirtyRegions = _screenRegions.GetData();
             if (dirtyRegions == null)
             {
@@ -554,10 +558,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 Send(type, header, this.SessionId, false);
 
                 Send(frame);
-
-                _stopwatch.Stop();
-                Logger.Log.ForContext("", "DirtyRegionChanged").Info($"Dirty regions changed: {_stopwatch.Elapsed.TotalMilliseconds} ms, Before Compress: regionBuffer: {dirtyRegions.Buffer.Length} - regionActual: {dirtyRegions.Length} - compressBuffer: {rentBuffer.Length} - GetMaxOutputLength: {rentLength} | After compress: compressedLength: {length}");
-
             }
             catch (Exception ex)
             {

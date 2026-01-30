@@ -11,6 +11,7 @@ using VRemoteServer.Utils;
 using Microsoft.Extensions.Configuration;
 using System.Threading;
 using VRemoteServer.RelayServer.Common.Options;
+using VRemoteServer.Server.Options;
 
 
 namespace VRemoteServer
@@ -39,12 +40,15 @@ namespace VRemoteServer
                 {
                     var config = context.Configuration;
 
+
+
                     //services.AddScoped<RemoteDesktopServer>();
                     //services.AddScoped<SocketListener>();
                     //services.AddScoped<IServer, Server>();
-
+                    services.Configure<ServerOptions>(config.GetSection("ServerConfig"));
                     services.Configure<LoginServerOptions>(config.GetSection("LoginServerConfig"));
                     services.Configure<RemoteControlServerOptions>(config.GetSection("RemoteServerConfig"));
+
 
                     services.AddSingleton<IRateLimiter, RateLimiter>();
                     services.AddSingleton<ILoginServer, LoginServer>();

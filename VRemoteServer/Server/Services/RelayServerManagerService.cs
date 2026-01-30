@@ -34,14 +34,13 @@ namespace VRemoteServer.RelayServer.Services
     }
     public class RelayServerManagerService : IRelayServerManager, IDisposable
     {
-        private bool _disposed;
+        private int _disposed = 0;
         private ILoginManagerService login;
         private IRemoteControlManagerService remote;
         private readonly ILoginManagerService _loginManager;
         private readonly IRemoteControlManagerService _remoteControlManager;
         public RelayServerManagerService(ILoginManagerService loginManagerService, IRemoteControlManagerService remoteControlManagerService)
         {
-            _disposed = false;
             _loginManager = loginManagerService;
             _remoteControlManager = remoteControlManagerService;
 
@@ -238,7 +237,7 @@ namespace VRemoteServer.RelayServer.Services
                         RemoteLoginHandler(e.ConnectionId, sender, e.Data);
                         break;
                     case SocketDataType.RemoteControlDisconnect:
-                        RemoteDesktopControlDisconnected(sender);
+                        RemoteDesktopControlDisconnected(e.ConnectionId, sender);
                         break;
                     default:
                         RemoteDesktopControlDataForward(e.ConnectionId, sender, e.Data);
@@ -261,29 +260,12 @@ namespace VRemoteServer.RelayServer.Services
                 }
             }   
         }
-        private bool RemoteDesktopControlDisconnected(object sender)
+        private void RemoteDesktopControlDisconnected(string sessionId, object sender)
         {
             if (sender is SocketConnection connection)
             {
-                var remoteConnections = _remoteControlManager.GetRemoteConnectionsBySocketConnection(connection).ToArray();
-                if (remoteConnections.Length != 0)
-                {
-                    foreach (var remoteConnection in remoteConnections)
-                    {
-                        try
-                        {
-                            var partner = ReferenceEquals(remoteConnection.Controller, connection) ? remoteConnection.Controlled : remoteConnection.Controller;
-                            byte[] packet = PacketFactory.CreatePacket(SocketDataType.RemoteControlDisconnect, remoteConnection.ConnectionId);
-                            _remoteControlManager.Send(partner, packet);
-                        }
-                        finally
-                        {
-                            _remoteControlManager.RemoveRemoteConnection(remoteConnection.ConnectionId);
-                        }
-                    }
-                }
+                _remoteControlManager.RemoveRemoteConnection(sessionId, connection);
             }
-            return true;
         }
         private bool RemoteDesktopControlDataForward(string connectionId, object sender, object data)
         {
@@ -322,8 +304,10 @@ namespace VRemoteServer.RelayServer.Services
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposing || _disposed) return;
-            try
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
+            if (disposing)
             {
                 try
                 {
@@ -336,12 +320,12 @@ namespace VRemoteServer.RelayServer.Services
                     _loginManager?.Dispose();
                     _remoteControlManager?.Dispose();
                 }
-                catch { }
+                catch(Exception ex)
+                {
+                    Log.Error(ex, "RelayServer err ");
+                }
             }
-            finally
-            {
-                _disposed = true;
-            }
+            
         }
     }
 }
