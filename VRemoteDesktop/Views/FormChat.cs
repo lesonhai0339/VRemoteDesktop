@@ -24,7 +24,6 @@ using VRemoteDesktop.Services.FileService.Enums;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
-using VRemoteDesktop.ViewModels;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 using static VRemoteDesktop.Utils.DefaultForm;
 using static VRemoteDesktop.Utils.Logger;
