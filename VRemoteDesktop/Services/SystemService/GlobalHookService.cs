@@ -42,22 +42,15 @@ namespace VRemoteDesktop.Services.SystemService
         /// <param name="handle"></param>
         public void StartKeyboardListener(uint handle = 0)
         {
-            try
+            if (handle == 0)
             {
-                if (handle == 0)
-                {
-                    //listen on this app
-                    uint h = (uint)Process.GetCurrentProcess().Id;
-                    _keyboardService.Start(h);
-                }
-                else
-                {
-                    _keyboardService.Start(handle);
-                }
+                //listen on this app
+                uint h = (uint)Process.GetCurrentProcess().Id;
+                _keyboardService.Start(h);
             }
-            catch (Exception ex)
+            else
             {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "StartKeyboardListener error");
+                _keyboardService.Start(handle);
             }
         }
         /// <summary>
@@ -66,14 +59,7 @@ namespace VRemoteDesktop.Services.SystemService
         /// <param name="handle"></param>
         public void StopKeyboardListener()
         {
-            try
-            {
-                _keyboardService.Stop();
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "StopKeyboardListener error");
-            }
+            _keyboardService.Stop();
         }
         /// <summary>
         /// Start listen keyboard event on specific windows form by their handle
@@ -81,14 +67,7 @@ namespace VRemoteDesktop.Services.SystemService
         /// <param name="handle"></param>
         public void AddKeyboardHook(IntPtr handle)
         {
-            try
-            {
-                _keyboardService.AddHook(handle);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "AddKeyboardHook error");
-            }
+            _keyboardService.AddHook(handle);
         }
         /// <summary>
         /// Stop listen keyboard event on specific windows form by their handle
@@ -96,14 +75,7 @@ namespace VRemoteDesktop.Services.SystemService
         /// <param name="handle"></param>
         public void RemoveKeyboardHook(IntPtr handle)
         {
-            try
-            {
-                _keyboardService.RemoveHook(handle);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "RemoveKeyboardHook error");
-            }
+            _keyboardService.RemoveHook(handle);
         }
         public bool CheckClipboard(KeyboardEventArgs e, out byte[] clipboardBytes, out SocketDataType type)
         {
@@ -111,7 +83,7 @@ namespace VRemoteDesktop.Services.SystemService
             type = SocketDataType.None;
             if (e.Combination == KeyCombination.Copy && e.Handle == IntPtr.Zero && e.IsSynthetic)
             {
-                type = SocketDataType.Clipboard;
+                type = SocketDataType.ClipboardSend;
                 clipboardBytes = Encoding.UTF8.GetBytes(GetClipboard());
                 return true;
             }
@@ -138,15 +110,7 @@ namespace VRemoteDesktop.Services.SystemService
         }
         public string GetClipboard()
         {
-            try
-            {
-                return VirtualClipboard.GetClipboardString();
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "GetClipboard error");
-                return string.Empty;
-            }
+            return VirtualClipboard.GetClipboardString();
         }
         /// <summary>
         /// Default using CF_UNICODETEXT format then need to convert string data to UTF-16
@@ -156,63 +120,33 @@ namespace VRemoteDesktop.Services.SystemService
         /// <returns>Formatted byte array.</returns>
         public bool SetClipboard(byte[] data)
         {
-            try
-            {
-                string text = Encoding.UTF8.GetString(data);
+            string text = Encoding.UTF8.GetString(data);
 
-                byte[] unicodeData = Encoding.Unicode.GetBytes(text + '\0');
+            byte[] unicodeData = Encoding.Unicode.GetBytes(text + '\0');
 
-                return VirtualClipboard.SetClipboard(unicodeData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "SetClipboard error");
-                return false;
-            }
+            return VirtualClipboard.SetClipboard(unicodeData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
         }
         public bool SetClipboard(byte[] data, int index, int length)
         {
-            try
-            {
-                byte[] clipboardData = new byte[length];
-                Buffer.BlockCopy(data, index, clipboardData, 0, length);
-                return VirtualClipboard.SetClipboard(clipboardData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "SetClipboard error");
-                return false;
-            }
+            byte[] clipboardData = new byte[length];
+            Buffer.BlockCopy(data, index, clipboardData, 0, length);
+            return VirtualClipboard.SetClipboard(clipboardData, (uint)WindowsClipboardFormat.CF_UNICODETEXT);
         }
         #endregion
         #region Screen
         public void StartScreenCapture()
         {
-            try
-            {
-                _screenCaptureService.StartCapture();
-                _screenCaptureService.IsCapturing = true;
-            }
-            catch(Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "StartScreenCapture error");
-            }
+            _screenCaptureService.StartCapture();
+            _screenCaptureService.IsCapturing = true;
         }
         public void StopScreenCapture()
         {
-            try
-            {
-                _screenCaptureService.StopCapture();
-                _screenCaptureService.IsCapturing = false;
-            }
-            catch (Exception ex)
-            {
-                Log.ForContext("Filename", GetType().Name).Error(ex, "StopScreenCapture error");
-            }
+            _screenCaptureService.StopCapture();
+            _screenCaptureService.IsCapturing = false;
         }
         public List<byte[]> GetFirstScreen()
         {
-            return _screenCaptureService.GetScreenPacketsWithoutChecksum();
+            return _screenCaptureService.GetScreenPackets();
         }
         #endregion
         #region Events

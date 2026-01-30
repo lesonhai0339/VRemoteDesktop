@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
@@ -23,16 +24,16 @@ namespace VRemoteDesktop.Services.Keyboard
     public class KeyboardService: IKeyboardService, IDisposable
     {
         private readonly object _lockObject = new object();
-        private bool _disposed;
+        private int _disposed = 0;
+
         private IntPtr _hookID;
         private HookApis.LowLevelProc _proc;
         private HashSet<IntPtr> _windowsHandle;
         public event EventHandler<KeyboardEventArgs> KeyPressed;
         public KeyboardService()
         {
-            _disposed = false;
             _hookID = IntPtr.Zero;
-            WindowsHandle = new HashSet<IntPtr>();
+            _windowsHandle = new HashSet<IntPtr>();
         }
         public void Start(uint pId)
         {
@@ -200,19 +201,18 @@ namespace VRemoteDesktop.Services.Keyboard
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (!_disposed)
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
+            if (disposing)
             {
-                if (disposing)
+                lock (_lockObject)
                 {
-                    lock (_lockObject)
-                    {
-                        WindowsHandle.Clear();
-                    }
-                    Stop();
-                    _hookID = IntPtr.Zero;
-                    _proc = null;
-                    _disposed = true;
+                    WindowsHandle.Clear();
                 }
+                Stop();
+                _hookID = IntPtr.Zero;
+                _proc = null;
             }
         }
     }

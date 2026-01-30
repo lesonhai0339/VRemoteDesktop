@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -6,13 +7,62 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using System.Windows.Forms;
-using System.Runtime.InteropServices;
+using VRemoteDesktop.Utils;
 
 namespace VRemoteDesktop.Helpers
 {
+    public class StreamingFile
+    {
+        public DateTimeOffset DateTimeOffset { get; set; }
+        public FileStream Stream { get; set; }  
+    }
     internal class FileHelper
     {
+        private static readonly ConcurrentDictionary<string, StreamingFile> _openingStream = new ConcurrentDictionary<string, StreamingFile>();
+        private static System.Threading.Timer _timer = new System.Threading.Timer(AutoCleanupOpeningStream, null, TimeSpan.FromMinutes(5), TimeSpan.FromMinutes(5));
+        static FileHelper()
+        {
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => CleanupAllStreams();
+        }
+        private static void CleanupAllStreams()
+        {
+            foreach (var kvp in _openingStream)
+            {
+                try
+                {
+                    kvp.Value.Stream?.Dispose();
+                }
+                catch { }
+            }
+
+            _openingStream.Clear();
+        }
+        private static void AutoCleanupOpeningStream(object state)
+        {
+            foreach(var fileStreaming in _openingStream)
+            {
+                if(DateTimeOffset.UtcNow - fileStreaming.Value.DateTimeOffset > TimeSpan.FromMinutes(5)) //Close file stream after 5 minutes of inactivity
+                {
+                    try
+                    {
+                        if (_openingStream.TryRemove(fileStreaming.Key, out var streamingFile))
+                        {
+                            lock (streamingFile.Stream) // Lock before disposing
+                            {
+                                streamingFile.Stream?.Dispose();
+                            }
+                        }
+                    }
+                    catch(Exception ex)
+                    {
+                        Logger.Log.ForContext("FileName", "FileHelper").Error(ex, string.Format("Cannot cleanup file stream at", fileStreaming.Key));
+                    }
+                }
+            }
+        }
         private static readonly object _lock = new object();
         private static string DefaultFilter =
                 "Text files (*.txt)|*.txt|" +
@@ -70,7 +120,27 @@ namespace VRemoteDesktop.Helpers
                 byte[] hash = md5.ComputeHash(stream);
                 return BitConverter.ToString(hash).Replace("-", "").ToLowerInvariant();
             }
-        }     
+        }
+        public static long CalculateChunkNumber(long dataSize, int chunkSize = 8192)
+        {
+            if (dataSize <= 0)
+                return 0;
+
+            if (chunkSize <= 0)
+                throw new InvalidOperationException("Data size and chunk size must be positive");
+
+            return (dataSize + chunkSize - 1) / chunkSize;
+        }
+        public static FileInfo GetFileInfo(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
+
+            if (!File.Exists(filePath))
+                throw new FileNotFoundException($"File not found: {filePath}", filePath);
+
+            return new FileInfo(filePath);
+        }
         public static byte[] GetChunkFileDataByOffset(string filePath, long offset, int size = 8192)
         {
             if (!File.Exists(filePath))
@@ -106,6 +176,62 @@ namespace VRemoteDesktop.Helpers
                 return bytesRead;
             }
         }
+        public static int GetChunkFileDataByOffset(FileStream fs, long fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
+        {
+            if (fileOffset < 0)
+                throw new ArgumentException("Offset cannot be negative");
+
+            fs.Seek(fileOffset, SeekOrigin.Begin);
+            int totalBytesRead = 0;
+            int remainingBytes = size;
+
+            while (totalBytesRead < size && remainingBytes > 0)
+            {
+                int bytesRead = fs.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
+                if (bytesRead == 0)
+                    break;
+                totalBytesRead += bytesRead;
+                remainingBytes -= bytesRead;
+            }
+            return totalBytesRead;
+        }
+        public static int CopyFileDataByOffset(string filePath, long fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
+        {
+            if (!File.Exists(filePath))
+                throw new ArgumentException(string.Format("Does not existed {0}", filePath));
+            if (fileOffset < 0)
+                throw new ArgumentException("Offset cannot be negative");
+
+            try
+            {
+                if (_openingStream.TryGetValue(filePath, out var fs))
+                {
+                    lock (fs.Stream)
+                    {
+                        fs.DateTimeOffset = DateTimeOffset.UtcNow; //Update time active for this stream
+
+                        fs.Stream.Seek(fileOffset, SeekOrigin.Begin);
+                        int totalBytesRead = 0;
+                        int remainingBytes = size;
+
+                        while (totalBytesRead < size && remainingBytes > 0)
+                        {
+                            int bytesRead = fs.Stream.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
+                            if (bytesRead == 0)
+                                break;
+                            totalBytesRead += bytesRead;
+                            remainingBytes -= bytesRead;
+                        }
+                        return totalBytesRead;
+                    }
+                }
+                return 0;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
         //Can improve by using something like private ConcurrentDictionary<string, FileStream> _curStreams; at VChatAttachmentService
         //To keep fileStream open util copy full or timeout
         public static int GetChunkFileDataByOffset(string filePath, long fileOffset, ref byte[] buffer, int bufferOffset, int size = 8192)
@@ -116,54 +242,99 @@ namespace VRemoteDesktop.Helpers
             if (fileOffset < 0)
                 throw new ArgumentException("Offset cannot be negative");
 
-            using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            try
             {
-                fs.Seek(fileOffset, SeekOrigin.Begin);
-                int totalBytesRead = 0;
-                int remainingBytes = size;
-                while(totalBytesRead < size && remainingBytes > 0)
+                using (FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read))
                 {
-                    int bytesRead = fs.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
-                    if (bytesRead == 0)
-                        break;
+                    fs.Seek(fileOffset, SeekOrigin.Begin);
+                    int totalBytesRead = 0;
+                    int remainingBytes = size;
+                    while (totalBytesRead < size && remainingBytes > 0)
+                    {
+                        int bytesRead = fs.Read(buffer, bufferOffset + totalBytesRead, remainingBytes);
+                        if (bytesRead == 0)
+                            break;
 
-                    totalBytesRead += bytesRead;
-                    remainingBytes -= bytesRead;
-                }
-                return totalBytesRead;
+                        totalBytesRead += bytesRead;
+                        remainingBytes -= bytesRead;
+                    }
+
+                    return totalBytesRead;
+                }  
+            }
+            catch
+            {
+                return 0;
             }
         }
-        public static long CalculateChunkNumber(long dataSize, int chunkSize = 8192)
-        {
-            if (dataSize <= 0)
-                return 0;
-
-            if (chunkSize <= 0)
-                throw new InvalidOperationException("Data size and chunk size must be positive");
-
-            return (dataSize + chunkSize - 1) / chunkSize;
-        }
-        public static FileInfo GetFileInfo(string filePath)
-        {
-            if (string.IsNullOrWhiteSpace(filePath))
-                throw new ArgumentException("File path cannot be null or empty.", nameof(filePath));
-
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException($"File not found: {filePath}", filePath);
-
-            return new FileInfo(filePath);
-        }
-        public static void InitializeFileTransfer(FileStream stream, string savePath)
+        public static FileStream InitializeFileTransfer(string savePath)
         {
             lock (_lock)
             {
-                stream?.Dispose();
-                stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+                var stream = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                return stream;
+            }
+        }
+        public static void OpenStream(string filePath)
+        {
+            if (string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentNullException(filePath + " is null", nameof(filePath)); 
+            if (!File.Exists(filePath))
+                throw new ArgumentNullException("File does not existed", nameof(filePath));
+
+            try
+            {
+                if (_openingStream.ContainsKey(filePath))
+                    return;
+
+                FileStream fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+
+                _openingStream.TryAdd(filePath, new StreamingFile
+                {
+                    Stream = fs,
+                    DateTimeOffset = DateTimeOffset.UtcNow
+                });
+            }
+            catch(Exception ex)
+            {
+                throw new InvalidOperationException("Cannot open file stream", ex);
+            }
+        }
+        public static FileStream ReadFileStream(string savePath)
+        {
+            if (string.IsNullOrWhiteSpace(savePath))
+                throw new ArgumentNullException(savePath + " is null", nameof(savePath));
+            if (!File.Exists(savePath))
+                throw new ArgumentNullException("File does not existed", nameof(savePath));
+            try
+            {
+                FileStream fs = new FileStream(savePath, FileMode.Open, FileAccess.Read, FileShare.Read);
+                _openingStream.TryAdd(savePath, new StreamingFile
+                {
+                    Stream = fs,
+                    DateTimeOffset = DateTimeOffset.UtcNow
+                });
+                return fs;
+            }
+            catch(Exception ex)
+            {
+                throw new InvalidOperationException("Cannot open file stream", ex); 
             }
         }
         public static FileStream CreateFileStream(string savePath)
         {
-            return new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write);
+            if (string.IsNullOrWhiteSpace(savePath))
+                throw new ArgumentNullException(savePath + " is null", nameof(savePath));
+
+            try
+            {
+                FileStream fs = new FileStream(savePath, FileMode.OpenOrCreate, FileAccess.Write, FileShare.ReadWrite);
+                return fs;
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Cannot open file stream", ex);
+            }
         }
         public static void WriteToFile(FileStream fs, int offset, byte[] data, bool flush = true)
         {
@@ -171,6 +342,11 @@ namespace VRemoteDesktop.Helpers
                 throw new ArgumentException("FileStream cannot be null.", nameof(fs));
             if (data == null)
                 throw new ArgumentException("data cannot be null.", nameof(data));
+
+            if (_openingStream.TryGetValue(fs.Name, out var openingStream))
+            {
+                openingStream.DateTimeOffset = DateTimeOffset.UtcNow;
+            }
 
             lock (fs)
             {
@@ -181,6 +357,7 @@ namespace VRemoteDesktop.Helpers
                     
                     if(flush)
                         fs.Flush();
+
                 }
                 catch (IOException ex)
                 {
@@ -235,6 +412,56 @@ namespace VRemoteDesktop.Helpers
                 {
                     throw new InvalidOperationException($"Failed to write to file: {path}", ex);
                 }
+            }
+        }
+        public static void WriteToFile(string data, string filePath, bool append = true)
+        {
+            string dir = Path.GetDirectoryName(filePath);
+            if (!Directory.Exists(dir))
+            {
+                Directory.CreateDirectory(dir);
+            }
+
+            using(StreamWriter writer = new StreamWriter(filePath, append, Encoding.UTF8))
+            {
+                writer.WriteLine(data);
+            }
+        }
+        public static IEnumerable<string> ReadFromFile(string filePath)
+        {
+            if (!File.Exists(filePath))
+                return Enumerable.Empty<string>();
+
+            return File.ReadLines(filePath, Encoding.UTF8);
+        }
+        public static bool CloseStream(string filePath)
+        {
+            if(string.IsNullOrWhiteSpace(filePath))
+                throw new ArgumentNullException(filePath + " is null", nameof(filePath));
+
+            try
+            {
+                if (_openingStream.TryRemove(filePath, out var stream))
+                {
+                    lock(stream.Stream) // Lock before disposing
+                    {
+                        stream.Stream.Dispose();
+                    }
+                    return true;
+                }
+
+                if (File.Exists(filePath))
+                {
+                    using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                    {
+                    }
+                    return true;
+                }
+                return false;
+            }
+            catch
+            {
+                return false;
             }
         }
         public static Icon GetIconByFileName(string fileName)

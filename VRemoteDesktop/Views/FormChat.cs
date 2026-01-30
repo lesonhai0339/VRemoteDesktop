@@ -7,38 +7,60 @@ using System.Drawing;
 using System.Dynamic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Remoting.Messaging;
+using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Layouts;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Presenters;
 using VRemoteDesktop.Services.FileService;
+using VRemoteDesktop.Services.FileService.DTOs;
+using VRemoteDesktop.Services.FileService.Enums;
+using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.VTCPClient;
+using VRemoteDesktop.Utils;
 using VRemoteDesktop.ViewModels;
-using static VRemoteDesktop.Utils.Logger;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
 using static VRemoteDesktop.Utils.DefaultForm;
+using static VRemoteDesktop.Utils.Logger;
 
 namespace VRemoteDesktop.Views
 {
     public partial class FormChat : Form
     {
-        private static readonly Color SelectedColor = Color.LightSkyBlue;
-        private static readonly Color DefaultColor = Color.White;
-        private ChatViewModel _chatViewModel;
-        private ConcurrentDictionary<string, FileAttachmentLayout> _attachments;
+        private const string LOG_FILE = "FormChat";
+        private readonly Color SelectedColor = Color.LightSkyBlue;
+        private readonly Color DefaultColor = Color.White;
+
+        private readonly ChatPresenter _chatPresenter;
+        private Dictionary<string, ConnectionChatDataPanel> _userChatControls;
 
         public FormChat()
         {
             InitializeComponent();
-            SetupComponent();
+
+            _chatPresenter = new ChatPresenter();
+            _userChatControls = new Dictionary<string, ConnectionChatDataPanel>();
+
+            _chatPresenter.ProgressBarUpdateEvent += BarUpdateEventHandler;
+            _chatPresenter.AddedEvent += AddedEventHandler;
+            _chatPresenter.RemovedEvent += RemovedEventHandler;
+            _chatPresenter.UpdateEvent += UpdateEventHandler;
+            _chatPresenter.UpdateChatHistoryEvent += UpdateChatHistoryEventHandler;
+            _chatPresenter.ErrorEvent += ShowErrorEvent;
+
+            this.txtChatContent.KeyDown += KeyDownEventHandler;
         }
         #region Form Events
         protected override void SetVisibleCore(bool value)
         {
             base.SetVisibleCore(value);
+
             if (value && this.WindowState == FormWindowState.Normal)
             {
                 PositionForm();
@@ -47,22 +69,28 @@ namespace VRemoteDesktop.Views
 
         private void FormChat_Load(object sender, EventArgs e)
         {
-
         }
         private void FormChat_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (_chatViewModel != null)
+            if (_chatPresenter != null)
             {
-                _chatViewModel.ProgressBarUpdateEvent -= ProgressBarUpdateEventHandler;
-                _chatViewModel.AddedEvent -= AddeddEventHandler;
-                _chatViewModel.RemovedEvent -= RemovedEventHandler;
-                _chatViewModel.UpdateEvent -= UpdateEventHandler;
-                _chatViewModel.UpdateChatHistoryEvent -= UpdateChatHistoryEventHandler;
-                _chatViewModel.ErrorEvent -= ShowErrorEvent;
-                _chatViewModel.Dispose();
+                _chatPresenter.ProgressBarUpdateEvent -= BarUpdateEventHandler;
+                _chatPresenter.AddedEvent -= AddedEventHandler;
+                _chatPresenter.RemovedEvent -= RemovedEventHandler;
+                _chatPresenter.UpdateEvent -= UpdateEventHandler;
+                _chatPresenter.UpdateChatHistoryEvent -= UpdateChatHistoryEventHandler;
+                _chatPresenter.ErrorEvent -= ShowErrorEvent;
+                _chatPresenter.Dispose();
             }
+
+            foreach (var item in _userChatControls)
+            {
+                item.Value?.Dispose();
+            }
+
+            _userChatControls.Clear();
+
             this.txtChatContent.KeyDown -= KeyDownEventHandler;
-            _attachments.Clear();
         }
         private void btnSend_Click(object sender, EventArgs e)
         {
@@ -70,7 +98,7 @@ namespace VRemoteDesktop.Views
         }
         private void btnSendAttachment_Click(object sender, EventArgs e)
         {
-            RespondHandler(_chatViewModel.RequestSendFile());
+            SendFile();
         }
         private void fpnChat_MouseWheel(object sender, MouseEventArgs e)
         {
@@ -94,28 +122,22 @@ namespace VRemoteDesktop.Views
             }
         }
         #endregion
-        #region Methods
-        private void SetupComponent()
+        #region Methods 
+        public void AddChatSession(string sessionId, ClientSession clientSession)
         {
-            _chatViewModel = new ChatViewModel();
-            _chatViewModel.ProgressBarUpdateEvent += ProgressBarUpdateEventHandler;
-            _chatViewModel.AddedEvent += AddeddEventHandler;
-            _chatViewModel.RemovedEvent += RemovedEventHandler;
-            _chatViewModel.UpdateEvent += UpdateEventHandler;
-            _chatViewModel.UpdateChatHistoryEvent += UpdateChatHistoryEventHandler;
-            _chatViewModel.ErrorEvent += ShowErrorEvent;
-
-            this.txtChatContent.KeyDown += KeyDownEventHandler;
-
-            _attachments = new ConcurrentDictionary<string, FileAttachmentLayout>();
+            try
+            {
+                _chatPresenter.AddToChat(sessionId, clientSession);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("", LOG_FILE).Error(ex, "AddChatSession err ");
+            }
         }
-        public void AddConnection(string id, VClient client)
-        {
-            RespondHandler(_chatViewModel.AddConnection(id, client));
-        }    
         private void PositionForm()
         {
             Rectangle workingArea = Screen.PrimaryScreen.WorkingArea;
+
             this.Location = new Point(
                 workingArea.Right - this.Width,
                 workingArea.Bottom - this.Height - 120
@@ -136,148 +158,134 @@ namespace VRemoteDesktop.Views
         }
         private void SendMessage(string content)
         {
-            if (!string.IsNullOrWhiteSpace(content))
+            try
             {
-                RespondHandler(_chatViewModel.SendChatMessage(content));
                 txtChatContent.Clear();
                 txtChatContent.Select();
+                _chatPresenter.SendMessage(content);
             }
-        }
-        private void RespondHandler<T>(ChatRespond<T> respond)
-        {
-            switch (respond.Status)
+            catch (Exception ex)
             {
-                case ChatRespondStatus.Success:
-                    ProcessSuccessHandler(respond);
-                    break;
-                case ChatRespondStatus.Failed:
-                    ProcessFailedHandler(respond);
-                    break;
-                case ChatRespondStatus.Error:
-                    ProcessErrorHandler(respond);
-                    break;
-                case ChatRespondStatus.Timeout:
-                    ProcessTimeoutHandler(respond);
-                    break;
-                default:
-                    Log.ForContext("FileName", this.GetType().Name + "-" + nameof(RespondHandler)).Warning("Unexpected respond type");
-                    break;
+                Logger.Log.ForContext("", LOG_FILE).Error(ex, "SendMessage err ");
+                ShowMessageBox("Lỗi", "Không thể gủi tin nhắn", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
-        private void ProcessSuccessHandler<T>(ChatRespond<T> respond)
+        private void SendFile()
         {
-            Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessSuccessHandler)).Info(respond.SystemMessage);
-            if (!string.IsNullOrWhiteSpace(respond.Message))
-                MessageBox.Show(respond.Message, FORM_SUCCESS_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Information);
+            try
+            {
+                _chatPresenter.RequestSendFile();
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("", LOG_FILE).Error(ex, "SendFile err ");
+                ShowMessageBox("Lỗi", "Gửi file thất bại", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
-        private void ProcessFailedHandler<T>(ChatRespond<T> respond)
+        private void ShowMessageBox(string title, string msg, MessageBoxButtons button, MessageBoxIcon icon)
         {
-            Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessFailedHandler)).Error(respond.SystemMessage);
-            if (!string.IsNullOrWhiteSpace(respond.Message))
-                MessageBox.Show(respond.Message, FORM_FAILED_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        private void ProcessErrorHandler<T>(ChatRespond<T> respond)
-        {
-            Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessErrorHandler)).Error(respond.SystemMessage);
-            if (!string.IsNullOrWhiteSpace(respond.Message))
-                MessageBox.Show(respond.Message, FORM_ERROR_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
-        }
-        private void ProcessTimeoutHandler<T>(ChatRespond<T> respond)
-        {
-            Log.ForContext("FileName", this.GetType().Name + "-" + nameof(ProcessTimeoutHandler)).Error(respond.SystemMessage);
-            if (!string.IsNullOrWhiteSpace(respond.Message))
-                MessageBox.Show(respond.Message, FORM_TIMEOUT_TITLE, MessageBoxButtons.OK, MessageBoxIcon.Error);
+            MessageBox.Show(msg, title, button, icon);
         }
         #endregion
         #region Custom Events
         private void ShowErrorEvent(object sender, ChatErrorEventArgs e)
         {
-            var logger = Log.ForContext("FileName", this.GetType().Name);
-
-            switch (e.Level)
-            {
-                case ChatErrorLevel.Critical:
-                    logger.Error(e.Ex, e.Ex.Message);
-                    //MessageBox.Show($"{e.Ex.GetType().Name}: {e.Ex.Message}",
-                    //               "Lỗi nghiêm trọng",
-                    //               MessageBoxButtons.OK,
-                    //               MessageBoxIcon.Error);
-                    break;
-
-                case ChatErrorLevel.Warning:
-                    logger.Warning(e.Ex, e.Ex.Message);
-                    break;
-
-                case ChatErrorLevel.Info:
-                    logger.Info(e.Ex, e.Ex.Message);
-                    break;
-            }
-        }
-        private void ChangeConnectionActivateEventHandler(object sender, EventArgs e)
-        {
             InvokeAction(() =>
             {
-                if (sender is Label lb && lb.Parent is FlowLayoutPanel flow)
+                var logger = Log.ForContext("FileName", LOG_FILE);
+
+                switch (e.Level)
                 {
-                    var respond = _chatViewModel.GetCurrentConnectionActivate();
-                    if (respond.IsSuccess)
-                    {
-                        bool isSameConnection = (string.Compare(lb.Name, respond.Data, StringComparison.OrdinalIgnoreCase) == 0);
-                        if (isSameConnection)
-                        {
-                            //Load chat history on current connection
-                            //if (fpnChat.Controls.Count == 0)
-                            //    _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
-                            return;
-                        }
-                    }
-                    var isValidConnection = _chatViewModel.IsValidConnection(lb.Name);
-                    RespondHandler(isValidConnection);
-                    if (isValidConnection.IsSuccess)
-                    {
-                        foreach (var connection in flow.Controls.OfType<Label>())
-                        {
-                            connection.BackColor = DefaultColor;
-                        }
-                        var sp =  _chatViewModel.SetCurrentConnectionActivate(lb.Name);
-                        RespondHandler(sp);
-                        if(sp.IsSuccess)
-                        {
-                            lb.BackColor = SelectedColor;
-                            //Load chat history on current connection
-                            //_chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
-                        }
-                    }
-                    else
-                    {
-                        ProcessConnectionRemoved(lb.Name);
-                    }
+                    case ChatErrorLevel.Critical:
+                        logger.Error(e.Ex, e.Ex.Message);
+                        MessageBox.Show($"{e.Message}",
+                                       "Lỗi",
+                                       MessageBoxButtons.OK,
+                                       MessageBoxIcon.Error);
+                        break;
+
+                    case ChatErrorLevel.Warning:
+                        logger.Warning(e.Ex, e.Ex.Message);
+                        break;
+
+                    case ChatErrorLevel.Info:
+                        logger.Info(e.Ex, e.Ex.Message);
+                        break;
                 }
             });
         }
+        private void ActiveSessionChatChanged(object sender, EventArgs e)
+        {
+            if (sender is ConnectionChatPanel pn && pn.Parent is FlowLayoutPanel flow)
+            {
+                try
+                {
+                    /*      var respond = _chatViewModel.GetCurrentConnectionActivate();
+
+                            if (respond.IsSuccess)
+                            {
+                                bool isSameConnection = (string.Compare(pn.Name, respond.Data, StringComparison.OrdinalIgnoreCase) == 0);
+
+                                if (isSameConnection)
+                                {
+                                    //Load chat history on current connection
+                                    //if (fpnChat.Controls.Count == 0)
+                                    //    _chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
+                                    return;
+                                }
+                            }
+                    */
+
+                    if (!_chatPresenter.ContainsSessionChat(pn.Name))
+                    {
+                        ProcessConnectionRemoved(pn.Id, pn.Name);
+                        return;
+                    }
+                    foreach (var connection in flow.Controls.OfType<ConnectionChatPanel>())
+                    {
+                        connection.BackColor = DefaultColor;
+                    }
+
+                    _chatPresenter.SetActiveClientSession(pn.Name);
+
+                    pn.BackColor = SelectedColor;
+                    pn.ClearCount();
+                    //Load chat history on current connection
+                    //_chatViewModel.LoadChatHistoryByConnectionId(lb.Name);
+                    ChangeChatDataByConnectionId(pn.Name);
+                }
+                catch(Exception ex)
+                {
+                    Logger.Log.ForContext("", LOG_FILE).Error(ex, "ChangeConnectionActivateEventHandler err ");
+                }
+            }
+        }
         private void UpdateChatHistoryEventHandler(object sender, ChatUpdateChatHistoryEventArgs e)
         {
-            if (e.Messages == null || e.Messages.Length == 0)
+            InvokeAction(() =>
             {
-                Log.ForContext("FileName", this.GetType().Name + " - " + nameof(UpdateChatHistoryEventHandler))
-                    .Error("Message is null or empty");
-                return;
-            }
-            foreach (var message in e.Messages)
-            {
-                if (message is ChatFile chatFile)
+                if (e.Messages == null || e.Messages.Length == 0)
                 {
-                    //TODO: not implement, missing file Id to create FileAttachmentLayout, will handler soon
+                    Log.ForContext("FileName", LOG_FILE).Error("Message is null or empty");
+                    return;
                 }
-                if (message is ChatText chatMessage)
+
+                foreach (var message in e.Messages)
                 {
-                    var respond = _chatViewModel.GetConnectionNameById(e.ConnectionId);
-                    RespondHandler(respond);
-                    if (respond.IsSuccess)
-                        CreateMessageControl(respond.Data, chatMessage);
+
+                    if (message is ChatFile chatFile)
+                    {
+                        //TODO: not implement, missing file Id to create FileAttachmentLayout, will handler soon
+                    }
+                    if (message is ChatText chatMessage)
+                    {
+                        var name = _chatPresenter.GetNameBySessionId(e.ConnectionId);
+                        if (!string.IsNullOrEmpty(name))
+                            CreateMessageControl(name, chatMessage);
+                    }
                 }
-            }
-            RefeshUI(fpnChat);
+                RefreshUI(fpnChat);
+            });
         }
         private void CreateMessageControl(string name, ChatText chatMessage)
         {
@@ -287,159 +295,79 @@ namespace VRemoteDesktop.Views
                 AutoSize = true,
                 TextAlign = ContentAlignment.TopLeft,
             };
-            InvokeAction(()=> InsertFirst(fpnChat, lb));
-        }
-        private void ProcessUpdateChatHistory(ChatUpdateChatHistoryEventType type, List<Control> controls)
-        {
-            InvokeAction(() =>
-            {
-                if (type == ChatUpdateChatHistoryEventType.LoadHistory)
-                {
-                    for (int i = fpnChat.Controls.Count - 1; i >= 0; i--)
-                    {
-                        ProcessMessageRemoved(fpnChat.Controls[i]);
-                    }
-                    InsertFirst(fpnChat, controls);
-                    RefeshUI(fpnChat);
-                }
-            });
-        }
-        private void ProgressBarUpdateEventHandler(object sender, ChatControlProgressBarUpdateUIEventArgs e)
-        {
-            if (_attachments.TryGetValue(e.FileId, out var attachment))
-            {
-                if(e.Status == FileStatus.CheckSumFailed)
-                {
-                    //This only check 
-                    attachment.UpdateRequestSendFileStatus("File lỗi");
-                    _attachments.TryRemove(e.FileId, out _);
-                }
-                else
-                {
-                    if (e.Status == FileStatus.Finished)
-                        _attachments.TryRemove(e.FileId, out _);
 
-                    InvokeAction(()
-                        => UpdateBar(attachment, e.Num));
+            if(_chatPresenter.GetActiveChatId(out string activeId))
+                AddChatDataByConnectionId(activeId, lb);
+        }
+        private void BarUpdateEventHandler(object sender, ChatControlProgressBarUpdateUIEventArgs e)
+        {
+            try
+            {
+                var userChat = GetConnectionChatDataPanelByConnectionId(e.ConnectionId);
+
+                if (userChat != null)
+                {
+                    InvokeAction(() => userChat.UpdateProgressBar(e.FileId, e.Status, e.Num));
                 }
             }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("", LOG_FILE).Error(ex, "Progress bar update err ");
+            }
         }
-        private void UpdateBar(FileAttachmentLayout f, int num)
-        {
-            f.UpdateProgressBar(num);
-                     
-        }
-        private void AddeddEventHandler(object sender, ChatControlAddedEventArgs e)
+        private void AddedEventHandler(object sender, ChatControlAddedEventArgs e)
         {
             InvokeAction(() =>
             {
-                if (e.Type == ChatControlType.Connection)
+                switch (e.Type)
                 {
-                    ProcessConnectionAdded(e.ConnectionId, e.Content);
-                    RefeshUI(fpnNumberChatConnection);
-                }
-                else if (e.Type == ChatControlType.Message)
-                {
-                    ProcessMessageAdded(e.ConnectionId, e.Content, e.ConnectionName);
-                    RefeshUI(fpnChat);
-                }
-                else if (e.Type == ChatControlType.RequestAttachment || e.Type == ChatControlType.ReceivedAttachment)
-                {
-                    ProcessAttachmentAdded(e.Type, e.ConnectionId, e.FileInfo);
-                    RefeshUI(fpnChat);
-                }
-                else
-                {
-                    MessageBox.Show("Unexpected event type " + this.GetType().Name + " - " + nameof(AddeddEventHandler), "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    case ChatControlType.Connection:
+                        ProcessConnectionAdded(e.ConnectionId, e.Content);
+                        RefreshUI(fpnNumberChatConnection);
+                        break;
+                    case ChatControlType.Message:
+                        ProcessMessageAdded(e.ConnectionId, e.Content, e.ConnectionName);
+                        RefreshUI(fpnChat);
+                        break;
+                    case ChatControlType.RequestAttachment:
+                    case ChatControlType.ReceivedAttachment:
+                        ProcessAttachmentAdded(e.Type, e.ConnectionId, e.FileInfo);
+                        RefreshUI(fpnChat);
+                        break;
+                    default:
+                        Logger.Log.ForContext("", LOG_FILE).Error("AddedEventHandler err: Unexpected event type ");
+                        break;
                 }
             });
         }
         private void ProcessAttachmentAdded(ChatControlType type, string connectionId, VFileInfo fileInfo)
         {
-            FileAttachmentLayout fileAttachmentLayout = new FileAttachmentLayout(fileInfo.Id, connectionId);
-            if(type == ChatControlType.RequestAttachment)
-            {
-                fileAttachmentLayout.Add(fileInfo, true);
-                _attachments.TryAdd(fileInfo.Id, fileAttachmentLayout);
-            }
-            if (type == ChatControlType.ReceivedAttachment)
-            {
-                fileAttachmentLayout.Add(fileInfo, false);
-                _attachments[fileInfo.Id] = fileAttachmentLayout;
-                fileAttachmentLayout.AcceptSaveFile += FileEventHandler;
-            }
-            fpnChat.Controls.Add(fileAttachmentLayout);
-            fpnChat.ScrollControlIntoView(fileAttachmentLayout);
-        }
+            var userChatControl = GetConnectionChatDataPanelByConnectionId(connectionId);
 
-        private void FileEventHandler(object sender, P2PFileReceivedEventArgs e)
-        {
-            InvokeAction(() =>
+            if (userChatControl == null)
+                return;
+
+            userChatControl.AddAttachment(type, connectionId, fileInfo);
+            var chats = FindUserConnectionControlsById(connectionId);
+            if(_chatPresenter.GetActiveChatId(out string activeId))
             {
-                if (sender is Button btn && btn.Parent is FileAttachmentLayout parent)
+                foreach (var item in chats)
                 {
-                    //Accept file
-                    if (string.Compare(btn.Name, "btnSave") == 0)
-                    {
-                        var updatePathRespond = _chatViewModel.UpdateFileSavePath(parent.Id, e.FilePath);
-                        RespondHandler(updatePathRespond);
-                        if (updatePathRespond.IsSuccess)
-                        {
-                            var savefileRepond =  _chatViewModel.SaveChatToFile(parent.SocketId, parent.FileInfo.SavePath, parent.FileInfo.Filename, parent.FileInfo.FileSize);
-                            RespondHandler(savefileRepond);
-                            if(savefileRepond.IsSuccess)
-                            {
-                                var respond = _chatViewModel.AcceptedFile(parent.Id);
-                                RespondHandler(respond);
-                                if (respond.IsSuccess)
-                                    parent.AcceptSendFile();
-                            }
-                        }
-                    }
-                    //Reject file
-                    else if (string.Compare(btn.Name, "btnCancel") == 0)
-                    {
-                        var respond = _chatViewModel.DeclinedFile(parent.Id);
-                        RespondHandler(respond);
-                        if (respond.IsSuccess)
-                            parent.RejectSendFile();
-
-                        _attachments.TryRemove(parent.Id, out _);
-                    }
-                    else if (string.Compare(btn.Name, "btnStop") == 0)
-                    {
-                        var respond = _chatViewModel.StopReceivedFileDataByFileId(parent.Id);
-                        RespondHandler(respond);
-                        if (respond.IsSuccess)
-                        {
-                            parent.DisableControl(btn);
-                            parent.RemoveProgressBar();
-                        }
-
-                        _attachments.TryRemove(parent.Id, out _);
-                    }
+                    if (item.Name != activeId)
+                        item.UpdateUnreadCount(1);
                 }
-            });
+            }
         }
         private void UpdateEventHandler(object sender, ChatControlUpdateEventArgs e)
         {
             InvokeAction(() =>
             {
-                if (_attachments.TryGetValue(e.FileId, out var attachment))
+                var userChat = GetConnectionChatDataPanelByConnectionId(e.ConnectionId);
+                if(userChat != null)
                 {
-                    if (e.Type == ChatControlType.AcceptAttachment)
-                        attachment.UpdateRequestSendFileStatus("Đối tác đã chấp nhận");
-
-                    else if (e.Type == ChatControlType.RefuseAttachment)
-                        attachment.UpdateRequestSendFileStatus("Đối tác đã từ chối");
-
-                    else if(e.Type == ChatControlType.StopSendingAttachment)
-                        attachment.UpdateRequestSendFileStatus("Đối tác hủy nhận file");
+                    userChat.UpdateAttachmentStatus(e.FileId, e.Type);  
                 }
-                else
-                {
-                    Log.ForContext("FileName", this.GetType().Name + " - " + nameof(UpdateEventHandler)).Error("Cannot find attachment with id: " + e.FileId);
-                }
+                
             });
         }
         private void RemovedEventHandler(object sender, ChatControlRemoveEventArgs e)
@@ -448,39 +376,26 @@ namespace VRemoteDesktop.Views
             {
                 if (e.Type == ChatControlType.Connection)
                 {
-                    ProcessConnectionRemoved(e.ControlKey);
+                    ProcessConnectionRemoved(e.ConnectionId, e.ControlKey);
                 }
                 else if (e.Type == ChatControlType.Message)
                 {
-                    ProcessMessageRemoved(e.ControlKey);
-                }
-                else
-                {
-                    MessageBox.Show("Unexpected event type " + this.GetType().Name + " - " + nameof(RemovedEventHandler), "error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    ProcessMessageRemoved(e.ConnectionId, e.ControlKey);
                 }
             });
         }
         private void ProcessConnectionAdded(string connectionId, string text)
         {
-            Label lbChat = new Label
-            {
-                Text = text,
-                Name = connectionId,
-                BackColor = Color.LightSkyBlue,
-                BorderStyle = BorderStyle.FixedSingle,
-                AutoSize = false,
-                Height = 20,
-                Margin = Padding.Empty
-            };
-            lbChat.Click += ChangeConnectionActivateEventHandler;
-            lbChat.Width = fpnNumberChatConnection.Width - 2;
-            fpnNumberChatConnection.Controls.Add(lbChat);
-            if (lbChat is Label lb)
-            {
-                ChangeConnectionActivateEventHandler(lb, EventArgs.Empty);
-            }
-            RefeshUI(fpnNumberChatConnection);
-            fpnNumberChatConnection.ScrollControlIntoView(lbChat);
+            ConnectionChatPanel lb = new ConnectionChatPanel(connectionId, text, fpnNumberChatConnection.Width - 2, 25);
+
+            lb.Click += ActiveSessionChatChanged;
+
+            fpnNumberChatConnection.Controls.Add(lb);
+
+            ActiveSessionChatChanged(lb, EventArgs.Empty);
+            RefreshUI(fpnNumberChatConnection);
+
+            fpnNumberChatConnection.ScrollControlIntoView(lb);
         }
         private void ProcessMessageAdded(string connectionId, string message, string connectionName)
         {
@@ -492,73 +407,189 @@ namespace VRemoteDesktop.Views
             };
 
             lb.MaximumSize = new Size(fpnChat.Width - SystemInformation.VerticalScrollBarWidth - 10, 0);
-            fpnChat.Controls.Add(lb);
-            RefeshUI(fpnChat);
-            fpnChat.ScrollControlIntoView(lb);
+
+            AddChatDataByConnectionId(connectionId, lb);
         }
-        private void ProcessConnectionRemoved(string key)
+        private void ProcessConnectionRemoved(string connectionId, string key)
         {
             var controls = fpnNumberChatConnection.Controls.Find(key, true);
-            foreach (var ctl in controls)
-            {
-                fpnNumberChatConnection.Controls.Remove(ctl);
-                ctl.Click -= ChangeConnectionActivateEventHandler;
-                ctl.Dispose();
-            }
-            RefeshUI(fpnNumberChatConnection);
-        }
-        private void ProcessMessageRemoved(Control control)
-        {
-            if (control.Parent == fpnChat)
-            {
-                if (control is FileAttachmentLayout file)
-                {
-                    fpnChat.Controls.Remove(file);
-                    file.AcceptSaveFile -= FileEventHandler;
-                    file.Dispose();
-                }
-                else if (control is Label lb)
-                {
-                    fpnChat.Controls.Remove(lb);
-                    lb.Dispose();
-                }
-                RefeshUI(fpnChat);
-            }
-        }
-        private void ProcessMessageRemoved(string key)
-        {
-            var controls = fpnChat.Controls.Find(key, true);
-            if (controls.Length == 0)
-                MessageBox.Show("Không tồn tại tin nhắn với id: " + key, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
 
             foreach (var ctl in controls)
             {
-                if (ctl is FileAttachmentLayout file)
-                {
-                    fpnChat.Controls.Remove(file);
-                    file.AcceptSaveFile -= FileEventHandler;
-                    file.Dispose();
-                }
-                else if (ctl is Label lb)
-                {
-                    fpnChat.Controls.Remove(lb);
-                    lb.Dispose();
-                }
+                fpnNumberChatConnection.Controls.Remove(ctl);
+                ctl.Click -= ActiveSessionChatChanged;
+                ctl.Dispose();
             }
-            RefeshUI(fpnChat);
+
+            RemoveChatByConnectionId(connectionId);
+
+            RefreshUI(fpnNumberChatConnection);
+        }
+        private void ProcessMessageRemoved(string connectionId, Control control)
+        {
+            var chatDataPanel = GetConnectionChatDataPanelByConnectionId(connectionId);
+
+            if (chatDataPanel != null)
+            {
+                chatDataPanel.RemoveControlByKey(control);
+            }
+
+            RefreshUI(fpnChat);
+        }
+        private void ProcessMessageRemoved(string connectionId, string key)
+        {
+            var chatDataPanel = GetConnectionChatDataPanelByConnectionId(connectionId);
+
+            if(chatDataPanel != null)
+            {
+                chatDataPanel.RemoveControlByKey(key);   
+            }
+
+            RefreshUI(fpnChat);
         }
         private void InvokeAction(Action action)
         {
+            Action execute = () =>
+            {
+                try
+                {
+                    action();
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log.ForContext("", LOG_FILE).Error(ex, "Unhandled error in InvokeAction");
+                }
+            };
+
             if (this.InvokeRequired)
-                this.Invoke((MethodInvoker)(() => action()));
+                this.Invoke((MethodInvoker)(() => execute()));
             else
-                action();
+                execute();
         }
-        private void RefeshUI(Control control)
+        private List<ConnectionChatPanel> FindUserConnectionControlsById(string id)
+        {
+            var matches = fpnNumberChatConnection.Controls.Find(id, true);
+            return matches.OfType<ConnectionChatPanel>().ToList();
+        }
+        private void RefreshUI(Control control)
         {
             control.PerformLayout();
             control.Refresh();
             control.Invalidate();
+        }
+        private void AddChatDataByConnectionId(string connectionId, Control control)
+        {
+            var userChatControl = GetConnectionChatDataPanelByConnectionId(connectionId);
+
+            if (userChatControl == null)
+                return;
+
+            userChatControl.AddControl(control);
+
+            var chats = FindUserConnectionControlsById(connectionId);
+
+            if(_chatPresenter.GetActiveChatId(out string activeId))
+            {
+                foreach (var item in chats)
+                {
+                    if (item.Name != activeId)
+                        item.UpdateUnreadCount(1);
+                }
+            }
+        }
+        void ResizeToParent(Control parent, Control child)
+        {
+            child.Margin = new Padding(0);
+            child.Width = parent.ClientSize.Width;
+            child.Height = parent.ClientSize.Height;
+        }
+        private ConnectionChatDataPanel GetConnectionChatDataPanelByConnectionId(string connectionId)
+        {
+            if(_userChatControls.TryGetValue(connectionId, out var chatDataPanel))
+            {
+                if (!fpnChat.Controls.Contains(chatDataPanel))
+                {
+                    ResizeToParent(fpnChat, chatDataPanel);
+                }
+
+                return chatDataPanel;
+            }
+            else
+            {
+                _userChatControls[connectionId] = new ConnectionChatDataPanel(connectionId);
+                _userChatControls[connectionId].UserChatEvent += UserChatEventHandler;
+
+                if (!fpnChat.Controls.Contains(_userChatControls[connectionId]))
+                {
+                    ResizeToParent(fpnChat, _userChatControls[connectionId]);
+                }
+
+                return _userChatControls[connectionId];
+            }
+        }
+        private void UserChatEventHandler(object sender, UserChatControlEventArgs e)
+        {
+            if (e.Type == UserChatControlEventType.AttachmentAccepted)
+            {
+                if(_chatPresenter.SetFileSavePath(e.Attachment.Id, e.Path))
+                {
+                    var result = _chatPresenter.SaveConversation(e.Attachment.SocketId, e.Attachment.FileInfo.SavePath, e.Attachment.FileInfo.Filename, e.Attachment.FileInfo.FileSize);
+                    if (result)
+                    {
+                        _chatPresenter.AcceptFile(e.Attachment.Id);
+                    }
+                }
+            }
+            //Refused file
+            else if (e.Type == UserChatControlEventType.AttachmentRefused)
+            {
+                _chatPresenter.RejectFile(e.Attachment.Id);
+            }
+            //Cancel receive file
+            else if (e.Type == UserChatControlEventType.AttachmentStopped)
+            {
+               _chatPresenter.CancelFileTransfer(e.Attachment.Id);
+            }
+        }
+        private void RemoveChatByConnectionId(string connectionId)
+        {
+            _userChatControls.Remove(connectionId);
+
+            foreach (Control item in fpnChat.Controls)
+            {
+                ProcessMessageRemoved(connectionId, item);
+            }
+
+            fpnChat.Controls.Clear();
+
+            if(_chatPresenter.GetActiveChatId(out string activeId))
+            {
+                int index = fpnNumberChatConnection.Controls.IndexOfKey(activeId);
+                if ((index >= 0 && index < fpnNumberChatConnection.Controls.Count))
+                {
+                    var lb = fpnNumberChatConnection.Controls[index];
+                    ActiveSessionChatChanged(lb, EventArgs.Empty);
+
+                    //ChangeChatDataByConnectionId(currentConnectionId);
+                }
+            }
+        }
+        private void ChangeChatDataByConnectionId(string connectionId)
+        {
+            var connectionChatMessages = GetConnectionChatDataPanelByConnectionId(connectionId);
+
+            if(connectionChatMessages != null)
+            {
+                foreach (Control item in fpnChat.Controls)
+                {
+                    ProcessMessageRemoved(connectionId, item);
+                }
+
+                fpnChat.Controls.Clear();
+                fpnChat.Controls.Add(connectionChatMessages);
+
+                RefreshUI(fpnChat);
+            }
         }
         #endregion
     }

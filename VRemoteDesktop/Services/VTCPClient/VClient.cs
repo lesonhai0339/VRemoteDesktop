@@ -1,7 +1,8 @@
-﻿using System;
+﻿/*using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -12,17 +13,24 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
+using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.GDI;
+using VRemoteDesktop.Services.VTCPClient.Events;
 using VRemoteDesktop.Utils;
 using VRemoteServer.Models;
+using static System.Windows.Forms.AxHost;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TrackBar;
 
 namespace VRemoteDesktop.Services.VTCPClient
 {
     public class VClient : IDisposable
     {
+        private int _isDisposed;
+        private bool _isHost;
+        private bool _screenSucceeded;
         private bool _isSocketConnected;
         private bool _isP2PConnected;
-        private volatile bool _isDisposed;
         private object _lockObject = new object();
         private string _socketId;
         private VClientType _clientType;
@@ -43,21 +51,35 @@ namespace VRemoteDesktop.Services.VTCPClient
         // private readonly VPriorityQueue<object, int> _senderTasks;
 
         public event EventHandler<SocketDisposeEventArgs> SocketDisposing;
-        public event EventHandler<P2PClientDataReceived> TCPClientReceived;
+        public event EventHandler<RemoteDesktopEventArgs> TCPClientReceived;
         public event EventHandler<P2PScreenEventArgs> P2PScreenReceived;
         public event EventHandler<P2PChatEventArgs> P2PChatReceived;
 
+
+        //Test
+        public event EventHandler<SocketDataReceivedEventArgs> OnDataReceived;
+
+
         private System.Threading.Timer _timer;
         private int bytesPerSecond;
-        public VClient(string socketId, VClientType clientType)
+        private DateTime _lastPingTime;
+
+
+        //Screen 
+        private int _screenSendPending = 0;
+        private int _lastScreenSent = 0;
+        private volatile int _lastScreenId = 0;
+        private int _sending = 0;
+        public VClient(string socketId, VClientType clientType, bool isHost = false)
         {
-            Partner = null;
-            _isDisposed = false;
+            _isDisposed = 0;
+            _partnerInfo = null;
+            _screenSucceeded = false;
             _isP2PConnected = false;
             _isSocketConnected = false;
+            _lastPingTime = DateTime.Now;
             _socketId = socketId;
             _clientType = clientType;
-
             _sckConnect = new AutoResetEvent(false);
             _workAvailable = new AutoResetEvent(false);
 
@@ -77,20 +99,81 @@ namespace VRemoteDesktop.Services.VTCPClient
                 SenderWorker.RunWorkerAsync();
             }
             bytesPerSecond = 0;
-            _timer = new System.Threading.Timer(BandWidth, null, TimeSpan.FromSeconds(1), TimeSpan.FromSeconds(1));
+            //_timer = new System.Threading.Timer(Ping, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            _isHost = isHost;
         }
 
-        private void BandWidth(object state)
+        private void Ping(object state)
         {
-            lock (_lockObject)
+            if (_isHost)
             {
-                double bandWidth = (bytesPerSecond * 8) * 1.0 / 1000000; 
-                if(bandWidth > 0)
-                    Logger.Log.ForContext("", this.GetType().Name + "_BandWidth").Info(string.Format("{0} - {1} Mbps",this.SocketId, bandWidth));
-                bytesPerSecond = 0;
+                AddWork(
+                    new TaskObject { TaskType = SocketDataType.Ping,
+                        IsSendHeader = true,
+                        SessionId = SocketId,
+                        ChunkFileInfo = null,
+                        Data = new byte[0],
+                    }, QueuePriority.High);
+                if ((DateTime.Now - _lastPingTime).TotalSeconds > 30) //No pong received in last 30 seconds
+                {
+                    this.Dispose();
+                }
             }
+
+ 
+            //lock (_lockObject)
+            //{
+            //    double bandWidth = (bytesPerSecond * 8) * 1.0 / 1000000; 
+            //    if(bandWidth > 0)
+            //        Logger.Log.ForContext("", this.GetType().Name + "_BandWidth").Info(string.Format("{0} - {1} Mbps",this.SocketId, bandWidth));
+            //    bytesPerSecond = 0;
+            //}
         }
         #region Properties
+        public bool ScreenSendAvailable
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return Interlocked.CompareExchange(ref _screenSendPending, -1, -1) == 0;
+                }
+            }
+        }
+        public bool IsHost
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _isHost;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _isHost = value;
+                }
+            }
+        }
+        public bool ScreenSucceeded
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _screenSucceeded;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _screenSucceeded = value;
+                }
+            }
+        }
         public ClientInfo Partner
         {
             get
@@ -205,37 +288,57 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 foreach (var task in _receivedQueue.GetConsumingEnumerable(_cancellationToken))
                 {
-                    int start = Environment.TickCount;
                     try
                     {
-                        if (task.Type == SocketDataType.Screen || task.Type == SocketDataType.Chunks)
+                        if (task.Type == SocketDataType.ScreenSend || task.Type == SocketDataType.ScreenRegionsChangedSend)
                         {
                             P2PScreenReceived?.Invoke(this, new P2PScreenEventArgs(task.Type, task.Data));
                         }
                         else
                         {
-                            switch (task.Type)
-                            {
-                                case SocketDataType.Chat:
-                                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
-                                    break;
-                                default:                                  
-                                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(task.Type, true, task.Data));
-                                    break;
-                            }
+                            ProcessNonScreenTask(task);
                         }        
                     }
                     catch (Exception ex)
                     {
                         Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DoWork error");
                     }
-                    int end = Environment.TickCount - start;
-                    Logger.Log.ForContext("FileName", this.GetType().Name + "DataReceivedWork").Info(string.Format("Elapsed: {0} - {1}\n", end, DateTime.Now.ToString("HH:mm:ss:fff")));
                 }
             }
             catch(OperationCanceledException ex)
             {
+                //Expected
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "DataReceivedWork error");
+            }
+        }
+        private void ProcessNonScreenTask(DataReceive task)
+        {
+            switch (task.Type)
+            {
+                case SocketDataType.Pong:
+                    _lastPingTime = DateTime.Now;
+                    break;
+                case SocketDataType.ChatSend:
+                    P2PChatReceived?.Invoke(this, new P2PChatEventArgs(task.Type, task.Data));
+                    break;
+                case SocketDataType.ScreenOk:
+                    string screenid = Encoding.ASCII.GetString(task.Data, 0, 10);
+                    Console.WriteLine("Received");
+                    Interlocked.Exchange(ref _screenSendPending, 0);
+                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
+                    break;
+                case SocketDataType.RegionsChangedOk:
+                    string regionsid = Encoding.ASCII.GetString(task.Data, 0, 10);
+                    Console.WriteLine("Received");
+                    Interlocked.Exchange(ref _screenSendPending, 0);
+                    break;
+                default:
+                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(task.Type, true, task.Data));
+                    break;
             }
         }
         private void SenderDoWork(object sender, DoWorkEventArgs e)
@@ -245,7 +348,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                 while (!_cancellationToken.IsCancellationRequested)
                 {
                     //if (_senderTasks.Dequeue(out var taskObj))
-                    if (_senderQueue.Dequeue(out var taskObj))
+                    if (_senderQueue.TryPeek(out var taskObj))
                     {
                         try
                         {
@@ -278,31 +381,50 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void ProcessTask(TaskObject task)
         {
-            if (task.TaskType == SocketDataType.Chat)
+            if (task.TaskType == SocketDataType.ChatSend)
             {
                 ProcessFileTransfer(task);
+                _senderQueue.Dequeue(task, QueuePriority.Low);
                 return;
             }
-            Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
+#if DEBUG
+            else if(task.TaskType == SocketDataType.ScreenSend || task.TaskType == SocketDataType.ScreenRegionsChangedSend)
+            {
+                if (task.CapturedFrame != null)
+                {
+                    try
+                    {
+                        if (SendScreen(task.CapturedFrame))
+                        {
+                            _senderQueue.Dequeue(task, QueuePriority.Medium);
+                        }
+                    }
+                    catch
+                    {
+                        _senderQueue.Dequeue(task, QueuePriority.Medium);
+                    }
+                }
+                else
+                {
+                    Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
+                    _senderQueue.Dequeue(task, QueuePriority.Medium);
+                }
+            }
+
+#endif
+            else
+            {
+                Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
+                _senderQueue.Dequeue(task, QueuePriority.High);
+            }
         }
         public void RemoveTaskByType(SocketDataType socketType, object dataType, object data)
         {
-            if (socketType == SocketDataType.None)
+            if (socketType == SocketDataType.None || dataType == null || data == null)
             {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error("SocketDataType is none, pass");
                 return;
             }
-            if (dataType == null)
-            {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error("dataType is null, pass");
-                return;
-            }
-            if (data == null)
-            {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error("data is null, pass");
-                return;
-            }
-            if (socketType == SocketDataType.Chat)
+            if (socketType == SocketDataType.ChatSend)
             {
                 if(dataType is ChatDataType chat && chat == ChatDataType.StopReceivedFileData)
                 {
@@ -312,7 +434,7 @@ namespace VRemoteDesktop.Services.VTCPClient
                         {
                             if (item is TaskObject task)
                             {
-                                if (task.TaskType == SocketDataType.Chat)
+                                if (task.TaskType == SocketDataType.ChatSend)
                                 {
                                     ChatDataType chatType = (ChatDataType)task.Data[0];
                                     if(chatType == ChatDataType.FileData)
@@ -330,12 +452,31 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWork(TaskObject task, QueuePriority priority)
         {
-            if (task == null) return;
+
+            if (task == null) 
+                return;
+
             _senderQueue.Enqueue(task, priority);
             //_senderTasks.Enqueue(task, (int)task.Priority);
         }
+        public void AddWork(TaskObject[] tasks, QueuePriority priority)
+        {
+
+            if (tasks == null || tasks.Length == 0)
+                return;
+
+            lock (_lockObject)
+            {
+                for(int i = 0; i< tasks.Length; i++)
+                {
+                    _senderQueue.Enqueue(tasks[i], priority);
+                }
+            }
+        }
+
         public void AddWorkGroup(List<TaskObject> tasks, QueuePriority priority)
         {
+
             if (tasks == null || tasks.Count == 0) return;
 
             _senderQueue.Enqueue(new TaskGroup(tasks), priority);
@@ -343,23 +484,41 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public void AddWorkGroup(TaskObject[] tasks, QueuePriority priority)
         {
-            if (tasks == null || tasks.Length == 0) return;
+
+            if (tasks == null || tasks.Length == 0) 
+                return;
+
             _senderQueue.Enqueue(new TaskGroup(tasks), priority);
             //_senderTasks.Enqueue(new TaskGroup(tasks), (int)tasks[0].Priority);
+        }
+
+        public bool TryConnect(string ip, int port, int retry = 0, int waitRespondTime = 3000)
+        {
+
+            bool respond;
+            int count = 0;
+            while (count <= retry)
+            {
+                respond = Connect(ip, port, waitRespondTime);
+                if (respond)
+                    return true;
+                count++;
+            }
+            return false;
         }
         /// <summary>
         /// Connect to remote server with default IP and port
         /// </summary>
         /// <param name="ip"></param>
         /// <param name="port"></param>
-        public void Connect(string ip, int port)
+        private bool Connect(string ip, int port, int timeout = 3000)
         {
             try
             {
+                _sckConnect.Reset();
                 if (string.IsNullOrWhiteSpace(ip) || port < 0)
                 {
-                    Logger.Log.ForContext("FileName", nameof(Connect)).Error("Invalidate argument at Connect method");
-                    return;
+                    return false;
                 }
 
                 IPEndPoint remoteEP;
@@ -374,7 +533,8 @@ namespace VRemoteDesktop.Services.VTCPClient
                     }
                     Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.KeepAlive, true);
                     Socket.BeginConnect(remoteEP, new AsyncCallback(ConnectCallback), Socket);
-                    _sckConnect.WaitOne(5000);
+                    bool respond = _sckConnect.WaitOne(timeout);
+                    return respond;
                 }
                 else
                 {
@@ -389,6 +549,62 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 Logger.Log.ForContext("FileName", nameof(Connect)).Error(ex, "Unexpected error when connect to relay server");
             }
+            return false;
+        }
+        public bool Listen()
+        {
+            EndPoint endpoint = new IPEndPoint(IPAddress.Any, 2399);
+
+            if (Socket == null || !Socket.Connected)
+            {
+                Socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+                Socket.NoDelay = true;
+            }
+            Socket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
+
+            _socket.Bind(endpoint);
+            _socket.Listen(1);
+            _socket.BeginAccept(ListenCallback, _socket);
+            bool flag = _sckConnect.WaitOne(3000);
+            return flag;
+        }
+
+        private void ListenCallback(IAsyncResult ar)
+        {
+            try
+            {
+                var sck = ar.AsyncState as Socket;
+                var client = sck.EndAccept(ar);
+
+                //end listen
+                sck.Close();
+                sck.Dispose();
+
+                if (!ReceivedWorker.IsBusy)
+                {
+                    ReceivedWorker.RunWorkerAsync();
+                }
+
+                _socket = client;
+
+                StateObject stateObject = new StateObject();
+                stateObject.WorkSocket = _socket;
+
+                _socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
+            }
+            catch (SocketException ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SocketException when connecting to remote server");
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when connecting to remote server");
+            }
+            finally
+            {
+                try { _sckConnect.Set(); } catch { }
+                
+            }
         }
         /// <summary>
         /// Callback method when the socket is connected to the remote server
@@ -398,13 +614,11 @@ namespace VRemoteDesktop.Services.VTCPClient
         {
             try
             {
-                _sckConnect.Set();
                 Socket.EndConnect(ar);
                 if (!Socket.Connected)
                 {
                     //Connected?.Invoke(this, new ConnectEventArgs(false));
-                    TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, false, new byte[0]));
-                    Logger.Log.ForContext("FileName", this.GetType().Name).Error("Cannot connect to server");
+                    TCPClientReceived?.Invoke(this, new RemoteDesktopEventArgs(SocketDataType.Connect, false, new byte[0]));
                     return;
                 }
 
@@ -414,7 +628,10 @@ namespace VRemoteDesktop.Services.VTCPClient
                     ReceivedWorker.RunWorkerAsync();
                 }
                 //Connected?.Invoke(this, new ConnectEventArgs(true));
-                TCPClientReceived?.Invoke(this, new P2PClientDataReceived(SocketDataType.Connect, true, new byte[0]));
+                if (OnDataReceived != null)
+                {
+                    OnDataReceived.Invoke(this, new SocketDataReceivedEventArgs(SocketDataType.Connect, new byte[0]));
+                }
                 StateObject stateObject = new StateObject();
                 stateObject.WorkSocket = Socket;
                 stateObject.SckId = _socketId;
@@ -429,12 +646,15 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Unexpected error when connecting to remote server");
             }
+            finally
+            {
+                _sckConnect.Set();
+            }
         }
         public void UpdatePartnerInfo(ClientInfo partnerInfo)
         {
-            if(partnerInfo == null)
+            if (partnerInfo == null)
             {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error("Missing some partner value, dispose VClient with id: "+ SocketId);
                 //Info invalid, dispose this class
                 this.Dispose();
             }
@@ -454,6 +674,13 @@ namespace VRemoteDesktop.Services.VTCPClient
                 StateObject stateObject = (StateObject)ar.AsyncState;
                 Socket workSocket = stateObject.WorkSocket;
                 int num = Socket.EndReceive(ar);
+                if(num == 0)
+                {
+                    //Socket disconnect, dispose this class
+                    this.Dispose();
+                    return;
+                }
+
                 if (num > 0)
                 {
                     stateObject.ByteArrayBuilder.Append(stateObject.Buffer, 0, num);
@@ -500,7 +727,6 @@ namespace VRemoteDesktop.Services.VTCPClient
 
                 if (bytes.Length < headerSize)
                 {
-                    Logger.Log.ForContext("", this.GetType().Name).Error("Data received less than header size, not handler");
                     return;
                 }
                 int offset = 0;
@@ -508,7 +734,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 int dataLength = BitConverter.ToInt32(bytes, offset);
                 if(dataLength <= 0)
                 {
-                    Logger.Log.ForContext("", this.GetType().Name).Error("Data length mismatch");
                     return;
                 }
                 offset += ByteConstants.INT32_LENGTH;
@@ -516,7 +741,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 SocketDataType dataType = (SocketDataType)bytes[offset];
                 if(!Enum.IsDefined(typeof(SocketDataType), dataType))
                 {
-                    Logger.Log.ForContext("", this.GetType().Name).Error("Invalid SocketDataType");
                     return;
                 }
                 offset += RandomLength.DATA_TYPE_LENGTH;
@@ -524,7 +748,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 var result = ByteArrayHelper.ConvertByteArrayToString(bytes, offset, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII);
                 if (!result.IsSuccess)
                 {
-                    Logger.Log.ForContext("", this.GetType().Name).Error("Cannot convert byte array to string");
                     return;
                 }
                 string socketId = result.GetResult();
@@ -540,6 +763,12 @@ namespace VRemoteDesktop.Services.VTCPClient
                     data: data,
                     socketId: socketId
                 ));
+
+                if(OnDataReceived != null)
+                {
+                    OnDataReceived.Invoke(this, new SocketDataReceivedEventArgs(dataType, data));
+                }
+
             }
             catch (Exception ex)
             {
@@ -548,10 +777,13 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         public byte[] HeaderGenerate(SocketDataType type, string socketId, bool includeData = false, byte[] data = null, int dataSize = 0)
         {
+
             if (type == SocketDataType.None)
                 return null;
+
             if (string.IsNullOrWhiteSpace(socketId))
                 socketId = this.SocketId;
+
             try
             {
                 int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + socketId.Length;
@@ -600,13 +832,13 @@ namespace VRemoteDesktop.Services.VTCPClient
             {
                 try
                 {
+                    FileHelper.OpenStream(task.ChunkFileInfo.FilePath);
                     int headerSize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + RandomLength.FILE_ID_LENGTH;
 
                     byte[] chunkFileData = new byte[task.ChunkFileInfo.ChunkSize + headerSize];
 
                     if (!Enum.IsDefined(typeof(ChatDataType), (int)task.Data[0]))
                     {
-                        Logger.Log.ForContext("FileName", this.GetType().Name).Error("Invalid ChatDataType, not handler");
                         return;
                     }
                     int offset = 0;
@@ -624,15 +856,20 @@ namespace VRemoteDesktop.Services.VTCPClient
                     offset += RandomLength.FILE_ID_LENGTH;
 
                     //File data
-                    int chunkRead = FileHelper.GetChunkFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
-
+                    int chunkRead = FileHelper.CopyFileDataByOffset(task.ChunkFileInfo.FilePath, task.ChunkFileInfo.Offset, ref chunkFileData, offset, task.ChunkFileInfo.ChunkSize);
                     if (chunkRead != chunkFileData.Length - headerSize)
                     {
-                        Logger.Log.ForContext("FileName", this.GetType().Name).Error("Error when ProcessFileTransfer send file data error, remove remain send file task");
                         RemoveTaskByType(task.TaskType, type, task.ChunkFileInfo.FileId);
                         return;
                     }
                     Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
+
+                    if ((task.ChunkFileInfo.Offset + task.ChunkFileInfo.ChunkSize) >= task.ChunkFileInfo.FileLength)
+                    {
+                        bool result = FileHelper.CloseStream(task.ChunkFileInfo.FilePath);
+                        if(!result)
+                            Logger.Log.ForContext("FileName", this.GetType().Name).Error("Close stream failed");
+                    }
                 }
                 catch(Exception ex)
                 {
@@ -640,15 +877,141 @@ namespace VRemoteDesktop.Services.VTCPClient
                 }
             }
         }
-        /// <summary>
-        /// Create packet header before sending to remote server
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="data"></param>
-        /// <param name="socketId"></param>
-        /// <param name="isSendHeader"></param>
+        ///// <summary>
+        ///// Create packet header before sending to remote server
+        ///// </summary>
+        ///// <param name="type"></param>
+        ///// <param name="data"></param>
+        ///// <param name="socketId"></param>
+        ///// <param name="isSendHeader"></param>
+        //public void Send(SocketDataType type, byte[] data, string socketId, bool isSendHeader = true)
+        //{
+        //    if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
+        //        throw new ObjectDisposedException(this.GetType().Name);
+
+        //    try
+        //    {
+        //        if (type == SocketDataType.None)
+        //            return;
+        //        if (string.IsNullOrWhiteSpace(socketId))
+        //            socketId = this.SocketId;
+
+
+        //        if (isSendHeader)
+        //        {
+        //            data = HeaderGenerate(type: type,socketId: socketId, true, data);
+        //        }
+        //        Send(data);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+        //    }
+        //}
+        //private void Send(byte[] data)
+        //{
+        //    try
+        //    {
+        //        Sendstate state = new Sendstate
+        //        {
+        //            Data = data,
+        //            Remained = data.Length,
+        //            Sent = 0,
+        //            Timeout = DateTime.Now
+        //        };
+        //        Send(state);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+        //    }
+        //}
+        //private void Send(Sendstate state)
+        //{
+        //    if (_socket == null) 
+        //        return;
+
+        //    if (!_socket.Connected)
+        //    {
+        //        throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
+        //    }
+
+        //    if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
+        //    {
+        //        throw new TimeoutException("Send timeout");
+        //    }
+
+        //    _socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
+        //}
+        //private void SendCallback(IAsyncResult ar)
+        //{
+        //    var sentState = (Sendstate)ar.AsyncState;
+        //    try
+        //    {
+        //        checked
+        //        {
+        //            int num = Socket.EndSend(ar);
+        //            lock (_lockObject)
+        //            {
+        //                bytesPerSecond += num;
+        //            }
+        //            if (num <= 0)
+        //            {
+        //                throw new InvalidOperationException("Send error on socket with socket Id: " + SocketId.ToString());
+        //            }
+        //            sentState.Sent += num;
+        //            sentState.Remained -= num;
+        //            if (sentState.Remained > 0)
+        //            {
+        //                Send(sentState);
+        //            }
+        //        }
+        //    }
+        //    catch(SocketException ex)
+        //    {
+        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback error on socketid: " + SocketId);
+        //    }
+        //}
+#if DEBUG
+        public bool SendScreen(CapturedFrame frame)
+        {
+            //if (Interlocked.CompareExchange(ref _screenSendPending, 1, 0) != 0)
+            //    return false;
+
+            try
+            {
+                if (_lastScreenId == 0 || _lastScreenId < frame.FrameId)
+                {
+                    Interlocked.Exchange(ref _lastScreenId, frame.FrameId);
+                    Console.WriteLine(_lastScreenId);
+                    Send(frame);
+                    return true;
+                }
+                else
+                {
+                    frame.DecRef();
+                    Interlocked.Exchange(ref _screenSendPending, 0);
+                    return true;
+                }
+                //Send(frame);
+                //return true;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine("Screen task error: " + ex.Message);
+                Interlocked.Exchange(ref _screenSendPending, 0);
+                return false;
+            }
+        }
         public void Send(SocketDataType type, byte[] data, string socketId, bool isSendHeader = true)
         {
+            if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1)
+                throw new ObjectDisposedException(this.GetType().Name);
+
             try
             {
                 if (type == SocketDataType.None)
@@ -656,10 +1019,9 @@ namespace VRemoteDesktop.Services.VTCPClient
                 if (string.IsNullOrWhiteSpace(socketId))
                     socketId = this.SocketId;
 
-
                 if (isSendHeader)
                 {
-                    data = HeaderGenerate(type: type,socketId: socketId, true, data);
+                    data = HeaderGenerate(type: type, socketId: socketId, true, data);
                 }
                 Send(data);
             }
@@ -668,16 +1030,42 @@ namespace VRemoteDesktop.Services.VTCPClient
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
             }
         }
-        private void Send(byte[] data)
+        private void Send(CapturedFrame frame)
         {
+            if (Interlocked.CompareExchange(ref _sending, 1, 0) != 0)
+                return;
+
+            try
+            {
+                Sendstate state = new Sendstate
+                {
+                    Data = frame.CompressedData,
+                    Remained = frame.CompressedDataLength,
+                    Sent = frame.CompressedDataOffset,
+                    Timeout = Environment.TickCount,
+                    CapturedFrame = frame
+                };
+                Send(state);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+            }
+        }
+        private void Send(byte[] data, int offset = 0, int length = 0)
+        {
+            if (Interlocked.CompareExchange(ref _sending, 1, 0) != 0)
+                return;
+
             try
             {
                 Sendstate state = new Sendstate
                 {
                     Data = data,
-                    Remained = data.Length,
-                    Sent = 0,
-                    Timeout = DateTime.Now
+                    Remained = (length != 0) ? length : data.Length,
+                    Sent = (offset != 0) ? offset : 0,
+                    Timeout = Environment.TickCount,
+                    CapturedFrame = null
                 };
                 Send(state);
             }
@@ -688,20 +1076,25 @@ namespace VRemoteDesktop.Services.VTCPClient
         }
         private void Send(Sendstate state)
         {
-            if (_socket == null) return;
+            if (_socket == null)
+                return;
+
             if (!_socket.Connected)
             {
-                throw new InvalidOperationException("Socket with id: "+ SocketId + " no available");
+                throw new InvalidOperationException("Socket with id: " + SocketId + " no available");
             }
-            if (DateTime.Now.Subtract(state.Timeout).TotalSeconds > DefaultValue.DEFAULT_TIMEOUT_SECONDS)
+
+            if ((Environment.TickCount - state.Timeout) > DefaultValue.DEFAULT_TIMEOUT_SECONDS * 1000)
             {
                 throw new TimeoutException("Send timeout");
             }
+
             _socket.BeginSend(state.Data, state.Sent, state.Remained, SocketFlags.None, SendCallback, state);
         }
         private void SendCallback(IAsyncResult ar)
         {
             var sentState = (Sendstate)ar.AsyncState;
+            bool isFinalPart = false;
             try
             {
                 checked
@@ -721,32 +1114,51 @@ namespace VRemoteDesktop.Services.VTCPClient
                     {
                         Send(sentState);
                     }
+                    else
+                    {
+                        isFinalPart = true;
+                    }
                 }
             }
-            catch(SocketException ex)
+            catch (SocketException ex)
             {
-                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: "+ SocketId);
+                Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: " + SocketId);
+                isFinalPart = true;
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback error on socketid: " + SocketId);
+                isFinalPart = true;
+            }
+            finally
+            {
+                if (sentState.Remained <= 0 || !_socket.Connected)
+                {
+                    Interlocked.Exchange(ref _sending, 0);
+                }
+                if (isFinalPart && sentState.CapturedFrame != null)
+                {
+                    sentState.CapturedFrame.DecRef();   
+                }
             }
         }
+#endif
         private void Cancel()
         {
+            if (_isDisposed == 1) return;
             _cts.Cancel();
         }
         public void Dispose()
         {
-            SocketDisposing?.Invoke(this, new SocketDisposeEventArgs(SocketId));
             Dispose(true);
             GC.SuppressFinalize(this);
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing &&  Interlocked.CompareExchange(ref _isDisposed, 1, 0) == 0)
             {
-                if (_isDisposed) return;
+                SocketDisposing?.Invoke(this, new SocketDisposeEventArgs(SocketId));
+
                 if (_cts != null)
                 {
                     try
@@ -788,18 +1200,6 @@ namespace VRemoteDesktop.Services.VTCPClient
                 {
                     _senderQueue.Dispose();
                 }
-                lock (_lockObject)
-                {
-                    try
-                    {
-                        Send(SocketDataType.Disconnect, new byte[0], null, true);
-                        Thread.Sleep(50);
-                    }
-                    catch (Exception ex)
-                    {
-                        Logger.Log.ForContext("", this.GetType().Name).Error(ex, "Send disconnection at dispose error: ");
-                    }
-                }
                 try
                 {
                     _socket?.Shutdown(SocketShutdown.Both);
@@ -809,16 +1209,16 @@ namespace VRemoteDesktop.Services.VTCPClient
                 catch (Exception)
                 {
                 }
+                _timer?.Dispose();
                 // Set flags
                 _isSocketConnected = false;
                 _isP2PConnected = false;
-                _isDisposed = true;
                 _sckConnect.Dispose();
                 _workAvailable.Dispose();
             }
-            _isDisposed = true;
         }
         #endregion
     }
 
 }
+*/

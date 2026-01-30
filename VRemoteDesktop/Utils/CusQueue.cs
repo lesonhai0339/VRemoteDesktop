@@ -5,14 +5,17 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using VRemoteDesktop.Enums;
-using VRemoteDesktop.Models;
+using static VRemoteDesktop.Utils.DefaultSocketPacket;
 
 namespace VRemoteDesktop.Utils
 {
     public interface ICusQueue<T>
     {
+        int Count { get; }
         bool HasItem();
         void Enqueue(T tasks, QueuePriority priority);
+        bool TryPeek(out T task);
+        bool Dequeue(T input, QueuePriority priority);
         bool Dequeue(out T task);
         int RemoveAll(Func<T, bool> match);
         int RemoveAll(QueuePriority priority, Func<T, bool> match);
@@ -25,6 +28,8 @@ namespace VRemoteDesktop.Utils
         private readonly object _highLock = new object();
         private readonly object _mediumLock = new object();
         private readonly object _lowLock = new object();
+        private DateTimeOffset _lastFileSend;
+        private int _limitPacketSendPerSecond;
         private ConcurrentQueue<T> _highTasks;
         private ConcurrentQueue<T> _mediumTasks;
         private ConcurrentQueue<T> _lowTasks;
@@ -32,6 +37,8 @@ namespace VRemoteDesktop.Utils
         private Dictionary<QueuePriority, object> _locks;
         public CusQueue()
         {
+            _lastFileSend = DateTimeOffset.UtcNow;
+            _limitPacketSendPerSecond = 1000 / (LIMIT_BANDWIDTH_PER_SECOND / DEFAULT_CHUNK_SIZE);
             _highTasks = new ConcurrentQueue<T>();
             _mediumTasks = new ConcurrentQueue<T>();
             _lowTasks = new ConcurrentQueue<T>();
@@ -48,6 +55,8 @@ namespace VRemoteDesktop.Utils
                 { QueuePriority.Low, _lowLock}
             };
         }
+        public int Count =>
+            _highTasks.Count + _mediumTasks.Count + _lowTasks.Count;
         public bool HasItem()
         {
             return _highTasks.TryPeek(out _) 
@@ -68,6 +77,52 @@ namespace VRemoteDesktop.Utils
                 _keyValuePairs[priority].Enqueue(tasks);
             }
         }
+        public bool TryPeek(out T task)
+        {
+            task = default(T);
+
+            if (IsDispose()) return false;
+
+            lock (_highLock)
+            {
+                if (_highTasks.TryPeek(out task)) return true;
+            }
+            lock (_mediumLock)
+            {
+                if (_mediumTasks.TryPeek(out task)) return true;
+            }
+            lock (_lowLock)
+            {
+                if (_lowTasks.Count > 0)
+                {
+                    DateTimeOffset now = DateTimeOffset.UtcNow;
+                    var elapsed = (now - _lastFileSend).TotalMilliseconds;
+                    if (elapsed >= _limitPacketSendPerSecond)
+                    {
+                        _lastFileSend = now;
+                        if (_lowTasks.TryPeek(out task)) return true;
+                    }
+                }
+            }
+            return false;
+        }
+        public bool Dequeue(T input, QueuePriority priority)
+        {
+            if (IsDispose()) return false;
+
+
+            var @lock = _locks[priority];
+            var queue = _keyValuePairs[priority];
+
+            lock (@lock)
+            {
+                if (queue.TryPeek(out var task) && ReferenceEquals(input, task))
+                {
+                    return queue.TryDequeue(out _);
+                }
+            }
+            return false;
+        }
         public bool Dequeue(out T task)
         {
             task = default(T);
@@ -84,9 +139,17 @@ namespace VRemoteDesktop.Utils
             }
             lock (_lowLock)
             {
-                if (_lowTasks.TryDequeue(out task)) return true;
+                if (_lowTasks.Count > 0)
+                {
+                    DateTimeOffset now = DateTimeOffset.UtcNow;
+                    var elapsed = (now - _lastFileSend).TotalMilliseconds;
+                    if (elapsed >= _limitPacketSendPerSecond)
+                    {
+                        _lastFileSend = now;
+                        if (_lowTasks.TryDequeue(out task)) return true;
+                    }
+                }
             }
-
             return false;
         }
         public int RemoveAll(QueuePriority priority, Func<T, bool> match)

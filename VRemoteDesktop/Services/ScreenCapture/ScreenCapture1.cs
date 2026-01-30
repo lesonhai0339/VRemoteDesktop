@@ -13,6 +13,8 @@ using VRemoteDesktop.Models;
 using System.Diagnostics;
 using static VRemoteDesktop.Utils.DefaultScreen;
 using System.Runtime.ConstrainedExecution;
+using System.Threading;
+using VRemoteDesktop.Services.ScreenCapture.Interop;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -25,9 +27,9 @@ namespace VRemoteDesktop.Services.ScreenCapture
     }
     public class ScreenCapture1 : IScreenCapture1, IDisposable
     {
+        private int _isDisposed;
         private int THRESHOLD = 10;
         private int BLOCK_SIZE = DEFAULT_BLOCK_SIZE; // Size of each block for change detection
-        private bool _isDisposed = false;
         private ConcurrentBag<Rectangle> changedBlocks = new ConcurrentBag<Rectangle>();
         private int maxDegreeOfParallelism;
         private Rectangle _bounds;
@@ -40,6 +42,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private EncoderParameters encoderParams;
         public ScreenCapture1()
         {
+            _isDisposed = 0;
             _bounds = Screen.PrimaryScreen.Bounds;
             _previousFrame = null;
             _lock = new object();
@@ -52,7 +55,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             regions = new List<Rectangle>();
             maxDegreeOfParallelism = Math.Max(1, Environment.ProcessorCount / 2);
             InitRequirements(_bounds.Width, _bounds.Height);
-        }
+        } 
         private void InitRequirements(int width, int height)
         {
             regions = GenerateRegions(width, height);
@@ -135,16 +138,28 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
         private List<ScreenRegion> FullScreenRegion(Bitmap fullScreen)
         {
-            using (var stream = new MemoryStream())
+            if (Interlocked.CompareExchange(ref _isDisposed, 0, 0) == 1) 
+                return default;
+
+            try
             {
-                fullScreen.Save(stream, encoder, encoderParams);
-                ScreenRegion region = new ScreenRegion
+                if (fullScreen == null || encoder == null || encoderParams == null)
+                    return default;
+
+                using (var stream = new MemoryStream())
                 {
-                    IsFullScreen = true,
-                    Rectangle = new Rectangle(0, 0, fullScreen.Width, fullScreen.Height),
-                    Bytes = stream.ToArray()
-                };
-                return new List<ScreenRegion> { region };
+                    fullScreen.Save(stream, encoder, encoderParams);
+                    ScreenRegion region = new ScreenRegion
+                    {
+                        IsFullScreen = true,
+                        Rectangle = new Rectangle(0, 0, fullScreen.Width, fullScreen.Height),
+                        Bytes = stream.ToArray()
+                    };
+                    return new List<ScreenRegion> { region };
+                }
+            }
+            catch {
+                return default;
             }
         }  
         private List<ScreenRegion> MakeScreenRegions(Bitmap currentScreen, List<Rectangle> dirtyRegions)
@@ -189,13 +204,13 @@ namespace VRemoteDesktop.Services.ScreenCapture
             using (Graphics bitmapGraphics = Graphics.FromImage(bitmap))
             {
                 IntPtr bitmapHdc = bitmapGraphics.GetHdc();
-                IntPtr screenHdc = CaptureApis.GetDC(IntPtr.Zero);
+                IntPtr screenHdc = CaptureApi.GetDC(IntPtr.Zero);
 
-                CaptureApis.BitBlt(bitmapHdc, 0, 0, _bounds.Width, _bounds.Height,
+                CaptureApi.BitBlt(bitmapHdc, 0, 0, _bounds.Width, _bounds.Height,
                        screenHdc, _bounds.X, _bounds.Y, 0x00CC0020); // SRCCOPY
 
                 bitmapGraphics.ReleaseHdc(bitmapHdc);
-                CaptureApis.ReleaseDC(IntPtr.Zero, screenHdc);
+                CaptureApi.ReleaseDC(IntPtr.Zero, screenHdc);
             }
             return bitmap;
         }
@@ -317,9 +332,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (disposing)
+            if (disposing && Interlocked.CompareExchange(ref _isDisposed, 1, 0 ) == 0)
             {
-                if (_isDisposed) return;
                 lock (_lockObject)
                 {
 
@@ -330,9 +344,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
                 regions.Clear();
                 regions = null;
-                encoder = null;
                 encoderParams?.Dispose();
-                _isDisposed = true;
             }
         }
     }

@@ -1,13 +1,24 @@
-﻿using System;
+﻿/*using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
+using System.Net;
+using System.Text;
 using System.Threading;
+using System.Windows.Forms;
 using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Services.ScreenCapture;
+using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.Enums;
+using VRemoteDesktop.Services.ScreenCapture.Events;
+using VRemoteDesktop.Services.ScreenCapture.GDI;
+using VRemoteDesktop.Services.SessionManagement;
+using VRemoteDesktop.Services.SessionManagement.Enums;
 using VRemoteDesktop.Services.SystemService;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
@@ -17,373 +28,400 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public class RemoteDesktopService : IDisposable
     {
-       
+       private readonly object _lock = new object();
         private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
         private readonly string DEFAULT_SERVER_PORT = AppSettingHelper.GetValue("RemotePort");
         private volatile bool _disposed;
+        private bool _isCapturing = false;
 
+#if DEBUG
+        private readonly IVScreenSender _screenSender;
+#endif
         private readonly IClientInfoManager _clientInfo;
         private readonly GlobalHookService _globalHook;
-        private readonly VClientManager _vClientManager;
+        private readonly SessionManager _sessionManager;
         private ManualResetEvent _reset;
 
+        private Dictionary<SocketDataType, Action<object, EventArgs>> _eventHandlers;
+
         public event EventHandler<KeyboardEventArgs> KeyboardEvent;
-        public event EventHandler<P2PClientDataReceived> DataReceivedEvent;
-        public RemoteDesktopService(GlobalHookService globalHook, VClientManager vClientManager, IClientInfoManager clientInfo)
+        public event EventHandler<RemoteDesktopEventArgs> RespondEvent;
+        public RemoteDesktopService(IVScreenSender screenSender ,GlobalHookService globalHook, SessionManager sessionManager, IClientInfoManager clientInfo)
         {
+            Initialize();
+
             _disposed = false;
             _clientInfo = clientInfo;
             _reset = new ManualResetEvent(false);
 
             _globalHook = globalHook;
-            _vClientManager = vClientManager;
+            _sessionManager = sessionManager;
+
+#if DEBUG
+            _screenSender = screenSender;
+            _screenSender.OnFrame += OnRegionEventHandler;
+
+#endif
 
             _globalHook.ScreenCaptureChanged += ScreenCaptureEventHandler;
             _globalHook.KeyboardReceived += KeyboardEventHandler;
-            _vClientManager.ClientDataReceived += ClientDataReceivedEventHandler;
-            StartKeyboardListener();
-
+            _sessionManager.SessionDataReceived += EventReceived;
+            _sessionManager.SessionClosed += ClientSessionClosedEventHandler;
+            StartKeyboardListener();  
         }
+        private void OnRegionEventHandler(object sender, FrameEventArgs e)
+        {
+            try
+            {
+                if(e.Type == ScreenType.FULL_SCREEN)
+                {
+                    _sessionManager.AddScreen(ClientType.Controlled, e.RegionFrame);
+                }
+                else if(e.Type == ScreenType.DIRTY_REGIONS)
+                {
+                    _sessionManager.AddDirtyRegions(ClientType.Controlled, e.RegionFrame);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", "OnDirtyRegionError").Error(ex.Message);
+            }
+        }
+#if DEBUG
+
+#endif
+        private void Initialize()
+        {
+            _eventHandlers = new Dictionary<SocketDataType, Action<object, EventArgs>>
+            {
+                //login
+                { SocketDataType.Connect, ForwardEvent},
+                { SocketDataType.Disconnect, ClientDisconnected},
+                { SocketDataType.Login, LoginRespond},
+                { SocketDataType.LoginFailed, ForwardEvent},
+                { SocketDataType.Error, ForwardEvent},
+
+                //p2p
+                { SocketDataType.P2PConnect, P2PConnect},
+                { SocketDataType.P2PDataRespond, P2PConnectDataRespond},
+                { SocketDataType.P2PAcceptConnect, P2PRequestToConnectAccepted},
+                { SocketDataType.P2PLogin, P2PLogin},
+                { SocketDataType.P2PLoginRespond, P2PLoginRespond},
+                { SocketDataType.P2PInvalidConnectData, ForwardEvent},
+
+                //turn server
+                { SocketDataType.RemoteControlRequestToConnect, RelayConnect},
+                { SocketDataType.RemoteControlAcceptedRequestToConnect, RelayRequestToConnectAccepted},
+                { SocketDataType.RemoteControlRefusedRequestToConnect, ForwardEvent},
+                { SocketDataType.RemoteControlConnectFailed, ClientDisconnected},
+                { SocketDataType.RemoteControlDisconnect, ClientDisconnected},
+
+                //low-level
+                { SocketDataType.ClipboardSend, ClipboardReceived},
+                { SocketDataType.MouseSend, MouseReceived},
+                { SocketDataType.KeyboardSend, KeyboardReceived},
+                { SocketDataType.Ready, ReadyToRemote},
+                { SocketDataType.ScreenOk, ScreenCompleted}
+            };
+        }
+
+        private void ScreenCompleted(object sender, EventArgs e)
+        {
+            var clientSession = sender as ClientSession;
+            if(clientSession != null)
+            {
+                _screenSender.AddSessionBuffer(clientSession.SessionId , clientSession.Image);
+            }
+        }
+
         #region Properties
         public bool Disposed => _disposed;
         #endregion
         #region Methods
         public ClientInfo GetMe()
         {
-            return _clientInfo.GetMyInfo();
-        }
-        public void Login(string id)
-        {
-            if (string.IsNullOrWhiteSpace(id)) return;
-
-            var client = _vClientManager.GetByKey(id);
-            if(client != null)
+            try
             {
-                byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
-                client.Send(SocketDataType.Login, encoder, null);
+                return _clientInfo.GetMyInfo();
             }
-        }
-        public void P2PConnect(string partnerId, string partnerPassword)
-        {
-            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
-
-            _reset.Reset();
-            string connectionId = StringHelper.RandomStringNumber(8);
-            var newConnection = NewClient(connectionId, VClientType.Sender);
-            if (newConnection == null)
+            catch(Exception ex)
             {
-                return;
+                throw;
             }
-            newConnection.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
-            _reset.WaitOne(5000);
-            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SocketId, partnerId, partnerPassword, GetMe().ToNetworkString());
-            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
-            newConnection.Send(SocketDataType.P2PRequestConnect, dataBytes, newConnection.SocketId, true);
         }
         public void UpdateMyInfo(byte[] data)
         {
             if (data == null || data.Length == 0) return;
 
-            _clientInfo.UpdateMyInfo(data);
-        }
-        public void StartKeyboardListener()
-        {
-            _globalHook.StartKeyboardListener();
-        }
-        public void StopKeyboardListener()
-        {
-            _globalHook.StopKeyboardListener();
-        }
+            try
+            {
+                _clientInfo.UpdateMyInfo(data);
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "UpdateMyInfo error");
+            }
+        }    
         public void AddKeyboardListenerOnFormByHandle(IntPtr handle)
         {
             if (handle == IntPtr.Zero) return;
-            _globalHook.AddKeyboardHook(handle);
+            try
+            {
+                _globalHook.AddKeyboardHook(handle);
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "AddKeyboardListenerOnFormByHandle error");
+            }
         }
         public void RemoveKeyboardListenerOnFormByHandle(IntPtr handle)
         {
             if (handle == IntPtr.Zero) return;
-            _globalHook.RemoveKeyboardHook(handle);
+
+            try
+            {
+                _globalHook.RemoveKeyboardHook(handle);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "RemoveKeyboardListenerOnFormByHandle error");
+            }
         }
         public string GetClipboardString()
         {
-            return _globalHook.GetClipboard(); ;
+            try
+            {
+                return _globalHook.GetClipboard(); ;
+            }
+            catch
+            {
+                return string.Empty;
+            }
         }
         public bool SetClipboard(byte[] data)
         {
             if (data == null || data.Length == 0) return false;
-            return _globalHook.SetClipboard(data); ;
+            try
+            {
+                return _globalHook.SetClipboard(data); ;
+            }
+            catch
+            {
+                return false;
+            }
         }
         public bool SetClipboard(byte[] data, int index, int length)
         {
             if (data == null || data.Length == 0)
                 return false;
+
             if (index < 0)
                 return false;
+
             if (length < 0)
                 return false;
 
-            return _globalHook.SetClipboard(data, index, length); ;
-        }
-        public void StartScreenCapture()
-        {
-            _globalHook.StartScreenCapture();
-        }
-        public void StopScreenCapture()
-        {
-            _globalHook.StopScreenCapture();
-        }
-        public void RemoveClientById(string id)
-        {
-            if (string.IsNullOrWhiteSpace(id)) return;
-
-            _vClientManager.Remove(id);
-            if (_vClientManager.Connections.Count == 0)
+            try
             {
-                StopScreenCapture();
+                return _globalHook.SetClipboard(data, index, length);
             }
-            else
+            catch
             {
-                if (!_vClientManager.HasClientOfType(VClientType.Receiver))
-                    StopScreenCapture();
+                return false;
             }
         }
-        public VClient GetClientById(string id)
+        public ClientSession GetClientById(string id)
         {
             if (string.IsNullOrWhiteSpace(id)) return null;
 
-            var client = _vClientManager.GetByKey(id);
-            return client;
-        }
-        public VClient NewClient(string id, VClientType type)
-        {
-            if (string.IsNullOrWhiteSpace(id)) return null;
-
-            var newClient = _vClientManager.New(id, type);
-            if (_vClientManager.Connections.Count > 0)
-            {
-                if (_vClientManager.HasClientOfType(VClientType.Receiver))
-                    StartScreenCapture();
-            }
-            return newClient;
-        }
-        public ConcurrentDictionary<string, VClient> GetClients()
-        {
-            return _vClientManager.Connections;
-        }
-        private void P2PRequestConnectHandler(object sender, P2PClientDataReceived e)
-        {
-            if (_clientInfo.IsAuthenticated(e.Data, out ClientInfo partnerInfo, out string connectionId))
-            {
-                var newClient = _vClientManager.New(connectionId, VClientType.Receiver);
-                newClient.Connect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
-                newClient.UpdatePartnerInfo(partnerInfo);
-                byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
-
-                newClient.Send(SocketDataType.P2PAcceptConnect, dataBytes, newClient.SocketId, true);
-                DataReceivedEvent?.Invoke(newClient, e);
-
-                var screen = _globalHook.GetFirstScreen();
-                int length = screen.Sum(x=> x.Length);
-                SendScreen(newClient, SocketDataType.Screen, screen, length);
-
-                if (_vClientManager.HasClientOfType(VClientType.Receiver))
-                    StartScreenCapture();
-            }
-            else
-            {
-                if(sender is VClient client)
-                {
-                    string id = ByteArrayHelper.ConvertByteArrayToString(e.Data, 0, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII).GetResult();
-                    byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
- 
-                    client.Send(SocketDataType.P2PRejectConnect, dataBytes, client.SocketId, true);
-                }
-            }
-        }
-        private void ProcessP2PConnectAccepted(object sender, P2PClientDataReceived e)
-        {
             try
             {
-                if(sender is VClient client)
-                {
-                    ClientInfo partnerInfo = null;
-
-                    string data = ByteArrayHelper.ConvertByteArrayToString(e.Data, EncodingType.ASCII).GetResult();
-                    string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
-                    if(stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
-                    {
-                        if (StringHelper.StringValidate(stringArray))
-                        {
-                            partnerInfo = new ClientInfo
-                            {
-                                Id = stringArray[DefaultClientInfo.CLIENT_INFO_ID_INDEX],
-                                Password = stringArray[DefaultClientInfo.CLIENT_INFO_PASSWORD_INDEX],
-                                ComputerName = stringArray[DefaultClientInfo.CLIENT_INFO_COMPUTER_NAME_INDEX],
-                                Width = int.Parse(stringArray[DefaultClientInfo.CLIENT_INFO_WIDTH_INDEX]),
-                                Height = int.Parse(stringArray[DefaultClientInfo.CLIENT_INFO_HEIGHT_INDEX]),
-                                MajorVersion = stringArray[DefaultClientInfo.CLIENT_INFO_MAJOR_VERSION_INDEX],
-                                MinorVersion = stringArray[DefaultClientInfo.CLIENT_INFO_MINOR_VERSION_INDEX],
-                                Ip = stringArray[DefaultClientInfo.CLIENT_INFO_IP_INDEX],
-                                Port = stringArray[DefaultClientInfo.CLIENT_INFO_PORT_INDEX],
-                                PublicIP = stringArray[DefaultClientInfo.CLIENT_INFO_PUBLIC_IP_INDEX],
-                            };
-                            client.UpdatePartnerInfo(partnerInfo);
-                            return;
-                        }
-                    }
-                    client.UpdatePartnerInfo(partnerInfo);
-                }
+                var session = _sessionManager.GetByKey(id);
+                return session;
             }
-            catch (Exception ex)
+            catch
             {
-                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "P2P connect error ");
-            }
-        }
-        private void SendScreenChangedToClient(object sender, ScreenCaptureEventArgs e)
-        {
-            var connections = _vClientManager.Connections;
-            TaskObject[] tasks = GetScreenSnapshotData(e.Type, e.Data, e.TotalSize);
-
-            foreach(var connection in connections)
-            {
-                if (connection.Value.ClientType == VClientType.Receiver)
-                {
-                    var header = connection.Value.HeaderGenerate(type: e.Type, socketId: connection.Value.SocketId, dataSize: e.TotalSize);
-
-                    var payload = new TaskObject
-                    {
-                        TaskType = e.Type,
-                        Data = header,
-                        SessionId = connection.Value.SocketId,
-                        IsSendHeader = false
-                    };
-                    var newTasks = new TaskObject[tasks.Length + 1];
-                    newTasks[0] = payload;
-                    Array.Copy(tasks, 0, newTasks, 1, tasks.Length);
-
-                    connection.Value.AddWorkGroup(newTasks, QueuePriority.Medium);
-                }
-            }
-        }
-        private TaskObject[] GetScreenSnapshotData(SocketDataType type, List<byte[]> data, int totalSize)
-        {
-            try
-            {
-                if (data.Count == 0 || totalSize == 0)
-                {
-                    Logger.Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
-                    return null;
-                }
-                TaskObject[] tasks = new TaskObject[data.Count];
-                //data
-                for (int i = 0; i < data.Count; i++)
-                {
-                    var task = new TaskObject
-                    {
-                        TaskType = type,
-                        Data = data[i],
-                        IsSendHeader = false,
-                    };
-
-                    tasks[i] = task;
-                }
-                return tasks;
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
                 return null;
             }
         }
-        private void SendScreen(VClient  client, SocketDataType type, List<byte[]> data, int totalSize)
+        public ClientSession NewClient(string id, ClientType type)
         {
             try
             {
-                if (data.Count == 0 || totalSize == 0)
+                if (string.IsNullOrWhiteSpace(id)) return null;
+
+                var session = _sessionManager.New(id, type);
+                if (_sessionManager.Connections.Count > 0)
                 {
-                    Logger.Log.ForContext("FileName", GetType().Name).Error("Screen missing some value");
-                    return;
+                    if (_sessionManager.HasClientOfType(ClientType.Controlled))
+                        StartScreenCapture();
                 }
-                var header = client.HeaderGenerate(type: type, socketId: client.SocketId, dataSize: totalSize);
+                return session;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+        public void Login(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return;
 
-                List<TaskObject> tasks = new List<TaskObject>();
-                tasks.Add(new TaskObject
+            try
+            {
+                var session = _sessionManager.GetByKey(id);
+                if (session != null)
                 {
-                    TaskType = type,
-                    Data = header,
-                    IsSendHeader = false,
-                    SessionId = client.SocketId
-                });
+                    byte[] encoder = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), Enums.EncodingType.ASCII).GetResult();
+                    session.Send(SocketDataType.Login, encoder, null);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "Login error");
+            }
+        }
+        public bool CheckRemoteConnected(string id)
+        {
+            return _clientInfo.IsExistPartner(id);
+        }
 
-                //data
-                for (int i = 0; i < data.Count; i++)
+        //Relay connect
+        public bool P2PConnect(string partnerId, string partnerPassword)
+        {
+            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return false;
+
+            string connectionId = StringHelper.RandomStringNumber(8);
+            var newConnection = NewClient(connectionId, ClientType.Controller);
+
+            if (newConnection == null)
+            {
+                return false;
+            }
+
+            if (newConnection.TryConnect(ip: DEFAULT_SERVER_IP, port: int.Parse(DEFAULT_SERVER_PORT)))
+            {
+                string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, newConnection.SessionId, partnerId, partnerPassword, GetMe().ToNetworkString());
+                byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
+                newConnection.Send(SocketDataType.RemoteControlRequestToConnect, dataBytes, newConnection.SessionId, true);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
+        }
+        //P2P connect
+        public void P2PConnect(ClientSession session, string partnerId, string partnerPassword)
+        {
+            if (string.IsNullOrWhiteSpace(partnerId) || string.IsNullOrWhiteSpace(partnerPassword)) return;
+
+            P2PConnectInfo connectInfo = new P2PConnectInfo(partnerId, partnerPassword);
+
+            var result = ByteArrayHelper.ConvertStringToByteArray(connectInfo.ToNetworkString(), EncodingType.ASCII);
+            if (result.IsSuccess)
+            {
+                session.Send(SocketDataType.P2PConnect, result.Data, session.SessionId, true);
+            }
+            else
+            {
+                RespondEvent?.Invoke(session, new RemoteDesktopEventArgs(SocketDataType.P2PInvalidConnectData, false, new byte[0]));
+            }
+        }
+
+        private void StartKeyboardListener()
+        {
+            try
+            {
+                _globalHook.StartKeyboardListener();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "StartKeyboardListener error");
+            }
+        }
+        private void StopKeyboardListener()
+        {
+            try
+            {
+                _globalHook.StopKeyboardListener();
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "StopKeyboardListener error");
+            }
+        }
+        private void StartScreenCapture()
+        {
+#if DEBUG
+            if (!_screenSender.IsCapturing)
+            {
+                _screenSender.Start();
+            }
+#endif
+            _globalHook.StartScreenCapture();
+        }
+        private void StopScreenCapture()
+        {
+#if DEBUG
+            _screenSender.Stop();
+            return;
+#endif
+            _globalHook.StopScreenCapture();
+        }
+        private void RemoveClientById(string id)
+        {
+            if (string.IsNullOrWhiteSpace(id)) return;
+
+            _sessionManager.Remove(id);
+            if (_sessionManager.Connections.Count == 0)
+            {
+                lock (_lock)
                 {
-                    var task = new TaskObject
+                    StopScreenCapture();
+                    _isCapturing = false;
+                }
+            }
+            else
+            {
+                if (!_sessionManager.HasClientOfType(ClientType.Controlled))
+                {
+                    lock (_lock)
                     {
-                        TaskType = type,
-                        Data = data[i],
-                        IsSendHeader = false
-                    };
-
-                    tasks.Add(task);
+                        StopScreenCapture();
+                        _isCapturing = false;
+                    }
                 }
-                client.AddWorkGroup(tasks, QueuePriority.Medium);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "ScreenHookEventHandler error");
             }
         }
-        private void MouseReceivedEventHandler(object sender, P2PClientDataReceived e)
+        private ConcurrentDictionary<string, ClientSession> GetClients()
         {
-            try
-            {
-                _globalHook.MouseReceivedEventHandler(GetMe().Width, GetMe().Height, e.Data);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.ForContext("FileName", nameof(MouseReceivedEventHandler)).Error(ex, "Error processing mouse data");
-            }
-        }
-        private void KeyboardReceivedEventHandler(object sender, P2PClientDataReceived e)
-        {
-            try
-            {
-                _globalHook.KeyboardReceivedEventHandler(e.Data);
-            }
-            catch (Exception ex)
-            {
-                Logger.Log.ForContext("FileName", nameof(KeyboardReceivedEventHandler)).Error(ex, "Error processing keyboard data");
-            }
-        }
-        private void ProcessP2PDisconnect(object sender, P2PClientDataReceived e)
-        {
-            if (sender is VClient client)
-            {
-                RemoveClientById(client.SocketId);
-            }
+            return _sessionManager.Connections;
         }
         #endregion
         #region Events
         private void ScreenCaptureEventHandler(object sender, ScreenCaptureEventArgs e)
         {
-            SendScreenChangedToClient(sender, e);
+            try
+            {
+            }
+            catch { *//*Ignore*//* }
         }
         private void KeyboardEventHandler(object sender, KeyboardEventArgs e)
         {
             if (_globalHook.CheckClipboard(e, out var data, out var type))
             {
-                foreach (var connection in _vClientManager.Connections)
+                foreach (var connection in _sessionManager.Connections)
                 {
-                    if (connection.Value.ClientType == VClientType.Receiver)
-                        connection.Value.AddWork(new TaskObject
+                    if (connection.Value.SessionType == ClientType.Controlled)
+                        connection.Value.AddWork(QueuePriority.High, new TaskObject
                         {
                             TaskType = type,
                             Data = data,
-                            SessionId = connection.Value.SocketId,
+                            SessionId = connection.Value.SessionId,
                             IsSendHeader = true,
                             ChunkFileInfo = null
-                        }, QueuePriority.High);
+                        });
                 }
             }
             else
@@ -391,41 +429,357 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 KeyboardEvent?.Invoke(sender, e);
             }
         }
-        private void ClientDataReceivedEventHandler(object sender, P2PClientDataReceived e)
+        private void EventReceived(object sender, RemoteDesktopEventArgs e)
         {
-            switch (e.Type)
+            if(_eventHandlers.TryGetValue(e.Type, out var handle))
             {
-                case SocketDataType.Connect:
-                    _reset.Set();
-                    DataReceivedEvent?.Invoke(sender, e);
-                    break;
-                case SocketDataType.Clipboard:
-                    SetClipboard(e.Data);
-                    break;
-                case SocketDataType.P2PRequestConnect:
-                    P2PRequestConnectHandler(sender, e);
-                    break;
-                case SocketDataType.P2PAcceptConnect:
-                    ProcessP2PConnectAccepted(sender, e);
-                    DataReceivedEvent?.Invoke(sender, e);
-                    break;
-                case SocketDataType.P2PConnectFailed:
-                    DataReceivedEvent?.Invoke(sender, e);
-                    break;
-                case SocketDataType.Mouse:
-                    MouseReceivedEventHandler(sender, e);
-                    break;
-                case SocketDataType.Keyboard:
-                    KeyboardReceivedEventHandler(sender, e);
-                    break;
-                case SocketDataType.P2PDisconnect:
-                    ProcessP2PDisconnect(sender, e);
-                    break;
-                case SocketDataType.Error:
-                    break;
-                default:
-                    DataReceivedEvent?.Invoke(sender, e);
-                    break;
+                try
+                {
+                    handle(sender, e);
+                }
+                catch(Exception ex)
+                {
+                    Logger.Log.ForContext("FileName", GetType().Name).Error(ex, string.Format("Error handling {0}: {1}", e.Type, ex.Message));
+                }
+            };
+        }
+        #endregion
+        #region Handlers
+        private void ForwardEvent(object sender, EventArgs e)
+        {
+            RespondEvent?.Invoke(sender, (RemoteDesktopEventArgs)e);
+        }
+
+
+        private void ClipboardReceived(object sender, EventArgs e)
+        {
+            SetClipboard(((RemoteDesktopEventArgs)e).Data);
+        }
+
+        //Mouse
+        private void MouseReceived(object sender, EventArgs e)
+        {
+            try
+            {
+                _globalHook.MouseReceivedEventHandler(GetMe().Width, GetMe().Height, ((RemoteDesktopEventArgs)e).Data);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", nameof(MouseReceived)).Error(ex, "Error processing mouse data");
+            }
+        }
+
+        //Keyboard
+        private void KeyboardReceived(object sender, EventArgs e)
+        {
+            try
+            {
+                _globalHook.KeyboardReceivedEventHandler(((RemoteDesktopEventArgs)e).Data);
+            }
+            catch (Exception ex)
+            {
+                Logger.Log.ForContext("FileName", nameof(KeyboardReceived)).Error(ex, "Error processing keyboard data");
+            }
+        }
+
+        //Connect
+        private void LoginRespond(object sender, EventArgs e)
+        {
+            var ev = e as RemoteDesktopEventArgs;
+            if (ev == null)
+                throw new InvalidOperationException("Invalid event args for LoginRespond");
+
+            try
+            {
+                UpdateMyInfo(ev.Data);
+                RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(SocketDataType.Login, true));
+            }
+            catch
+            {
+                RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(SocketDataType.LoginFailed, false));
+            }
+        }
+        private void P2PConnect(object sender, EventArgs e)
+        {
+            var ev = e as RemoteDesktopEventArgs;
+
+            if (ev == null)
+                throw new InvalidOperationException("Invalid event args for P2PConnect");
+
+            string id = Encoding.ASCII.GetString(ev.Data);
+
+            //Create a new VClient and listen for incoming connection, if success return VClient else remove VClient and return null
+            var remoteClient = _sessionManager.AddNewAndListen(id, ClientType.Controlled, int.Parse(DEFAULT_SERVER_PORT));
+
+            //P2P handshake success, send accept connect
+            if (remoteClient != null)
+            {
+                remoteClient.Send(SocketDataType.P2PAcceptConnect, new byte[0], id, true);
+            }
+            else
+            {
+                throw new Exception("Cannot create new VClient or P2PListen failed for P2PConnect");
+            }
+        }
+        private void P2PConnectDataRespond(object sender, EventArgs e)
+        {
+            var session = sender as ClientSession;
+            if (session == null)
+                throw new InvalidOperationException("Invalid sender for P2PConnectDataRespond");
+
+            var ev = e as RemoteDesktopEventArgs;
+            if (ev == null)
+                throw new InvalidOperationException("Invalid event args for P2PConnectDataRespond");
+
+            string data = ByteArrayHelper.ConvertByteArrayToString(ev.Data, EncodingType.ASCII).GetResult();
+            string[] dataParsed = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
+
+            P2PNetworkInfo networkInfo = new P2PNetworkInfo();
+            if(networkInfo.TryParseData(dataParsed))
+            {
+                string connectIp = _clientInfo.IsTheSameNetWork(networkInfo.PublicIP) ? networkInfo.LocalIP : networkInfo.PublicIP;
+
+                var remoteControlClient = _sessionManager.New(networkInfo.Id, ClientType.Controlled);
+                if(int.TryParse(networkInfo.Port, out int port))
+                {
+                    bool respond = remoteControlClient.TryConnect(ip: connectIp, port: port, retry: 3, timeout: 1000);
+
+                    //P2P connect failed
+                    if (!respond)
+                        RespondEvent?.Invoke(session, new RemoteDesktopEventArgs(SocketDataType.P2PLoginRespond, false, new byte[0]));
+                }
+                else
+                {
+                    Logger.Log.ForContext("FileName", GetType().Name).Error("P2PConnectDataRespond: Invalid Port");
+                }
+            }
+            else
+            {
+                Logger.Log.ForContext("FileName", GetType().Name).Error("P2PConnectDataRespond: Invalid P2PNetworkInfo data");  
+            }
+        }
+        private void P2PRequestToConnectAccepted(object sender, EventArgs e)
+        {
+            var session = sender as ClientSession;
+            if (session == null)
+                throw new InvalidOperationException("Invalid sender for P2PRequestToConnectAccepted");
+
+            string dataString = StringHelper.StringBuilderWithSeparator(DefaultValue.DEFAULT_SEPARATOR, session.SessionId, GetMe().ToNetworkString());
+            byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(dataString, EncodingType.ASCII).GetResult();
+
+            session.Send(SocketDataType.P2PLogin, dataBytes, session.SessionId, true);
+        }
+        private void P2PLogin(object sender, EventArgs e)
+        {
+            var session = sender as ClientSession;
+            if (session == null)
+                throw new InvalidOperationException("Invalid sender for P2PLogin");
+
+            var ev = e as RemoteDesktopEventArgs;
+            if (ev == null)
+                throw new InvalidOperationException("Invalid eventArgs for P2PLogin");
+
+            string rawData = ByteArrayHelper.ConvertByteArrayToString(ev.Data, EncodingType.ASCII).GetResult();
+            string[] dataArray = StringHelper.StringToStringArrayWithSeparator(rawData, DefaultValue.DEFAULT_SEPARATOR);
+
+            if (dataArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS + 1) //+1 for connection id
+            {
+                ClientInfo partnerInfo = new ClientInfo();
+                if (partnerInfo.TryParseData(dataArray.Skip(1).ToArray())) //Skip connection id
+                {
+                    session.UpdatePartnerInfo(partnerInfo);
+                    _clientInfo.AddPartner(partnerInfo);
+
+                    byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
+                    session.Send(SocketDataType.P2PLoginRespond, dataBytes, session.SessionId, true);
+                    return;
+                }
+            }
+            session.Send(SocketDataType.P2PLoginRespond, new byte[0], session.SessionId, true);
+            session.UpdatePartnerInfo(null);
+        }
+        private void P2PLoginRespond(object sender, EventArgs e)
+        {
+
+            var session = sender as ClientSession;
+            if (session == null)
+                throw new InvalidOperationException("Invalid sender for P2PLoginRespond");
+
+            var ev = e as RemoteDesktopEventArgs;
+            if (ev == null)
+                throw new InvalidOperationException("Invalid eventArgs for P2PLoginRespond");
+
+            string rawData = ByteArrayHelper.ConvertByteArrayToString(ev.Data, EncodingType.ASCII).GetResult();
+            string[] dataArray = StringHelper.StringToStringArrayWithSeparator(rawData, DefaultValue.DEFAULT_SEPARATOR);
+
+            if (dataArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
+            {
+                ClientInfo partnerInfo = new ClientInfo();
+                if (partnerInfo.TryParseData(dataArray))
+                {
+                    session.UpdatePartnerInfo(partnerInfo);
+                    _clientInfo.AddPartner(partnerInfo);
+
+                    session.Send(SocketDataType.Ready, new byte[0], session.SessionId, true);
+
+                    RespondEvent?.Invoke(session, ev);
+                    return;
+                }
+            }
+        }
+        private void RelayConnect(object sender, EventArgs e)
+        {
+            var ev = e as RemoteDesktopEventArgs;
+            if (ev == null)
+                throw new InvalidOperationException("Invalid eventArgs for RelayConnect");
+
+            if (_clientInfo.IsAuthenticated(ev.Data, out ClientInfo partnerInfo, out string connectionId))
+            {
+                var remoteControlClient = _sessionManager.New(connectionId, ClientType.Controlled);
+
+                //Init screen capture
+                _screenSender.InitializeSenderComponents();
+                StartScreenCapture();
+
+
+                remoteControlClient.TryConnect(DEFAULT_SERVER_IP, int.Parse(DEFAULT_SERVER_PORT));
+                remoteControlClient.UpdatePartnerInfo(partnerInfo);
+
+                byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(GetMe().ToNetworkString(), EncodingType.ASCII).GetResult();
+
+                remoteControlClient.Send(SocketDataType.RemoteControlAcceptedRequestToConnect, dataBytes, remoteControlClient.SessionId, true);
+                
+                RespondEvent?.Invoke(remoteControlClient, ev);
+            }
+            else
+            {
+                var clientSession = sender as ClientSession;
+                if (clientSession != null)
+                {
+                    string id = ByteArrayHelper.ConvertByteArrayToString(ev.Data, 0, RandomLength.SOCKET_ID_LENGTH, EncodingType.ASCII).GetResult();
+                    byte[] dataBytes = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
+
+                    clientSession.Send(SocketDataType.RemoteControlRefusedRequestToConnect, dataBytes, clientSession.SessionId, true);
+                }
+            }
+        }
+        private void RelayRequestToConnectAccepted(object sender, EventArgs e)
+        {
+            var session = sender as ClientSession;
+            if (session == null)
+                throw new InvalidOperationException("Invalid sender for RelayRequestToConnectAccepted");
+
+            var ev = e as RemoteDesktopEventArgs;
+            if (ev == null)
+                throw new InvalidOperationException("Invalid eventArgs for RelayRequestToConnectAccepted");
+
+            ClientInfo partnerInfo = null;
+
+            string data = ByteArrayHelper.ConvertByteArrayToString(ev.Data, EncodingType.ASCII).GetResult();
+            string[] stringArray = StringHelper.StringToStringArrayWithSeparator(data, DefaultValue.DEFAULT_SEPARATOR);
+            
+            if (stringArray.Length == DefaultClientInfo.CLIENT_INFO_MIN_FIELDS)
+            {
+                partnerInfo = new ClientInfo();
+                if (partnerInfo.TryParseData(stringArray))
+                {
+                    session.UpdatePartnerInfo(partnerInfo);
+
+                    session.Send(SocketDataType.Ready, new byte[0], session.SessionId, true);
+                }
+            }
+            else
+            {
+                //When partnerInfo is null this method will call dispose method
+                session.UpdatePartnerInfo(partnerInfo);
+            }
+            ForwardEvent(sender, e);
+        }
+        private void ReadyToRemote(object sender, EventArgs e)
+        {
+            var session = sender as ClientSession;
+            if (session == null)
+                throw new InvalidOperationException("Invalid sender for ReadyToRemote");
+
+            session.Connected = true;
+            if (session == null)
+                throw new InvalidOperationException("Invalid sender for ReadyToRemote");
+
+            RespondEvent?.Invoke(session, ((RemoteDesktopEventArgs)e));
+
+
+#if DEBUG
+            _screenSender.GetFullScreen(session.Image);
+            return;
+#endif
+
+            ////Send first screen
+            //List<byte[]> screen;
+            //lock (_lock)
+            //{
+            //    screen = _globalHook.GetFirstScreen();
+            //}
+            //int length = screen.Sum(x => x.Length);
+
+            //var header = client.HeaderGenerate(type: SocketDataType.ScreenSend, socketId: client.SocketId, dataSize: length);
+            //client.Send(SocketDataType.ScreenSend, header, client.SocketId, false);
+
+            //for (int i = 0; i < screen.Count; i++)
+            //{
+            //    client.Send(SocketDataType.ScreenSend, screen[i], client.SocketId, false);
+            //}
+            ////SendScreen(client, SocketDataType.ScreenSend, screen, length);
+        }
+        /// <summary>
+        /// Error, Note
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        /// <exception cref="InvalidOperationException"></exception>
+        private void ClientDisconnected(object sender, EventArgs e)
+        {
+            var clientSession = sender as ClientSession;
+            if (clientSession == null)
+                throw new InvalidOperationException("Invalid sender for ClientDisconnected");
+
+            var ev = e as RemoteDesktopEventArgs;
+            if (ev == null)
+                throw new InvalidOperationException("Invalid eventArgs for ClientDisconnected");
+
+
+            bool flag = _clientInfo.RemovePartner(clientSession.PartnerInfo.Id);
+
+            RemoveClientById(clientSession.SessionId);
+
+            RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(ev.Type, false, ev.Data));
+        }
+        private void ClientSessionClosedEventHandler(object sender, EventArgs e)
+        {
+            var clientSession = sender as ClientSession;
+            if (clientSession != null)
+            {
+                try
+                {
+                    //clientSession.IsP2PConnected = false;
+
+                    if (clientSession.IsHost)
+                    {
+                        RespondEvent?.Invoke(sender, new RemoteDesktopEventArgs(SocketDataType.Disconnect, false, new byte[0]));
+                    }
+
+                    _clientInfo.RemovePartner(clientSession.PartnerInfo?.Id);
+                    _sessionManager.Remove(clientSession.SessionId);
+
+                    //Unregister received capture
+                    if(clientSession.SessionType == ClientType.Controlled)
+                    {
+                        _screenSender.RemoveSessionBuffer(clientSession.SessionId);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "VClientClosedEventHandler error ");
+                }
             }
         }
         #endregion
@@ -447,14 +801,17 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     _globalHook.ScreenCaptureChanged -= ScreenCaptureEventHandler;
                     _globalHook.KeyboardReceived -= KeyboardEventHandler;
                 }
-                if (_vClientManager != null)
-                    _vClientManager.ClientDataReceived -= ClientDataReceivedEventHandler;
+                if (_sessionManager != null)
+                {
+                    _sessionManager.SessionDataReceived -= EventReceived;
+                    _sessionManager.SessionClosed -= ClientSessionClosedEventHandler;
+                }
 
                 _globalHook?.Dispose();
-                _vClientManager?.Dispose();
+                _sessionManager?.Dispose();
                 _reset?.Dispose();
                 _disposed = true;
             }
         }
     }
-}
+}*/

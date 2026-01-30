@@ -12,9 +12,6 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Utils;
 using static VRemoteDesktop.Utils.Logger;
-using System.Windows.Forms;
-using System.Threading.Tasks;
-using System.Collections.Concurrent;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -121,7 +118,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             {
                 int start = Environment.TickCount;
                 var screens = _capture.GetScreen();
-                if (screens.Count > 0)
+                if (screens != null && screens.Count > 0)
                 {
                     //Impossible screen capture can exceed Int.MaxValue(~2GB)
                     int totalSize = 0;
@@ -131,16 +128,16 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     }
 
                     ScreenType screenEnum = screens.Count == 1 && screens[0].IsFullScreen 
-                        ? ScreenType.FULLSCREEN 
-                        : ScreenType.REGIONSCREENS;
+                        ? ScreenType.FULL_SCREEN 
+                        : ScreenType.DIRTY_REGIONS;
 
                     switch (screenEnum)
                     {
-                        case ScreenType.FULLSCREEN:
+                        case ScreenType.FULL_SCREEN:
                             ScreenToPacketsWithoutChecksum(screens[0], totalSize);
                             //ScreenToPackets(screens[0], totalSize);
                             break;
-                        case ScreenType.REGIONSCREENS:
+                        case ScreenType.DIRTY_REGIONS:
                             ScreenRegionsChangedToPacketsWithoutChecksum(screens, totalSize);
                             //ScreenRegionsChangedToPackets(screens, totalSize);
                             break;
@@ -150,7 +147,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 int remainTime = frameTime - elapsed;
                 if (remainTime > 0)
                 {
-                    //Thread.Sleep(remainTime);
+                    Thread.Sleep(remainTime);
                 }
             }
         }
@@ -194,17 +191,14 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if (screen == null || totalChunksSize < 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets Arguments are null or empty");
                 return;
             }
             if (screen.Bytes == null || screen.Bytes.Length == 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: data is null or empty");
                 return;
             }
             if (screen.Rectangle == null)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: rectangle is null or empty");
                 return;
             }
 
@@ -229,7 +223,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     offset += screenCaptureCompressed.Length;
 
                     ScreenCaptureEventArgs screenArgs = new ScreenCaptureEventArgs(
-                        type: SocketDataType.Screen,
+                        type: SocketDataType.ScreenSend,
                         totalSize: dataLength
                     );
 
@@ -247,12 +241,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if (regions == null || totalChunksSize < 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets Arguments are null or empty");
                 return;
             }
             if (regions.Count == 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets error: regions is null or empty");
                 return;
             }
             try
@@ -261,12 +253,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 if (mergedChangedRegions.Length == 0)
                     return;
 
-                Console.WriteLine("Regions data before compress: " + mergedChangedRegions.Length);
                 var result = ByteArrayHelper.CompressDeflate(mergedChangedRegions);
                 if (!result.IsSuccess)
                     return;
 
-                Console.WriteLine("Regions data after compressed: "+ result.Data.Length);
                 byte[] changedRegionsCompressed = result.Data;
 
                 int dataSendLength = checked(changedRegionsCompressed.Length);
@@ -283,7 +273,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     offset += changedRegionsCompressed.Length;
 
                     ScreenCaptureEventArgs chunksArgs = new ScreenCaptureEventArgs(
-                       type: SocketDataType.Chunks,
+                       type: SocketDataType.ScreenRegionsChangedSend,
                        totalSize: dataSendLength
                     );
                     var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataSendLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();
@@ -300,12 +290,12 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             try
             {
-                var screens = _capture.GetScreen();
+                var screens = _capture.GetCurrentScreen();
                 if (screens[0].Bytes == null || screens[0].Bytes.Length == 0)
                 {
                     return null;
                 }
-                byte[] screenCaptureCompressed = ByteArrayHelper.CompressGZip(screens[0].Bytes).GetResult();
+                byte[] screenCaptureCompressed = ByteArrayHelper.CompressDeflate(screens[0].Bytes).GetResult();
                 byte[] checksum = Encoding.ASCII.GetBytes(StringHelper.SHAHash(screenCaptureCompressed));
                 int dataSendLength = checked(screenCaptureCompressed.Length + checksum.Length);
                 if (_dataSend.Length < dataSendLength)
@@ -337,17 +327,14 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if(screen == null || totalChunksSize < 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets Arguments are null or empty");
                 return;
             }
             if (screen.Bytes == null || screen.Bytes.Length == 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: data is null or empty");
                 return;
             }
             if (screen.Rectangle == null)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenToPackets error: rectangle is null or empty");
                 return;
             }
 
@@ -372,7 +359,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     offset += screenCaptureCompressed.Length;
 
                     ScreenCaptureEventArgs screenArgs = new ScreenCaptureEventArgs(
-                        type: SocketDataType.Screen,
+                        type: SocketDataType.ScreenSend,
                         totalSize: dataLength
                     );
 
@@ -391,12 +378,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
         {
             if (regions == null || totalChunksSize < 0)
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets Arguments are null or empty");
                 return;
             }
             if (regions.Count == 0 )
             {
-                Log.ForContext("", this.GetType().Name).Error("ScreenRegionsChangedToPackets error: regions is null or empty");
                 return;
             }
             try
@@ -426,7 +411,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     offset += changedRegionsCompressed.Length;
 
                     ScreenCaptureEventArgs chunksArgs = new ScreenCaptureEventArgs(
-                       type: SocketDataType.Chunks,
+                       type: SocketDataType.ScreenRegionsChangedSend,
                        totalSize: dataSendLength
                     );
                     var byteArrayToListByteArray = ByteArrayHelper.ToListByteArray(_dataSend, dataSendLength, DefaultScreen.DEFAULT_CHUNK_SIZE).GetResult();

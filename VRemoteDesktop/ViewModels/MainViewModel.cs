@@ -1,4 +1,4 @@
-﻿using System;
+﻿/*using System;
 using System.ComponentModel;
 using System.Threading;
 using System.Windows.Forms;
@@ -20,27 +20,41 @@ namespace VRemoteDesktop.ViewModels
         private string _id;
         private string _myId;
         private string _myPassword;
-        private bool _isConnected;
+        private string _errorMessage;
+        private ConnectionStatus _connectStatus;
         private ManualResetEvent _resetEvent;
+        private ClientSession _host;
 
         private readonly RemoteDesktopService _remoteDesktopService;
-        public event EventHandler<P2PClientDataReceived> ClientAcceptRequestRemote;
+        public event EventHandler<RemoteDesktopEventArgs> ClientAcceptRequestRemote;
+        public event EventHandler<EventArgs> SocketDisconnectEvent;
         public MainViewModel(RemoteDesktopService remoteDesktopService)
         {
-            IsConnected = false;
+            ConnectStatus = ConnectionStatus.None;
             _resetEvent = new ManualResetEvent(false);
 
             _remoteDesktopService = remoteDesktopService;
-            _remoteDesktopService.DataReceivedEvent += TCPClientManagerEventHandler;
+            _remoteDesktopService.RespondEvent += TCPClientManagerEventHandler;
 
-            MyId = _remoteDesktopService.GetMe().Id;
-            MyPassword = _remoteDesktopService.GetMe().Password;
             Init();
         }
+
         private void Init()
         {
-            _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
-            _remoteDesktopService.NewClient(_id, VClientType.None);
+            try
+            {
+                var myInfo = _remoteDesktopService.GetMe();
+
+                MyId = myInfo.Id;
+                MyPassword = myInfo.Password;
+
+                _id = StringHelper.RandomStringNumber(SOCKET_ID_LENGTH);
+                _host = _remoteDesktopService.NewClient(_id, Services.SessionManagement.Enums.ClientType.System);
+            }
+            catch
+            {
+                ShowMessage("Khởi tạo thất bại, vui lòng đóng FormRemote và mở lại!");
+            }
         }
         #region Properties
         public string MyId
@@ -61,88 +75,110 @@ namespace VRemoteDesktop.ViewModels
                 OnPropertyChanged(nameof(MyPassword));
             }
         }
-        public bool IsConnected
+        public ConnectionStatus ConnectStatus
         {
-            get { return _isConnected; }
+            get { return _connectStatus; }
             set
             {
-                _isConnected = value;
-                OnPropertyChanged(nameof(IsConnected));
+                _connectStatus = value;
+                OnPropertyChanged(nameof(ConnectStatus));
+            }
+        }
+        public string ErrorMessage
+        {
+            get { return _errorMessage; }
+            set
+            {
+                _errorMessage = value;
+                OnPropertyChanged(nameof(ErrorMessage));
             }
         }
         #endregion
         #region Methods
-        public void Connect(VClient client = null)
+        public bool IsRemoteConnected(string id)
+        {
+            return _remoteDesktopService.CheckRemoteConnected(id);
+        }
+        public void Connect()
         {
             string ip = AppSettingHelper.GetValue("ServerIP");// ?? "27.0.12.78";
             string port = AppSettingHelper.GetValue("LoginPort");// ?? "2399";
 
-            if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port))
+            if(string.IsNullOrEmpty(ip) || string.IsNullOrEmpty(port) || !int.TryParse(port, out int validPort))
             {
+                ShowMessage("Không thể lấy server Ip và Port");
                 Log.ForContext("FileName", nameof(Connect)).Error("Error at Connect");
                 return;
             }
-            if(int.TryParse(port, out int validPort))
+            var client1 = _remoteDesktopService.NewClient(_id, Services.SessionManagement.Enums.ClientType.System);
+            if (client1 == null)
             {
-                if(client == null)
-                {
-                    var client1 = _remoteDesktopService.GetClientById(_id);
-                    client1.Connect(ip, validPort);
-                }
-                else
-                {
-                    client.Connect(ip, validPort);
-                }
+                ShowMessage("Xảy ra lỗi vui lòng đóng FormRemote và mở lại");
+                return;
             }
+            client1.TryConnect(ip: ip, port: validPort);
         }
         public void Login()
         {
             _remoteDesktopService.Login(_id);
         }
-        public void RequestP2PConnect(string id, string password)
+        public void RequestP2PConnect(string id, string password, bool useTURNSERVER = false)
         {
             try
             {
-                _remoteDesktopService.P2PConnect(id, password);
+                if(string.Equals(id, MyId, StringComparison.CurrentCultureIgnoreCase))
+                {
+                    ShowMessage("Không thể kết nối với chính mình");
+                    return;
+                }
+                if (!useTURNSERVER)
+                {
+                    //try P2P first
+                    _remoteDesktopService.P2PConnect(_host, id, password);
+                }
+                else
+                {
+                    //use TURN SERVER
+                    if(!_remoteDesktopService.P2PConnect(id, password))
+                    {
+                        ShowMessage("Kết nối thất bại");
+                    }
+                }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Log.ForContext("FileName", nameof(RequestP2PConnect)).Error(ex, "Error at P2PConnect");
             }
         }
+        private void ShowMessage(string message)
+        {
+            ErrorMessage = message;
+        }
         #endregion
         #region Events
-        private void PartnerAcceptP2PConnect(object sender, P2PClientDataReceived e)
+        private void PartnerRespond(object sender, RemoteDesktopEventArgs e)
         {
             _resetEvent.Set();
             ClientAcceptRequestRemote?.Invoke(sender, e);
-        }   
-        private void TCPClientManagerEventHandler(object sender, P2PClientDataReceived e)
+        }
+        private void TCPClientManagerEventHandler(object sender, RemoteDesktopEventArgs e)
         {
-            if(sender  is VClient client)
+            switch (e.Type)
             {
-                switch (e.Type)
-                {
-                    case SocketDataType.Connect:
-                        ConnectEventHandler(e.Flag);
-                        break;
-                    case SocketDataType.Login:
-                        LoginEventHandler(e.Flag, e.Data);
-                        break;
-                    case SocketDataType.LoginFailed:
-                        Console.WriteLine("LoginFailed");
-                        break;
-                    case SocketDataType.P2PRequestConnect:
-                    case SocketDataType.P2PAcceptConnect:
-                    case SocketDataType.P2PConnectFailed:
-                        PartnerAcceptP2PConnect(sender, e);
-                        break;
-                    case SocketDataType.Error:
-                        _resetEvent.Set();
-                        break;
-                    default:
-                        break;
-                }
+                case SocketDataType.Connect:
+                    ConnectEventHandler(e.Flag);
+                    break;
+                case SocketDataType.Login:
+                case SocketDataType.LoginFailed:
+                case SocketDataType.Disconnect:
+                    LoginEventHandler(e.Flag, e.Data);
+                    break;
+                case SocketDataType.P2PInvalidConnectData:
+                    ShowMessage("Dữ liệu kết nối không hợp lệ");
+                    break;
+                default:
+                    PartnerRespond(sender, e);
+                    break;
             }
         }
         private void ConnectEventHandler(bool flag)
@@ -164,8 +200,11 @@ namespace VRemoteDesktop.ViewModels
         {
             if (flag)
             {
-                IsConnected = true;
-                _remoteDesktopService.UpdateMyInfo(data);
+                ConnectStatus = ConnectionStatus.Connected;
+            }
+            else
+            {
+                ConnectStatus = ConnectionStatus.Disconnected;
             }
         }
         public event PropertyChangedEventHandler PropertyChanged;
@@ -186,10 +225,13 @@ namespace VRemoteDesktop.ViewModels
                 if (_disposed) return;
 
                 if(_remoteDesktopService != null)
-                    _remoteDesktopService.DataReceivedEvent -= TCPClientManagerEventHandler;
-
+                {
+                    _remoteDesktopService.RespondEvent -= TCPClientManagerEventHandler;
+                }
+                _host?.Dispose();
                 _resetEvent.Dispose();
             }
         }
     }
 }
+*/
