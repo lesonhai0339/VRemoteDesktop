@@ -24,6 +24,7 @@ namespace VRemoteServer.RelayServer.Services
 {
     public interface IRelayServerManager
     {
+        void LinkedToken(CancellationToken token);
         void InitLoginServer();
         Task StartLoginServer(IPEndPoint ep);
         void CancelLoginServer();
@@ -39,6 +40,8 @@ namespace VRemoteServer.RelayServer.Services
         private IRemoteControlManagerService remote;
         private readonly ILoginManagerService _loginManager;
         private readonly IRemoteControlManagerService _remoteControlManager;
+
+        private CancellationTokenSource _cancellationTokenSource;
         public RelayServerManagerService(ILoginManagerService loginManagerService, IRemoteControlManagerService remoteControlManagerService)
         {
             _loginManager = loginManagerService;
@@ -47,6 +50,10 @@ namespace VRemoteServer.RelayServer.Services
             //Register events
             _loginManager.LoginManagerEvent += LoginManagerEventHandler;
             _remoteControlManager.RemoteControlManagerEvent += RemoteControlManagerEventHandler;
+        }
+        public void LinkedToken(CancellationToken token)
+        {
+            _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
         }
         #region System
         public void InitLoginServer()
@@ -57,7 +64,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             try
             {
-                await _loginManager.StartServer(ep);
+                await _loginManager.StartServer(ep, _cancellationTokenSource.Token);
             }
             catch (Exception ex)
             {
@@ -79,7 +86,7 @@ namespace VRemoteServer.RelayServer.Services
         {
             try
             {
-                await _remoteControlManager.StartServer(ep);
+                await _remoteControlManager.StartServer(ep, _cancellationTokenSource.Token);
             }
             catch (Exception ex)
             {
@@ -122,7 +129,7 @@ namespace VRemoteServer.RelayServer.Services
                                 }
                                 catch (Exception ex)
                                 {
-                                    Log.Error(ex, "GetPartnerInfo err:");
+                                    Log.ForContext("FileName", this.GetType().Name).Error(ex, "GetPartnerInfo err:");
                                 }
                             });
                             break;
@@ -137,7 +144,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             catch(Exception ex)
             {
-                Log.Error(ex, "Login server err ");
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "Login server err ");
             }
         }
 
@@ -322,7 +329,7 @@ namespace VRemoteServer.RelayServer.Services
                 }
                 catch(Exception ex)
                 {
-                    Log.Error(ex, "RelayServer err ");
+                    Log.ForContext("FileName", this.GetType().Name).Error(ex, "RelayServer err ");
                 }
             }
             

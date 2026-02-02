@@ -13,7 +13,7 @@ namespace VRemoteServer.Utils
     {
         public static void Config()
         {
-            var logFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Log");
+            var logFolder = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Logs");
             Directory.CreateDirectory(logFolder);
 
             Log.Logger = new LoggerConfiguration()

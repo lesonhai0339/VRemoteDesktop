@@ -20,7 +20,7 @@ namespace VRemoteServer.RelayServer.Domains
     public interface IBaseServer<TDomain, TDomainEvent, TException>
     {
         void Init();
-        Task Start(IPEndPoint endpoint);
+        Task Start(IPEndPoint endpoint, CancellationToken token);
         void Cancel();
         void Send(TDomain domain, byte[] data);
         void Send(TDomain domain, int offset, int length);
@@ -47,7 +47,7 @@ namespace VRemoteServer.RelayServer.Domains
         where TDomainEvent : EventArgs
     {
         private int _freePool;
-        private bool _disposed;
+        private int _disposed = 0;
         private int numberOfConnections;
         private int receiveBufferSize;
         BufferManager bufferManager;
@@ -58,7 +58,7 @@ namespace VRemoteServer.RelayServer.Domains
         long totalBytesRead;
         int numberConnectedSockets;
         Semaphore maxNumberAcceptedClients;
-        private CancellationTokenSource _cancel = new CancellationTokenSource();
+        private CancellationTokenSource _cancel;
         private ConcurrentDictionary<TDomain, QueueSendState> _sendTasks = new ConcurrentDictionary<TDomain, QueueSendState>();
 
 
@@ -69,7 +69,6 @@ namespace VRemoteServer.RelayServer.Domains
         public  BaseServer(IRateLimiter rateLimiter, int numberOfConnections = 1000, int receiveBufferSize = 1024 * 8)
         {
             _freePool = numberOfConnections;
-            _disposed = false;
             _rateLimit = rateLimiter;
 
             this.totalBytesRead = 0;
@@ -100,7 +99,10 @@ namespace VRemoteServer.RelayServer.Domains
         #region Methods
         public virtual void Cancel()
         {
-            lock (_cancel) { _cancel.Cancel(); }
+            lock (_cancel)
+            {
+                _cancel?.Cancel(); 
+            }
         }
 
         public virtual void Init()
@@ -125,8 +127,10 @@ namespace VRemoteServer.RelayServer.Domains
             }
         }
 
-        public virtual async Task Start(IPEndPoint endpoint)
+        public virtual async Task Start(IPEndPoint endpoint, CancellationToken token)
         {
+            _cancel = CancellationTokenSource.CreateLinkedTokenSource(token);
+
             listenSocket = new Socket(endpoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
             listenSocket.Bind(endpoint);
 
@@ -140,7 +144,7 @@ namespace VRemoteServer.RelayServer.Domains
                 while (!_cancel.IsCancellationRequested)
                 {
                     // Sleep a bit to avoid busy loop
-                    await Task.Delay(100);
+                    await Task.Delay(100, _cancel.Token);
                     //Thread.Sleep(100);
                 }
             }
@@ -152,6 +156,9 @@ namespace VRemoteServer.RelayServer.Domains
 
         private void StartAccept(SocketAsyncEventArgs acceptEventArg)
         {
+            if(Interlocked.CompareExchange(ref _disposed, 0, 0) != 0)
+              return;
+            
             bool willRaiseEvent = false;
             while (!willRaiseEvent)
             {
@@ -474,18 +481,12 @@ namespace VRemoteServer.RelayServer.Domains
         {
             try
             {
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Close();
-                socket.Dispose();
+                socket?.Shutdown(SocketShutdown.Both);
+                socket?.Close();
+                socket?.Dispose();
             }
-            catch(SocketException ex)
-            {
-                //Write log
-            }
-            catch(Exception ex)
-            {
-                //Write log
-            }
+            catch(SocketException ex){}
+            catch (Exception ex) { }
         }
         private void CloseClientSocket(TDomain domain)
         {
@@ -508,9 +509,9 @@ namespace VRemoteServer.RelayServer.Domains
                     {
                         socket.Shutdown(SocketShutdown.Both);
                     }
-                    catch (SocketException socketEx) { }
+                    catch (SocketException socketEx) {}
                     catch (Exception ex) { }
-                    socket.Close();
+                    socket?.Close();
                     socket?.Dispose();
                 }
 
@@ -538,26 +539,32 @@ namespace VRemoteServer.RelayServer.Domains
         }
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposing || _disposed) return;
-            try
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+            if (disposing)
             {
-                _cancel.Cancel();
-                //BufferManager bufferManager;
                 try
                 {
-                    listenSocket.Shutdown(SocketShutdown.Both);
+                    _cancel?.Cancel();
+
+                    //BufferManager bufferManager;
+                    try
+                    {
+                        listenSocket.Shutdown(SocketShutdown.Both);
+                    }
+                    catch { }
+
+                    _cancel?.Dispose();
+
+                    try { listenSocket?.Close(); } catch { }
+                    try { listenSocket?.Dispose(); } catch { }
+                    try { maxNumberAcceptedClients?.Dispose(); } catch { }
+
+                    readWritePool = null;
+                    listenSocket = null;
                 }
                 catch { }
-                _cancel?.Dispose();
-                listenSocket?.Dispose();
-                maxNumberAcceptedClients?.Dispose();
-                readWritePool = null;
-                listenSocket = null;
-            }
-            finally
-            {
-                _disposed = true;
-            }
+            }    
         }
     }
 }

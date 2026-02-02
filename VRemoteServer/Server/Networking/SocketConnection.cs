@@ -182,13 +182,13 @@ namespace VRemoteServer.RelayServer.Networking
             var timer = DateTimeOffset.UtcNow - _lastSendTime;
             if (timer > _timeout)
             {
-                Log.ForContext("SocketConnectionIP", IP)
+                Log.ForContext("FileName", this.GetType().Name).ForContext("SocketConnectionIP", IP)
                    .Warning("Client has been idle for too long, disconnecting...");
                 SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Disconnected));
             }
             else if (!CheckAlive())
             {
-                Log.ForContext("SocketConnectionIP", IP)
+                Log.ForContext("FileName", this.GetType().Name).ForContext("SocketConnectionIP", IP)
                    .Warning("Client is not connected anymore, disconnecting...");
                 SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Disconnected));
             }

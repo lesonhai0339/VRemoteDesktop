@@ -42,7 +42,7 @@ namespace VRemoteServer.RelayServer.Services
         bool GetConnectionsInfoBySocketConnection(SocketConnection connection, out List<ConnectionInfo> connectionsInfo);
         bool TryGetLoggedConnection(string id, out ConnectionInfo connectionInfo);
         void InitServer();
-        Task StartServer(IPEndPoint ep);
+        Task StartServer(IPEndPoint ep, CancellationToken token);
         void CancelServer();
         event EventHandler<LoginEventArgs> LoginManagerEvent;
         void Dispose();
@@ -168,12 +168,12 @@ namespace VRemoteServer.RelayServer.Services
             _loginServer.Init();
         }
 
-        public async Task StartServer(IPEndPoint ep)
+        public async Task StartServer(IPEndPoint ep, CancellationToken token)
         {
             if (ep == null)
                 throw new ArgumentNullException(nameof(ep));
 
-            await _loginServer.Start(ep);
+            await _loginServer.Start(ep, token);
         }
 
         public void CancelServer()
@@ -282,6 +282,7 @@ namespace VRemoteServer.RelayServer.Services
             {
                 if (_loginConnectionManager.NewConnectionInfo(data, connection, out connectionInfo))
                 {
+                    Log.ForContext("FileName", this.GetType().Name).ForContext("FileName", "Login").Information($@"{connectionInfo.Id} -  {connection.IP} - {connectionInfo.Port} - {DateTimeOffset.UtcNow.ToString("HH:mm:ss-dd/MM/yyyy")}");
                     connection.SetTimeout(60); // set timeout for socket login is 60 seconds
                     return true;
                 }

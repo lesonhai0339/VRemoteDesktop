@@ -21,7 +21,7 @@ namespace VRemoteServer
         static async Task Main(string[] args)
         {
             Logger.Config();
-            Log.ForContext("FileName", "Main").Information("Start Service");
+            Log.ForContext("FileName", "System").Information("Start Service");
             //RemoteDesktopServer remoteDesktop = new RemoteDesktopServer();
             //SocketListener socketListener = new SocketListener(remoteDesktop);
             //await socketListener.Listen();
@@ -70,9 +70,12 @@ namespace VRemoteServer
     internal class RelayHostedService : IHostedService
     {
         private readonly IRelayServerManager _server;
+        private readonly CancellationTokenSource _cancellationTokenSource;
         public RelayHostedService(IRelayServerManager server)
         {
+            _cancellationTokenSource = new CancellationTokenSource();
             _server = server;
+            _server.LinkedToken(_cancellationTokenSource.Token);
         }  
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -87,21 +90,29 @@ namespace VRemoteServer
 
             _ = Task.Run(async () =>
             {
-                while (!cancellationToken.IsCancellationRequested)
+                while (!_cancellationTokenSource.IsCancellationRequested)
                 {
-                    Log.Information("Heartbeat: {time}", DateTime.Now);
-                    await Task.Delay(30000, cancellationToken);
+                    Log.ForContext("FileName", "System").Information("Heartbeat: {time}", DateTime.Now);
+                    await Task.Delay(TimeSpan.FromSeconds(60), _cancellationTokenSource.Token);
                 }
             });
-
         }
 
-        public Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopAsync(CancellationToken cancellationToken)
         {
-            _server.CancelLoginServer();
-            _server.CancelRemoteControlServer();
+            try
+            {
+                _cancellationTokenSource?.Cancel();
 
-            return Task.CompletedTask;
+                await Task.Delay(2000);
+
+                _server.CancelLoginServer();
+                _server.CancelRemoteControlServer();
+            }
+            finally
+            {
+                _cancellationTokenSource?.Dispose();
+            }
         }
     }
 }

@@ -35,7 +35,7 @@ namespace VRemoteServer.RelayServer.Services
         void P2PConnectFailed(SocketConnection connection, string connectionId);
         void AddOrUpdateRemoteControl(string connectionId, SocketConnection connection, SocketPacket packet);
         void InitServer();
-        Task StartServer(IPEndPoint ep);
+        Task StartServer(IPEndPoint ep, CancellationToken token );
         void CancelServer();
         void Send(SocketConnection connection, byte[] data);
         void Send(SocketConnection connection, int offset, int length);
@@ -95,12 +95,12 @@ namespace VRemoteServer.RelayServer.Services
             _remoteControlServer.Init();
         }
 
-        public async Task StartServer(IPEndPoint ep)
+        public async Task StartServer(IPEndPoint ep, CancellationToken token)
         {
             if (ep == null)
                 throw new ArgumentNullException(nameof(ep));
 
-            await _remoteControlServer.Start(ep);
+            await _remoteControlServer.Start(ep, token);
         }
 
         public void CancelServer()
@@ -135,6 +135,7 @@ namespace VRemoteServer.RelayServer.Services
                     {
                         Send(existed.Controller, SocketDataType.ReadyToRemoteController);
                         Send(existed.Controlled, SocketDataType.ReadyToRemoteControlled);
+                        Log.ForContext("FileName", "TURN").Information($@"Established: {existed.ConnectionId} - {existed.Controlled.IP} - {existed.Controlled.IP} - {DateTimeOffset.UtcNow.ToString("HH:mm:ss-dd/MM/yyyy")}");
                     }
                 }
                 else
@@ -316,7 +317,7 @@ namespace VRemoteServer.RelayServer.Services
             }
             catch (Exception ex) 
             {
-                Log.Error(ex, "RemoteControlService err ");
+                Log.ForContext("FileName", this.GetType().Name).Error(ex, "RemoteControlService err ");
             }
         }
     }

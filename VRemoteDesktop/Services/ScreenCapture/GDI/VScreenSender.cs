@@ -206,11 +206,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
             try
             {
                 var writerAndReader = bufferSwapper.GetWriteAndReader();
-                if (writerAndReader.IsEmpty) 
+                if (writerAndReader.IsImageEmpty) 
                     return;
 
-                base.CopyFullScreenSourceToDest(ref writerOffset, writerAndReader.Writer, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
-                base.CopyFullScreenSourceToDest(ref readerOffset, writerAndReader.Reader, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
+                base.CopyFullScreenSourceToDest(ref writerOffset, writerAndReader.Writer.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
+                base.CopyFullScreenSourceToDest(ref readerOffset, writerAndReader.Reader.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
                 if (writerOffset > 0)
                 {
                     if (OnFrame != null)
@@ -244,15 +244,15 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 {
                     if(_clientSessionBufferSwapper.TryGetValue(key, out var bufferSwapper))
                     {
-                        IntPtr writer = bufferSwapper.GetWriteBuffer();
-                        if (writer == IntPtr.Zero)
+                        var writer = bufferSwapper.GetWriteBuffer();
+                        if (writer == null)
                             return;
 
                         foreach (var rect in dirtyRegions)
                         {
                             base.CopySourceToDest(
                                 _allBits[frontIdx],
-                                writer,
+                                writer.Bits,
                                 rect.X,
                                 rect.Y,
                                 rect.Width,
