@@ -26,7 +26,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private int _bytePerPixel;
         private int _width;
         private int _height;
-        private int count = 0;
 
         private int _readyToSend = 0;
         private int _fullScreenReceived =0;
@@ -34,10 +33,10 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private bool _acceptRegionChanged = false;
 
         //Writer buffer
-        private readonly ImageSwapper _writer;
+        private ImageSwapper _writer;
 
         //Reader buffer
-        private readonly ImageSwapper _reader;
+        private ImageSwapper _reader;
 
         private BITMAPINFO _bitmapInfo;
         private VBufferSwapper _bufferSwapper;
@@ -49,7 +48,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private int _regionSize;
         private int _hasData = 0;
 
-
+        private Rectangle[] _dirtyRegions;
+        private int count = 0;
         public VRegions(int width, int height, int bytePerPixel, int regionSize = 16)
         {
             _width = width;
@@ -60,6 +60,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
             _totalColumns = (_width + (_regionSize - 1)) / _regionSize;
             _totalRows = (_height + (_regionSize - 1)) / _regionSize;
+            _dirtyRegions= new Rectangle[_totalColumns * _totalRows];
+
 
             _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
 
@@ -222,50 +224,48 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                 return null;
             }
 
-            var data = _bufferSwapper.GetDataBuffer();
-            if (data == null)
+            var reader = _bufferSwapper.GetDataBuffer();
+            if (reader == null)
                 return null;
+            Console.WriteLine($"Reader: {reader.Bits}");
 
-            Console.WriteLine($"Reader start: {data.Bits}");
             try
             {
-                //lock (_lock)
-                //{
-                //    if (!_hasData)
-                //        return null;
-                //    _hasData = false;
 
+                lock (reader.Lock) 
+                {
+                    count = reader.ChangedRegions.Count;
+                    if (count > 0)
+                    {
+                        reader.ChangedRegions.CopyTo(_dirtyRegions);
+                        reader.ChangedRegions.Clear();
+                    }
+                }
 
-                //    //var temp = _writer;
-                //    //_writer = _reader;
-                //    //_reader = temp;
-                //}
+                if (count == 0) return null;
 
-                //MergeDirtyRegions(_reader, 0.9);
-                //MergeDirtyRegions(data.Rectangles, data.ChangedRegions, 0.9);
-
-                if (data.ChangedRegions.Count == 0) return null;
-
-                int rentLength = GetScreenDataLength(data.ChangedRegions, _bytePerPixel);
+                int rentLength = GetScreenDataLength(_dirtyRegions, count, _bytePerPixel);
                 byte[] buffer = VArrayPool.Rent(rentLength);
                 int offset = 0;
-                foreach (var region in data.ChangedRegions)
+                for (int i = 0; i < count; i++)
                 {
                     base.GetRegionsData(
                         ref offset,
                         buffer,
-                        data.Bits,//data,
+                        reader.Bits,//data,
                         _width,
-                        region.X,
-                        region.Y,
-                        region.Width,
-                        region.Height,
+                        _dirtyRegions[i].X,
+                        _dirtyRegions[i].Y,
+                        _dirtyRegions[i].Width,
+                        _dirtyRegions[i].Height,
                         _bytePerPixel);
 
                 }
                 return new ScreenDataDto(buffer, 0, offset + 1);
             }
-            catch {
+            catch (Exception ex)
+            {
+                Console.WriteLine($"GetData error: {ex.Message}");
                 //Error release _inflight
                 SendCompleted();
                 return null;

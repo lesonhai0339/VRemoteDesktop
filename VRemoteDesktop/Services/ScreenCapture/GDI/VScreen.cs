@@ -25,6 +25,10 @@ namespace VRemoteDesktop.Services.ScreenCapture
         public VScreen()
         {
         }
+        public int GetScreenDataLength(Rectangle[] rects, int length, int bytePerPixel)
+        {
+            return rects.Take(length).Sum(x => GetScreenDataLength(x.Width, x.Height, bytePerPixel)); //Only send raw bytes + 16 is header
+        }
         public int GetScreenDataLength(List<Rectangle> rects, int bytePerPixel)
         {
             return rects.Sum(x => GetScreenDataLength(x.Width , x.Height , bytePerPixel)); //Only send raw bytes + 16 is header

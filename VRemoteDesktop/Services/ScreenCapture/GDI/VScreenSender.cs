@@ -216,17 +216,21 @@ namespace VRemoteDesktop.Services.ScreenCapture
         public void GetFullScreen(VBufferSwapper bufferSwapper)
         {
             int writerOffset = 0;
-            int readerOffset = 0;
             try
             {
-                var writerAndReader = bufferSwapper.GetWriteAndReader();
-                if (writerAndReader.IsImageEmpty) 
+                var writer = bufferSwapper.BeginWrite();
+                if (writer == null)
                     return;
-
-                writerAndReader.Writer.Add(new RegionFrame(new List<Rectangle>() { new Rectangle(0, 0, _width, _height) }));
-                writerAndReader.Reader.Add(new RegionFrame(new List<Rectangle>() { new Rectangle(0, 0, _width, _height) }));
-                base.CopyFullScreenSourceToDest(ref writerOffset, writerAndReader.Writer.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
-                base.CopyFullScreenSourceToDest(ref readerOffset, writerAndReader.Reader.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
+                try
+                {
+                    Console.WriteLine($"Writer fullscreen: {writer.Bits}");
+                    writer.Add(new RegionFrame(new List<Rectangle>() { new Rectangle(0, 0, _width, _height) }));
+                    base.CopyFullScreenSourceToDest(ref writerOffset, writer.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
+                }
+                finally
+                {
+                    bufferSwapper.EndWrite();   
+                }
                 if (writerOffset > 0)
                 {
                     if (OnFrame != null)
@@ -267,6 +271,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     if(_clientSessionBufferSwapper.TryGetValue(key, out var bufferSwapper))
                     {
                         var writer = bufferSwapper.BeginWrite();
+                        Console.WriteLine($"Writer regions: {writer.Bits}");    
                         if (writer == null)
                             return;
                         try

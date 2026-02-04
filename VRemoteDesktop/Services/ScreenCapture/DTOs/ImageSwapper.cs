@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Text;
+using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Services.ScreenCapture.Interop;
 
 namespace VRemoteDesktop.Services.ScreenCapture.DTOs
@@ -31,6 +32,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
         public IntPtr HBitmap;
         public IntPtr MemDC;
 
+        public object Lock => _lock;    
         public IntPtr Bits;
         private List<Rectangle> _changedRegions { get; set; }
         public List<Rectangle> ChangedRegions
@@ -52,13 +54,19 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
         }
         public void Add(RegionFrame regions)
         {
-            _changedRegions.Clear();
             lock (_lock)
             {
                 foreach (var region in regions.Bounds)
                 {
                     _changedRegions.Add(region);    
                 }
+            }
+        }
+        public void Clear()
+        {
+            lock (_lock)
+            {
+                _changedRegions.Clear();
             }
         }
         public void Free()
