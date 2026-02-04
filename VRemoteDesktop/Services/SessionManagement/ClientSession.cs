@@ -510,8 +510,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (screenData == null || screenData.Buffer == null)
                 throw new InvalidOperationException("");
 
-            if (!_screenRegions.SetBusy())
-                return;
+            //if (!_screenRegions.SetBusy())
+            //    return;
 
             //Enable nhan dirty regions ngay sau khi xu ly xong full screen, khong doi goi "ScreenOK" moi enable vi the se mat frame
             EnableRegionsSend();
@@ -566,7 +566,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             finally
             {
                 VArrayPool.Return(dirtyRegions.Buffer);
-
 
                 //_stopwatch.Stop();
                 //Logger.Log.ForContext("", "DirtyRegionChanged").Info($"Dirty regions changed: {_stopwatch.Elapsed.TotalMilliseconds} ms, efore Compress: regionBuffer: {dirtyRegions.Buffer.Length} - regionActual: {dirtyRegions.Length} - compressBuffer: {rentBuffer.Length} - GetMaxOutputLength: {rentLength} | After compress: compressedLength: {length}");

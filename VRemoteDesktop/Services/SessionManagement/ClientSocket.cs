@@ -179,8 +179,11 @@ namespace VRemoteDesktop.Services.SessionManagement
         {
             try
             {
-                Socket.EndConnect(ar);
-                if (!Socket.Connected)
+                if (Socket == null)
+                    return;
+
+                _socket.EndConnect(ar);
+                if (!_socket.Connected)
                 {
                     if(OnConnected != null)
                         OnConnected?.Invoke(this, new SocketConnectedEventArgs(_sessionId, false));
@@ -193,10 +196,10 @@ namespace VRemoteDesktop.Services.SessionManagement
                     OnConnected.Invoke(this, new SocketConnectedEventArgs(_sessionId, true));
                 }
                 StateObject stateObject = new StateObject();
-                stateObject.WorkSocket = Socket;
+                stateObject.WorkSocket = _socket;
                 stateObject.SckId = _sessionId;
 
-                Socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
+                _socket.BeginReceive(stateObject.Buffer, 0, stateObject.BufferSize, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
             }
             catch (SocketException ex)
             {

@@ -175,6 +175,41 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 dst += stride;
             }
         }
+        public virtual void MergeDirtyRegions(List<Rectangle> regions, List<Rectangle> changedRegions, double threshold = 0.8)
+        {
+            changedRegions.Clear();
+            var baseRect = regions[0];
+
+            regions[0] = Rectangle.Empty;
+
+            for (int i = 1; i < regions.Count; i++)
+            {
+                var rect = regions[i];
+
+                if (rect.IsEmpty)
+                    continue;
+
+                var area = Rectangle.Union(baseRect, rect);
+
+                var areaUnion = area.Width * area.Height;
+                var areaSum = baseRect.Width * baseRect.Height + rect.Width * rect.Height;
+
+                if (areaSum >= threshold * areaUnion)
+                {
+                    baseRect = area;
+                }
+                else
+                {
+                    changedRegions.Add(baseRect);
+                    baseRect = rect;
+                }
+
+                regions[i] = Rectangle.Empty;
+            }
+
+            // Finally, add last base rectangle to groups result
+            changedRegions.Add(baseRect);
+        }
         public virtual List<Rectangle> MergeRegions(List<Rectangle> regions, double threshold = 0.8)
         {
             if (regions == null || regions.Count == 0)

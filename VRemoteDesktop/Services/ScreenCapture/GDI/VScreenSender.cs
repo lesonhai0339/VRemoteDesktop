@@ -20,6 +20,7 @@ using VRemoteDesktop.Services.ScreenCapture.GDI;
 using System.Threading.Tasks;
 using VRemoteDesktop.Services.ScreenCapture.Events;
 using System.Collections.Generic;
+using System.Drawing.Imaging;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
@@ -43,14 +44,14 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private const uint DIB_RGB_COLORS = 0;
         private const int RANGE = 5;
 
-
         private int _disposed = 0;
         private int _isCapturing = 0;
         private int _initialized = 0;
 
         private int _width;
         private int _height;
-        private int _bytePerPixel;    
+        private int _bytePerPixel;
+        private readonly int _regionSize;
         private readonly int _fps;
         private readonly double _waitTime;
 
@@ -60,7 +61,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
 
         private ConcurrentDictionary<string ,VBufferSwapper> _clientSessionBufferSwapper;
+
+
         private Rectangle[] _rectangles;
+        private List<Rectangle> _dirtyRegions;
+        private List<Rectangle> _mergedRegions;
         private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
         private ManualResetEventSlim _completedEvent = new ManualResetEventSlim(false);
 
@@ -95,13 +100,22 @@ namespace VRemoteDesktop.Services.ScreenCapture
         private IntPtr _screenDC;
 
         public event EventHandler<FrameEventArgs> OnFrame;
-        public VScreenSender(int width, int height, int bytePerPixel, int fps = 10)
+        public VScreenSender(int width, int height, int bytePerPixel, int fps = 10, int regionSize = 16)
         {
             var bounds = Screen.PrimaryScreen.Bounds;
+
             _width = bounds.Width;
             _height = bounds.Height;
             _bytePerPixel = bytePerPixel;
             _fps = fps;
+            _regionSize = regionSize;
+
+            //dirty regions
+            var cols = (_width + (_regionSize - 1)) / _regionSize;
+            var rows = (_height + (_regionSize - 1)) / _regionSize;
+            _dirtyRegions = new List<Rectangle>(cols * rows);
+            _mergedRegions = new List<Rectangle>(cols * rows);
+
             _waitTime = Math.Ceiling((double)1000 / _fps);
 
             _clientSessionBufferSwapper = new ConcurrentDictionary<string, VBufferSwapper>();
@@ -209,6 +223,8 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 if (writerAndReader.IsImageEmpty) 
                     return;
 
+                writerAndReader.Writer.Add(new RegionFrame(new List<Rectangle>() { new Rectangle(0, 0, _width, _height) }));
+                writerAndReader.Reader.Add(new RegionFrame(new List<Rectangle>() { new Rectangle(0, 0, _width, _height) }));
                 base.CopyFullScreenSourceToDest(ref writerOffset, writerAndReader.Writer.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
                 base.CopyFullScreenSourceToDest(ref readerOffset, writerAndReader.Reader.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
                 if (writerOffset > 0)
@@ -224,10 +240,15 @@ namespace VRemoteDesktop.Services.ScreenCapture
             {
                 Logger.Log.ForContext("FileName", "VScreenSender").Error(ex.Message);
             }
+            finally
+            {
+                bufferSwapper.Free();
+            }
         }
         private void GetChangedRegions(int range)
         {
-            var dirtyRegions = _rectangles.Where(x =>
+            _dirtyRegions.Clear();
+            _dirtyRegions = _rectangles.Where(x =>
                     IsRegionChangeUseLong(
                         _allBits[nextIdx],
                         _allBits[frontIdx],
@@ -236,39 +257,46 @@ namespace VRemoteDesktop.Services.ScreenCapture
                         x.Y,
                         x.Width,
                         x.Height,
-                        _bytePerPixel)).ToArray();
+                        _bytePerPixel)).ToList();
 
-            if (dirtyRegions.Length > 0)
+            if (_dirtyRegions.Count > 0)
             {
+                base.MergeDirtyRegions(_dirtyRegions, _mergedRegions, 0.9);
                 foreach (var key in _clientSessionBufferSwapper.Keys.ToArray())
                 {
                     if(_clientSessionBufferSwapper.TryGetValue(key, out var bufferSwapper))
                     {
-                        var writer = bufferSwapper.GetWriteBuffer();
+                        var writer = bufferSwapper.BeginWrite();
                         if (writer == null)
                             return;
-
-                        foreach (var rect in dirtyRegions)
+                        try
                         {
-                            base.CopySourceToDest(
-                                _allBits[frontIdx],
-                                writer.Bits,
-                                rect.X,
-                                rect.Y,
-                                rect.Width,
-                                rect.Height,
-                                _width, 
-                                _bytePerPixel);
+                            writer.Add(new RegionFrame(_mergedRegions));
+                            foreach (var rect in _mergedRegions)
+                            {
+                                base.CopySourceToDest(
+                                    _allBits[frontIdx],
+                                    writer.Bits,
+                                    rect.X,
+                                    rect.Y,
+                                    rect.Width,
+                                    rect.Height,
+                                    _width,
+                                    _bytePerPixel);
+                            }
                         }
-                    }     
+                        finally
+                        {
+                            bufferSwapper.EndWrite();
+                        }
+                    }
                 }
                 if (OnFrame != null)
                 {
-                    OnFrame.Invoke(this, new FrameEventArgs(VScreenType.DirtyRegions, new RegionFrame(dirtyRegions)));
+                    OnFrame.Invoke(this, new FrameEventArgs(VScreenType.DirtyRegions, new RegionFrame(_mergedRegions)));
                 }
             }
         }
-
         private void Capturing()
         {
             try

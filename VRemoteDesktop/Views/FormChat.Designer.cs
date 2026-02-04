@@ -65,6 +65,8 @@ namespace VRemoteDesktop.Views
             this.fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
             this.fpnChat.BackColor = Color.White;
             this.fpnChat.MouseWheel += new  MouseEventHandler(this.fpnChat_MouseWheel);
+            this.fpnChat.DragDrop += new System.Windows.Forms.DragEventHandler(this.fpnChat_DragDrop);
+            this.fpnChat.DragEnter += new System.Windows.Forms.DragEventHandler(this.fpnChat_DragEnter);
             // 
             // btnSendAttachment
             // 

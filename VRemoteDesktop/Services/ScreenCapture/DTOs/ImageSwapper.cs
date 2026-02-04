@@ -9,31 +9,75 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
 {
     public class ImageSwapper
     {
-        public ImageSwapper(Rectangle[] rects)
+        public ImageSwapper(int col, int row, int size)
         {
-            Rectangles = rects;
+            _col = col;
+            _row = row;
+            _size = size;
+
             HBitmap = IntPtr.Zero;
             Bits = IntPtr.Zero;
             MemDC = IntPtr.Zero;
-        }
-        public IntPtr HBitmap;
-        public IntPtr Bits;
-        public IntPtr MemDC;
-        public Rectangle[] Rectangles { get; set; }
 
+
+            var total = new Rectangle[col * row];
+            ChangedRegions = new List<Rectangle>(col * row);
+        }
+
+        private readonly object _lock = new object();   
+        private int _col;
+        private int _row;
+        private int _size;
+        public IntPtr HBitmap;
+        public IntPtr MemDC;
+
+        public IntPtr Bits;
+        private List<Rectangle> _changedRegions { get; set; }
+        public List<Rectangle> ChangedRegions
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return _changedRegions;
+                }
+            }
+            set
+            {
+                lock (_lock)
+                {
+                    _changedRegions = value;
+                }
+            }
+        }
+        public void Add(RegionFrame regions)
+        {
+            _changedRegions.Clear();
+            lock (_lock)
+            {
+                foreach (var region in regions.Bounds)
+                {
+                    _changedRegions.Add(region);    
+                }
+            }
+        }
         public void Free()
         {
+            
+
+            if (MemDC != IntPtr.Zero)
+            {
+                CaptureApi.DeleteDC(MemDC);
+                //CaptureApi.ReleaseDC(IntPtr.Zero, MemDC);
+            }
             if (HBitmap != IntPtr.Zero)
                 CaptureApi.DeleteObject(HBitmap);
 
-            if (MemDC != IntPtr.Zero)
-                CaptureApi.ReleaseDC(IntPtr.Zero, MemDC);
-
             Bits = IntPtr.Zero;
             HBitmap = IntPtr.Zero;
             MemDC = IntPtr.Zero;
 
-            Array.Clear(Rectangles, 0, Rectangles.Length);
+            ChangedRegions.Clear();
         }
     }
 }

@@ -295,11 +295,20 @@ namespace VRemoteDesktop.Presenters
                 throw;
             }
         }
-        public bool RequestSendFile()
+        public bool RequestSendFile(string filePath = null)
         {
             try
             {
-                var fileInfo = _chatAttachment.GetFileSendInfo();
+                VFileInfo fileInfo;
+                if (string.IsNullOrEmpty(filePath))
+                {
+                    fileInfo = _chatAttachment.GetFileSendInfo();
+                }
+                else
+                {
+                    fileInfo = _chatAttachment.GetFileSendInfo(filePath);
+                }
+
                 if (fileInfo == null)
                     return false;
 

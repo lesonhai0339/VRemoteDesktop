@@ -91,6 +91,27 @@ namespace VRemoteDesktop.Views
 
             this.txtChatContent.KeyDown -= KeyDownEventHandler;
         }
+        private void fpnChat_DragEnter(object sender, DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(DataFormats.FileDrop))
+            {
+                e.Effect = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effect = DragDropEffects.None;
+            }
+        }
+        private void fpnChat_DragDrop(object sender, DragEventArgs e)
+        {
+
+            Console.WriteLine(string.Format("{0} - {1}", e.Data.ToString(), e.Data.GetType().ToString()));
+            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            foreach (var file in files)
+            {
+                _chatPresenter.RequestSendFile(file);
+            }
+        }
         private void btnSend_Click(object sender, EventArgs e)
         {
             SendMessage(txtChatContent.Text);

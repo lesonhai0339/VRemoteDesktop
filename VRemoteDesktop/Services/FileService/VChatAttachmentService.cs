@@ -22,6 +22,8 @@ namespace VRemoteDesktop.Services.FileService
         bool ReceivedFileInfo(byte[] rawData, bool isSender, out VFileInfo info);
         bool BuildSenderFileInfo(FileInfo fileInfo, bool isSender, out VFileInfo info);
         VFileInfo GetFileSendInfo();
+        VFileInfo GetFileSendInfo(string filePath);
+
         void UpdateFileSavePath(string id, string savePath);
         void ProcessFileDataReceived(string connectionId, byte[] rawData);
         List<ChunkFileInfo> CalculateNumberOfChunksFromFileByFileId(string id);
@@ -128,10 +130,21 @@ namespace VRemoteDesktop.Services.FileService
         public VFileInfo GetFileSendInfo()
         {
             string filePath = Helpers.FileHelper.OpenFileDialogAndGetFilePath();
+            return GetFileInfo(filePath);
+        }
+        public VFileInfo GetFileSendInfo(string filePath)
+        {
+            return GetFileInfo(filePath);
+        }
+        private VFileInfo GetFileInfo(string filePath)
+        {
+            if (string.IsNullOrEmpty(filePath))
+                throw new ArgumentNullException("File path is not null or empty");
+
             if (!string.IsNullOrWhiteSpace(filePath) && File.Exists(filePath))
             {
                 FileInfo fileInfo = Helpers.FileHelper.GetFileInfo(filePath);
-                if(fileInfo.Length > long.MaxValue)
+                if (fileInfo.Length > long.MaxValue)
                     throw new ArgumentOutOfRangeException("File size cannot be larger than " + long.MaxValue);
 
                 if (BuildSenderFileInfo(fileInfo, true, out VFileInfo info))

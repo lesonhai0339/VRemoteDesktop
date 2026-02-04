@@ -63,18 +63,21 @@ namespace VRemoteDesktop.Services.Client
             var ip = LocalIpAddress();
 
             var machineInfo = new MachineInfo(
-                id: machineId,
+                id: "111111111",// machineId,
                 password: tempPassword,
                 defaultPassword: defaultPassword,
                 computerName: computerName,
                 width: width,
-                height: height, 
+                height: height,
                 majorVersion: major.ToString(),
                 minorVersion: minor.ToString(),
                 ip: ip.ToString(),
                 publicIP: "",
                 port: _port
-            );
+            )
+            {
+
+            };
             return machineInfo;
         }
         public bool SameNetwork(string publicIp)
