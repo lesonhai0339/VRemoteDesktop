@@ -56,14 +56,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                if (e.Type == VScreenType.FullScreen)
-                {
-                    _sessionManager.AddScreen(SessionManagement.Enums.ClientType.Controlled, e.RegionFrame);
-                }
-                else if (e.Type == VScreenType.DirtyRegions)
-                {
-                    _sessionManager.AddDirtyRegions(SessionManagement.Enums.ClientType.Controlled, e.RegionFrame);
-                }
+                _sessionManager.ScreenCapture(SessionManagement.Enums.ClientType.Controlled, e.Type);
+              
             }
             catch (Exception ex)
             {

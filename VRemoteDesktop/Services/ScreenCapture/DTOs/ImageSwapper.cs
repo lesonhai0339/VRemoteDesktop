@@ -20,9 +20,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
             Bits = IntPtr.Zero;
             MemDC = IntPtr.Zero;
 
-
-            var total = new Rectangle[col * row];
-            ChangedRegions = new List<Rectangle>(col * row);
+            _changedRegions = new Rectangle[col * row];
         }
 
         private readonly object _lock = new object();   
@@ -34,8 +32,8 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
 
         public object Lock => _lock;    
         public IntPtr Bits;
-        private List<Rectangle> _changedRegions { get; set; }
-        public List<Rectangle> ChangedRegions
+        private Rectangle[] _changedRegions { get; set; }
+        public Rectangle[] ChangedRegions
         {
             get
             {
@@ -58,15 +56,25 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
             {
                 foreach (var region in regions.Bounds)
                 {
-                    _changedRegions.Add(region);    
+                    var index = GetRectangleIndex(region);
+                    if(index != -1)
+                        _changedRegions[index] = region;    
                 }
             }
         }
+        public int GetRectangleIndex(Rectangle rect)
+        {
+            if (rect.IsEmpty)
+                return -1;
+
+            return ((rect.Y / _size) * _col) + (rect.X / _size);
+        }
+
         public void Clear()
         {
             lock (_lock)
             {
-                _changedRegions.Clear();
+                Array.Clear(_changedRegions, 0, _changedRegions.Length);
             }
         }
         public void Free()
@@ -85,7 +93,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
             HBitmap = IntPtr.Zero;
             MemDC = IntPtr.Zero;
 
-            ChangedRegions.Clear();
+            Array.Clear(ChangedRegions, 0, ChangedRegions.Length);
         }
     }
 }

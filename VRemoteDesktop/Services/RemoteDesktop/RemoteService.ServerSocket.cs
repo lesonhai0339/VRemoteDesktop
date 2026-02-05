@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.ServiceModel.Configuration;
 using System.Text;
 using VRemoteDesktop.DTOs.Requests;
 using VRemoteDesktop.Events;
@@ -42,16 +43,17 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             return serverSocket.TryConnect(ip, port, 3, 3000);
         }
-        public void ServerSocketLogin(ClientSession client)
+        public void ServerSocketLogin(ClientSession clientSession)
         {
-            if (client == null)
+            if (clientSession == null)
                 throw new ArgumentNullException("ClientSession cannot be null");
 
             var machineInfo = GetMachineInfo().ObjectToJsonString();
             var result = ByteArrayHelper.ConvertStringToByteArray(machineInfo, VRemoteDesktop.Enums.EncodingType.ASCII);
             if (result.IsSuccess)
             {
-                client.Send(Models.SocketDataType.Login, result.Data);
+                clientSession.AddWork(VRemoteDesktop.Enums.QueuePriority.High, new TaskObject(SocketDataType.Login, result.Data));
+                //clientSession.Send(Models.SocketDataType.Login, result.Data);
             }
         }
         public void ServerSocketListen(ClientSession client, int port)
@@ -63,7 +65,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             client.Listen(port: port);
         }
-        public void GetPartnerInfo(ClientSession client, string id, string password)
+        public void GetPartnerInfo(ClientSession clientSession, string id, string password)
         {
             if (string.IsNullOrEmpty(id))
                 throw new ArgumentNullException("Partner id cannot be null or empty");
@@ -74,7 +76,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             var packet = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(partnerCredentials));
 
-            client.Send(SocketDataType.GetPartnerInfo, packet);
+            //client.Send(SocketDataType.GetPartnerInfo, packet);
+            clientSession.AddWork(VRemoteDesktop.Enums.QueuePriority.High, new TaskObject(SocketDataType.GetPartnerInfo, packet));
+
         }
         #endregion
         #region Events

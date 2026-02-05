@@ -165,12 +165,17 @@ namespace VRemoteDesktop
         {
             if(_status != LoginStatus.Connected)
             {
-
                 MessageBox.Show("Không thể kết nối đến máy chủ", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
             string partnerId = txtPartnerId.Text.Replace(" ", "");
             string partnerPassword = txtPartnerPassword.Text.Replace(" ","");
+
+            if (_mainPresenter.IsConnectToYourself(partnerId))
+            {
+                MessageBox.Show("Không thể kết nối với chính mình", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
 
             if (string.IsNullOrWhiteSpace(partnerId))
             {

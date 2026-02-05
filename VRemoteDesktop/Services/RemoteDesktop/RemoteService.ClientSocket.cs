@@ -155,7 +155,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                    machineInfo: _machineProfile.MachineInfo);
 
                 var packet = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(connectionInfo));
-                clientSession.Send(SocketDataType.RemoteLogin, packet);
+
+                //clientSession.Send(SocketDataType.RemoteLogin, packet);
+                clientSession.AddWork(priority: QueuePriority.High, new TaskObject( SocketDataType.RemoteLogin, packet));
             }
         }
         private void EstablishRelayConnect(ClientSession clientSession, PartnerNetworkInfo partnerInfo)
@@ -178,7 +180,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 machineInfo: _machineProfile.MachineInfo);
 
             var packet = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(connectionInfo));
-            clientSession.Send(SocketDataType.RemoteLogin, packet);
+            clientSession.AddWork(priority: QueuePriority.High, new TaskObject(SocketDataType.RemoteLogin, packet));
+            //clientSession.Send(SocketDataType.RemoteLogin, packet);
         }
         #endregion
         #region Events
@@ -189,20 +192,23 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 var clientSession = sender as ClientSession;
                 if (clientSession == null)
                 {
-                    clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
+                    clientSession.AddWork(priority: QueuePriority.High, new TaskObject(SocketDataType.RemoteLoginFailed));
+                    //clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
                     return;
                 }
 
                 var connectionInfo = JsonConvert.DeserializeObject<ConnectionCredentials>(Encoding.ASCII.GetString(data));
                 if (connectionInfo == null || string.IsNullOrEmpty(connectionInfo.PartnerId) || string.IsNullOrEmpty(connectionInfo.PartnerPassword))
                 {
-                    clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
+                    clientSession.AddWork(priority: QueuePriority.High, new TaskObject(SocketDataType.RemoteLoginFailed));
+                    //clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
                     return;
                 }
 
                 if (!_machineProfile.Authentication(connectionInfo.PartnerId, connectionInfo.PartnerPassword))
                 {
-                    clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
+                    clientSession.AddWork(priority: QueuePriority.High, new TaskObject(SocketDataType.RemoteLoginFailed));
+                    //clientSession.Send(SocketDataType.RemoteLoginFailed, new byte[0]);
                     return;
                 }
 
@@ -210,7 +216,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                 var packet = Encoding.ASCII.GetBytes(JsonConvert.SerializeObject(myInfo));
 
-                clientSession.Send(SocketDataType.RemoteLoginSuccess, packet);
+                //clientSession.Send(SocketDataType.RemoteLoginSuccess, packet);
+                clientSession.AddWork(priority: QueuePriority.High, new TaskObject(SocketDataType.RemoteLoginSuccess, packet));
+
 
                 ReadyToRemoteControlledHandler(sender, null);
 
@@ -301,6 +309,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 {
                     OnSessionData.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.RemoteDisconnect, clientSession.SessionId));
                 }
+
+                _screenSender.RemoveSessionBuffer(clientSession.SessionId);
 
                 StopCapture();
             }

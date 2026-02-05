@@ -10,6 +10,8 @@ using VRemoteDesktop.Enums;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.Enums;
+using VRemoteDesktop.Services.ScreenCapture.Events;
 using VRemoteDesktop.Services.SessionManagement.Enums;
 using VRemoteDesktop.Services.SessionManagement.Events.ClientSession;
 using VRemoteDesktop.Services.VTCPClient;
@@ -29,9 +31,7 @@ namespace VRemoteDesktop.Services.SessionManagement
         ClientSession GetByKey(string id);
         ClientSession New(string id, ClientType type, int width, int height, int bytePerPixel, PixelFormat pixelFormat);
         ClientSession AddNewAndListen(string id, ClientType type, int port, int width, int height, int bytePerPixel, PixelFormat pixelFormat);
-
-        void AddScreen(ClientType type, RegionFrame screen);
-        void AddDirtyRegions(ClientType sessionType, RegionFrame frame);
+        void ScreenCapture(ClientType type, VScreenType e);
 
         event EventHandler<ClientSessionDataReceivedEventArgs> SessionDataReceived;
         event EventHandler<ClientSessionDisconnectedEventArgs> SessionClosed;
@@ -138,36 +138,15 @@ namespace VRemoteDesktop.Services.SessionManagement
         }
         #endregion
         #region Dispatch
-        public void AddScreen(ClientType type, RegionFrame screen)
+        public void ScreenCapture(ClientType type, VScreenType e)
         {
             if (type == ClientType.None) return;
-            if (screen == null)
-                throw new ArgumentNullException("Full screen cannot be null");
 
-            var sessions = _sessions.Where(x => x.Value.SessionType == type && x.Value.AcceptFullScreen()).Select(x => x.Value).ToList();
+            var sessions = _sessions.Where(x => x.Value.SessionType == type).Select(x => x.Value).ToList();
             foreach(var session in sessions)
             {
-                AddScreen(session, screen);
+                session.ScreenReceived(e);
             }
-        }
-        private void AddScreen(ClientSession session, RegionFrame screen)
-        {
-            session.AddScreen(screen);
-        }
-        public void AddDirtyRegions(ClientType sessionType, RegionFrame frame)
-        {
-            if (sessionType == ClientType.None) return;
-            if (frame == null) throw new ArgumentNullException("Dirty region cannot be null");
-
-            var sessions = _sessions.Where(x => x.Value.SessionType == sessionType && x.Value.AcceptScreen).Select(x => x.Value).ToList();
-            foreach(var session in sessions)
-            {
-                AddRegions(session, frame);
-            }
-        }
-        private void AddRegions(ClientSession session, RegionFrame frame)
-        {
-            session.AddRegions(frame);
         }
         #endregion
         #region Events

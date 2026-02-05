@@ -96,7 +96,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             var clientSession = sender as ClientSession;
             if (clientSession != null)
             {
-                clientSession.Send(type, data);
+                clientSession.AddWork(VRemoteDesktop.Enums.QueuePriority.High, new TaskObject(type, data));
+                //clientSession.Send(type, data);
             }
         }
         private void StartCapture()

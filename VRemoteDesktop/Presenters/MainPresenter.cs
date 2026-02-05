@@ -239,5 +239,10 @@ namespace VRemoteDesktop.Presenters
                 }
             }
         }
+
+        internal bool IsConnectToYourself(string partnerId)
+        {
+            return string.Compare(_machineInfo.Id, partnerId, StringComparison.OrdinalIgnoreCase) == 0; 
+        }
     }
 }

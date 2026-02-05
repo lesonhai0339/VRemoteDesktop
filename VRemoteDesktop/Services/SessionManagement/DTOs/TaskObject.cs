@@ -10,7 +10,10 @@ namespace VRemoteDesktop.Models
 {
     public class TaskObject
     {
-        public TaskObject(): this(SocketDataType.None, null, null, false, null, null) { }
+
+        public TaskObject(): this(taskType: SocketDataType.None,sessionId: null, data: null, isSendHeader: true, capturedFrame: null, chunkFileInfo: null) { }
+        public TaskObject(SocketDataType type) : this(taskType: type, sessionId: null,data: null,isSendHeader: true,capturedFrame: null, chunkFileInfo: null) { }
+        public TaskObject(SocketDataType type, byte[] data) : this(taskType: type, sessionId: null,data: data,isSendHeader: true, capturedFrame: null, chunkFileInfo: null) { }
 
         /// <summary>
         /// Test VScreen
@@ -22,13 +25,13 @@ namespace VRemoteDesktop.Models
         /// <param name="length"></param>
         /// <param name="isSendHeader"></param>
         public TaskObject(SocketDataType type, string sessionId, bool isSendHeader, CapturedFrame capturedFrame)
-            : this(type, sessionId, null, isSendHeader, capturedFrame, null) { }
+            : this(taskType: type, sessionId: sessionId, data: null,isSendHeader: isSendHeader, capturedFrame: capturedFrame, chunkFileInfo: null) { }
 
         public TaskObject(SocketDataType type, string sessionId, byte[] data, bool isSendHeader)
-           : this(type, sessionId, data, isSendHeader, null, null) { }
+           : this(taskType: type, sessionId: sessionId, data: data, isSendHeader: isSendHeader, capturedFrame: null, chunkFileInfo: null) { }
 
         public TaskObject(SocketDataType type, string sessionId, bool isSendHeader, ChunkFileInfo chunkFileInfo)
-            : this(type, sessionId, null, isSendHeader, null, chunkFileInfo) { }
+            : this(taskType: type, sessionId: sessionId, data: null, isSendHeader: isSendHeader, capturedFrame: null, chunkFileInfo: chunkFileInfo) { }
 
 
         public TaskObject(SocketDataType taskType, string sessionId, byte[] data, bool isSendHeader, CapturedFrame capturedFrame, ChunkFileInfo chunkFileInfo)

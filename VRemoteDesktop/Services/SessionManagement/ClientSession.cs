@@ -17,6 +17,7 @@ using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.Enums;
 using VRemoteDesktop.Services.ScreenCapture.GDI;
 using VRemoteDesktop.Services.ScreenCapture.Utils;
 using VRemoteDesktop.Services.SessionManagement;
@@ -123,7 +124,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             else
             {
                 _screenRegions = null;
-                _bufferPool = VArrayPool.Rent(5 * 1024 * 1024);
+                _bufferPool = VArrayPool.Rent(10 * 1024 * 1024);
             }
 
 
@@ -155,7 +156,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         public PixelFormat PixelFormat => _pixelFormat; 
         public int BytePerPixel => _bytePerPixel;
         public VBufferSwapper BufferSwapper => _screenRegions.BufferSwapper;
-        public bool AcceptScreen => _screenRegions.CanWork;
         public bool Connected
         {
             get
@@ -224,20 +224,20 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 try
                 {
                     bool hasWork = false;
-                    if (_highQueue.TryDequeue(out var highTask))
+                    if (_highQueue.Count > 0)
                     {
-                        HighQueueHandler(highTask);
-                        hasWork = true;
+                        if (HighQueueHandler())
+                            hasWork = true;
                     }
                     else if (_screenRegions != null && _screenRegions.HasData  && _screenRegions.ReadyToSend())
                     {
-                        DirtyRegionSend();
-                        hasWork = true;
+                        if (DirtyRegionSend())
+                            hasWork = true;
                     }
-                    else if (_lowQueue.Count >0)
+                    else if (_lowQueue.Count > 0)
                     {
-                        LowQueueHandler();
-                        hasWork = true;
+                        if (LowQueueHandler())
+                            hasWork = true;
                     }
                     if (!hasWork)
                     {
@@ -256,43 +256,66 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 }
             }
         }
-        private void HighQueueHandler(QueueItem highTask)
+        private bool HighQueueHandler()
         {
-            switch (highTask.Data)
+            if (!_highQueue.TryPeek(out var highTask)) return false;
+
+            var taskObject = highTask.Data as TaskObject;
+            if (taskObject == null)
             {
-                case TaskObject taskObj:
-                    if(taskObj.TaskType == SocketDataType.ScreenSend && taskObj.CapturedFrame != null)
-                    {
-                        Send(taskObj.CapturedFrame);
-                        return;
-                    }
-                    Send(taskObj.TaskType, taskObj.Data, taskObj.SessionId, taskObj.IsSendHeader);
-                    break;
-                default:
-                    break;
+                _highQueue.TryDequeue(out _); 
+                return true; //continue immediately
             }
+            bool sentSuccessfully = false;
+
+            if (taskObject.TaskType == SocketDataType.ScreenSend && taskObject.CapturedFrame != null)
+            {
+                sentSuccessfully = Send(taskObject.CapturedFrame);
+            }
+            else
+            {
+                sentSuccessfully = Send(taskObject.TaskType, taskObject.Data, taskObject.SessionId, taskObject.IsSendHeader);
+            }
+
+            if (sentSuccessfully)
+            {
+                _highQueue.TryDequeue(out _);
+                return true;
+            }
+            return false;
         }
-        private void LowQueueHandler()
+        private bool LowQueueHandler()
         {
             var now = Stopwatch.GetTimestamp();
             if ((now - _lastFileSend) > DELAY_TIME_PER_CHUNK_FILE)
             {
                 lock (_lock)
                 {
-                    if (_lowQueue.TryDequeue(out var queueItem))
-                    {
-                        _lastFileSend = now;
-                        var taskObj = queueItem.Data as TaskObject;
-                        if (taskObj != null)
-                        {
-                            if (_cancelFile.Contains(taskObj.ChunkFileInfo.FileId))
-                                return;
 
-                            ProcessFileTransfer(taskObj);
-                        }
+                    if (!_lowQueue.TryPeek(out var queueItem)) return false;
+
+                    var taskObject = queueItem.Data as TaskObject;
+                    if (taskObject == null)
+                    {
+                        _highQueue.TryDequeue(out _);
+                        return true; //continue immediately
+                    }
+
+                    bool sentSuccessfully = false;
+
+                    if (_cancelFile.Contains(taskObject.ChunkFileInfo.FileId))
+                        return true; //ignore because file with this id had been cancelled
+
+                    sentSuccessfully =  ProcessFileTransfer(taskObject);
+
+                    if (sentSuccessfully)
+                    {
+                        _lowQueue.TryDequeue(out _);
+                        return true;
                     }
                 }
             }
+            return false;
         }
         private void ReceivedWorker(CancellationToken token)
         {
@@ -335,12 +358,11 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 switch (e.Type)
                 {
                     case SocketDataType.ScreenOk:
-                        //ReadyToNextRegionSend();
                         FullScreenSendCompleted();
-                        OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));
+                        //OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));
                         break;
                     case SocketDataType.RegionsChangedOk:
-                        ReadyToNextRegionSend();
+                        ScreenCompleted();
                         break;
                     case SocketDataType.ScreenSend:
                         FullScreenHandler(e);
@@ -361,7 +383,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         break;
                         
                 }
-                Interlocked.Exchange(ref _sending, 0);
             }
 
         }
@@ -418,7 +439,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             return _clientSocket.Listen(port, timeout);
         }
-        private void Send(CapturedFrame frame)
+        private bool Send(CapturedFrame frame)
         {
             if (IsDisposed)
                 throw new ObjectDisposedException(this.GetType().Name);
@@ -432,199 +453,254 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     Timeout = Environment.TickCount,
                     RentBuffer = true
                 };
-                _clientSocket.Send(state);
+                return SendState(state);
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+                return false;
             }
         }
-        public void Send(SocketDataType type, byte[] data, string id = null, bool sendHeader = true)
+        private bool Send(SocketDataType type, byte[] data, string id = null, bool sendHeader = true)
         {
-            if (IsDisposed)
-                throw new ObjectDisposedException(this.GetType().Name);
-
+            if (Interlocked.CompareExchange(ref _disposed, 1, 1) != 0)
+                return false;
             try
             {
-                if (type == SocketDataType.None)
-                    return;
+                if (data.Length <= 0)
+                    data = new byte[0];
 
                 if (sendHeader)
                 {
-                    data = HeaderGenerate(type: type, id: _sessionId, true, data);
+                    //data = HeaderGenerate(type: type, id: _sessionId, true, data);
+                    HeaderGenerate(type: type, id: _sessionId, data.Length, _bufferPool, 0);
+                    Buffer.BlockCopy(data, 0, _bufferPool, 13, data.Length);
+
+                    int length = 13 + data.Length;
+
+                    Sendstate state = new Sendstate
+                    {
+                        Data = _bufferPool,
+                        Remained = length,
+                        Sent = 0,
+                        Timeout = Environment.TickCount,
+                        RentBuffer = false,
+                    };
+                    return SendState(state);
                 }
-
-                Sendstate state = new Sendstate
+                else
                 {
-                    Data = data,
-                    Remained =  data.Length,
-                    Sent = 0,
-                    Timeout = Environment.TickCount,
-                    RentBuffer = false,
-                };
-
-                _clientSocket.Send(state);
+                    Sendstate state = new Sendstate
+                    {
+                        Data = data,
+                        Remained = data.Length,
+                        Sent = 0,
+                        Timeout = Environment.TickCount,
+                        RentBuffer = false,
+                    };
+                    return SendState(state);
+                }
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+                return false;
             }
+        }
+        //private bool Send(SocketDataType type, byte[] data, string id = null, bool sendHeader = true)
+        //{
+        //    if (Interlocked.CompareExchange(ref _disposed, 1, 1) != 0)
+        //        return false;
+
+        //    try
+        //    {
+        //        if (data.Length <= 0)
+        //            data = new byte[0];
+
+        //        if (sendHeader)
+        //        {
+        //            data = HeaderGenerate(type: type, id: _sessionId, true, data);
+        //        }
+        //        Sendstate state = new Sendstate
+        //        {
+        //            Data = data,
+        //            Remained = data.Length,
+        //            Sent = 0,
+        //            Timeout = Environment.TickCount,
+        //            RentBuffer = false,
+        //        };
+        //        return SendState(state);
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
+        //        return false;
+        //    }
+        //}
+        private bool SendState(Sendstate state)
+        {
+            if (Interlocked.CompareExchange(ref _sending, 1, 0) != 0)
+                return false;
+
+            _clientSocket.Send(state);
+            return true;
         }
 
         #endregion
 
         #region ScreenRegion
-        private void ScreenToQueue(SocketDataType type, byte[] buffer, int length)
+        public void ScreenReceived(VScreenType type)
         {
-            var header = HeaderGenerate(type: type,
-                id: this.SessionId,
-                includeData: false,
-                data: null,
-                dataSize: length);
-
-            var headerPacket = new TaskObject
+            if (type == VScreenType.FullScreen)
             {
-                TaskType = type,
-                Data = header,
-                SessionId = this.SessionId,
-                IsSendHeader = false
-            };
-            var payloadPacket = new TaskObject
-            {
-                TaskType = type,
-                SessionId = this.SessionId,
-                CapturedFrame = new CapturedFrame(ScreenCapture.Enums.VScreenType.FullScreen, buffer, 0, length),
-                IsSendHeader = false
-            };
-            AddWork(QueuePriority.High, headerPacket, payloadPacket);
-        }
-        public bool AcceptFullScreen()
-        {
-            return _screenRegions.AcceptFullScreen();
-        }
-        public void AddScreen(RegionFrame screen)
-        {
-            _screenRegions.Add(screen);
-
-            var screenData = _screenRegions.GetData();
-            if (screenData == null || screenData.Buffer == null)
-                throw new InvalidOperationException("");
-
-            //if (!_screenRegions.SetBusy())
-            //    return;
-
-            //Enable nhan dirty regions ngay sau khi xu ly xong full screen, khong doi goi "ScreenOK" moi enable vi the se mat frame
-            EnableRegionsSend();
-            try
-            {
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(screenData.Buffer, screenData.Length, _bufferPool, _bufferPool.Length);
-                var type = SocketDataType.ScreenSend;
-                ScreenToQueue(type, _bufferPool, length);
+                AddScreen();
             }
-            finally
+            else
             {
-                VArrayPool.Return(screenData.Buffer);
+                _screenRegions.SetHasData();
             }
-
         }
-        private void DirtyRegionSend()
+        private void FullScreenSendCompleted()
         {
-            //_stopwatch.Restart();
+            _screenRegions.SetFullScreenCompleted();
+        }
+        private void ScreenCompleted()
+        {
+            _screenRegions.SendCompleted();
+        }
+        //public void AddScreen()
+        //{
+        //    try
+        //    {
+        //        int compressedLength = GetCaptureFrame(out CapturedFrame frame);
+        //        if (frame == null || compressedLength == 0)
+        //            return;
+
+        //        var type = SocketDataType.ScreenSend;
+
+        //        var header = HeaderGenerate(type: type,
+        //         id: this.SessionId,
+        //         includeData: false,
+        //         data: null,
+        //         dataSize: compressedLength);
+
+        //        var headerPacket = new TaskObject
+        //        {
+        //            TaskType = type,
+        //            Data = header,
+        //            SessionId = this.SessionId,
+        //            IsSendHeader = false
+        //        };
+        //        var payloadPacket = new TaskObject
+        //        {
+        //            TaskType = type,
+        //            SessionId = this.SessionId,
+        //            CapturedFrame = frame,
+        //            IsSendHeader = false
+        //        };
+
+        //        AddWork(QueuePriority.High, headerPacket, payloadPacket);
+        //    }
+        //    catch (Exception ex)
+        //    {
+
+        //    }
+        //}
+        //private void DirtyRegionSend()
+        //{
+        //    try
+        //    {
+        //        int compressedLength = GetCaptureFrame(out CapturedFrame frame);
+        //        if (frame == null || compressedLength == 0)
+        //            return;
+
+        //        var type = SocketDataType.ScreenRegionsChangedSend;
+        //        var header = HeaderGenerate(type: type,
+        //         id: this.SessionId,
+        //         includeData: false,
+        //         data: null,
+        //         dataSize: compressedLength);
+
+
+        //        var result1 =  Send(type, header, this._sessionId, false);
+
+        //        var result2 = Send(frame);
+        //        if()
+        //    }
+        //    catch (Exception ex)
+        //    {
+
+        //    }
+        //}
+        public void AddScreen()
+        {
+            SendCapture(SocketDataType.ScreenSend);
+        }
+        private bool DirtyRegionSend()
+        {
+            return SendCapture(SocketDataType.ScreenRegionsChangedSend);
+        }
+        private bool SendCapture(SocketDataType type)
+        {
             var dirtyRegions = _screenRegions.GetData();
             if (dirtyRegions == null)
             {
                 _screenRegions.SendCompleted();
-                return;
+                return false;
             }
-
             try
             {
-                int rentLength = Compressor.GetMaxOutputLength(dirtyRegions.Buffer.Length);
-                var rentBuffer = VArrayPool.Rent(rentLength);
+                //13 bytes for header
+                int dataOffset = 13;
+                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, _bufferPool, dataOffset, _bufferPool.Length - dataOffset);
 
-                int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, rentBuffer, rentBuffer.Length);
-                var type = SocketDataType.ScreenRegionsChangedSend;
+                var header = HeaderGenerate(
+                    type: type,
+                    id: this._sessionId,
+                    dataLength: length,
+                    buffer: _bufferPool,
+                    offset: 0);  
 
-                var header = HeaderGenerate(type: type,
-                   id: this.SessionId,
-                   includeData: false,
-                   data: null,
-                   dataSize: length);
+                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, _bufferPool, 0, length + 13);
 
-                var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, rentBuffer, 0, length);
-
-                //Console.WriteLine($"Before Compress: regionBuffer: {dirtyRegions.Buffer.Length} - regionActual: {dirtyRegions.Length} - compressBuffer: {rentBuffer.Length} - GetMaxOutputLength: {rentLength} | After compress: compressedLength: {length}");
-
-                Send(type, header, this.SessionId, false);
-
-                Send(frame);
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine("DirtyRegionSend err: ", ex.Message);
+                var result =  Send(frame);
+                if (result)
+                {
+                    _screenRegions.ReadCompleted();
+                    return true;
+                }
+                return false;
             }
             finally
             {
                 VArrayPool.Return(dirtyRegions.Buffer);
-
-                //_stopwatch.Stop();
-                //Logger.Log.ForContext("", "DirtyRegionChanged").Info($"Dirty regions changed: {_stopwatch.Elapsed.TotalMilliseconds} ms, efore Compress: regionBuffer: {dirtyRegions.Buffer.Length} - regionActual: {dirtyRegions.Length} - compressBuffer: {rentBuffer.Length} - GetMaxOutputLength: {rentLength} | After compress: compressedLength: {length}");
             }
         }
-        //private void DirtyRegionSend()
+        //private int GetCaptureFrame(out CapturedFrame frame)
         //{
-        //    regionTime.Restart();
+        //    frame = null;
         //    var dirtyRegions = _screenRegions.GetData();
         //    if (dirtyRegions == null)
-        //        return;
+        //    {
+        //        _screenRegions.SendCompleted();
+        //        return 0;
+        //    }
         //    try
         //    {
-        //        int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, _bufferPool, _bufferPool.Length);
-        //        var type = SocketDataType.ScreenRegionsChangedSend;
+        //        int rentLength = Compressor.GetMaxOutputLength(dirtyRegions.Buffer.Length);
+        //        var rentBuffer = VArrayPool.Rent(rentLength);
 
-        //        var header = HeaderGenerate(type: type,
-        //           id: this.SessionId,
-        //           includeData: false,
-        //           data: null,
-        //           dataSize: length);
+        //        int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, rentBuffer, rentBuffer.Length);
 
-        //        var frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, _bufferPool, 0, length, 1);
+        //        frame = new CapturedFrame(ScreenCapture.Enums.VScreenType.DirtyRegions, rentBuffer, 0, length);
 
-        //        Console.WriteLine(length);
-
-        //        Send(type, header, this.SessionId, false);
-
-        //        Send(frame);
-
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Console.WriteLine("DirtyRegionSend err: ", ex.Message);
+        //        return length;
         //    }
         //    finally
         //    {
         //        VArrayPool.Return(dirtyRegions.Buffer);
-        //        regionTime.Stop();
-        //        Console.WriteLine($"Regions count {regionCount} - Time {regionTime.Elapsed.TotalMilliseconds}\n{new string('-', 10)}");
-        //        regionCount++;
         //    }
         //}
-        private void FullScreenSendCompleted()
-        {
-            _screenRegions.FullScreenCompleted();
-        }
-        private void EnableRegionsSend()
-        {
-            _screenRegions.BeginAccept();
-        }
-        private void ReadyToNextRegionSend()
-        {
-            _screenRegions.SendCompleted();
-        }
-        public void AddRegions(RegionFrame frames)
-        {
-            _screenRegions.Add(frames);
-        }
         #endregion
 
         #region Methods
@@ -639,71 +715,100 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             if (partnerInfo == null) throw new ArgumentNullException("partner info");
             _partnerInfo = partnerInfo;
         }
-        public byte[] HeaderGenerate(SocketDataType type, string id, bool includeData = false, byte[] data = null, int dataSize = 0, string packetId = null)
+        private int HeaderGenerate(SocketDataType type, string id, int dataLength, byte[] buffer, int offset)
         {
-
-            if (type == SocketDataType.None)
-                return null;
-
-            if (string.IsNullOrWhiteSpace(id))
-                id = this._sessionId;
-
             try
             {
-                int packetIdLength = (string.IsNullOrEmpty(packetId)) ? 0 : packetId.Length;
-
+                //1 + 4 + 8 = 13 bytes
                 int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + id.Length;
-                int actualDataSize = includeData ? (data.Length + packetIdLength) : (dataSize + packetIdLength);
-                int totalMessageSize = headerOnlySize + actualDataSize;
-                int headerSize = includeData ? (totalMessageSize + packetIdLength) : (headerOnlySize + packetIdLength);
 
-                byte[] header = new byte[headerSize];
-                int offset = 0;
+                int totalMessageSize = headerOnlySize + dataLength;
 
-                Buffer.BlockCopy(BitConverter.GetBytes(totalMessageSize), 0, header, offset, ByteConstants.INT32_LENGTH);
+                Buffer.BlockCopy(BitConverter.GetBytes(totalMessageSize), 0, buffer, offset, ByteConstants.INT32_LENGTH);
                 offset += ByteConstants.INT32_LENGTH;
 
-                header[offset] = (byte)type;
+                buffer[offset] = (byte)type;
                 offset += RandomLength.DATA_TYPE_LENGTH;
 
                 byte[] idByteArray = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
-                Buffer.BlockCopy(idByteArray, 0, header, offset, idByteArray.Length);
+                Buffer.BlockCopy(idByteArray, 0, buffer, offset, idByteArray.Length);
                 offset += idByteArray.Length;
 
-                if (packetIdLength != 0)
-                {
-                    byte[] packetIdByteArray = Encoding.ASCII.GetBytes(packetId);
-                    Buffer.BlockCopy(packetIdByteArray, 0, header, offset, packetIdLength);
-                    offset += packetIdLength;
-                    if (includeData)
-                    {
-                        Buffer.BlockCopy(data, 0, header, offset, data.Length);
-                        offset += data.Length;
-                    }
-                }
-                else
-                {
-                    if (includeData)
-                    {
-                        Buffer.BlockCopy(data, 0, header, offset, data.Length);
-                        offset += data.Length;
-                    }
-                }
-                return header;
+                return offset; 
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "Generate header error ");
-                return null;
+                return offset;
             }
         }
-        private void ProcessFileTransfer(TaskObject task)
+        //private byte[] HeaderGenerate(SocketDataType type, string id, bool includeData = false, byte[] data = null, int dataSize = 0, string packetId = null)
+        //{
+
+        //    if (type == SocketDataType.None)
+        //        return null;
+
+        //    if (string.IsNullOrWhiteSpace(id))
+        //        id = this._sessionId;
+
+        //    try
+        //    {
+        //        int packetIdLength = (string.IsNullOrEmpty(packetId)) ? 0 : packetId.Length;
+
+        //        //1 + 4 + 8 = 13 bytes
+        //        int headerOnlySize = RandomLength.DATA_TYPE_LENGTH + ByteConstants.INT32_LENGTH + id.Length;
+
+
+        //        int actualDataSize = includeData ? (data.Length + packetIdLength) : (dataSize + packetIdLength);
+        //        int totalMessageSize = headerOnlySize + actualDataSize;
+        //        int headerSize = includeData ? (totalMessageSize + packetIdLength) : (headerOnlySize + packetIdLength);
+
+        //        byte[] header = new byte[headerSize];
+        //        int offset = 0;
+
+        //        Buffer.BlockCopy(BitConverter.GetBytes(totalMessageSize), 0, header, offset, ByteConstants.INT32_LENGTH);
+        //        offset += ByteConstants.INT32_LENGTH;
+
+        //        header[offset] = (byte)type;
+        //        offset += RandomLength.DATA_TYPE_LENGTH;
+
+        //        byte[] idByteArray = ByteArrayHelper.ConvertStringToByteArray(id, EncodingType.ASCII).GetResult();
+        //        Buffer.BlockCopy(idByteArray, 0, header, offset, idByteArray.Length);
+        //        offset += idByteArray.Length;
+
+        //        if (packetIdLength != 0)
+        //        {
+        //            byte[] packetIdByteArray = Encoding.ASCII.GetBytes(packetId);
+        //            Buffer.BlockCopy(packetIdByteArray, 0, header, offset, packetIdLength);
+        //            offset += packetIdLength;
+        //            if (includeData)
+        //            {
+        //                Buffer.BlockCopy(data, 0, header, offset, data.Length);
+        //                offset += data.Length;
+        //            }
+        //        }
+        //        else
+        //        {
+        //            if (includeData)
+        //            {
+        //                Buffer.BlockCopy(data, 0, header, offset, data.Length);
+        //                offset += data.Length;
+        //            }
+        //        }
+        //        return header;
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Logger.Log.ForContext("FileName", GetType().Name).Error(ex, "Generate header error ");
+        //        return null;
+        //    }
+        //}
+        private bool ProcessFileTransfer(TaskObject task)
         {
             if (task.ChunkFileInfo == null)
             {
                 //Send metadata
-                Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
-                return;
+                return Send(task.TaskType, task.Data, task.SessionId, task.IsSendHeader);
             }
             //Send file data
             try
@@ -715,7 +820,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                 if (!Enum.IsDefined(typeof(ChatDataType), (int)task.Data[0]))
                 {
-                    return;
+                    return true; //drop
                 }
                 int offset = 0;
                 //Data type
@@ -736,20 +841,20 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 if (chunkRead != chunkFileData.Length - headerSize)
                 {
                     RemoveFile(task.ChunkFileInfo.FileId);
-                    return;
+                    return true; //drop
                 }
-                Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
-
                 if ((task.ChunkFileInfo.Offset + task.ChunkFileInfo.ChunkSize) >= task.ChunkFileInfo.FileLength)
                 {
                     bool result = FileHelper.CloseStream(task.ChunkFileInfo.FilePath);
                     if (!result)
                         Logger.Log.ForContext("FileName", this.GetType().Name).Error("Close stream failed");
                 }
+                return Send(task.TaskType, chunkFileData, task.SessionId, task.IsSendHeader);
             }
             catch (Exception ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Send chunk file on socket id " + this._sessionId + "error ");
+                return false;
             }
         }
         public void RemoveFile(string fileId)
@@ -760,8 +865,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             try
             {
-                var header = HeaderGenerate(SocketDataType.Disconnect, this._sessionId, true, Encoding.ASCII.GetBytes(_sessionType.ToString()));
-                _clientSocket.Send(header);
+                Send(SocketDataType.Disconnect, null, this._sessionId);
             }
             catch(Exception ex)
             {
@@ -786,18 +890,20 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         //}
         private void OnSendCompletedEventHandler(object sender, SocketSendCompletedEventArgs e)
         {
-            if(e.State.RentBuffer)
-            {
-                try
-                {
-                    //Console.WriteLine($"Return {e.State.Data.Length}\n");
-                    VArrayPool.Return(e.State.Data);
-                }
-                catch(Exception ex)
-                {
-                    Console.WriteLine($"OnSendCompletedEventHandler err: {ex.Message}");
-                }
-            }
+            Console.WriteLine("Send Completed");
+            Interlocked.Exchange(ref _sending, 0);
+            //if (e.State.RentBuffer)
+            //{
+            //    try
+            //    {
+            //        //Console.WriteLine($"Return {e.State.Data.Length}\n");
+            //        VArrayPool.Return(e.State.Data);
+            //    }
+            //    catch(Exception ex)
+            //    {
+            //        Console.WriteLine($"OnSendCompletedEventHandler err: {ex.Message}");
+            //    }
+            //}
         }
         private void OnSocketDisconnectEventHandler(object sender, SocketDisconnectedEventArgs e)
         {

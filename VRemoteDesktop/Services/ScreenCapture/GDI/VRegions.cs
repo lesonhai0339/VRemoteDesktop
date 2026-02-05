@@ -27,7 +27,9 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private int _width;
         private int _height;
 
-        private int _readyToSend = 0;
+        private int _fullScreenCompleted = 0; //0: uncompleted, 1: completed
+        private int _hasData;
+
         private int _fullScreenReceived =0;
         private int _acceptFullScreen = 0;
         private bool _acceptRegionChanged = false;
@@ -46,10 +48,9 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         private int _totalColumns;
         private int _totalRows;
         private int _regionSize;
-        private int _hasData = 0;
+        private bool _busy = false;
 
         private Rectangle[] _dirtyRegions;
-        private int count = 0;
         public VRegions(int width, int height, int bytePerPixel, int regionSize = 16)
         {
             _width = width;
@@ -72,19 +73,23 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             base.InitCaptureBuffer(ref _reader.HBitmap, ref _reader.MemDC, ref _reader.Bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
             _bufferSwapper = new VBufferSwapper(_writer, _reader);
         }
-        public  VBufferSwapper BufferSwapper => _bufferSwapper;
-        public bool HasData => Interlocked.CompareExchange(ref _hasData, 1, 1) == 1;
 
-        public bool CanWork 
+        public bool FullScreenCompleted => Interlocked.CompareExchange(ref _fullScreenCompleted, 1, 1) == 1;
+        public void SetFullScreenCompleted()
         {
-            get
-            {
-                lock (_lock)
-                {
-                    return _acceptRegionChanged;
-                }
-            }
+            Interlocked.Exchange(ref _fullScreenCompleted, 1);
         }
+        public bool HasData => Interlocked.CompareExchange(ref _hasData, 1, 1) == 1;
+        public void SetHasData()
+        {
+            Interlocked.Exchange(ref _hasData, 1);
+        }
+
+
+        public object Lock => _lock;
+        public  VBufferSwapper BufferSwapper => _bufferSwapper;
+
+        [Obsolete("Not use")]
         public int GetRectangleIndex(Rectangle rect, int regionSize = 0)
         {
             if (rect.IsEmpty) 
@@ -95,20 +100,10 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
             return ((rect.Y / regionSize) * _totalColumns) + (rect.X / regionSize);
         }
-        public bool AcceptFullScreen()
-        {
-            if(Interlocked.CompareExchange(ref _acceptFullScreen, 1, 0) == 0)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
+
         public bool ReadyToSend()
         {
-            if (Interlocked.CompareExchange(ref _fullScreenReceived, 1, 1) != 1)
+            if (Interlocked.CompareExchange(ref _fullScreenCompleted, 1, 1) != 1)
                 return false;
 
             var now = Stopwatch.GetTimestamp();
@@ -119,7 +114,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             lock (_lock)
             {
                
-                //Console.WriteLine($"Inflight count: {_inflight}");
                 if(_inflight < INFLIGHT_LIMIT)
                 {
                     _lastSendTimestamp = now;
@@ -130,7 +124,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                 {
                     if (elapsedMs > 3 * 1000)
                     {
-                        //Console.WriteLine("Timeout reset inflight");
                         //reset if exceed timeout
                         _lastSendTimestamp = now;
                         _inflight--;
@@ -139,11 +132,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                     return false;
                 }
             }
-            //return Interlocked.Increment(ref _inflight) < INFLIGHT_LIMIT;
-        }
-        public void FullScreenCompleted()
-        {
-            Interlocked.Exchange(ref _fullScreenReceived, 1);
         }
         public void SendCompleted()
         {
@@ -154,100 +142,41 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                     _inflight--;
                 }
             }
-            //Interlocked.Decrement(ref _inflight);
-        }
-        /*  public bool ReadyToSend()
-          {
-              long current = Stopwatch.GetTimestamp();
-              double elapsedSeconds = (double)(current - _lastSendTimestamp) / Stopwatch.Frequency;
-
-              if (elapsedSeconds > 3.0)
-              {
-                  Interlocked.Exchange(ref _readyToSend, 0);
-              }
-              bool acquired = Interlocked.CompareExchange(ref _readyToSend, 1, 0) == 0;
-
-              if (acquired)
-              {
-                  _lastSendTimestamp = current;
-              }
-              return acquired;
-          }
-          public void SendCompleted()
-          {
-              Interlocked.Exchange(ref _readyToSend, 0);
-          }*/
-        //public bool SetBusy()
-        //{
-        //    if(Interlocked.CompareExchange(ref _readyToSend, 1, 0 )== 0)
-        //    {
-        //        return true;
-        //    }
-        //    else
-        //    {
-        //        return false;
-        //    }
-        //}
-
-       
-        public void BeginAccept()
-        {
-            lock (_lock)
-            {
-                _acceptRegionChanged = true;
-            }
-        }
-        public void Add(RegionFrame regions)
-        {
-            Interlocked.Exchange(ref _hasData, 1);  
-            //lock (_lock)
-            //{
-            //    foreach (var region in regions.Bounds)
-            //    {
-            //        int index = GetRectangleIndex(region);
-            //        if(index != -1)
-            //        {
-            //            _bufferSwapper.GetWriteBuffer().Rectangles[index] = region;
-            //            //_writer[index] = region;
-            //            //_writer.Rectangles[index] = region;
-            //        }
-            //        //var key = (long)region.X << 32 | (uint)region.Y;
-            //        //_regions[key] = region;
-            //    }
-            //}
         }
         public ScreenDataDto GetData()
         {
-            if (Interlocked.CompareExchange(ref _readyToSend, 1, 0) != 0)
-            {
-                Console.WriteLine("Busy");
-                return null;
-            }
-
-            var reader = _bufferSwapper.GetDataBuffer();
-            if (reader == null)
-                return null;
-            Console.WriteLine($"Reader: {reader.Bits}");
-
+            _bufferSwapper.Swap();
+            //var reader = _bufferSwapper.GetDataBuffer();
+            //if (reader == null)
+            //    return null;
             try
             {
+                var reader = _bufferSwapper.BeginRead();
+                if (reader == null)
+                    return null;
 
-                lock (reader.Lock) 
+                int dirtyRegionsCount = 0;
+                lock (reader.Lock)
                 {
-                    count = reader.ChangedRegions.Count;
-                    if (count > 0)
+                    if (reader.ChangedRegions.Length > 0)
                     {
-                        reader.ChangedRegions.CopyTo(_dirtyRegions);
-                        reader.ChangedRegions.Clear();
+                        lock (_lock)
+                        {
+                            dirtyRegionsCount = GetDirtyRegions(reader.ChangedRegions);
+                        }
+                    }
+                    if (dirtyRegionsCount == 0)
+                    {
+                        reader.Clear();
+                        _bufferSwapper.EndRead();
+                        return null;
                     }
                 }
 
-                if (count == 0) return null;
-
-                int rentLength = GetScreenDataLength(_dirtyRegions, count, _bytePerPixel);
+                int rentLength = GetScreenDataLength(_dirtyRegions, dirtyRegionsCount, _bytePerPixel);
                 byte[] buffer = VArrayPool.Rent(rentLength);
                 int offset = 0;
-                for (int i = 0; i < count; i++)
+                for (int i = 0; i < dirtyRegionsCount; i++)
                 {
                     base.GetRegionsData(
                         ref offset,
@@ -272,84 +201,56 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             }
             finally
             {
-                _bufferSwapper.Free();
-                Interlocked.Exchange(ref _readyToSend, 0);
+                //_bufferSwapper.Free();
                 Interlocked.Exchange(ref _hasData, 0);
             }
         }
-        public void MergeDirtyRegions(Rectangle[] regions, List<Rectangle> changedRegions, double threshold = 0.8)
+        private int GetDirtyRegions(Rectangle[] source)
         {
-            changedRegions.Clear();
-            var baseRect = regions[0];
-
-            //regions[0] = Rectangle.Empty;
-
-            for (int i = 1; i < regions.Length; i++)
+            int count = 0;
+            for (int i = 0; i < source.Length; i++)
             {
-                var rect = regions[i];
-                //regions[i] = Rectangle.Empty;
-
-                if (rect.IsEmpty)
-                    continue;
-
-                var area = Rectangle.Union(baseRect, rect);
-
-                var areaUnion = area.Width * area.Height;
-                var areaSum = baseRect.Width * baseRect.Height + rect.Width * rect.Height;
-
-                if (areaSum >= threshold * areaUnion)
+                if (source[i].Width > 0 && source[i].Height > 0)
                 {
-                    baseRect = area;
+                    _dirtyRegions[count] = source[i];
+                    count++;
                 }
-                else
-                {
-                    changedRegions.Add(baseRect);
-                    baseRect = rect;
-                }
-
             }
+            return count;
+        }
+        public void ReadCompleted()
+        {
 
-            // Finally, add last base rectangle to groups result
-            changedRegions.Add(baseRect);
+            var reader = _bufferSwapper.GetRead();
+            if (reader == null)
+                return;
+            lock (reader.Lock)
+            {
+                reader.Clear(); 
+            }
+            _bufferSwapper.EndRead();   
         }
         public override void Dispose(bool disposing)
         {
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
                 return;
-
-            ////Clear writer DIBSection resources
-            //if (_writer_hBitmap != IntPtr.Zero)
-            //    CaptureApi.DeleteObject(_writer_hBitmap);
-
-            //if (_writer_memDC != IntPtr.Zero)
-            //    CaptureApi.ReleaseDC(IntPtr.Zero, _writer_memDC);
-
-            //_writer_bits = IntPtr.Zero;
-            //_writer_hBitmap = IntPtr.Zero;
-            //_writer_memDC = IntPtr.Zero;
-
-
-            ////Clear reader DIBSection resources
-            //if (_reader_hBitmap != IntPtr.Zero)
-            //    CaptureApi.DeleteObject(_reader_hBitmap);
-
-            //if (_reader_memDC != IntPtr.Zero)
-            //    CaptureApi.ReleaseDC(IntPtr.Zero, _reader_memDC);
-
-            //_reader_bits = IntPtr.Zero;
-            //_reader_hBitmap = IntPtr.Zero;
-            //_reader_memDC = IntPtr.Zero;
-
-            if (disposing)
+            try
             {
-                _writer.Free();
-                _reader.Free();
-                //Array.Clear(_writer, 0 , _writer.Length);
-                //Array.Clear(_reader, 0, _reader.Length);
+                if (disposing)
+                {
+                    Array.Clear(_dirtyRegions, 0, _dirtyRegions.Length);
 
-                //_writer = null;
-                //_reader = null;
+                    if (_writer != null)
+                        _writer.Free();
+
+                    if (_reader != null)
+                        _reader.Free();
+
+                    if (_bufferSwapper != null)
+                        _bufferSwapper.Dispose();
+                }
             }
+            catch { }
         }
     }
 }

@@ -10,12 +10,10 @@ namespace VRemoteDesktop.Services.ScreenCapture.Events
 {
     public class FrameEventArgs : EventArgs
     {
-        public FrameEventArgs(VScreenType type, RegionFrame regionFrame)
+        public FrameEventArgs(VScreenType type)
         {
             Type = type;
-            RegionFrame = regionFrame;
         }
         public VScreenType Type { get; set; }
-        public RegionFrame RegionFrame { get; set; }
     }
 }

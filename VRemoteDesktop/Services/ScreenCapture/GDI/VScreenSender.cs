@@ -223,9 +223,11 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     return;
                 try
                 {
-                    Console.WriteLine($"Writer fullscreen: {writer.Bits}");
                     writer.Add(new RegionFrame(new List<Rectangle>() { new Rectangle(0, 0, _width, _height) }));
-                    base.CopyFullScreenSourceToDest(ref writerOffset, writer.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
+                    lock (writer.Lock)
+                    {
+                        base.CopyFullScreenSourceToDest(ref writerOffset, writer.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);
+                    }
                 }
                 finally
                 {
@@ -235,8 +237,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 {
                     if (OnFrame != null)
                     {
-                        RegionFrame frame = new RegionFrame(new Rectangle[] { new Rectangle(0, 0, _width, _height) });
-                        OnFrame(this, new FrameEventArgs(VScreenType.FullScreen, frame));
+                        OnFrame(this, new FrameEventArgs(VScreenType.FullScreen));
                     }
                 }
             }
@@ -246,7 +247,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             finally
             {
-                bufferSwapper.Free();
+                //bufferSwapper.Free();
             }
         }
         private void GetChangedRegions(int range)
@@ -271,23 +272,25 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     if(_clientSessionBufferSwapper.TryGetValue(key, out var bufferSwapper))
                     {
                         var writer = bufferSwapper.BeginWrite();
-                        Console.WriteLine($"Writer regions: {writer.Bits}");    
                         if (writer == null)
                             return;
                         try
                         {
                             writer.Add(new RegionFrame(_mergedRegions));
-                            foreach (var rect in _mergedRegions)
+                            lock (writer.Lock)
                             {
-                                base.CopySourceToDest(
-                                    _allBits[frontIdx],
-                                    writer.Bits,
-                                    rect.X,
-                                    rect.Y,
-                                    rect.Width,
-                                    rect.Height,
-                                    _width,
-                                    _bytePerPixel);
+                                foreach (var rect in _mergedRegions)
+                                {
+                                    base.CopySourceToDest(
+                                        _allBits[frontIdx],
+                                        writer.Bits,
+                                        rect.X,
+                                        rect.Y,
+                                        rect.Width,
+                                        rect.Height,
+                                        _width,
+                                        _bytePerPixel);
+                                }
                             }
                         }
                         finally
@@ -298,7 +301,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                 }
                 if (OnFrame != null)
                 {
-                    OnFrame.Invoke(this, new FrameEventArgs(VScreenType.DirtyRegions, new RegionFrame(_mergedRegions)));
+                    OnFrame.Invoke(this, new FrameEventArgs(VScreenType.DirtyRegions));
                 }
             }
         }

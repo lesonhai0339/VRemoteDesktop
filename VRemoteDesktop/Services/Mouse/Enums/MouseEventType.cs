@@ -5,7 +5,7 @@ using System.Text;
 
 namespace VRemoteDesktop.Enums
 {
-    public enum MouseEventType
+    public enum MouseEventType: byte
     {
         None = 0,
         Click = 1,
