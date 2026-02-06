@@ -101,9 +101,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 ? partnerNetworkInfo.LocalIP 
                 : partnerNetworkInfo.PublicIP;
 
-            Console.WriteLine($"Trying to connect on {connectIP} - {int.Parse(DEFAULT_REMOTE_PORT)}");
             bool isSuccess = clientSession.TryConnect(connectIP, int.Parse(DEFAULT_REMOTE_PORT), RETRY, TIMEOUT);
-            Console.WriteLine($"Connect response: {isSuccess}");
 
             if (isSuccess)
             {

@@ -69,7 +69,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
                 return;
             }
 
-            if (Thread.VolatileRead(ref _isReading) == 1)
+            if (Thread.VolatileRead(ref _isWriting) == 1)
             {
                 long currentFails = Interlocked.Increment(ref _writingFailCount);
                 if (currentFails > 10)
@@ -84,6 +84,10 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
             {
                 var temp = _readerIdx;
                 _readerIdx = _writerIdx;
+
+                var backBuffer = array[temp];
+                backBuffer.Clear();
+
                 _writerIdx = temp;
             }
         }

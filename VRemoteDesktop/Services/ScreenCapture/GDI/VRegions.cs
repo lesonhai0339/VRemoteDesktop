@@ -9,6 +9,7 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading;
 using VRemoteDesktop.Services.ScreenCapture.DTOs;
+using VRemoteDesktop.Services.ScreenCapture.Enums;
 using VRemoteDesktop.Services.ScreenCapture.Interop;
 using VRemoteDesktop.Services.SessionManagement.DTOs;
 using static VRemoteDesktop.Services.ScreenCapture.Interop.CaptureApi;
@@ -66,20 +67,20 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
             _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
 
-            _writer = new ImageSwapper(_totalColumns, _totalRows, _regionSize);
-            _reader = new ImageSwapper(_totalColumns, _totalRows, _regionSize);
+            _writer = new ImageSwapper(_width, _height, _regionSize);
+            _reader = new ImageSwapper(_width, _height, _regionSize);
 
             base.InitCaptureBuffer(ref _writer.HBitmap, ref _writer.MemDC, ref _writer.Bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
             base.InitCaptureBuffer(ref _reader.HBitmap, ref _reader.MemDC, ref _reader.Bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
             _bufferSwapper = new VBufferSwapper(_writer, _reader);
         }
 
-        public bool FullScreenCompleted => Interlocked.CompareExchange(ref _fullScreenCompleted, 1, 1) == 1;
+        public bool FullScreenCompleted => Thread.VolatileRead(ref _fullScreenCompleted) == 1;
         public void SetFullScreenCompleted()
         {
             Interlocked.Exchange(ref _fullScreenCompleted, 1);
         }
-        public bool HasData => Interlocked.CompareExchange(ref _hasData, 1, 1) == 1;
+        public bool HasData => Thread.VolatileRead(ref _hasData) == 1;
         public void SetHasData()
         {
             Interlocked.Exchange(ref _hasData, 1);
@@ -103,7 +104,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
         public bool ReadyToSend()
         {
-            if (Interlocked.CompareExchange(ref _fullScreenCompleted, 1, 1) != 1)
+            if (Thread.VolatileRead(ref _fullScreenCompleted) != 1)
                 return false;
 
             var now = Stopwatch.GetTimestamp();
@@ -143,7 +144,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                 }
             }
         }
-        public ScreenDataDto GetData()
+        public ScreenDataDto GetData(VScreenType type)
         {
             _bufferSwapper.Swap();
             //var reader = _bufferSwapper.GetDataBuffer();
@@ -155,22 +156,35 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                 if (reader == null)
                     return null;
 
-                int dirtyRegionsCount = 0;
+                Rectangle[] regionsToProcess = null;
+                Rectangle fullScreenToProcess = Rectangle.Empty;
+
                 lock (reader.Lock)
                 {
-                    if (reader.ChangedRegions.Length > 0)
+                    if (type == VScreenType.FullScreen)
                     {
-                        lock (_lock)
-                        {
-                            dirtyRegionsCount = GetDirtyRegions(reader.ChangedRegions);
-                        }
+                        fullScreenToProcess = reader.FullScreen;
                     }
-                    if (dirtyRegionsCount == 0)
+                    else
                     {
-                        reader.Clear();
-                        _bufferSwapper.EndRead();
-                        return null;
+                        regionsToProcess = reader.ChangedRegions;
                     }
+                }
+                if (fullScreenToProcess.IsEmpty && (regionsToProcess == null || regionsToProcess.Length == 0))
+                    return null;
+
+                int dirtyRegionsCount = 0;
+                lock (_lock)
+                {
+                    dirtyRegionsCount = (type == VScreenType.FullScreen)
+                                        ? GetDirtyRegions(fullScreenToProcess)
+                                        : GetDirtyRegions(regionsToProcess);
+                }
+
+                if (dirtyRegionsCount == 0)
+                {
+                    _bufferSwapper.EndRead();
+                    return null;
                 }
 
                 int rentLength = GetScreenDataLength(_dirtyRegions, dirtyRegionsCount, _bytePerPixel);
@@ -188,7 +202,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                         _dirtyRegions[i].Width,
                         _dirtyRegions[i].Height,
                         _bytePerPixel);
-
                 }
                 return new ScreenDataDto(buffer, 0, offset + 1);
             }
@@ -218,16 +231,22 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             }
             return count;
         }
+        private int GetDirtyRegions(Rectangle source)
+        {
+            int count = 0;
+            if (source.Width > 0 && source.Height > 0)
+            {
+                _dirtyRegions[count] = source;
+                count++;
+            }
+            return count;
+        }
         public void ReadCompleted()
         {
 
             var reader = _bufferSwapper.GetRead();
             if (reader == null)
                 return;
-            lock (reader.Lock)
-            {
-                reader.Clear(); 
-            }
             _bufferSwapper.EndRead();   
         }
         public override void Dispose(bool disposing)

@@ -70,6 +70,7 @@
     <Compile Include="Enums\SessionResponseType.cs" />
     <Compile Include="Enums\ConnectionStatus.cs" />
     <Compile Include="Services\FileService\Enums\FileStatus.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\FrameWrapper.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\ImageSwapper.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\VBufferSwapper.cs" />
     <Compile Include="Services\ScreenCapture\DTOs\WriterReaderSwapper.cs" />

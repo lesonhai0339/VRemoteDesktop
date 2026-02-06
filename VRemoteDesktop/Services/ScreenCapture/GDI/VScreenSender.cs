@@ -223,7 +223,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
                     return;
                 try
                 {
-                    writer.Add(new RegionFrame(new List<Rectangle>() { new Rectangle(0, 0, _width, _height) }));
+                    writer.AddFullScreen(new Rectangle(0, 0, _width, _height));
                     lock (writer.Lock)
                     {
                         base.CopyFullScreenSourceToDest(ref writerOffset, writer.Bits, _allBits[frontIdx], _width, 0, 0, _width, _height, _bytePerPixel);

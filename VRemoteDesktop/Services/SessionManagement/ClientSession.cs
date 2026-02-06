@@ -124,7 +124,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             else
             {
                 _screenRegions = null;
-                _bufferPool = VArrayPool.Rent(10 * 1024 * 1024);
+                _bufferPool = VArrayPool.Rent(2 * (_bytePerPixel * _width * _height));
             }
 
 
@@ -634,15 +634,15 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         //}
         public void AddScreen()
         {
-            SendCapture(SocketDataType.ScreenSend);
+            SendCapture(SocketDataType.ScreenSend ,VScreenType.FullScreen);
         }
         private bool DirtyRegionSend()
         {
-            return SendCapture(SocketDataType.ScreenRegionsChangedSend);
+            return SendCapture(SocketDataType.ScreenRegionsChangedSend, VScreenType.DirtyRegions);
         }
-        private bool SendCapture(SocketDataType type)
+        private bool SendCapture(SocketDataType type, VScreenType screenType)
         {
-            var dirtyRegions = _screenRegions.GetData();
+            var dirtyRegions = _screenRegions.GetData(screenType);
             if (dirtyRegions == null)
             {
                 _screenRegions.SendCompleted();
@@ -652,6 +652,18 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             {
                 //13 bytes for header
                 int dataOffset = 13;
+
+                //Check if bufferPoll smaller than requireSize -> return current bufferPool to VArrayPool and rent new buffer
+                int requiredSize = Compressor.GetMaxOutputLength(dirtyRegions.Length) + 13;
+                if(_bufferPool.Length < requiredSize)
+                {
+                    if (_bufferPool != null)
+                    {
+                        VArrayPool.Return(_bufferPool);
+                    }
+
+                    _bufferPool = VArrayPool.Rent(requiredSize);
+                }
                 int length = ScreenCapture.Utils.Compressor.CompressedLZ4(dirtyRegions.Buffer, dirtyRegions.Length, _bufferPool, dataOffset, _bufferPool.Length - dataOffset);
 
                 var header = HeaderGenerate(
@@ -670,6 +682,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     return true;
                 }
                 return false;
+            }
+            catch(Exception ex)
+            {
+                throw;
             }
             finally
             {
@@ -884,26 +900,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         {
             _receiveQueue.Enqueue(new QueueItem(e));
         }
-        //private void OnSendCompletedEventHandler(object sender, SocketSendCompletedEventArgs e)
-        //{
-        //    //Console.WriteLine("Send Completed");
-        //}
         private void OnSendCompletedEventHandler(object sender, SocketSendCompletedEventArgs e)
         {
-            Console.WriteLine("Send Completed");
             Interlocked.Exchange(ref _sending, 0);
-            //if (e.State.RentBuffer)
-            //{
-            //    try
-            //    {
-            //        //Console.WriteLine($"Return {e.State.Data.Length}\n");
-            //        VArrayPool.Return(e.State.Data);
-            //    }
-            //    catch(Exception ex)
-            //    {
-            //        Console.WriteLine($"OnSendCompletedEventHandler err: {ex.Message}");
-            //    }
-            //}
         }
         private void OnSocketDisconnectEventHandler(object sender, SocketDisconnectedEventArgs e)
         {
