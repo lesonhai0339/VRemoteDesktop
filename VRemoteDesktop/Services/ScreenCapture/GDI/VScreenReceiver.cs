@@ -28,37 +28,43 @@ namespace VRemoteDesktop.Services.ScreenCapture
     }   
     public class VScreenReceiver : VScreen, IVScreenReceiver, IDisposable
     {
-        private readonly object _lock = new object();
+        /// <summary>
+        /// <para><see href="https://learn.microsoft.com/en-us/openspecs/windows_protocols/ms-emf/a5e722e3-891a-4a67-be1a-ed5a48a7fda1"/></para>
+        /// </summary>
         private const uint DIB_RGB_COLORS = 0;
-        private int _disposed;
 
+        private readonly object _lock = new object();
         private readonly int _width;
         private readonly int _height;
         private readonly int _regionSize;
         private readonly int _bytePerPixel;
-        private Rectangle[] _rectangles;
-        private int count = 0;
+        private readonly Rectangle[] _rectangles;
+        private readonly BITMAPINFO _bitmapInfo;
+        private readonly PixelFormat _pixelFormat;
+        private readonly ScreenTask _screenTask;
 
-        private BITMAPINFO _bitmapInfo;
-
+        private int _disposed = 0;
         //bitmap 1
         private IntPtr _hBitmap;
         private IntPtr _bits;        // points to raw pixels
         private IntPtr _memDC;
 
-        private readonly ScreenTask _screenTask;
-
-        private Bitmap _bitmap;
-        private readonly PixelFormat _pixelFormat;
+        private readonly Bitmap _bitmap;
         public VScreenReceiver(ScreenTask screenTask, int width, int height, int bytePerPixel, PixelFormat pixelFormat, int regionSize = 16)
+            :base(width, height, bytePerPixel, regionSize)
         {
-            _screenTask = screenTask;
             _width = width;
             _height = height;
             _regionSize = regionSize;
             _bytePerPixel = bytePerPixel;
+
+            _rectangles = base.InitRectangle(_width, _height);
+            _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
+            _screenTask = screenTask;
             _pixelFormat = pixelFormat;
-            InitializeReceiverComponents();
+
+            base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
+            _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, _bytePerPixel), _pixelFormat, _bits);
         }
         #region Properties
         public IntPtr Bits
@@ -122,14 +128,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
         }
         #endregion
-        private void InitializeReceiverComponents()
-        {
-            _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
-            base.InitCaptureBuffer(ref _hBitmap, ref _memDC, ref _bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
-            _rectangles = base.InitRectangle(_width, _height);
-
-            _bitmap = new Bitmap(_width, _height, base.GetStride1(_width, _bytePerPixel), _pixelFormat, _bits);
-        }
+        #region Methods
         public Rectangle DecompressedRawData(byte[] data, int offset, int length)
         {
             int decompressLength = Compressor.DeCompressedLZ4(data, offset, length, _screenTask.Buffer);
@@ -173,6 +172,7 @@ namespace VRemoteDesktop.Services.ScreenCapture
             }
             return rect;
         }
+        #endregion
         public override void Dispose(bool disposing)
         {
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
@@ -187,9 +187,17 @@ namespace VRemoteDesktop.Services.ScreenCapture
 
             _bits = IntPtr.Zero;
 
-            if (disposing)
+            try
             {
+                if (disposing)
+                {
+                    if(_bitmap != null)
+                    {
+                        _bitmap.Dispose();
+                    }
+                }
             }
+            catch { }
         }
     }
 }

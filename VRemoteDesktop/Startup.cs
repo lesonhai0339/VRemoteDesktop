@@ -13,7 +13,7 @@ namespace VRemoteDesktop
         private RemoteService _remoteControlService;
         public Startup()
         {
-            //RegisterFirewallAccess();
+            RegisterFirewallAccess();
 
             Initialize();
         }

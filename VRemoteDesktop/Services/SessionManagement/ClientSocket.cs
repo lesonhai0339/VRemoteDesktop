@@ -20,16 +20,12 @@ namespace VRemoteDesktop.Services.SessionManagement
     public class ClientSocket : IDisposable
     {
         private int _disposed = 0;
-
         private string _sessionId;
         private bool _isSocketConnected;
-
         private Socket _socket;
         private AutoResetEvent _sckConnect;
-
         private CancellationTokenSource _cancellationTokenSource;
 
-        //Test
         public event EventHandler<SocketDataReceivedEventArgs> OnDataReceived;
         public event EventHandler<SocketDisconnectedEventArgs> OnDisconnected;
         public event EventHandler<SocketConnectedEventArgs> OnConnected;
@@ -41,7 +37,6 @@ namespace VRemoteDesktop.Services.SessionManagement
 
             _cancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(token);
         }
-
         #region Properties
         public Socket Socket
         {
@@ -59,11 +54,11 @@ namespace VRemoteDesktop.Services.SessionManagement
                 _isSocketConnected = value;
             }
         }
-       
+
         #endregion
+        #region Methods
         public bool TryConnect(string ip, int port, int retry = 0, int waitRespondTime = 3000)
         {
-
             bool respond;
             int count = 0;
             while (count <= retry)
@@ -185,7 +180,7 @@ namespace VRemoteDesktop.Services.SessionManagement
                 _socket.EndConnect(ar);
                 if (!_socket.Connected)
                 {
-                    if(OnConnected != null)
+                    if (OnConnected != null)
                         OnConnected?.Invoke(this, new SocketConnectedEventArgs(_sessionId, false));
                     return;
                 }
@@ -261,7 +256,7 @@ namespace VRemoteDesktop.Services.SessionManagement
                 }
                 try
                 {
-                    if(!token.IsCancellationRequested)
+                    if (!token.IsCancellationRequested)
                         Socket.BeginReceive(stateObject.Buffer, 0, stateObject.Buffer.Length, SocketFlags.None, new AsyncCallback(DataCallback), stateObject);
                 }
                 catch (SocketException ex)
@@ -359,7 +354,7 @@ namespace VRemoteDesktop.Services.SessionManagement
                 checked
                 {
                     int num = Socket.EndSend(ar);
- 
+
                     if (num <= 0)
                     {
                         throw new InvalidOperationException("Send error on socket with socket Id: " + _sessionId);
@@ -380,7 +375,7 @@ namespace VRemoteDesktop.Services.SessionManagement
             catch (SocketException ex)
             {
                 Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "SendCallback: socket error on socketid: " + _sessionId);
-              
+
                 isFinal = true;
                 hasError = true;
             }
@@ -405,9 +400,10 @@ namespace VRemoteDesktop.Services.SessionManagement
                         if (handlerErr != null)
                             handlerErr.Invoke(this, new SocketDisconnectedEventArgs(_sessionId));
                     }
-                }   
+                }
             }
         }
+        #endregion
         public void Dispose()
         {
             Dispose(true);

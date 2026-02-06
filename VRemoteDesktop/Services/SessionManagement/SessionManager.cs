@@ -21,29 +21,30 @@ namespace VRemoteDesktop.Services.SessionManagement
 {
     public interface ISessionManager
     {
-        ClientSession[] Connections { get; }
         bool Contains(string sessionId);
         bool Contains(Func<ClientSession, bool> predicate);
         bool HasClientOfType(ClientType type);
         void Add(string id, ClientSession session);
         bool Remove(string id);
         bool Remove(ClientSession session);
+        void ScreenCapture(ClientType type, VScreenType e);
+        void Dispose();
+        ClientSession[] Connections { get; }
         ClientSession GetByKey(string id);
         ClientSession New(string id, ClientType type, int width, int height, int bytePerPixel, PixelFormat pixelFormat);
         ClientSession AddNewAndListen(string id, ClientType type, int port, int width, int height, int bytePerPixel, PixelFormat pixelFormat);
-        void ScreenCapture(ClientType type, VScreenType e);
 
         event EventHandler<ClientSessionDataReceivedEventArgs> SessionDataReceived;
         event EventHandler<ClientSessionDisconnectedEventArgs> SessionClosed;
-
-        void Dispose();
     }
     public class SessionManager: ISessionManager, IDisposable
     {
         private int _disposed = 0;
         private readonly ConcurrentDictionary<string, ClientSession> _sessions;
+
         public event EventHandler<ClientSessionDataReceivedEventArgs> SessionDataReceived;
         public event EventHandler<ClientSessionDisconnectedEventArgs> SessionClosed;
+
         public SessionManager()
         {
             _sessions = new ConcurrentDictionary<string, ClientSession>();

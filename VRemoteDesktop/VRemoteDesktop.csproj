@@ -207,13 +207,10 @@
     <Compile Include="Services\SessionManagement\ClientSocket.cs" />
     <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDataReceivedEventArgs.cs" />
     <Compile Include="Startup.cs" />
-    <Compile Include="Utils\ByteArrayPool.cs" />
-    <Compile Include="Utils\CusQueue.cs" />
     <Compile Include="Utils\DefaultValue.cs" />
     <Compile Include="Utils\Logger.cs" />
     <Compile Include="Interop\Win32Apis.cs" />
     <Compile Include="Utils\VArrayPool.cs" />
-    <Compile Include="Utils\VPriorityQueue.cs" />
     <Compile Include="Views\FormMain.cs">
       <SubType>Form</SubType>
     </Compile>

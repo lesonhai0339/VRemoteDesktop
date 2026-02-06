@@ -67,8 +67,12 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
             //nhưng regions add vào lại là các merged regions(có kích thước => grid nên cần tính toán số grid mà region phủ)
             lock (_lock)
             {
-                foreach (var region in regions.Bounds)
+                int start = regions.Start;
+                int length = regions.Length;
+                for (int r = start; r<length; r++)
                 {
+                    ref var region = ref regions.Bounds[r];
+
                     //luôn chia hết cho 16 nên có thể tính trực tiếp
                     int startCol = region.X;
                     int startRow = region.Y;
@@ -106,11 +110,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
                                 _changedRegions[index] = curRegion;
                         }
                     }
-
-
-                    //var index = GetRectangleIndex(region);
-                    //if(index != -1)
-                    //    _changedRegions[index] = region;    
                 }
             }
         }

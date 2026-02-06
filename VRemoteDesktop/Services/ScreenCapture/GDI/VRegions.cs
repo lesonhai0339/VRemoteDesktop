@@ -18,78 +18,82 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 {
     public class VRegions : VScreen
     {
-        private int _disposed = 0;
-        private readonly object _lock = new object();
         private const int INFLIGHT_LIMIT = 10;  //accept maximum 10 inflight packet
         private const long DELAY_TIME = 50; //50ms
 
-        private int _inflight = 0;
-        private int _bytePerPixel;
-        private int _width;
-        private int _height;
+        private readonly object _lock = new object();
+        private readonly int _width;
+        private readonly int _height;
+        private readonly int _bytePerPixel;
 
-        private int _fullScreenCompleted = 0; //0: uncompleted, 1: completed
-        private int _hasData;
-
-        private int _fullScreenReceived =0;
-        private int _acceptFullScreen = 0;
-        private bool _acceptRegionChanged = false;
-
+        private readonly BITMAPINFO _bitmapInfo;
         //Writer buffer
-        private ImageSwapper _writer;
-
+        private readonly ImageSwapper _writer;
         //Reader buffer
-        private ImageSwapper _reader;
+        private readonly ImageSwapper _reader;
+        //Swapper contain writer, reader
+        private readonly VBufferSwapper _bufferSwapper;
 
-        private BITMAPINFO _bitmapInfo;
-        private VBufferSwapper _bufferSwapper;
+        private readonly int _totalColumns; // Number of columns divide to regionSize
+        private readonly int _totalRows;  // Number of rows divide to regionSize
+        private readonly int _regionSize; // Region size(Rectangle(_regionSize, _regionSize))
+        private readonly Rectangle[] _dirtyRegions; // Fixed array with formula Rectangle[] = totalCols * totalRows
+        // Chia man hinh thanh 1 luoi grid voi kich thuoc co dinh theo regionSize, moi region co 1 index co dinh trong array.
+        // Khi co 2 dirty region trung nhau thi no se ghi de len thay vi them. Dung co che nay de dam bao tranh viec copy du lieu
+        // tren cung 1 rectangle ma van dam bao khong bo sot.
 
+        private int _disposed = 0;
+        private int _inflight = 0;
+        private int _hasData = 0; // 0: empty, 1: has
+        private int _fullScreenCompleted = 0; //0: uncompleted, 1: completed
         private long _lastSendTimestamp = Stopwatch.GetTimestamp();
-
-        private int _totalColumns;
-        private int _totalRows;
-        private int _regionSize;
         private bool _busy = false;
 
-        private Rectangle[] _dirtyRegions;
         public VRegions(int width, int height, int bytePerPixel, int regionSize = 16)
+            :base(width, height, bytePerPixel, regionSize)
         {
             _width = width;
             _height = height;
             _bytePerPixel = bytePerPixel;
             _regionSize = regionSize;
 
-
-            _totalColumns = (_width + (_regionSize - 1)) / _regionSize;
-            _totalRows = (_height + (_regionSize - 1)) / _regionSize;
-            _dirtyRegions= new Rectangle[_totalColumns * _totalRows];
-
-
             _bitmapInfo = base.InitBitmapInfo(_width, _height, (ushort)(_bytePerPixel * 8), 0);
 
             _writer = new ImageSwapper(_width, _height, _regionSize);
             _reader = new ImageSwapper(_width, _height, _regionSize);
-
             base.InitCaptureBuffer(ref _writer.HBitmap, ref _writer.MemDC, ref _writer.Bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
             base.InitCaptureBuffer(ref _reader.HBitmap, ref _reader.MemDC, ref _reader.Bits, IntPtr.Zero, 0, IntPtr.Zero, _bitmapInfo);
             _bufferSwapper = new VBufferSwapper(_writer, _reader);
-        }
 
+            _totalColumns = (_width + (_regionSize - 1)) / _regionSize;
+            _totalRows = (_height + (_regionSize - 1)) / _regionSize;
+            _regionSize = regionSize;
+
+            _dirtyRegions = new Rectangle[_totalColumns * _totalRows];
+        }
+        #region Properties
+        public object Lock => _lock;
         public bool FullScreenCompleted => Thread.VolatileRead(ref _fullScreenCompleted) == 1;
+        public bool HasData => Thread.VolatileRead(ref _hasData) == 1;
+        public VBufferSwapper BufferSwapper => _bufferSwapper;
+        #endregion
+
+        #region Methods
         public void SetFullScreenCompleted()
         {
             Interlocked.Exchange(ref _fullScreenCompleted, 1);
         }
-        public bool HasData => Thread.VolatileRead(ref _hasData) == 1;
         public void SetHasData()
         {
             Interlocked.Exchange(ref _hasData, 1);
         }
-
-
-        public object Lock => _lock;
-        public  VBufferSwapper BufferSwapper => _bufferSwapper;
-
+        /// <summary>
+        ///  <para>Using to calculate index of current rectangle on fixed array(each rectangle have a  fixed index)</para>
+        ///  <para>Now use in <see cref="ImageSwapper.Add(RegionFrame)"/></para>
+        /// </summary>
+        /// <param name="rect"></param>
+        /// <param name="regionSize"></param>
+        /// <returns></returns>
         [Obsolete("Not use")]
         public int GetRectangleIndex(Rectangle rect, int regionSize = 0)
         {
@@ -101,9 +105,9 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
 
             return ((rect.Y / regionSize) * _totalColumns) + (rect.X / regionSize);
         }
-
         public bool ReadyToSend()
         {
+            // Check fullScreen completed, if not break;
             if (Thread.VolatileRead(ref _fullScreenCompleted) != 1)
                 return false;
 
@@ -147,9 +151,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
         public ScreenDataDto GetData(VScreenType type)
         {
             _bufferSwapper.Swap();
-            //var reader = _bufferSwapper.GetDataBuffer();
-            //if (reader == null)
-            //    return null;
             try
             {
                 var reader = _bufferSwapper.BeginRead();
@@ -207,8 +208,6 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"GetData error: {ex.Message}");
-                //Error release _inflight
                 SendCompleted();
                 return null;
             }
@@ -249,6 +248,7 @@ namespace VRemoteDesktop.Services.ScreenCapture.GDI
                 return;
             _bufferSwapper.EndRead();   
         }
+        #endregion
         public override void Dispose(bool disposing)
         {
             if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)

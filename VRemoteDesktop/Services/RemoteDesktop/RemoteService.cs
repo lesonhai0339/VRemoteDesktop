@@ -178,6 +178,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             catch (Exception ex)
             {
+                Console.WriteLine(ex);
                 Logger.Log.ForContext("FileName", GetType().Name).Error(ex, string.Format("Error handling {0}: {1}", e.Type, ex.Message));
             }
         }

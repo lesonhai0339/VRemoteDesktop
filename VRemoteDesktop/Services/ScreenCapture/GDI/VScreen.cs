@@ -13,17 +13,41 @@ using VRemoteDesktop.Enums;
 using static VRemoteDesktop.Services.ScreenCapture.Interop.CaptureApi;
 using VRemoteDesktop.Services.ScreenCapture.Interop;
 using VRemoteDesktop.Services.ScreenCapture.Utils;
+using System.Security.Policy;
 
 namespace VRemoteDesktop.Services.ScreenCapture
 {
     public abstract class VScreen: IDisposable
     {
-        //protected const uint DIB_RGB_COLORS = 0;
-        //protected const int BYTE_PER_PIXEL = 3;
-        //protected const int REGION_SIZE = 16;
-
-        public VScreen()
+        private readonly int _width;
+        private readonly int _height;
+        private readonly int _bytePerPixel;
+        private readonly int _regionSize;
+        private readonly int _cols;
+        private readonly int _rows;
+        public VScreen(int width, int height, int bytePerPixel, int regionSize)
         {
+            _width = width;
+            _height = height;
+            _bytePerPixel = bytePerPixel;
+            _regionSize = regionSize;
+
+            _cols = (_width + (_regionSize - 1)) / _regionSize;
+            _rows = (_height + (_regionSize - 1)) / _regionSize;
+        }
+        public int GetRectangleIndex(int x, int y)
+        {
+            if (x < 0 || y < 0)
+                return -1;
+
+            return ((x / _regionSize) * _cols) + (y / _regionSize);
+        }
+        public int GetRectangleIndex(Rectangle rect)
+        {
+            if (rect.IsEmpty)
+                return -1;
+
+            return ((rect.Y / _regionSize) * _cols) + (rect.X / _regionSize);
         }
         public int GetScreenDataLength(Rectangle[] rects, int length, int bytePerPixel)
         {

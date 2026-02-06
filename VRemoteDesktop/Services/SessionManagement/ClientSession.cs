@@ -33,56 +33,44 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 {
     public class ClientSession : IDisposable
     {
-        private readonly object _lock = new object();
         private const long DELAY_TIME_PER_CHUNK_FILE = 20 * TimeSpan.TicksPerMillisecond;
         private const int TIME_OUT = 30;
-        private int _disposed;
-        private string _sessionId;
-        private ClientType _sessionType;
-        private bool _connected;
 
-
+        private readonly object _lock = new object();
         private readonly int _width;
         private readonly int _height;
         private readonly int _bytePerPixel;
+        private readonly string _sessionId;
         private readonly PixelFormat _pixelFormat;
+        private ClientType _sessionType;
 
+        private bool _connected;
+        private int _disposed = 0 ;
         private int _sending = 0;
         private byte[] _bufferPool;
-
         private DateTimeOffset _lastPing;
-
         private long _lastFileSend = Stopwatch.GetTimestamp();
-
-        private PartnerNetworkInfo _partnerInfo;
-
-        private Task _sendTask;
-        private Task _receiveTask;
-        private System.Threading.Timer _pingTimer;
-
-        private readonly ConcurrentQueue<QueueItem> _highQueue; //Keyboard, mouse, clipboard,...
-
-        private readonly HashSet<string> _cancelFile;
-        private readonly ConcurrentQueue<QueueItem> _lowQueue; //File
-
-        private readonly ConcurrentQueue<QueueItem> _receiveQueue;
-
 
         private readonly ClientSocket _clientSocket;
         private readonly VRegions _screenRegions;
+        private readonly AutoResetEvent _sendWakeUp;
+        private readonly CancellationTokenSource _cancelationTokenSource;
 
-        private AutoResetEvent _sendWakeUp;
+        private readonly HashSet<string> _cancelFile; // File had been cancelled, ignore queue have fileId in this
+        private readonly ConcurrentQueue<QueueItem> _highQueue; // Keyboard, mouse, clipboard, message,...
+        private readonly ConcurrentQueue<QueueItem> _lowQueue; // File send
+        private readonly ConcurrentQueue<QueueItem> _receiveQueue; // Everything received
 
-        private CancellationTokenSource _cancelationTokenSource;
+        private PartnerNetworkInfo _partnerInfo; // Information of client connect on this socket
+        private Task _sendTask; // Handle send queue
+        private Task _receiveTask; // Handle received queue
+        private System.Threading.Timer _pingTimer; // last time ping success to server
+
 
         public event EventHandler<ClientSessionDataReceivedEventArgs> OnDataReceived;
         public event EventHandler<ClientSessionDisconnectedEventArgs> OnDisconnected;
         public event EventHandler<ClientSessionDataReceivedEventArgs> OnChatReceived;
         public event EventHandler<ClientSessionScreenReceivedEventArgs> OnScreenReceived;
-
-
-        //for test
-        private Stopwatch _stopwatch = new Stopwatch();
         public ClientSession(string id, ClientType type, int width, int height, int bytePerPixel, PixelFormat pixelFormat)
         {
             if (string.IsNullOrEmpty(id)) 
@@ -98,24 +86,21 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _height = height;
             _bytePerPixel = bytePerPixel;
             _pixelFormat = pixelFormat;
-
             _lastPing = DateTimeOffset.UtcNow;
 
 
             _sessionId = id;
             _sessionType = type;
-            _highQueue = new ConcurrentQueue<QueueItem>();
 
             _cancelFile = new HashSet<string>();
+            _highQueue = new ConcurrentQueue<QueueItem>();
             _lowQueue = new ConcurrentQueue<QueueItem>();
-
             _receiveQueue = new ConcurrentQueue<QueueItem>();
 
             _sendWakeUp = new AutoResetEvent(false);
             _cancelationTokenSource = new CancellationTokenSource();
 
             _clientSocket = new ClientSocket(id, _cancelationTokenSource.Token);
-
             if(_sessionType == ClientType.Controlled)
             {
                 _screenRegions = new VRegions(_width, _height, _bytePerPixel);
@@ -126,7 +111,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 _screenRegions = null;
                 _bufferPool = VArrayPool.Rent(2 * (_bytePerPixel * _width * _height));
             }
-
 
             _sendTask = Task.Factory.StartNew(
                     () => SenderWorker(_cancelationTokenSource.Token),
@@ -143,7 +127,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _clientSocket.OnDataReceived += OnDataReceivedEventHandler;
             _clientSocket.OnSendCompleted += OnSendCompletedEventHandler;
             _clientSocket.OnDisconnected += OnSocketDisconnectEventHandler ;
-
 
             //use for server socket
             if(_sessionType == ClientType.System)

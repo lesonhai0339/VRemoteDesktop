@@ -9,12 +9,16 @@ namespace VRemoteDesktop.Services.ScreenCapture.DTOs
 {
     public class RegionFrame
     {
-        public RegionFrame(List<Rectangle> bounds)
-        : this(bounds.ToArray()) { }
-        public RegionFrame(Rectangle[] bounds)
+        public RegionFrame(List<Rectangle> bounds, int start, int length)
+        : this(bounds.ToArray(), start, length) { }
+        public RegionFrame(Rectangle[] bounds, int start, int length)
         {
             Bounds = bounds;
+            Start = start;
+            Length = length;
         }
         public Rectangle[] Bounds { get; private set; }
+        public int Start { get; private set; }
+        public int Length { get; set; }
     }
 }
