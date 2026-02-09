@@ -8,6 +8,7 @@ using System.Dynamic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Runtime.InteropServices.ComTypes;
 using System.Runtime.Remoting.Messaging;
 using System.Security.Cryptography;
@@ -25,6 +26,7 @@ using VRemoteDesktop.Services.RemoteDesktop;
 using VRemoteDesktop.Services.VTCPClient;
 using VRemoteDesktop.Utils;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.TextBox;
+using static VRemoteDesktop.Interop.Win32Apis;
 using static VRemoteDesktop.Utils.DefaultForm;
 using static VRemoteDesktop.Utils.Logger;
 
@@ -68,6 +70,18 @@ namespace VRemoteDesktop.Views
 
         private void FormChat_Load(object sender, EventArgs e)
         {
+            IntPtr targetHandle = this.Handle;
+
+            CHANGEFILTERSTRUCT status = new CHANGEFILTERSTRUCT();
+            status.cbSize = (uint)Marshal.SizeOf(typeof(CHANGEFILTERSTRUCT));
+
+            uint[] messages = { 0x0049, 0x0233, 0x004A };
+            foreach (var msg in messages)
+            {
+                WindowApis.ChangeWindowMessageFilterEx(targetHandle, msg, 1, ref status);
+            }
+
+            WindowApis.DragAcceptFiles(targetHandle, true);
         }
         private void FormChat_FormClosing(object sender, FormClosingEventArgs e)
         {
@@ -110,6 +124,38 @@ namespace VRemoteDesktop.Views
             foreach (var file in files)
             {
                 _chatPresenter.RequestSendFile(file);
+            }
+        }
+        protected override void WndProc(ref Message m)
+        {
+            if (m.Msg == 0x0233) // WM_DROPFILES
+            {
+                DragAndDropFiles(m.WParam);
+            }
+            base.WndProc(ref m);
+        }  /// <summary>
+           /// <para><see href="https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-dragqueryfilea"/></para>
+           /// </summary>
+           /// <param name="wParam"></param>
+        private void DragAndDropFiles(IntPtr wParam)
+        {
+            IntPtr hDrop = wParam;
+            uint fileCount = WindowApis.DragQueryFile(hDrop, 0xFFFFFFFF, null, 0);
+
+            for (uint i = 0; i < fileCount; i++)
+            {
+                uint pathLength = WindowApis.DragQueryFile(hDrop, i, null, 0);
+
+                if (pathLength > 0)
+                {
+                    StringBuilder sb = new StringBuilder((int)pathLength + 1);
+
+                    WindowApis.DragQueryFile(hDrop, i, sb, (uint)sb.Capacity);
+
+                    string filePath = sb.ToString();
+
+                    _chatPresenter.RequestSendFile(filePath);
+                }
             }
         }
         private void btnSend_Click(object sender, EventArgs e)

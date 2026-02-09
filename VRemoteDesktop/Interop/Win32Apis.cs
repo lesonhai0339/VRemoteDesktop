@@ -66,6 +66,23 @@ namespace VRemoteDesktop.Interop
         }
         public static class WindowApis
         {
+            [DllImport("shell32.dll")]
+            public static extern void DragAcceptFiles(IntPtr hWnd, bool fAccept);
+
+            [DllImport("shell32.dll", CharSet = CharSet.Auto)]
+            public static extern uint DragQueryFile(IntPtr hDrop, uint iFile, [Out] StringBuilder lpszFile, uint cch);
+            //[DllImport("shell32.dll", CharSet = CharSet.Auto)]
+            //public static extern uint DragQueryFile(IntPtr hDrop, uint iFile, [Out] byte[] lpszFile, uint cch);
+
+            [DllImport("shell32.dll")]
+            public static extern void DragFinish(IntPtr hDrop);
+
+
+            [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+            public static extern bool ChangeWindowMessageFilter(uint msg, int action);
+
+            [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+            public static extern bool ChangeWindowMessageFilterEx(IntPtr handle, uint msg, int action, ref CHANGEFILTERSTRUCT changeFilterStruct);
             [DllImport("user32.dll", SetLastError = true)]
             public static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
 
@@ -100,6 +117,12 @@ namespace VRemoteDesktop.Interop
             [DllImport("user32.dll", CharSet = CharSet.Auto)]
             public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode,
                 IntPtr wParam, IntPtr lParam);
+        }
+        [StructLayout(LayoutKind.Sequential)]
+        public struct CHANGEFILTERSTRUCT
+        {
+            public uint cbSize;
+            public uint ExtStatus;
         }
 
         [StructLayout(LayoutKind.Sequential)]

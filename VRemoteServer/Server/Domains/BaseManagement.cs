@@ -36,7 +36,7 @@ namespace VRemoteServer.RelayServer.Domains
         T AddOrUpdate(string id, T obj);
         void Dispose();
     }
-    public abstract class BaseManagement<T> : IBaseManagement<T>, IEnumerable<T>, IDisposable where T: class
+    public abstract class BaseManagement<T> : IBaseManagement<T>, IDisposable where T: class
     {
         private bool _disposed;
         protected readonly ConcurrentDictionary<string, T> _keyValuePairs;

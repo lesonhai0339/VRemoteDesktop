@@ -159,6 +159,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         ReadyToRemoteControlledHandler(sender, e);
                         break;
                     case SocketDataType.Disconnect:
+                        if (OnSessionData != null)
+                            OnSessionData.Invoke(sender, new RemoteDesktopEventArgs(ResponseType.Disconnect, "Disconnected"));
                         break;
                     case SocketDataType.RemoteControlDisconnect:
                         RemoteControlDisconnectHandler(sender, e);
@@ -170,6 +172,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                         KeyboardReceivedEventHandler(sender, e);
                         break;
                     case SocketDataType.ClipboardSend:
+                        ClipboardReceived(sender, e);
+                        break;
+                    case SocketDataType.Ping:
+                        PingEventHandler(sender, e);
                         break;
                     default:
                         break;

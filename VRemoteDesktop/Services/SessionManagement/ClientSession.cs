@@ -128,11 +128,12 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             _clientSocket.OnSendCompleted += OnSendCompletedEventHandler;
             _clientSocket.OnDisconnected += OnSocketDisconnectEventHandler ;
 
-            //use for server socket
-            if(_sessionType == ClientType.System)
-            {
-                _pingTimer = new System.Threading.Timer(PingCallback, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
-            }
+            _pingTimer = new System.Threading.Timer(PingCallback, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            ////use for server socket
+            //if (_sessionType == ClientType.System)
+            //{
+            //    _pingTimer = new System.Threading.Timer(PingCallback, null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+            //}
         }
 
         #region  Properties
@@ -188,7 +189,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void PingCallback(object obj)
         {
-
+            Console.WriteLine($"{_sessionType} ping");
             var elapsed = (DateTimeOffset.UtcNow - _lastPing).TotalSeconds;
 
             if (elapsed > TIME_OUT)
@@ -198,7 +199,6 @@ namespace VRemoteDesktop.Services.RemoteDesktop
             }
             //_client.SendPing();
             AddWork(QueuePriority.High, new TaskObject(SocketDataType.Ping, _sessionId, new byte[0], true));
-            _lastPing = DateTimeOffset.UtcNow;
         }
         private void SenderWorker(CancellationToken token)
         {
@@ -360,6 +360,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     case SocketDataType.RemoteControlDisconnect:
                         Close();
                         break;
+                    case SocketDataType.Pong:
+                        _lastPing = DateTimeOffset.UtcNow;
+                        break;
                     default:
                         if (OnDataReceived != null)
                             OnDataReceived.Invoke(this, new ClientSessionDataReceivedEventArgs(sessionId: this.SessionId, type: e.Type, data: e.Data));
@@ -450,7 +453,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 return false;
             try
             {
-                if (data.Length <= 0)
+                if (data == null || data.Length <= 0)
                     data = new byte[0];
 
                 if (sendHeader)

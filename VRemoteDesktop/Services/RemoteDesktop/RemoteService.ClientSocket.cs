@@ -229,7 +229,13 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         private void ClientSocketConnectEventHandler(ClientSession session, ClientSessionDataReceivedEventArgs e)
         {
-            throw new NotImplementedException();
+            //Do nothing
+        }
+        private void PingEventHandler(object sender, ClientSessionDataReceivedEventArgs e)
+        {
+            var session = sender as ClientSession;
+            if (session != null)
+                session.AddWork(QueuePriority.High, new TaskObject(SocketDataType.Pong));
         }
         private void ClientSessionClosedEventHandler(object sender, EventArgs e)
         {
