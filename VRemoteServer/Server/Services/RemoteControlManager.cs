@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -24,7 +25,7 @@ namespace VRemoteServer.RelayServer.Services
         bool GetPartner(SocketConnection me, out SocketConnection partner);
         bool GetPartner(string id, SocketConnection me, out SocketConnection partner);
     }
-    public class RemoteControlManager : BaseManagement<RemoteConnection>, IRemoteControlManager, IDisposable 
+    public class RemoteControlManager : BaseManagement<RemoteConnection>, IRemoteControlManager, IDisposable
     {
         public bool AddController(string id, SocketConnection controller)
         {

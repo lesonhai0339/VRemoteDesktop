@@ -50,6 +50,7 @@ namespace VRemoteServer.RelayServer.Services
         private int _timeout;
         private int _headerLength;
         private Task _timeoutTask;
+        private Task _timeoutTask2;
 
         private readonly ConcurrentDictionary<string , long> _acceptId = new();
 
@@ -86,10 +87,42 @@ namespace VRemoteServer.RelayServer.Services
                 }
                 catch { }
             }, _cancel.Token);
+            _timeoutTask = Task.Run(async () =>
+            {
+                try
+                {
+                    while (!_cancel.IsCancellationRequested)
+                    {
+                        RemoveNotActiveConnections(); 
+                        await Task.Delay(30000);
+                    }
+                }
+                catch { }
+            }, _cancel.Token);
         }
+
         #region Properties
         #endregion
         #region Methods
+        private void RemoveNotActiveConnections()
+        {
+            long now = Environment.TickCount64;
+            var expired = _remoteConnectionManager.Where(x => ((now - x.CreateTime) > 30_000) && (x.Controller == null || x.Controlled == null)).ToArray();
+            foreach(var item in expired)
+            {
+                var controller = item.Value?.Controller;   
+                var controlled = item.Value?.Controlled;   
+                if(controller != null)
+                {
+                    Send(controller, SocketDataType.RemoteControlDisconnect);
+                }
+                if (controlled != null)
+                {
+                    Send(controlled, SocketDataType.RemoteControlDisconnect);
+                }
+                _remoteConnectionManager.Remove(item.Key);  
+            }
+        }
         public void InitServer()
         {
             _remoteControlServer.Init();

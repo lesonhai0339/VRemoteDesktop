@@ -31,6 +31,7 @@ namespace VRemoteServer.RelayServer.DTOs
         public string ConnectionId { get; set; }
         public SocketConnection Controller { get; set; }
         public SocketConnection Controlled { get; set; }
+        public long CreateTime { get; set; } = Environment.TickCount64;
         public bool ReadyToRemote()
         {
             return Controller != null && Controller != null;

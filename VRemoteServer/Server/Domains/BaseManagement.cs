@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -19,6 +20,7 @@ namespace VRemoteServer.RelayServer.Domains
         T Get(string id, T obj);
         T Get(Predicate<T> predicate);
         T GetFirst(Func<T, bool> predicate);
+        IEnumerable<KeyValuePair<string, T>> Where(Predicate<T> predicate);
         IEnumerable<T> GetAll();
         bool Get(string id, out T obj);
         IEnumerable<T> GetAll(Predicate<T> predicate);
@@ -34,7 +36,7 @@ namespace VRemoteServer.RelayServer.Domains
         T AddOrUpdate(string id, T obj);
         void Dispose();
     }
-    public abstract class BaseManagement<T> : IBaseManagement<T>, IDisposable where T: class
+    public abstract class BaseManagement<T> : IBaseManagement<T>, IEnumerable<T>, IDisposable where T: class
     {
         private bool _disposed;
         protected readonly ConcurrentDictionary<string, T> _keyValuePairs;
@@ -55,6 +57,9 @@ namespace VRemoteServer.RelayServer.Domains
 
         public virtual T Get(string id, T obj)
             => _keyValuePairs.GetOrAdd(id, obj);
+
+        public virtual IEnumerable<KeyValuePair<string, T>> Where(Predicate<T> predicate)
+           => _keyValuePairs.Where(x => predicate(x.Value));
 
         public virtual T AddOrUpdate(string id, T obj)
         {

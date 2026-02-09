@@ -208,7 +208,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
             if (disposing)
             {
-                if(_screenSender != null)
+                if (_screenSender != null)
                 {
                     _screenSender.OnFrame -= OnRegionEventHandler;
                     _screenSender.Cancel();
