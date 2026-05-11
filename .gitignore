@@ -152,3 +152,4 @@ _NCrunch*
 /dll/
 /VRemoteDesktop/Configs/App1.config
 /VRemoteDesktop/Configs/App.config
+/VRemoteDesktop/DTOs/ByteArrayBuilder.cs

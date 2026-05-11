@@ -1,99 +1,132 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading;
 using System.Windows.Forms;
-using VRemoteDesktop.Events;
-using VRemoteDesktop.Services.ConnectionManager;
+using VRemoteDesktop.Presenters;
+using VRemoteDesktop.Presenters.DTOs;
+using VRemoteDesktop.Presenters.Enums;
+using VRemoteDesktop.Presenters.Events;
+using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.RemoteDesktop;
-using VRemoteDesktop.Services.SystemService;
-using VRemoteDesktop.Services.VTCPClient;
-using VRemoteDesktop.ViewModels;
+using VRemoteDesktop.Utils;
 using VRemoteDesktop.Views;
-using VRemoteServer.Models;
 
 namespace VRemoteDesktop
 {
     public partial class FormMain : Form
     {
         private readonly object _lock = new object();
-        private MainViewModel _viewModel;
-        private FormChat chatForm;
         private bool isShow;
+        private FormChat chatForm;
+        private LoginStatus _status;
 
-        private readonly RemoteDesktopService _remoteDesktopService;
-        public FormMain(RemoteDesktopService remoteDesktopService)
+        private readonly RemoteService _remoteService;
+        private readonly MainPresenter _mainPresenter;
+        private readonly ComponentResourceManager resources = new ComponentResourceManager(typeof(FormMain));
+        public FormMain(RemoteService remoteService)
         {
             InitializeComponent();
-            _remoteDesktopService = remoteDesktopService;
-            ViewModel = new MainViewModel(_remoteDesktopService);
-            SetupBinding();
-            RegisterChatForm();
             isShow = false;
+
             this.FormBorderStyle = FormBorderStyle.Fixed3D;
 
+            RegisterChatForm();
+
+            _remoteService = remoteService;
+            _mainPresenter = new MainPresenter(_remoteService);
+            _mainPresenter.OnData += OnDataEventHandler;
+            _mainPresenter.OnError += OnErrorEventHandler;
+
         }
-        #region Properties
-        public MainViewModel ViewModel
+
+        private void OnErrorEventHandler(object sender, MainErrorEventArgs e)
         {
-            get
+            MessageBox.Show(e.Ex.Message, "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
+
+        private void OnDataEventHandler(object sender, MainDataEventArgs e)
+        {
+            DataDisPatcher(e.Data);
+        }
+        private void DataDisPatcher(object data)
+        {
+            if (this.InvokeRequired)
             {
-                lock (_lock)
-                {
-                    return _viewModel;
-                }
+                this.Invoke(new Action<object>(DataDisPatcher), data);
+                return;
             }
-            set
+
+            switch (data)
             {
-                lock (_lock)
-                {
-                    if(_viewModel != null)
-                    {
-                        _viewModel.ClientAcceptRequestRemote -= ClientAcceptRequestRemoteEventHandler;
-                    }
-                    _viewModel = value;
-                    if(_viewModel != null)
-                    {
-                        _viewModel.ClientAcceptRequestRemote += ClientAcceptRequestRemoteEventHandler;
-                    }
-                }
+                case MachineInfo machine:
+                    UpdateIdAndPassword(machine.Id, machine.Password);
+                    break;
+                case LoginResponse response:
+                    UpdateConnectStatus(response);
+                    break;
+                case PartnerInfoResponse response:
+                    GetPartnerInfoResponse(response.Message);
+                    break;
+                case NewRemoteConnection newCon:
+                    AddNewRemoteConnection(newCon);
+                    break;
+                default:
+                    break;
             }
         }
 
+        private void AddNewRemoteConnection(NewRemoteConnection newCon)
+        {
+            try
+            {
+                //Add to RemoteFrm
+                if(newCon.IsController)
+                    OpenRemoteForm(newCon.ClientSession);
 
-        #endregion
+                //Add to ChatFrm
+                AddChat(newCon.ClientSession);
+
+            }
+            catch(Exception ex)
+            {
+                Logger.Log.ForContext("FileName", "frmMain").Error(ex, "AddNewRemoteConnection err ");
+                MessageBox.Show("Thiết lập kết nối thất bại", "Xảy ra lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void GetPartnerInfoResponse(string message)
+        {
+            MessageBox.Show(message, "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+        }
+
+        private void UpdateConnectStatus(LoginResponse response)
+        {
+            _status = response.Type;
+            lbStatus.Text = response.Message;
+            pnStatus.Invalidate();
+        }
+
+        private void UpdateIdAndPassword(string id, string password)
+        {
+            txtOwnerId.Text = _mainPresenter.StringToStringWithDelimiter(id, " ", 3);
+            txtOwnerPassword.Text = password;
+            this.Invalidate();
+        }
         private void RegisterChatForm()
         {
             chatForm = new FormChat();
             chatForm.FormClosed += ChatForm_ClosedEventHandler;
-        }
-        private void SetupBinding()
-        {
-            txtOwnerId.DataBindings.Add("Text", ViewModel, "MyId",
-                false, DataSourceUpdateMode.OnPropertyChanged);
-            txtOwnerPassword.DataBindings.Add("Text", ViewModel, "MyPassword",
-               false, DataSourceUpdateMode.OnPropertyChanged);
-
-            _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        }
-
-        private void OnViewModelPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if(e.PropertyName == "IsConnected")
-            {
-               UpdateConnectionStatus();    
-            }
         }
         private void pnStatus_Paint(object sender, PaintEventArgs e)
         {
             Graphics g = e.Graphics;
             g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
 
-            Color circleColor = ViewModel.IsConnected ? Color.Green : Color.Red;
+            Color circleColor = (_status == LoginStatus.Connected) ? Color.Green :
+                                (_status == LoginStatus.Connecting) ? Color.Orange :
+                                (_status == LoginStatus.Disconnected) ? Color.Red
+                                : Color.DarkGray;
+
             using (SolidBrush brush = new SolidBrush(circleColor))
             {
                 g.FillEllipse(brush, 1, 1, pnStatus.Width - 2, pnStatus.Height - 2);
@@ -106,7 +139,8 @@ namespace VRemoteDesktop
         }
         private void FormMain_Shown(object sender, EventArgs e)
         {
-           Connect();
+           _mainPresenter.Initialize();
+            _mainPresenter.Login();
         }
         private void ChatForm_ClosedEventHandler(object sender, FormClosedEventArgs e)
         {
@@ -116,91 +150,77 @@ namespace VRemoteDesktop
         }
         private void FormMain_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (!chatForm.IsDisposed)
+            if (chatForm != null && !chatForm.IsDisposed)
                 chatForm.Close();
 
-            if(_viewModel != null)
-                _viewModel.ClientAcceptRequestRemote -= ClientAcceptRequestRemoteEventHandler;
-            _viewModel.Dispose();
+            if (_mainPresenter != null)
+            {
+                _mainPresenter.OnData -= OnDataEventHandler;
+                _mainPresenter.OnError -= OnErrorEventHandler;
+
+                _mainPresenter.Dispose();
+            }
         }
         private void btnConnect_Click(object sender, EventArgs e)
         {
+            if(_status != LoginStatus.Connected)
+            {
+                MessageBox.Show("Không thể kết nối đến máy chủ", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
             string partnerId = txtPartnerId.Text.Replace(" ", "");
             string partnerPassword = txtPartnerPassword.Text.Replace(" ","");
-            if(!string.IsNullOrWhiteSpace(partnerId) && !string.IsNullOrWhiteSpace(partnerPassword))
+
+            if (_mainPresenter.IsConnectToYourself(partnerId))
             {
-                P2PConnect(partnerId, partnerPassword);
-            }
-            else
-            {
-                MessageBox.Show("Thông tin không hợp lệ", "Lỗi", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
-        private void Connect()
-        {
-            ViewModel.Connect();
-        }
-        private void P2PConnect(string id, string password)
-        {
-            ViewModel.RequestP2PConnect(id, password);
-        }
-        private void UpdateConnectionStatus()
-        {
-            Action action = () =>
-            {
-                lbStatus.Text = "Sẵn sàng";
-                pnStatus.Invalidate();
-            };
-            if (this.InvokeRequired)
-            {
-                this.Invoke(action);
-            }
-            else
-            {
-                action();
-            }
-        }
-        private void ClientAcceptRequestRemoteEventHandler(object sender ,P2PClientDataReceived e)
-        {
-            if(sender is VClient vClient)
-            {
-                if(e.Type == Models.SocketDataType.P2PAcceptConnect)
-                {
-                    OpenRemoteForm(vClient);
-                }
-                else if(e.Type == Models.SocketDataType.P2PRequestConnect)
-                {
-                    AddChat(vClient);
-                }
-                else if(e.Type == Models.SocketDataType.P2PConnectFailed)
-                {
-                    MessageBox.Show("Kết nối đến máy khách thất bại", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
-            }
-        }
-        private void OpenRemoteForm(VClient client)
-        {
-            if (this.InvokeRequired)
-            {
-                this.Invoke(new Action<VClient>(OpenRemoteForm), client);
+                MessageBox.Show("Không thể kết nối với chính mình", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-            FormRemote remoteForm = new FormRemote(client, _remoteDesktopService);
+
+            if (string.IsNullOrWhiteSpace(partnerId))
+            {
+                MessageBox.Show("Id đối tác không được bỏ trống", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (string.IsNullOrWhiteSpace(partnerPassword))
+            {
+                MessageBox.Show("Mật khẩu đối tác không được bỏ trống", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            if (_mainPresenter.CheckIdConnected(partnerId))
+            {
+                MessageBox.Show("Đã kết nối với đối tác", "Thông báo", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            _mainPresenter.GetPartnerInfo(partnerId, partnerPassword);
+        }
+        private void OpenRemoteForm(ClientSession clientSession)
+        {
+            if (this.InvokeRequired)
+            {
+                this.Invoke(new Action<ClientSession>(OpenRemoteForm), clientSession);
+                return;
+            }
+
+            FormRemote remoteForm = new FormRemote(clientSession, _remoteService);
+
             remoteForm.Show();
-            AddChat(client);
+            AddChat(clientSession);
         }
-        private void AddChat(VClient client)
+        private void AddChat(ClientSession clientSession)
         {
             if (this.InvokeRequired)
             {
-                this.Invoke(new Action<VClient>(AddChat), client);
+                this.Invoke(new Action<ClientSession>(AddChat), clientSession);
                 return;
             }
-            if (client == null) return;
+
+            if (clientSession == null) return;
 
             if (!isShow)
             {
-                if(chatForm == null)
+                if (chatForm == null)
                 {
                     RegisterChatForm();
                 }
@@ -208,7 +228,7 @@ namespace VRemoteDesktop
                 chatForm.Show();
                 isShow = true;
             }
-            chatForm.AddConnection(client.SocketId, client);
+            chatForm.AddChatSession(clientSession.SessionId, clientSession);
         }
     }
 }

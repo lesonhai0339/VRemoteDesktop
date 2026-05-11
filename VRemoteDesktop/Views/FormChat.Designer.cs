@@ -42,29 +42,31 @@ namespace VRemoteDesktop.Views
             // 
             // fpnNumberChatConnection
             // 
-            this.fpnNumberChatConnection.BorderStyle = BorderStyle.FixedSingle;
-            this.fpnNumberChatConnection.FlowDirection = FlowDirection.TopDown;
-            this.fpnNumberChatConnection.WrapContents = false;
             this.fpnNumberChatConnection.AutoScroll = true;
-            this.fpnNumberChatConnection.BackColor = Color.White;
+            this.fpnNumberChatConnection.BackColor = System.Drawing.Color.White;
+            this.fpnNumberChatConnection.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.fpnNumberChatConnection.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.fpnNumberChatConnection.Location = new System.Drawing.Point(21, 21);
             this.fpnNumberChatConnection.Name = "fpnNumberChatConnection";
             this.fpnNumberChatConnection.Size = new System.Drawing.Size(330, 98);
             this.fpnNumberChatConnection.TabIndex = 9;
+            this.fpnNumberChatConnection.WrapContents = false;
             // 
             // fpnChat
             // 
+            //this.fpnChat.AutoScroll = true;
+            this.fpnChat.BackColor = System.Drawing.Color.White;
+            this.fpnChat.BorderStyle = System.Windows.Forms.BorderStyle.FixedSingle;
+            this.fpnChat.FlowDirection = System.Windows.Forms.FlowDirection.TopDown;
             this.fpnChat.Location = new System.Drawing.Point(20, 125);
             this.fpnChat.Name = "fpnChat";
+            this.fpnChat.Padding = new System.Windows.Forms.Padding(0, 0, 21, 0);
             this.fpnChat.Size = new System.Drawing.Size(331, 220);
             this.fpnChat.TabIndex = 8;
-            this.fpnChat.FlowDirection = FlowDirection.TopDown;
             this.fpnChat.WrapContents = false;
-            this.fpnChat.AutoScroll = true;
-            this.fpnChat.BorderStyle = BorderStyle.FixedSingle;
-            this.fpnChat.Padding = new Padding(0, 0, SystemInformation.VerticalScrollBarWidth, 0);
-            this.fpnChat.BackColor = Color.White;
-            this.fpnChat.MouseWheel += new  MouseEventHandler(this.fpnChat_MouseWheel);
+            //this.fpnChat.DragDrop += new System.Windows.Forms.DragEventHandler(this.fpnChat_DragDrop);
+            //this.fpnChat.DragEnter += new System.Windows.Forms.DragEventHandler(this.fpnChat_DragEnter);
+            //this.fpnChat.MouseWheel += new System.Windows.Forms.MouseEventHandler(this.fpnChat_MouseWheel);
             // 
             // btnSendAttachment
             // 
@@ -79,7 +81,7 @@ namespace VRemoteDesktop.Views
             // 
             // btnSend
             // 
-            this.btnSend.Location = new System.Drawing.Point(276, 351);
+            this.btnSend.Location = new System.Drawing.Point(276, 358);
             this.btnSend.Name = "btnSend";
             this.btnSend.Size = new System.Drawing.Size(75, 35);
             this.btnSend.TabIndex = 6;
@@ -97,8 +99,6 @@ namespace VRemoteDesktop.Views
             // 
             // FormChat
             // 
-            this.MaximizeBox = false;
-            this.FormBorderStyle = FormBorderStyle.Fixed3D;
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(371, 408);
@@ -107,11 +107,13 @@ namespace VRemoteDesktop.Views
             this.Controls.Add(this.btnSendAttachment);
             this.Controls.Add(this.btnSend);
             this.Controls.Add(this.txtChatContent);
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.Fixed3D;
             this.Margin = new System.Windows.Forms.Padding(4);
+            this.MaximizeBox = false;
             this.Name = "FormChat";
             this.Text = "FormChat";
+            this.FormClosing += new System.Windows.Forms.FormClosingEventHandler(this.FormChat_FormClosing);
             this.Load += new System.EventHandler(this.FormChat_Load);
-            this.FormClosing += new FormClosingEventHandler(this.FormChat_FormClosing);
             this.ResumeLayout(false);
             this.PerformLayout();
 

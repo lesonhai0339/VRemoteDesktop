@@ -14,6 +14,15 @@ namespace VRemoteDesktop.Helpers
         private static string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
         private static string digits = "0123456789";
         internal static Dictionary<byte, byte> dictionary_0 = new Dictionary<byte, byte>();
+        public static string StringToStringWithDelimiter(string input, string delimiter, int length)
+        {
+            List<string> result = new List<string>();   
+            for(int i = 0; i < input.Length; i += length) { 
+                int num = Math.Min((input.Length - i ), 3);
+                result.Add(input.Substring(i, num));
+            }
+            return string.Join(delimiter, result);
+        }
         public static string[] StringToStringArrayWithSeparator(string input, string separator = "|")
         {
             if (string.IsNullOrEmpty(input))

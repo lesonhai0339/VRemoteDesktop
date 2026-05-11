@@ -45,7 +45,9 @@
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Management" />
     <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -56,23 +58,39 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Enums\ChatControlType.cs" />
-    <Compile Include="Enums\ChatDataType.cs" />
-    <Compile Include="Enums\QueuePriority.cs" />
-    <Compile Include="Enums\VClientType.cs" />
-    <Compile Include="Enums\VMouseButtons.cs" />
-    <Compile Include="Enums\MouseEventType.cs" />
-    <Compile Include="Enums\ScreenType.cs" />
+    <Compile Include="DTOs\BaseResponse.cs" />
+    <Compile Include="DTOs\Requests\ConnectionCredentials.cs" />
+    <Compile Include="DTOs\Requests\PartnerCredentials.cs" />
+    <Compile Include="DTOs\Response\PartnerNetworkInfo.cs" />
+    <Compile Include="DTOs\Response\RemoteLoginResponse.cs" />
+    <Compile Include="Presenters\Enums\ChatControlType.cs" />
+    <Compile Include="Presenters\Enums\ChatDataType.cs" />
+    <Compile Include="Presenters\Enums\ChatFileType.cs" />
+    <Compile Include="Enums\ControlType.cs" />
+    <Compile Include="Enums\SessionResponseType.cs" />
+    <Compile Include="Enums\ConnectionStatus.cs" />
+    <Compile Include="Services\FileService\Enums\FileStatus.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\FrameWrapper.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\ImageSwapper.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\VBufferSwapper.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\WriterReaderSwapper.cs" />
+    <Compile Include="Services\ScreenCapture\Events\OnScreenEventArgs.cs" />
+    <Compile Include="Enums\ProgressBarEnum.cs" />
+    <Compile Include="Services\SessionManagement\Enums\QueuePriority.cs" />
+    <Compile Include="Enums\UserChatControlEventType.cs" />
+    <Compile Include="Services\Mouse\Enums\VMouseButtons.cs" />
+    <Compile Include="Services\Mouse\Enums\MouseEventType.cs" />
+    <Compile Include="Services\ScreenCapture\Enums\ScreenType.cs" />
     <Compile Include="Enums\EncodingType.cs" />
-    <Compile Include="Enums\KeyCombination.cs" />
-    <Compile Include="Enums\KeyState.cs" />
-    <Compile Include="Enums\MouseAction.cs" />
+    <Compile Include="Services\Keyboard\Enums\KeyCombination.cs" />
+    <Compile Include="Services\Keyboard\Enums\KeyState.cs" />
+    <Compile Include="Services\Mouse\Enums\MouseAction.cs" />
     <Compile Include="Enums\ResponseStatus.cs" />
     <Compile Include="Enums\UISizeMode.cs" />
-    <Compile Include="Enums\WindowsClipboardFormat.cs" />
-    <Compile Include="Enums\WindowsKeyboardEvent.cs" />
-    <Compile Include="Enums\WindowsMouseEvent.cs" />
-    <Compile Include="Enums\WindowsMouseMessage.cs" />
+    <Compile Include="Services\Keyboard\Enums\WindowsClipboardFormat.cs" />
+    <Compile Include="Services\Keyboard\Enums\WindowsKeyboardEvent.cs" />
+    <Compile Include="Services\Mouse\Enums\WindowsMouseEvent.cs" />
+    <Compile Include="Services\Mouse\Enums\WindowsMouseMessage.cs" />
     <Compile Include="Events\ChatControlAddedEventArgs.cs" />
     <Compile Include="Events\ChatControlProgressBarUpdateUIEventArgs.cs" />
     <Compile Include="Events\ChatControlRemoveEventArgs.cs" />
@@ -84,58 +102,81 @@
     <Compile Include="Events\ChatUpdateChatHistoryEventArgs.cs" />
     <Compile Include="Events\FileEventArgs.cs" />
     <Compile Include="Events\KeyboardEventArgs.cs" />
-    <Compile Include="Events\P2PChatEventArgs.cs" />
-    <Compile Include="Events\P2PClientDataReceived.cs" />
-    <Compile Include="Events\P2PFileReceivedEventArgs.cs" />
-    <Compile Include="Events\P2PScreenEventArgs.cs" />
+    <Compile Include="Presenters\ChatPresenter.cs" />
+    <Compile Include="Presenters\DTOs\LoginResponse.cs" />
+    <Compile Include="Presenters\DTOs\NewRemoteConnection.cs" />
+    <Compile Include="Presenters\DTOs\PartnerInfoResponse.cs" />
+    <Compile Include="Presenters\Enums\LoginStatus.cs" />
+    <Compile Include="Presenters\RemotePresenter.cs" />
+    <Compile Include="Services\FileService\DTOs\ChatFile.cs" />
+    <Compile Include="Services\FileService\DTOs\ChatMessage.cs" />
+    <Compile Include="Services\FileService\DTOs\ChatText.cs" />
+    <Compile Include="Services\FileService\Enums\ChatContentTypeEnum.cs" />
+    <Compile Include="Services\FileService\Enums\ChatOwnerEnum.cs" />
+    <Compile Include="Services\RemoteDesktop\Enums\ResponseType.cs" />
+    <Compile Include="Services\RemoteDesktop\Events\RemoteDesktopErrorEventArgs.cs" />
+    <Compile Include="Services\RemoteDesktop\Events\RemoteDesktopEventArgs.cs" />
+    <Compile Include="Events\FileReceivedEventArgs.cs" />
     <Compile Include="Events\ScreenCaptureEventArgs.cs" />
-    <Compile Include="Events\SocketDisposeEventArgs.cs" />
+    <Compile Include="Events\UserChatControlEventArgs.cs" />
+    <Compile Include="Helpers\Crypto.cs" />
+    <Compile Include="Layouts\VDisplay.cs">
+      <SubType>UserControl</SubType>
+    </Compile>
+    <Compile Include="Layouts\VDisplay.Designer.cs">
+      <DependentUpon>VDisplay.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Presenters\DTOs\ConnectStatus.cs" />
+    <Compile Include="Presenters\Events\MainDataEventArgs.cs" />
+    <Compile Include="Presenters\Events\MainErrorEventArgs.cs" />
+    <Compile Include="Presenters\MainPresenter.cs" />
+    <Compile Include="Services\Machine\DTOs\MachineInfo.cs" />
+    <Compile Include="Services\Machine\MachineProfile.cs" />
+    <Compile Include="Services\RemoteDesktop\DTOs\LoginResponse.cs" />
+    <Compile Include="Services\RemoteDesktop\Events\RemoteDesktopSessionDisconnectEventArgs.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteService.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteService.ServerSocket.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteService.ClientSocket.cs" />
+    <Compile Include="Services\RemoteDesktop\RemoteService.System.cs" />
+    <Compile Include="Services\SessionManagement\ClientSession.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\RegionFrame.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\ScreenTask.cs" />
     <Compile Include="Helpers\AppSettingHelper.cs" />
     <Compile Include="Helpers\ByteArrayHelper.cs" />
     <Compile Include="Helpers\ChatRespondHelper.cs" />
     <Compile Include="Helpers\FileHelper.cs" />
     <Compile Include="Helpers\ListByteArray.cs" />
     <Compile Include="Helpers\StringHelper.cs" />
-    <Compile Include="Layouts\CustomPanel.cs">
+    <Compile Include="Layouts\FileAttachmentPanel.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Layouts\CustomTableLayout.cs">
+    <Compile Include="Layouts\ConnectionChatDataPanel.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="Layouts\CustomUserControl.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="Layouts\FileMessage.cs">
+    <Compile Include="Layouts\ConnectionChatPanel.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Layouts\FileAttachmentLayout.cs">
+    <Compile Include="Layouts\ChatProgressBar.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Layouts\VProgressBar.cs">
-      <SubType>Component</SubType>
-    </Compile>
-    <Compile Include="DTOs\ChatManager.cs" />
-    <Compile Include="DTOs\ChatRespond.cs" />
-    <Compile Include="DTOs\ChunkFileInfo.cs" />
-    <Compile Include="DTOs\EventRegistration.cs" />
-    <Compile Include="DTOs\MouseData.cs" />
-    <Compile Include="DTOs\TaskGroup.cs" />
-    <Compile Include="DTOs\TaskObject.cs" />
-    <Compile Include="DTOs\BaseResponse.cs" />
-    <Compile Include="DTOs\ByteArrayBuilder.cs" />
-    <Compile Include="DTOs\ClientInfo.cs" />
-    <Compile Include="DTOs\DataReceive.cs" />
-    <Compile Include="Enums\SocketDataType.cs" />
-    <Compile Include="DTOs\KeyboardReceived.cs" />
-    <Compile Include="DTOs\KeyboardState.cs" />
-    <Compile Include="DTOs\MouseReceived.cs" />
-    <Compile Include="DTOs\ScreenRegion.cs" />
-    <Compile Include="DTOs\StateObject.cs" />
-    <Compile Include="DTOs\Sendstate.cs" />
-    <Compile Include="DTOs\UIPropertyRegistration.cs" />
-    <Compile Include="DTOs\VFileInfo.cs" />
-    <Compile Include="Services\Client\ClientInfoManager.cs" />
-    <Compile Include="Services\FileService\SaveChat.cs" />
+    <Compile Include="Layouts\MsgBox.cs" />
+    <Compile Include="DTOs\BaseClass.cs" />
+    <Compile Include="Presenters\DTOs\ChatManager.cs" />
+    <Compile Include="Presenters\DTOs\ChatRespond.cs" />
+    <Compile Include="Services\FileService\DTOs\ChunkFileInfo.cs" />
+    <Compile Include="Services\Mouse\DTOs\MouseData.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\TaskGroup.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\TaskObject.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\ByteArrayBuilder.cs" />
+    <Compile Include="Services\SessionManagement\Enums\SocketDataType.cs" />
+    <Compile Include="Services\Keyboard\DTOs\KeyboardReceived.cs" />
+    <Compile Include="Services\Keyboard\DTOs\KeyboardState.cs" />
+    <Compile Include="Services\Mouse\DTOs\MouseReceived.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\ScreenRegion.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\StateObject.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\Sendstate.cs" />
+    <Compile Include="Services\FileService\DTOs\VFileInfo.cs" />
+    <Compile Include="Services\FileService\VSaveChat.cs" />
     <Compile Include="Services\FileService\VAttachmentManager.cs" />
     <Compile Include="Services\FileService\VChatAttachmentService.cs" />
     <Compile Include="Services\Keyboard\KeyboardService.cs" />
@@ -143,24 +184,33 @@
     <Compile Include="Services\Keyboard\VirtualKeyboard.cs" />
     <Compile Include="Services\Mouse\MouseExtensions.cs" />
     <Compile Include="Services\Mouse\VirtualMouse.cs" />
-    <Compile Include="Services\RemoteDesktop\RemoteDesktopService.cs" />
-    <Compile Include="Services\ScreenCapture\ScreenCapture1.cs" />
-    <Compile Include="Services\ScreenCapture\ScreenCaptureExtensions.cs" />
-    <Compile Include="Services\ScreenCapture\ScreenCapture.cs" />
-    <Compile Include="Services\ScreenCapture\ScreenCaptureService.cs" />
-    <Compile Include="Services\SystemService\GlobalHookService.cs" />
-    <Compile Include="Services\VTCPClient\TCPClient.cs" />
-    <Compile Include="Services\VTCPClient\VClient.cs" />
-    <Compile Include="Services\VTCPClient\VClientManager.cs" />
+    <Compile Include="Services\ScreenCapture\Enums\VScreenType.cs" />
+    <Compile Include="Services\ScreenCapture\Events\FrameEventArgs.cs" />
+    <Compile Include="Services\ScreenCapture\DTOs\CaptureFrame.cs" />
+    <Compile Include="Services\ScreenCapture\GDI\VRegions.cs" />
+    <Compile Include="Services\ScreenCapture\Interop\CaptureApi.cs" />
+    <Compile Include="Services\ScreenCapture\GDI\VScreen.cs" />
+    <Compile Include="Services\ScreenCapture\GDI\VScreenReceiver.cs" />
+    <Compile Include="Services\ScreenCapture\GDI\VScreenSender.cs" />
+    <Compile Include="Services\ScreenCapture\Utils\Compressor.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\QueueItem.cs" />
+    <Compile Include="Services\SessionManagement\DTOs\ScreenDataDto.cs" />
+    <Compile Include="Services\SessionManagement\Enums\ClientType.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionDataReceivedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionDisconnectedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSession\ClientSessionScreenReceivedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketConnectedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDisconnectedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDisposingEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketSendCompletedEventArgs.cs" />
+    <Compile Include="Services\SessionManagement\SessionManager.cs" />
+    <Compile Include="Services\SessionManagement\ClientSocket.cs" />
+    <Compile Include="Services\SessionManagement\Events\ClientSocket\SocketDataReceivedEventArgs.cs" />
     <Compile Include="Startup.cs" />
-    <Compile Include="Utils\CusQueue.cs" />
     <Compile Include="Utils\DefaultValue.cs" />
     <Compile Include="Utils\Logger.cs" />
     <Compile Include="Interop\Win32Apis.cs" />
-    <Compile Include="Utils\VPriorityQueue.cs" />
-    <Compile Include="ViewModels\ChatViewModel.cs" />
-    <Compile Include="ViewModels\MainViewModel.cs" />
-    <Compile Include="ViewModels\RemoteViewModel.cs" />
+    <Compile Include="Utils\VArrayPool.cs" />
     <Compile Include="Views\FormMain.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -181,11 +231,8 @@
     <Compile Include="Views\FormRemote.Designer.cs">
       <DependentUpon>FormRemote.cs</DependentUpon>
     </Compile>
-    <EmbeddedResource Include="Layouts\CustomTableLayout.resx">
-      <DependentUpon>CustomTableLayout.cs</DependentUpon>
-    </EmbeddedResource>
-    <EmbeddedResource Include="Layouts\CustomUserControl.resx">
-      <DependentUpon>CustomUserControl.cs</DependentUpon>
+    <EmbeddedResource Include="Layouts\ConnectionChatPanel.resx">
+      <DependentUpon>ConnectionChatPanel.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -199,14 +246,18 @@
     <EmbeddedResource Include="Views\FormChat.resx">
       <DependentUpon>FormChat.cs</DependentUpon>
     </EmbeddedResource>
+    <EmbeddedResource Include="Views\FormMain.en.resx">
+      <DependentUpon>FormMain.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Views\FormMain.resx">
       <DependentUpon>FormMain.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Views\FormRemote.resx">
       <DependentUpon>FormRemote.cs</DependentUpon>
     </EmbeddedResource>
-	 <None Include="Configs\app.config" />
+    <None Include="Configs\App.config" />
     <None Include="Configs\app.manifest" />
+    <None Include="Interop\openh264-2.6.0-win32.dll.bz2" />
     <None Include="Properties\Settings.settings">
       <Generator>SettingsSingleFileGenerator</Generator>
       <LastGenOutput>Settings.Designer.cs</LastGenOutput>
@@ -216,14 +267,31 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Compile Include="Services\RemoteDesktop\RemoteService.Hook.cs" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="ChatData\" />
     <Folder Include="Resources\" />
+    <Folder Include="Services\ScreenCapture\Helpers\" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="Services\VTCPClient\VClient_Backup.txt" />
-    <Content Include="ViewModels\ChatViewModel_Backup.txt" />
+    <COMReference Include="NetFwTypeLib">
+      <Guid>{58FBCF7C-E7A9-467C-80B3-FC65E8FCCA08}</Guid>
+      <VersionMajor>1</VersionMajor>
+      <VersionMinor>0</VersionMinor>
+      <Lcid>0</Lcid>
+      <WrapperTool>tlbimp</WrapperTool>
+      <Isolated>False</Isolated>
+      <EmbedInteropTypes>True</EmbedInteropTypes>
+    </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="lz4net">
+      <Version>1.0.5.93</Version>
+    </PackageReference>
+    <PackageReference Include="Newtonsoft.Json">
+      <Version>12.0.3</Version>
+    </PackageReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

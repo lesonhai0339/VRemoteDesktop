@@ -13,12 +13,14 @@ namespace VRemoteDesktop.Events
     }
     public class ChatErrorEventArgs: EventArgs
     {
-        public ChatErrorEventArgs(ChatErrorLevel level, Exception ex)
+        public ChatErrorEventArgs(ChatErrorLevel level, Exception ex, string message = "")
         {
             Level = level;
             Ex = ex;
+            Message = message;
         }
         public ChatErrorLevel Level { get; set; }
         public Exception Ex { get; set; }
+        public string Message { get; set; }
     }
 }
