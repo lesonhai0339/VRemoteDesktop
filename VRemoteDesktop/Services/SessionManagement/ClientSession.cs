@@ -189,7 +189,10 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         private void PingCallback(object obj)
         {
-            Console.WriteLine($"{_sessionType} ping");
+            //Only accept ping for system or remote with connected state
+            if (_sessionType != ClientType.System || (_sessionType == ClientType.Controller && !_connected) || (_sessionType == ClientType.Controlled && !_connected))
+                return;
+
             var elapsed = (DateTimeOffset.UtcNow - _lastPing).TotalSeconds;
 
             if (elapsed > TIME_OUT)
@@ -260,7 +263,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 sentSuccessfully = Send(taskObject.TaskType, taskObject.Data, taskObject.SessionId, taskObject.IsSendHeader);
             }
 
-            if (sentSuccessfully)
+            taskObject.Attempts++;
+            if (sentSuccessfully || taskObject.Attempts  >= 3)
             {
                 _highQueue.TryDequeue(out _);
                 return true;
@@ -291,7 +295,8 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
                     sentSuccessfully =  ProcessFileTransfer(taskObject);
 
-                    if (sentSuccessfully)
+                    taskObject.Attempts ++;
+                    if (sentSuccessfully || taskObject.Attempts >= 3)
                     {
                         _lowQueue.TryDequeue(out _);
                         return true;

@@ -50,5 +50,6 @@ namespace VRemoteDesktop.Models
         public bool IsSendHeader { get; set; } = true;
         public CapturedFrame CapturedFrame { get; set; } = null;
         public ChunkFileInfo ChunkFileInfo { get; set; } = null;
+        public int Attempts { get; set; } = 0;
     }
 }

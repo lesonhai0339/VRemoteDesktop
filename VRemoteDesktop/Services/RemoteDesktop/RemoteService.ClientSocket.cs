@@ -275,6 +275,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                 var handler = OnSessionData;
                 if (handler != null)
                 {
+                    clientSession.Connected = true;
                     //Invoke to frmMain to create fromRemote and add client session to frmChat
                     handler.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.AddRemoteController, clientSession.SessionId));
                 }
@@ -290,6 +291,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
                     var handler = OnSessionData;
                     if (handler != null)
                     {
+                        clientSession.Connected = true;
                         handler.Invoke(sender, new RemoteDesktopEventArgs(Enums.ResponseType.AddRemoteControlled, clientSession.SessionId));
                     }
 

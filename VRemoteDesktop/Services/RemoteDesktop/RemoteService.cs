@@ -1,15 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing.Imaging;
-using System.Linq;
-using System.Text;
 using System.Threading;
 using VRemoteDesktop.Events;
 using VRemoteDesktop.Helpers;
 using VRemoteDesktop.Models;
 using VRemoteDesktop.Services.Client;
 using VRemoteDesktop.Services.Keyboard;
-using VRemoteDesktop.Services.Machine.DTOs;
 using VRemoteDesktop.Services.RemoteDesktop.Enums;
 using VRemoteDesktop.Services.RemoteDesktop.Events;
 using VRemoteDesktop.Services.ScreenCapture;
@@ -28,7 +25,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
 
         private const int BYTE_PER_PIXEL = 2;
         private const PixelFormat PIXEL_FORMAT = PixelFormat.Format16bppRgb555;
-        private const int FPS = 10;
+        private const int FPS = 5;
 
 
 
@@ -39,9 +36,9 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         private const string SUCCESS = "1";
         private const string FAILED = "0";
 
-        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP");
-        private readonly string DEFAULT_LOGIN_PORT = AppSettingHelper.GetValue("LoginPort");
-        private readonly string DEFAULT_REMOTE_PORT = AppSettingHelper.GetValue("RemotePort");
+        private readonly string DEFAULT_SERVER_IP = AppSettingHelper.GetValue("ServerIP") ?? "125.212.234.120";
+        private readonly string DEFAULT_LOGIN_PORT = AppSettingHelper.GetValue("LoginPort") ?? "2399";
+        private readonly string DEFAULT_REMOTE_PORT = AppSettingHelper.GetValue("RemotePort") ?? "2400";
 
         private int _disposed = 0;
         private bool _isCapturing = false;
@@ -190,7 +187,7 @@ namespace VRemoteDesktop.Services.RemoteDesktop
         }
         class ImageInfo
         {
-            public const int FPS = 10;
+            public const int FPS = 5;
             public const int SRCCOPY = 0x00CC0020;
             public const uint DIB_RGB_COLORS = 0;
             public const uint pageProtect = 0x40;

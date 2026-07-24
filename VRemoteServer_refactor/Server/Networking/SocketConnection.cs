@@ -1,0 +1,360 @@
+﻿using Microsoft.VisualBasic.FileIO;
+using Serilog;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using VRemoteServer.RelayServer.Domains;
+using VRemoteServer.RelayServer.Enums;
+using VRemoteServer.RelayServer.Events;
+using static VRemoteServer.RelayServer.Helpers.DefaultValue.SocketConnectionDefault;
+
+namespace VRemoteServer.RelayServer.Networking
+{
+    public class SocketConnection : IDisposable, ITrackableDisposable
+    {
+        private string _ip;
+        private int _disposed;
+        private int _closing;
+        private Socket _socket;
+        private string _connectionId;
+        private SocketAsyncEventArgs _readSocketAsyncEventArgs;
+        private SocketAsyncEventArgs _sendSocketAsyncEventArgs;
+        private DateTimeOffset _lastSendTime { get; set; }
+        private TimeSpan _timeout = TimeSpan.FromSeconds(TIMEOUT);
+        private Timer _timer;
+        private object _lockProperty = new object();
+        //Test
+        byte[] previousData = Array.Empty<byte>();
+        SocketDataType type = SocketDataType.None; 
+        string id = ""; 
+        int remainingData = 0;
+        int length = 0;
+
+        public event EventHandler<SocketConnectionEventArg> SocketConnectionEvent;
+        public SocketConnection(SocketAsyncEventArgs readSocketAsyncEventArgs, SocketAsyncEventArgs sendSocketAsyncEventArgs, Socket socket)
+        {
+            _disposed = 0;
+            _lastSendTime = DateTimeOffset.UtcNow; //init before check timeout
+            _socket = socket;
+            _readSocketAsyncEventArgs = readSocketAsyncEventArgs;
+            _sendSocketAsyncEventArgs = sendSocketAsyncEventArgs;
+            _readSocketAsyncEventArgs.UserToken = this;
+            _sendSocketAsyncEventArgs.UserToken = this;
+            _timer = new Timer(CheckTimeOut, null, TimeSpan.FromSeconds(SCHEDULE_TIME), TimeSpan.FromSeconds(SCHEDULE_TIME));
+        }
+        #region Properties
+        public string IP
+        {
+            // if current ip is null, try to get it from RemoteEndPoint
+            get
+            {
+                if (!string.IsNullOrEmpty(_ip))
+                {
+                    return _ip;
+                }
+                try
+                {
+                    return (_socket?.RemoteEndPoint as IPEndPoint)?.Address?.ToString() ?? string.Empty;
+                }
+                catch
+                {
+                    return string.Empty;
+                }
+            }
+            private set
+            {
+                if (!string.IsNullOrEmpty(value))
+                {
+                    _ip = value;
+                }
+            }
+        }
+        public Socket Socket
+        {
+            get
+            {
+                lock (_lockProperty)
+                {
+                    return _socket;
+                }
+            }
+            set
+            {
+                lock (_lockProperty)
+                {
+                    _socket = value;
+                }
+            }
+        }
+        /// <summary>
+        /// It's <see cref="SocketAsyncEventArgs"/>
+        /// </summary>
+        public SocketAsyncEventArgs Reader
+        {
+            get
+            {
+                lock (_lockProperty)
+                {
+                    return _readSocketAsyncEventArgs;
+                }
+            }
+            set
+            {
+                lock (_lockProperty)
+                {
+                    _readSocketAsyncEventArgs = value;
+                }
+            }
+        }
+        public SocketAsyncEventArgs Sender
+        {
+            get
+            {
+                lock (_lockProperty)
+                {
+                    return _sendSocketAsyncEventArgs;
+                }
+            }
+            set
+            {
+                lock (_lockProperty)
+                {
+                    _sendSocketAsyncEventArgs = value;
+                }
+            }
+        }
+
+        public bool IsDisposed => _disposed == 1;
+
+        // Atomic claim so only one racing disconnect signal runs the server-side close path.
+        public bool TryBeginDispose() => Interlocked.Exchange(ref _closing, 1) == 0;
+        #endregion
+        #region Methods
+        public void SetTimeout(int seconds)
+        {
+            lock (_lockProperty)
+            {
+                if (seconds > 0)
+                {
+                    _timeout = TimeSpan.FromSeconds(seconds);
+                }
+            }
+        }
+
+        public void UpdateTime()
+        {
+            lock (_lockProperty)
+            {
+                _lastSendTime = DateTimeOffset.UtcNow;
+            }
+        }
+
+        private bool CheckAlive()
+        {
+            try
+            {
+                // Check if socket is connected and not in an error state
+                if (_socket == null || !_socket.Connected)
+                    return false;
+
+                // Use a shorter poll time (1000 microseconds = 1ms) and check both conditions
+                bool hasDataToRead = _socket.Poll(1000, SelectMode.SelectRead);
+                bool hasAvailableData = _socket.Available > 0;
+
+                // Socket is alive if:
+                // - It has data to read AND available data > 0, OR
+                // - It doesn't have data to read (normal idle state)
+                return !hasDataToRead || hasAvailableData;
+            }
+            catch (SocketException)
+            {
+                return false;
+            }
+            catch (ObjectDisposedException)
+            {
+                return false;
+            }
+        }
+
+        private void CheckTimeOut(object obj)
+        {
+            var timer = DateTimeOffset.UtcNow - _lastSendTime;
+            if (timer > _timeout)
+            {
+                Log.ForContext("FileName", this.GetType().Name).ForContext("SocketConnectionIP", IP)
+                   .Warning("Client has been idle for too long, disconnecting...");
+                SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Disconnected));
+            }
+            else if (!CheckAlive())
+            {
+                Log.ForContext("FileName", this.GetType().Name).ForContext("SocketConnectionIP", IP)
+                   .Warning("Client is not connected anymore, disconnecting...");
+                SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Disconnected));
+            }
+        }
+
+        private void ProcessData(SocketDataType type, string id, byte[] buffer)
+        {
+            _lastSendTime = DateTimeOffset.UtcNow;
+            SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, buffer));
+        }
+
+        private void ProcessData(SocketDataType type, string id, int offset, int length)
+        {
+            _lastSendTime = DateTimeOffset.UtcNow;
+            SocketConnectionEvent?.Invoke(this, new SocketConnectionEventArg(SocketConnectionEventType.Data, type, id, offset, length));
+        }
+
+        private (int length, SocketDataType type, string id) GetHeader(byte[] buffer, int offset)
+        {
+            byte[] header = new byte[PACKET_HEADER_LENGTH];
+            Buffer.BlockCopy(buffer, offset, header, 0, PACKET_HEADER_LENGTH);
+            return PacketFactory.GetHeaderDataFromPacket(header, 0, PACKET_HEADER_LENGTH);
+        } 
+
+        public void CalCuLateData(int comingOffset, int comingDataLength)
+        {
+            try
+            {
+                if(!Enum.IsDefined(typeof(SocketDataType), type))
+                {
+                    //Reset
+                    previousData = Array.Empty<byte>();
+                    length = 0;
+                    type = default;
+                    id = default;
+                }
+                // Null checks must come BEFORE touching Buffer.Length (was dereferencing a
+                // possibly-null buffer first).
+                if (_readSocketAsyncEventArgs == null || _readSocketAsyncEventArgs.Buffer == null)
+                    return;
+
+                if (comingOffset < 0 || comingDataLength < 0)
+                    return;
+
+                if (comingOffset + comingDataLength > _readSocketAsyncEventArgs.Buffer.Length)
+                {
+                    return;
+                }
+
+                while(comingDataLength > 0)
+                {
+                    if (previousData.Length > 0)
+                    {
+                        int total = previousData.Length + comingDataLength;
+                        if (total < PACKET_HEADER_LENGTH)
+                        {
+                            byte[] data = new byte[total];
+                            Buffer.BlockCopy(previousData, 0, data, 0, previousData.Length);
+                            Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, comingOffset, data, previousData.Length, comingDataLength);
+                            previousData = data;
+                            return;
+                        }
+                        else
+                        {
+                            int a = PACKET_HEADER_LENGTH - previousData.Length;
+                            byte[] header = new byte[PACKET_HEADER_LENGTH];
+                            Buffer.BlockCopy(previousData, 0, header, 0, previousData.Length);
+
+                            Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, comingOffset, header, previousData.Length, a);
+                            (length, type, id) = GetHeader(header, 0);
+
+                            if (length < PACKET_HEADER_LENGTH || length > MAX_PACKET_SIZE)
+                            {
+                                // Corrupt header -> drop buffered framing state, stop parsing.
+                                previousData = Array.Empty<byte>();
+                                remainingData = 0; length = 0; type = default; id = default;
+                                return;
+                            }
+
+                            ProcessData(type, id, header);
+
+                            remainingData = length - PACKET_HEADER_LENGTH;
+                            comingOffset += a;
+                            comingDataLength -= a;
+                            previousData = Array.Empty<byte>();
+                        }
+                    }
+                    else if (remainingData > 0)
+                    {
+                        if (comingDataLength > remainingData)
+                        {
+                            ProcessData(type, id, comingOffset, remainingData);
+
+                            comingOffset += remainingData;
+                            comingDataLength -= remainingData;
+                            remainingData = 0;
+                        }
+                        else
+                        {
+                            ProcessData(type, id, comingOffset, comingDataLength);
+                            remainingData -= comingDataLength;
+                            return;
+                        }
+                    }
+                    else
+                    {
+                        if (comingDataLength < PACKET_HEADER_LENGTH)
+                        {
+                            previousData = new byte[comingDataLength];
+                            Buffer.BlockCopy(_readSocketAsyncEventArgs.Buffer, comingOffset, previousData, 0, comingDataLength);
+                            return;
+                        }
+                        (length, type, id) = GetHeader(_readSocketAsyncEventArgs.Buffer, comingOffset);
+
+                        if (length < PACKET_HEADER_LENGTH || length > MAX_PACKET_SIZE)
+                        {
+                            // Corrupt header -> drop buffered framing state, stop parsing.
+                            previousData = Array.Empty<byte>();
+                            remainingData = 0; length = 0; type = default; id = default;
+                            return;
+                        }
+
+                        if (comingDataLength <= length)
+                        {
+                            ProcessData(type, id, comingOffset, comingDataLength);
+                            remainingData = length - comingDataLength;
+                            return;
+                        }
+                        else
+                        {
+                            ProcessData(type, id, comingOffset, length);
+                            remainingData = 0;
+                            comingOffset += length;
+                            comingDataLength -= length;
+
+
+                            length = 0;
+                            type = default;
+                            id = default;
+                        }
+                    }
+                }
+            }
+            catch{
+                previousData = Array.Empty<byte>();
+                length = 0;
+                type = default;
+                id = default;
+            }
+        }
+        #endregion
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposing || Interlocked.Exchange(ref _disposed, 1) == 1) return;
+
+            previousData = null;
+            _timer?.Dispose();
+        }
+    }
+}

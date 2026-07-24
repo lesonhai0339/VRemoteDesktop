@@ -1,0 +1,238 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using System.Threading;
+using System.Windows.Forms;
+using Vsign4.VRemoteDesktop.Events;
+using Vsign4.VRemoteDesktop.Interop;
+using Vsign4.VRemoteDesktop.Services.Keyboard.Enums;
+
+namespace Vsign4.VRemoteDesktop.Services.Keyboard
+{
+    public interface IKeyboardService
+    {
+        /// <summary>
+        /// Start listening for keyboard events 
+        /// </summary>
+        /// <param name="pId"></param>
+        void Start(uint pId);
+        /// <summary>
+        /// Stop listening for keyboard events   
+        /// </summary>
+        void Stop();
+        /// <summary>
+        /// Adds a keyboard event listener to a specific Form.
+        /// </summary>
+        /// <param name="handle"></param>
+        void AddHook(IntPtr handle);
+        /// <summary>
+        /// Remove a keyboard event listener from a specific Form.  
+        /// </summary>
+        /// <param name="handle"></param>
+        void RemoveHook(IntPtr handle);
+        event EventHandler<KeyboardEventArgs> KeyPressed;
+        void Dispose();
+    }
+    public class KeyboardService : IKeyboardService, IDisposable
+    {
+        private readonly object _lockObject = new object();
+        private int _disposed = 0;
+
+        private IntPtr _hookID;
+        private Win32Apis.HookApis.LowLevelProc _proc;
+        private HashSet<IntPtr> _windowsHandle;
+        public event EventHandler<KeyboardEventArgs> KeyPressed;
+        public KeyboardService()
+        {
+            _hookID = IntPtr.Zero;
+            _windowsHandle = new HashSet<IntPtr>();
+        }
+        public void Start(uint pId)
+        {
+            _proc = HookCallback;
+            _hookID = SetHook(_proc);
+        }
+        #region Properties
+        public HashSet<IntPtr> WindowsHandle
+        {
+            get
+            {
+                lock (_lockObject)
+                {
+                    return _windowsHandle;
+                }
+            }
+            set
+            {
+                lock (_lockObject)
+                {
+                    _windowsHandle = value;
+                }
+            }
+        }
+        #endregion
+        /// <summary>
+        /// Starts listening for keyboard events on a specific Form.
+        /// </summary>
+        /// <param name="handle">The handle of the Form to listen to (use <c>this.Handle</c> in the Form).</param>
+        public void AddHook(IntPtr handle)
+        {
+            lock (_lockObject)
+            {
+                WindowsHandle.Add(handle);
+            }
+        }
+        /// <summary>
+        /// Stops listening for keyboard events on a specific Form.
+        /// </summary>
+        /// <param name="handle">The handle of the Form to stop listening to (use <c>this.Handle</c> in the Form).</param>
+        public void RemoveHook(IntPtr handle)
+        {
+            lock (_lockObject)
+            {
+                WindowsHandle.Remove(handle);
+            }
+        }
+        public void Stop()
+        {
+            if (_hookID != IntPtr.Zero)
+            {
+                Win32Apis.HookApis.UnhookWindowsHookEx(_hookID);
+                _hookID = IntPtr.Zero;
+            }
+        }
+        private bool IsHandleFocus(IntPtr handle)
+        {
+            return Win32Apis.WindowApis.GetForegroundWindow() == handle;
+        }
+        private IntPtr SetHook(Win32Apis.HookApis.LowLevelProc proc)
+        {
+            using (Process curProcess = Process.GetCurrentProcess())
+            using (ProcessModule curModule = curProcess.MainModule)
+            {
+                ////get specific windows handle
+                //return SetWindowsHookEx(WH_KEYBOARD_LL, proc,
+                //    GetModuleHandle(curModule.ModuleName), 0);
+
+                //get all of this process
+                return Win32Apis.HookApis.SetWindowsHookEx((int)WindowsKeyboardEvent.WH_KEYBOARD_LL, proc,
+                    IntPtr.Zero, 0);
+            }
+        }
+        /// <summary>
+        /// Listen keyboard pressed
+        /// </summary>
+        /// <param name="nCode"></param>
+        /// <param name="wParam"></param>
+        /// <param name="lParam"></param>
+        /// <returns></returns>
+        private IntPtr HookCallback(int nCode, IntPtr wParam, IntPtr lParam)
+        {
+            //event do not be register, do not need to listen
+            //if (KeyPressed == null) return (IntPtr)1;
+
+            if (nCode >= 0)
+            {
+                if (wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYDOWN || wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYUP)
+                {
+                    Win32Apis.KBDLLHOOKSTRUCT hookStruct = (Win32Apis.KBDLLHOOKSTRUCT)Marshal.PtrToStructure(lParam, typeof(Win32Apis.KBDLLHOOKSTRUCT));
+
+                    // Use this to detect if the key press is synthetic (e.g., generated by SendInput or automation tools)
+                    bool isSynthetic = hookStruct.dwExtraInfo.ToInt32() == Win32Apis.SYNTHETIC_KEY_MARKER;
+
+                    int vkCode = hookStruct.vkCode;
+                    Keys key = (Keys)vkCode;
+                    KeyState keyState = wParam == (IntPtr)WindowsKeyboardEvent.WM_KEYDOWN ? KeyState.KeyDown : KeyState.KeyUp;
+
+                    Events.KeyboardEventArgs keyEventArgs;
+
+                    //Copy event
+                    if (IsControlPressed() && key == Keys.C)
+                    {
+                        keyEventArgs = new Events.KeyboardEventArgs
+                        {
+                            Command = wParam,
+                            Handle = IntPtr.Zero,
+                            KeyModifier = Keys.Control,
+                            KeyCode = key,
+                            KeyType = keyState,
+                            Combination = KeyCombination.Copy
+                        };
+                        if (isSynthetic)
+                            keyEventArgs.IsSynthetic = true;
+
+                        if(KeyPressed != null)
+                            KeyPressed.Invoke(this, keyEventArgs);
+
+                        return Win32Apis.HookApis.CallNextHookEx(_hookID, nCode, wParam, lParam);
+                    }
+                    //Handle keyboard events on form
+                    if (WindowsHandle.Count > 0)
+                    {
+                        var focusedHandles = WindowsHandle.Where(x => IsHandleFocus(x)).ToList();
+                        if (focusedHandles.Any())
+                        {
+                            keyEventArgs = new Events.KeyboardEventArgs
+                            {
+                                Command = wParam,
+                                Handle = focusedHandles.First(),
+                                KeyModifier = Keys.None,
+                                KeyCode = key,
+                                KeyType = keyState,
+                            };
+                            if(KeyPressed != null)
+                                KeyPressed.Invoke(this, keyEventArgs);
+
+                            return (IntPtr)1;
+                        }
+                    }
+                }
+            }
+            return Win32Apis.HookApis.CallNextHookEx(_hookID, nCode, wParam, lParam);
+        }
+        private bool IsControlPressed()
+        {
+            return (Win32Apis.KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_LCONTROL) & 0x8000) != 0 || (Win32Apis.KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_RCONTROL) & 0x8000) != 0;
+        }
+        private bool IsShiftPressed()
+        {
+            return (Win32Apis.KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_SHIFT) & 0x8000) != 0;
+        }
+        private bool IsAltPressed()
+        {
+            return (Win32Apis.KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_MENU) & 0x8000) != 0 || (Win32Apis.KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_LMENU) & 0x8000) != 0 || (Win32Apis.KeyboardApis.GetAsyncKeyState((int)WindowsKeyboardEvent.VK_RMENU) & 0x8000) != 0;
+        }
+        private bool isLeftWindowKeyPressed()
+        {
+            return (Win32Apis.KeyboardApis.GetAsyncKeyState((int)Keys.LWin) & 0x8000) != 0;
+        }
+        ~KeyboardService()
+        {
+            Dispose(false);
+        }
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (Interlocked.CompareExchange(ref _disposed, 1, 0) != 0)
+                return;
+
+            if (disposing)
+            {
+                lock (_lockObject)
+                {
+                    WindowsHandle.Clear();
+                }
+                Stop();
+                _hookID = IntPtr.Zero;
+                _proc = null;
+            }
+        }
+    }
+}
