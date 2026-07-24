@@ -147,7 +147,6 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
 
             lock (_lock)
             {
-
                 if (_inflight < INFLIGHT_LIMIT)
                 {
                     _lastSendTimestamp = now;

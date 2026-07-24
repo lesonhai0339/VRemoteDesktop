@@ -545,36 +545,7 @@ namespace Vsign4.VRemoteDesktop.Services.SessionManagement
                 return false;
             }
         }
-        //private bool Send(SocketDataType type, byte[] data, string id = null, bool sendHeader = true)
-        //{
-        //    if (Interlocked.CompareExchange(ref _disposed, 1, 1) != 0)
-        //        return false;
-
-        //    try
-        //    {
-        //        if (data.Length <= 0)
-        //            data = new byte[0];
-
-        //        if (sendHeader)
-        //        {
-        //            data = HeaderGenerate(type: type, id: _sessionId, true, data);
-        //        }
-        //        Sendstate state = new Sendstate
-        //        {
-        //            Data = data,
-        //            Remained = data.Length,
-        //            Sent = 0,
-        //            Timeout = Environment.TickCount,
-        //            RentBuffer = false,
-        //        };
-        //        return SendState(state);
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        Logger.Log.ForContext("FileName", this.GetType().Name).Error(ex, "Error when sending data to remote server without specific length");
-        //        return false;
-        //    }
-        //}
+    
         private bool SendState(Sendstate state)
         {
             if (Interlocked.CompareExchange(ref _sending, 1, 0) != 0)
@@ -596,6 +567,7 @@ namespace Vsign4.VRemoteDesktop.Services.SessionManagement
             else
             {
                 _screenRegions.SetHasData();
+                _sendWakeUp.Set();
             }
         }
         private void FullScreenSendCompleted()
@@ -655,6 +627,13 @@ namespace Vsign4.VRemoteDesktop.Services.SessionManagement
                     _screenRegions.ReadCompleted();
                     return true;
                 }
+
+                //// Không gửi được: trả lại slot window và nhả reader,
+                //// nếu không sẽ mất slot vĩnh viễn và Swap() kẹt ~11 frame.
+                //_screenRegions.ReadCompleted();
+                //_screenRegions.SendCompleted();
+                //_screenRegions.SetHasData();
+
                 return false;
             }
             catch (Exception ex)
