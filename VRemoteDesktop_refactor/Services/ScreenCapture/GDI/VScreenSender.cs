@@ -19,12 +19,12 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
 {
     public interface IVScreenSender
     {
-        bool IsCapturing { get; }
+        int State { get; }
         bool InitializeSenderComponents();
         void AddSessionBuffer(string id, VBufferSwapper swapper);
         void RemoveSessionBuffer(string id);
         bool Start();
-        bool Stop();
+        void Stop();
         void GetFullScreen(VBufferSwapper swapper);
         void Cancel();
         void Dispose();
@@ -49,10 +49,9 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
         private readonly Rectangle[] _rectangles;
 
         private readonly ConcurrentDictionary<string, VBufferSwapper> _clientSessionBufferSwapper;
-        private readonly ManualResetEventSlim _completedEvent = new ManualResetEventSlim(false);
 
         private int _disposed = 0;
-        private int _isCapturing = 0;
+        private int _state = 0;
         private int _initialized = 0;
         private Rectangle[] _dirtyRegions;
         private Rectangle[] _mergedRegions;
@@ -82,7 +81,7 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
         private int nextIdx = 2;
         private IntPtr _screenDC;
 
-        private CancellationTokenSource _cancellationTokenSource = new CancellationTokenSource();
+        private CancellationTokenSource _cancellationTokenSource;
 
         public event EventHandler<FrameEventArgs> OnFrame;
         public VScreenSender(int width, int height, int bytePerPixel, int framePerSecond = 10, int regionSize = 16) :
@@ -107,11 +106,11 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
             _clientSessionBufferSwapper = new ConcurrentDictionary<string, VBufferSwapper>();
         }
         #region Properties
-        public bool IsCapturing
+        public int State
         {
             get
             {
-                return Thread.VolatileRead(ref _isCapturing) == 1; 
+                return Thread.VolatileRead(ref _state); 
             }
         }
         public IntPtr SourceImage
@@ -153,36 +152,39 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
             Capturing();
             return true;
         }
+        // 0 = idle, 1 = running, 2 = stopping
         public bool Start()
         {
+            if (Interlocked.CompareExchange(ref _state, 1, 0) != 0)
+                return false;  
+
             if (_screenDC == IntPtr.Zero)
                 _screenDC = CaptureApi.GetDC(IntPtr.Zero);
 
-            if (_cancellationTokenSource.IsCancellationRequested)
-                return false;
-
-            _completedEvent.Reset();
-            _cancellationTokenSource = new CancellationTokenSource();
-            _captureTask = Task.Factory.StartNew(() =>
-                Capturing(_cancellationTokenSource.Token), TaskCreationOptions.LongRunning);
-
-            Interlocked.Exchange(ref _isCapturing, 1);
+            _cancellationTokenSource = new CancellationTokenSource();   
+            _captureTask = Task.Factory.StartNew(
+                () => Capturing(_cancellationTokenSource.Token), TaskCreationOptions.LongRunning);
             return true;
         }
-        public bool Stop()
-        {
-            if (_cancellationTokenSource != null)
-                _cancellationTokenSource.Cancel();
 
-            var flag = _completedEvent.Wait(3000);
+        public void Stop()
+        {
+            if (Interlocked.CompareExchange(ref _state, 2, 1) != 1)
+                return;  
+
+            var cts = _cancellationTokenSource;  
+            cts?.Cancel();
+            _captureTask?.Wait(3000);
+
+            cts?.Dispose();                       
 
             if (_screenDC != IntPtr.Zero)
             {
                 CaptureApi.ReleaseDC(IntPtr.Zero, _screenDC);
                 _screenDC = IntPtr.Zero;
             }
-            Interlocked.Exchange(ref _isCapturing, 0);
-            return flag;
+
+            Interlocked.Exchange(ref _state, 0);  
         }
         public void Cancel()
         {
@@ -209,6 +211,13 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
         /// <param name="image"></param>
         public void GetFullScreen(VBufferSwapper bufferSwapper)
         {
+            // Capture lai man hinh moi de tranh tinh trang gui  man hinh cu(xay ra khi Stop()) duoc goi
+            if (_state != 1) // 1 = running
+            {
+                if (_screenDC == IntPtr.Zero)
+                    _screenDC = CaptureApi.GetDC(IntPtr.Zero);
+                Capturing();   // BitBlt tươi + xoay index → frontIdx = màn hình hiện tại
+            }
             int writerOffset = 0;
             try
             {
@@ -390,7 +399,7 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
                 }
                 catch (Exception ex)
                 {
-                    //Console.WriteLine($"Background error: {ex.Message}");
+                    Logger.Log.ForContext("FileName", "VScreenSender").Error(ex.Message);
                 }
                 finally
                 {
@@ -412,10 +421,6 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
                     }
                 }
             }
-        }
-        private void HandlerCompleted(object sender, RunWorkerCompletedEventArgs e)
-        {
-            _completedEvent.Set();
         }
         #endregion
         public override void Dispose(bool disposing)

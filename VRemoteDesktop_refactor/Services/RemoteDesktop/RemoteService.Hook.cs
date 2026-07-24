@@ -36,14 +36,17 @@ namespace Vsign4.VRemoteDesktop.Services.RemoteDesktop
         }
         private void StartScreenCapture()
         {
-            if (!_screenSender.IsCapturing)
+            if (_screenSender.State == 0) // 0 = idle, 1 = running, 2 = stopping
             {
                 _screenSender.Start();
             }
         }
         private void StopScreenCapture()
         {
-            _screenSender.Stop();
+            if (_screenSender.State == 1) // 0 = idle, 1 = running, 2 = stopping
+            {
+                _screenSender.Stop();
+            }
         }
         private void FullScreenSendCompleted(object sender, EventArgs e)
         {

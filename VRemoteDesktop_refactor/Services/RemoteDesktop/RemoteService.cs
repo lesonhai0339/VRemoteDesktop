@@ -43,7 +43,7 @@ namespace Vsign4.VRemoteDesktop.Services.RemoteDesktop
         private const string SERVER_IP_API_URL = "https://ehoadondientu.com/myservice.asmx/VRemoteDesktopServer";
         private string _serverIpCache;
         private readonly object _serverIpLock = new object();
-
+        private readonly object _captureLock = new object();
         private int _disposed = 0;
 
         private readonly IMachineProfile _machineProfile;
@@ -145,7 +145,6 @@ namespace Vsign4.VRemoteDesktop.Services.RemoteDesktop
                     {
                         // Response wasn't XML; use the raw text as-is.
                     }
-
                     return string.IsNullOrEmpty(value) ? null : value;
                 }
             }
@@ -177,20 +176,18 @@ namespace Vsign4.VRemoteDesktop.Services.RemoteDesktop
         }
         private void StartCapture()
         {
-            var existed = _sessionManager.HasClientOfType(ClientType.Controlled);
-            if (existed)
+            lock (_captureLock)
             {
-                StartScreenCapture();
+                if (_sessionManager.HasClientOfType(ClientType.Controlled))
+                    StartScreenCapture();   // Start(): no-op nếu đang chạy
             }
         }
         private void StopCapture()
         {
-            var existed = _sessionManager.HasClientOfType(ClientType.Controlled);
-            if (!existed)
+            lock (_captureLock)
             {
-                // Was recursively calling StopCapture() -> StackOverflow. It must stop the
-                // screen capture pipeline when no controlled session remains.
-                StopScreenCapture();
+                if (!_sessionManager.HasClientOfType(ClientType.Controlled))
+                    StopScreenCapture();    // Stop(): chờ loop chết hẳn (Wait)
             }
         }
         private void ErrorCallback(ResponseType type, string message)

@@ -267,6 +267,7 @@ namespace Vsign4.VRemoteDesktop.Services.RemoteDesktop
                     {
                         _screenSender.RemoveSessionBuffer(clientSession.SessionId);
                     }
+                    StopCapture();
                 }
                 catch (Exception ex)
                 {
