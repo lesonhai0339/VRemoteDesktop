@@ -188,7 +188,7 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
         }
         public void Cancel()
         {
-            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource?.Cancel();
         }
         public void AddSessionBuffer(string id, VBufferSwapper swapper)
         {
