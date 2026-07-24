@@ -10,14 +10,14 @@ namespace Vsign4.VRemoteDesktop.Helpers
 {
     public static class VCrypto
     {
-        public static string[] EncryptString(string[] planTexts, string key = null)
+        public static string[] EncryptString(string[] plainTexts, string key = null)
         {
             if (string.IsNullOrEmpty(key))
                 key = HeaderSchema.Key;
 
-            return planTexts.Select(planText => EncryptString(planText, key)).ToArray();
+            return plainTexts.Select(planText => EncryptString(planText, key)).ToArray();
         }
-        public static string EncryptString(string planText, string key = null)
+        public static string EncryptString(string plainText, string key = null)
         {
             if (string.IsNullOrEmpty(key))
                 key = HeaderSchema.Key;
@@ -36,7 +36,7 @@ namespace Vsign4.VRemoteDesktop.Helpers
                     {
                         using (StreamWriter writer = new StreamWriter(crypto))
                         {
-                            writer.Write(planText);
+                            writer.Write(plainText);
                         }
                         array = stream.ToArray();
                     }
@@ -45,9 +45,9 @@ namespace Vsign4.VRemoteDesktop.Helpers
 
             return Convert.ToBase64String(array);
         }
-        public static string[] DecryptString(string[] planTexts, string key = null)
+        public static string[] DecryptString(string[] plainTexts, string key = null)
         {
-            return planTexts.Select(planText => DecryptString(planText, key)).ToArray();
+            return plainTexts.Select(plainText => DecryptString(plainText, key)).ToArray();
         }
         public static string DecryptString(string cipherText, string key = null)
         {

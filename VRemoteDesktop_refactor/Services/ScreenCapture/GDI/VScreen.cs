@@ -124,11 +124,11 @@ namespace Vsign4.VRemoteDesktop.Services.ScreenCapture.GDI
         public virtual Rectangle[] InitRectangle(int width, int height, int regionSize = 16)
         {
             if (width < 0)
-                throw new ArgumentNullException("width is required");
+                throw new ArgumentOutOfRangeException("width must be >= 0");
             if (height < 0)
-                throw new ArgumentNullException("height is required");
-            if (height < 0)
-                throw new ArgumentNullException("regionSize must be > 0");
+                throw new ArgumentOutOfRangeException("height must be >= 0");
+            if (regionSize <= 0)
+                throw new ArgumentOutOfRangeException("regionSize must be > 0");
 
             int cols = (width + regionSize - 1) / regionSize;
             int rows = (height + regionSize - 1) / regionSize;
